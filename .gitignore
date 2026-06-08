@@ -1,0 +1,78 @@
+﻿# === Android / Gradle ===
+install/hosts/android/app/build/
+install/hosts/android/.gradle/
+install/hosts/android/app/.gradle/
+**/.gradle/
+**/build/
+local.properties
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/   # comment out if you want to keep built zips under LFS
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# === IDE / Editors ===
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# === OS generated ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# === Secrets & Keys ===
+apikey.json
+*.key
+*.pem
+*.p12
+*.jks
+master/*.key   # if any signing keys
+
+# === Logs & Temp ===
+*.log
+*.tmp
+*.temp
+evolve/qwantum-jobs.log
+tools/test-*.log
+
+# === Misc project specific ===
+# Keep evolve/ state? Usually runtime, sometimes tracked for seeds
+# evolve/assistant-name.trit
+# evolve/assistant-state.trit
+
+# Large generated or cache
+refs/grapheneos/**/build/
