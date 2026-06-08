@@ -1,0 +1,45 @@
+# HAL Floating Point Unit API
+
+This unit supplies a portable API over different FPUs. It was initially designed
+over Intel x87 [asm/x87], but aims to be generic.
+
+## The float format
+
+When we refer to the "float" format, we refer to the 32-bit binary IEEE 754
+format, which has a precision of 24 and an exponent range of -126 to 127:
+
+  b31    Sign
+  b30:23 Exponent
+  b22:0  Mantissa
+
+This API aims to be able to conveniently push and pop such numbers to/from the
+FPU and manipulate them in the outside world as any regular 32-bit value.
+
+## This API is going to change
+
+Right now, this API is of a higher level than intended. I just want to get
+floats "going" as fast as possible. The goal is to have a more HAL-ish API with
+dedicated float registers so that integration in [comp/c] and friends is easier.
+
+With x87's stack system, it's going to be a bit wonkish, but I think it will
+work.
+
+But before I do that I want to support more CPUs, at least ARM, to have a better
+idea of what the floating world is out there before I design this.
+
+## API
+
+hasfloats? ( -- f )
+  Yields whether this machine can do floats.
+
+n>f ( n -- float )
+  Converts an integer into a float.
+
+f>n ( float -- n )
+  Converts a float into an integer, truncating its decimal part.
+
+f+ f- f/ f* ( float float -- float )
+  Basic arithmethics.
+
+fscale10 ( float exp -- float )
+  Multiply "float" by 10 to the power of "exp", which can be negative.

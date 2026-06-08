@@ -1,0 +1,278 @@
+# Varvara Graphics
+
+The unit at gr/varvara.fs is an implementation of the screen from
+[emul/varvara]. This unit stands by itself and doesn't need uxn or varvara to be
+used.
+
+While this implementation is original, the design is from Devine Lu Linvega.
+
+## Theory of operation
+
+A varvara sceeen (vscreen) is a Pixbuf [gr/buf] that supports 4 colors, but with
+a concept of "foreground" and "background" layer, making us choose a PAL4
+[gr/color] encoding for it.
+
+A varvara screen has a top-left origin and thus has an upside down buffer, but
+does *not* have its flipY flag generally set, as per [gr/buf] flipY logic.
+
+That pixbuf is initialized and allocated at unit load time, with a size of
+512x320 with a cute color theme. Use [gr/buf]'s API to resize it if necessary.
+
+The 2 high bits are background, the 2 low ones are foreground. The principle is
+that foreground color is the shown color unless it's 0, in which case we show
+the background color. If we call our palette c0, c1, c2 and c3, this gives us
+this value table:
+
+       ..00  ..01  ..10  ..11
+  00..  c0    c1    c2    c3
+  01..  c1    c1    c2    c3
+  10..  c2    c1    c2    c3
+  11..  c3    c1    c2    c3
+
+On those layers, we draw pixels and sprites with a palette of 4 colors. Sprites
+are squares of 8x8 pixels drawn from either a 1bpp (bits per pixel) format
+called ICN or a 2bpp format called CHR.
+
+A ICN sprite is a 8 bytes long structure where each byte represent a row in a
+8x8 tile. The most significant bit is the leftmost pixel. For example, a ICN
+sprite with a dot in its upper left corner and one in its lower right one would
+be:
+
+  create example map< c, $80 $00 $00 $00 $00 $00 $00 $01
+
+A CHR sprite is a ICN sprite with an extra 8 bytes channel appended to it. The
+first 8 bytes determines color and the other 8 bytes determine color bit 1. For
+example, if we want our example above to have the top left corner on color 2 and
+the top right corner on color 3, we would have:
+
+  create example map< c, $00 $00 $00 $00 $00 $00 $00 $01 \
+                         $80 $00 $00 $00 $00 $00 $00 $01
+
+Drawing pixels is done by choosing one of the 4 colors, but drawing sprite is
+done by choosing what we call a "blend". There's 16 of them and they allow us
+to rearrange colors using the same data sprite. Four of those blends include
+a transparency layer, which means that drawing a sprite on a layer using one of
+those blends will preserve the color that was previously drawn under the
+transparent pixels.
+
+Here is the list of blends. The numbers "3/2/1/0" means that a pixel with value
+"0" will be assigned the color 3, value 1, color 2, value 2, color 1 and value
+3, color 0. "T" means transparent:
+
+  0-3    T/0/1/2  0/1/2/3  0/2/3/1  0/3/1/2
+  4-7    1/0/1/2  T/1/2/3  1/2/3/1  1/3/1/2
+  8-11   2/0/1/2  2/1/2/3  T/2/3/1  2/3/1/2
+  12-15  3/0/1/2  3/1/2/3  3/2/3/1  T/3/1/2
+
+## Sprite and pixel options
+
+[emul/varvara] has a bitfield format for specifying pixel and sprite drawing
+options. We keep that format in our API but combine auto/sprite/pixel
+in the same 32-bit number for PS compactness.
+
+We also supply an API to conveniently build those options. For example, if you
+want to draw a 2bpp X-flipped heart sprite with blend 7 at pos 42,54, you could
+do:
+
+  42 54 heart 7 flipX) drawsprite
+
+The idea is that because the blend/color is the "lowest" part of the number, it
+"starts" our options. Then, we can flip some more options switches with words
+like "flipX".
+
+Pixels have no blend, only a color index from 0 to 3. However, it works the same
+way as blends, using the same options.
+
+## Flipping
+
+Sprite options include "Flip X" and "Flip Y". If they're set, the sprite will be
+draw horizontally and/or vertically flipped.
+
+## Fill
+
+Pixel options include a "Fill" flag. When set, we don't draw a pixel anymore,
+but we fill a region with the pixel position as one of the corners. Which corner
+depends on the Flip options.
+
+* No flip: fill lower right part of the screen
+* Flip X: fill lower left part of the screen
+* Flip Y: fill upper right part of the screen
+* Flip X+Y: fill upper left part of the screen
+
+## Auto options
+
+The "auto" part of the options closely work together. When "Auto X" or "Auto Y"
+are set, drawing position will increased by 1 for a pixel draw and 8 for a
+sprite draw. If flipping is enabled, position is decreased instead.
+
+If "Auto Addr" is set, sprite address is automatically increased by 8 or 16
+(1bpp or 2bpp) bytes.
+
+Length determines the number of times that the sprite will draw, plus 1. That
+is, 0 is once, 15 is 16 times. Although varvara specifications don't explicitly
+mention it, the Length field is ignored during the pixel action in the official
+uxn implementation, so we do the same here.
+
+Addr/X/Y increases are applied each time the "Length loop" runs, but in the case
+of the X/Y increase, things are counter-intuitive: The "inner Length loop"
+increases the *other* dimension. For example, if "Auto X" is set, it's "Y"
+that's going to be increased in the inner length loop, then once the loop is
+done, Y is brought back to its previous value, and only *then*, X is increased.
+
+It's weird, but when you think about what it enables, it's smart. The idea is to
+allow to draw a large tile. For example, if you want to draw a 32x32 pixels
+tile, you can arrange your sprite data accordingly, set X and Y and Addr, then
+call "drawsprite" with Length=4 4 times without ever having to adjust X or Y or
+Addr in the middle of your calls.
+
+## Bitfield reference
+
+For both pixels and sprites, "auto" is the same and lives at b15:8.
+
+b15:12 Length
+b11    unused
+b10    Auto Addr
+b9     Auto Y
+b8     Auto X
+
+Pixel:
+
+b7     Fill
+b6     Layer (0=bg 1=fg)
+b5     Flip Y
+b4     Flip X
+b3     unused
+b2     unused
+b1:0   Color index
+
+Sprite:
+
+b7     2bpp (0=1bpp 1=2bpp)
+b6     Layer (0=bg 1=fg)
+b5     Flip Y
+b4     Flip X
+b3:0   Blend index
+
+## Implementation details
+
+### Reading and writing pixels
+
+Accessing pixels in the varvara buffer is a lot like [gr/rdwr] does, but is
+special because of the background/foreground business.
+
+What we do here is that we use rd4, wr4, trim4, and mix4, normally, using
+low-bits color for setting foreground and high-bits colors for setting
+background.
+
+Then, in the inner loop, when we enter the condition when Index rolls over to 0
+and when we need to write the buffer, we read the destination address, mask out
+either bg or fg, then OR it in the buffer we're about to write, *then* write.
+
+### drawpixel
+
+Except in "fill" condition, what we're about to do is to set 2 bits somewhere
+in the buffer. The byte address in that buffer is determined by xyaddr, but the
+bits to change inside that byte are determined by a combination of X&1 and fg):
+
+        X&1=0   X&1=1
+  bg     2-3     6-7
+  fg     0-1     4-5
+
+To set those bits, we need to read the existing byte value in that address, mask
+the destination bits out, properly shift our 0-3 color value, combine
+everything, write it back.
+
+The $ff3f mask used in the code allows us to move that 2 bits window eveywhere
+we need using right shifting.
+
+### fillpixel
+
+Implementing the fill feature in a fast way is actually quite complicated and
+this feature is, in the vast majority of cases, used for full screen filling.
+Therefore, we implement partial fill as a slow one-pixel-at-a-time loop, but
+full screen fills are implemented as quick routines.
+
+### drawsprite
+
+There's something really nice about sprites, it's that they're 8 pixels wide.
+This means that with a 4-bit encoding, a sprite row exactly fits in a 32-bit
+number. However, as soon as destination address is unaligned, we lose that
+niceness, which means we must use regular [gr/rdwr] mechanisms.
+
+However, it allows us to inline pixel drawing in a 8-long pre-compiled loop.
+Having this index available at compile time save us a register.
+
+In general, what we do in drawsprite is a regular rdwr loop, but there's a big
+caveat: we must only write on a single layer at once. So, either on the
+foreground, that is, bits $33333333 of any given 32-bit pixel group, or on the
+background, that is, bits $cccccccc.
+
+For this to be as fast as possible, we resort to a few tricks, namely to shift
+the blend data by 2 bits *outside of the loop* and keep that blend value in
+register R3. This way, no need for bg/fg check in inner loop.
+
+Another challenge is handling transparency. When we write to the output buffer,
+we don't have "mix" data available, we're only going to have it when we're ready
+to write that buffer. To avoid having to fetch the pixel we're "transparenting"
+in from memory in the inner loop, what we do instead is that we maintain a
+active mask in register R2. That register starts at 33333333/cccccccc at the
+beginning of a 32-bit writing chunk. Whenever we encounter a transparent pixel,
+we "enlarge" the writing mask, for example from 33333333 to 3333f333 and keep
+that pixel to 0 in the output buffer. This means that the "old" pixel will be
+ORred in at write time.
+
+Because our input buffer is generally only 8-bit in size, implementing 2bpp) is
+rather straightforward. At the beginning of a row, if the 2bpp) flag is set, we
+read srca+8 and OR it in b15:8 of the input buffer. Then, in the inner loop, no
+need to check for the 2bpp) flag: we just shift the blend value right by 16 when
+bit+8 in the input buffer is set.
+
+### Out of bounds logic
+
+The edge case of drawing a sprite partially out of bounds is tricky because this
+possibility implies significant complexity. The very tight drawsprite routine is
+hardcoded for 8 pixels wide rows.
+
+Instead of introducing that complexity, we opt for cheating: For each row in the
+pixbuf, we add a 32-bit "shadow buffer". That is, at buffer allocation time, we
+allocate it as if it had an extra 8 pixels to its right. That is, "linesz" is
+4 bytes larger than it normally would be. In addition to that, we also add an
+extra 4 bytes shadow buffer right before the buffer itself.
+
+Then, we simply ignore X bounds within the -7 +7 range. Slightly leaking to the
+right? no problem, in the shadow buffer. Leaking to the left? no problem,
+address calculation will bring us in the shadow buffer of the previous line. Out
+of bounds by 8 or more? Not drawing anything.
+
+Y bounds have to be checked though, but that's not as bad as X bounds because
+it's only a matter of adjusting loop count and source address.
+
+## API
+
+### Values
+
+vscreen  Pixbuf of the varvara screen
+sprite   Address of the sprite to draw
+X        Current draw position X
+Y        Current draw position Y
+
+### Words
+
+flipX) flipY) fill) bg) fg) 1bpp) 2bpp) addr+) X+) Y+) ( opts -- opts )
+times) ( opts n -- opts )
+  All these words take an existing options field and activate the right bits in
+  it. bg) and 1bpp) don't need to be explicitly applied, they're the default.
+
+drawsprite ( opts -- )
+  Draw the specified sprite to the appropriate layer.
+
+drawpixel ( opts -- )
+  Draw a pixel to the appropriate layer.
+
+setvpalette ( c0 c1 c2 c3 -- )
+  Compute the effective color for each bg/fg combinations and set vscreen's
+  palette accordingly.
+
+refreshscreen ( -- )
+  Draw vscreen, properly flipped, in the center of screen [gr/buf]. We keep
+  track of [gr/damage] it and only redraw the damaged portions, if any.

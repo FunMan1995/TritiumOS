@@ -1,0 +1,10 @@
+# Search substring in filesystem
+
+The unit at fs/search.fs supplies "search ( str fsid fs -- )". It is a word that
+recursively look in file or directory "fsid" of filesystem "fs" [fs/core] for
+the substring "str". If an occurrence of it is found, print the path of the file
+that contains it. Examples:
+
+  needs fs/search
+  "foo" 0 bootfs search \ search in whole FS
+  "bar" p"lib" bootfs search \ search in "lib" subdir

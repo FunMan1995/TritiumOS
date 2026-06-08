@@ -1,0 +1,75 @@
+# Deploying to a PC
+
+See [doc/deploy] first.
+
+A Dusk media that boots on a PC is either a FAT with [xcomp/i386/pc/mbr]
+installed on its first sector, or an MBR partition with [xcomp/i386/pc/pbr]
+installed on the first sector of the partition. This FAT must have been created
+with enough reserved sectors to fit our kernel and payload.
+[xcomp/i386/pc/mkfat] can help you with that.
+
+Once you have that, you must place the kernel and payload in those reserved
+sectors, that is, the sector that directly follow your FAT header (sector 2 most
+likely).
+
+The payload on the PC is organized in a peculiar manner. Because the bootloader
+can only load 58 sectors (before it runs into int13h sector buffer at $7800)
+but the payload is more than that, we use [io/secld]. That is, we begin our
+payload with the bare minimum to get to the point where we can load [io/secld],
+then generate a "secload" call with some hardcoded pre-decided number. That
+number is higher than the number of sectors needed to get to the "secload"
+call, but as small as possible to avoid wasting sectors. Then, we pad the
+payload to get to that sector number and spit the rest of it there.
+
+Note that unlike the bootloader, "secload" loads sectors to a single buffer
+allotted at "here", overwriting them when they are done being executed, via the
+NEXTIN< mechanism [doc/usage/io].
+
+Then, you can copy your files into the FAT. You have a media that boots on a PC.
+
+## In-system upgrades
+
+Creating a FAT, updating the MBR or PBR, mass-copying files, are infrequent
+tasks that are left to the operator, with the help of the tools described
+above.
+
+Updating the kernel and payload in the reserved sectors happens more often.
+Whenever you change the kernel or a unit that is part of the boot payload, you
+need to do it.
+
+To make this frequent task easier, we have the xcomp/i386/pc/deploy.fs unit
+which contains this API:
+
+spitkernel1 ( stream prelude -- )
+  Build the kernel and first part of payload, which under the PC platform are
+  adjacent, to "stream". The "prelude" argument is a stringlist of what units
+  to put at the end of the first part of the payload. Use "preludelba" if
+  unsure. "preludechs" is also available.
+
+spitkernel2 ( stream -- )
+  Spit second part of payload, that is what follows the "secload" call, to
+  "stream".
+
+install ( drive -- )
+  Provided that "drive" contains a FAT with enough reserved sectors, build the
+  kernel and payload for an LBA mode PC deployment and write them to "drive".
+
+installchs ( drive -- )
+  Same as install except it makes a CHS mode PC deployment. This is needed for
+  floppies and very old (1990 and earlier) PCs.
+
+copyfloppy ( -- )
+  Call "copylist" [xcomp/deploy] with a list of files that is enough for a
+  rescue floppy disk.
+
+rebootinto ( -- )
+  Build a kernel and payload in the same way as in "install", but instead of
+  writing the result to a drive, it copies it to the $500-$7c00 range. Then,
+  we jump to $500.
+
+  This means that if this can't boot, you can safely power down the machine and
+  boot from the media, which still contains the old kernel and payload.
+
+  This can be useful to test if you're about to brick your system, but is of
+  limited use because anything in the payload past "secload" will come from the
+  media. But it works for detecting errors in kernel and xcomp/boot.fs.

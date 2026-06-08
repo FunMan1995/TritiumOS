@@ -1,0 +1,89 @@
+# Dusk OS usage
+
+Dusk OS is a Forth that generally follows conventions described in "Starting
+Forth" by Leo Brodie, except that words are in lowercase. If you don't know
+Forth, it's recommended that you start there. Dusk's documentation assumes this
+knowledge.
+
+Then, you can look at [doc/dict] to get an broad idea of the vocabulary that is
+available to you. You will recognize many words in there from Starting Forth and
+should be able to get started after that.
+
+That being said, Dusk OS has some additional features and peculiarities that
+need explaining. This document, as well as all pages in the "doc/usage"
+directory, explain those features and peculiarities.
+
+Before you dive seriously in Dusk, it is recommended that you've gone through
+all those pages and reasonably understand what's being explained in there.
+
+## Subroutine Threaded Code
+
+This Forth is a Subroutine Threaded Code (STC) Forth. This means that unlike ITC
+and DTC, compiled "calls" to word addresses are not references interpreted by
+the "next" routine, but native calls (for example, on i386, a CALL opcode
+followed by displacement). There is no "next" routine. Some could say that
+"threaded" is a bit of a misnomer here, but well, STC is the name that stuck.
+
+The main drawback of STC, compared to DTC or ITC forths, is significantly bigger
+binary size. It's also more complex to "disassemble" a compiled word (the
+traditional "see" word, which Dusk doesn't have). One needs to use a
+CPU-specific disassembler. The upsides, however, are real juicy.
+
+First, there's speed. Calling words natively is faster than going through DTC or
+ITC's "next" routine.
+
+Second, and most importantly, there's the ability for forth code to freely mix
+up with native code. That's huge and we use this extensively in Dusk through
+its meta compilation capabilities, which is what the HAL is all about.
+
+## The HAL
+
+Dusk features a Harmonized Assembly Layer on which DuskCC [comp/c] relies
+and allows some really nice tricks. For regular usage, HAL knowledge isn't
+needed, so it's not covered here. However, you should know that it's a central
+feature of Dusk. You can read about it in [doc/hal].
+
+## The interpret loop
+
+Dusk's main interpret loop looks a lot like the loop from other Forths:
+
+1. Read a word from the input stream.
+2. Is it a number literal? Place number on PS and go to 1.
+3. Does the word exist in the dictionary? Execute it and go to 1.
+4. "Word not found" error and go to 1.
+
+This loop is implemented as the word "main", which calls "run1" forever.
+
+## Usage guide index (in suggested reading order)
+
+usage/lit    Literals and strings
+usage/flow   Control flow
+usage/mem    Accessing memory
+usage/word   What's in a word?
+usage/to     Setter semantics
+usage/unit   Units and dependencies
+usage/io     Input/Output
+usage/file   Files
+usage/tag    Tagged addresses
+
+## What now?
+
+This document covers Dusk's basic functionalities. You can try a few things in
+the interpreter, but you are hungry for more. What to read next?
+
+* Take a look at doc/dict to have an idea of available base words.
+* Although the documentation you've read so far covers Dusk's core, some
+  libraries are used so extensively throughout the code that they can almost be
+  considered "core" (but you *can* build a Dusk system without them):
+  * doc/lib/type
+  * doc/lib/struct
+  * doc/io/stream
+  * doc/fs/core
+  * doc/mem/alloc
+* doc/hal covers the HAL on which the coolest Dusk features rely.
+* doc/comp/c covers Dusk's C compiler.
+* doc/text/ed to edit text files.
+* doc/code explains how to grok Dusk's code.
+
+There are many more subjects covered by this documentation, but these listed
+above should be read first. As for the rest, I'll let you browse.

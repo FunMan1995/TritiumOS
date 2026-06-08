@@ -1,0 +1,16 @@
+# EFI Keyboard
+
+The unit at [drv/efi/kbd.fs] is a very thin [io/kbd] wrapper over ReadKeyStroke
+from [drv/efi]. The NKCs it yields are simple passthrough because ReadKeyStroke
+mostly yields ASCII.
+
+## API
+
+?specialkey ( inputkey -- inputkey-or-nkc f )
+  With "inputkey" being a pointer to the struct yielded by ReadKeyStroke,
+  check if its "scancode" field is set to something that maps to a supported
+  special key constant in io/kbd. If it does, yields its nkc with f=1.
+  Otherwise, f=0 and "inputkey" is kept on PS.
+
+newefikbd ( -- kbd )
+  Allocates a new [io/kbd] wired on ReadKeyStroke.

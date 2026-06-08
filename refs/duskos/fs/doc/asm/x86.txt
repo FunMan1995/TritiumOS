@@ -1,0 +1,433 @@
+# x86 assembler
+
+This covers a big part of the IA-32 and AMD64 architectures, but not all of it.
+The broad principle is that this assembler is augmented as Dusk's needs grow.
+It covers the 16-bit real mode, the 32-bit protected mode and the 64-bit long
+mode.
+
+You write code by calling operand specifiers followed by an instruction word.
+For example, "ax bx add," assembles an ADD instruction with EAX as a destination
+and EBX as a source.
+
+Operand words always result in one element being placed on PS. The instruction
+word then consumes the operands from PS and writes the result. Error checking
+is minimal, you should be careful about how to write instructructions.
+
+## Assembler modes
+
+This assembler can globally be in 3 modes:
+
+* realmode (16-bit)
+* 32bmode (32-bit)
+* 64bmode (64-bit)
+
+Each of those modes have a word with the same name. In addition, there is
+"defaultmode" which is the equivalent to "32bmode" unless [arch/core] says that
+we are on a amd64 CPU, in which case it's "64bmode".
+
+There is little difference between 32bmode and 64bmode, since as you'll see
+below, REX prefix is manually managed. However, whenever memory is referenced,
+there are caveats. See the "64-bit" section below.
+
+When you change modes during assembly, a courteous thing to do is to call
+"defaultmode" after you're done, so that code assembling for the "live" machine
+doesn't have to care about setting a mode.
+
+## Register operand
+
+You use a register operand by typing its name. The list of registers is:
+
+  ax bx cx dx
+  sp bp si di
+
+These register words don't have a "e" prefix because their meaning is
+context-dependent. When we're in real mode, they refer to the 16-bit register.
+When we're using an instruction where the register has to be 16-bit such has
+movzx, it refers to the 16-bit register too. But otherwise, these words refer to
+the 32-bit register, so they can be seen as if they has the "e" prefix.
+
+Then, there's the 8-bit register words:
+
+  al bl cl dl
+  ah bh ch dh
+
+There is also a list of "special" registers which can only be used with "mov,"
+and another "regular" register operand:
+
+  es ss ds fs gs
+  cr0 cr2 cr3
+  dr0 dr1 dr2 dr3 dr6 dr7
+  tr6 tr7
+
+## Immediate operand
+
+  imm) ( imm -- )
+
+You can specify an immediate operand with the "imm)" word. For example "si 42
+imm) sub," writes the SUB instruction with ESI as destination and 42 as an
+immediate source.
+
+An immediate operand is always the source and should always be placed second in
+the operand list (except for push,)
+
+Remember, all operand words leave an item (always one and only one) on PS. If,
+for example, you want to apply a displacement that is already on PS, you have to
+do proper PS juggling:
+
+  : movAXi, ( i -- ) ax swap imm) mov, ;
+
+## Memory operand
+
+  abs) ( addr -- )
+
+You can refer to an absolute memory address with the "abs)" word. "cl $1234 abs)
+mov," loads the byte at memory address $1234 into register CL.
+
+Order is important here: "$2345 abs) dx mov," writes the contents of EDX in
+memory address $2345.
+
+## Indirect register operand
+
+  d) ( operand displacement -- operand )
+
+We can also refer to a memory address stored in register with the "d)" word,
+along with a constant offset. For example, if EDI is $1200, "ax di 42 d) mov,"
+loads the 4 byte value from memory address $122a into EAX. Again, order is
+important so "di 42 d) ax mov" does the opposite.
+
+If you want indirect addressing without offset, use "0 d)". The assembler will
+automatically use the instruction form that is more compact (which contains no
+offset).
+
+### d) and realmode
+
+When in realmode, you cannot use d). In real mode, not all registers can serve
+as indexes, only BP BX SI DI. Therefore, instead of using d), use one of these:
+
+  si+) di+) bp+) bx+) bx+si) bx+di) bp+si) bp+di)
+
+They work like d). For example, instead of "ax si 42 d) mov,", you would write
+"ax 42 si+) mov,"
+
+## Instruction width
+
+  byte) ( operand -- operand )
+  word) ( operand -- operand )
+  dword) ( operand -- operand )
+
+By default, instructions are written in their 32-bit wide versions. But
+instructions can be 32-bit, 16-bit or 8-bit wide. There are multiple factors
+deciding on that width.
+
+First, using an 8-bit register word (al, ch, etc.) yields an 8-bit operand.
+
+But sometimes you want an 8-bit instructions that does not involve a register,
+for example "$1234 abs) inc,". To force this one instruction into 8-bit or
+16-bit mode, do it with "byte)" or "word)", for example:
+
+  $1234 abs) byte) inc,
+
+When in realmode, the default width is 16-bit.
+
+You won't be using "dword)" often, but it can be useful in macros where the
+input operand can be sized and you want to make it "full-width".
+
+By design, the "byte)", "word)" and "dword)" words have the exact same effect as
+x86 HAL's 8b) 16b) 32b). This means, for example, that the MOD) word
+[doc/usage/bmw] on a x86 system works fine with assembler code.
+
+This assembler assumes that the segment "D" flag is set. We also never emit the
+67H prefix.
+
+## SIB with r+) 2r+) 4r+) and 8r+)
+
+The "r+)" family of words expose i386's SIB byte functionality and has the
+signature ( opmod reg -- opmod ). For example, the line:
+
+  ax bx cx 2r+) 4 d) mov,
+
+will encode a MOV with EAX as a destination and the memory address at
+EBX+ECX*2+4 as a source.
+
+The "r+)" words will generally be used in conjunction with "d)". When a "d)" is
+not present, an implicit "0 d)" is applied.
+
+These words can't be use with "sp" because of the limitation in i386's encoding
+scheme.
+
+## 64-bit mode
+
+The AMD64 ISA has been designed in such a way that, once encoded, it looks a
+*lot* like i386. With a few differences, of course, but at the end of the day,
+assembler wise, you pretty much only need the REX prefixes.
+
+To avoid overcomplicating the assembler and, at the same time, give you maximum
+flexibility, we leave the REX prefixes entirely up to you, the operator. These
+powers are given in the form of "rex.w", "rex.r", "rex.x" and "rex.b" words.
+When those words are called, the next instruction write will include a orr-ed in
+REX prefix.
+
+It also gives you "r8-r15" constants, but they map to the same numbers as
+"ax-di" constants, they need to be used in conjunction to the REX prefixes.
+
+Little reminders:
+
+rex.w is for making the instr 64-bit in width
+rex.r is for adding 8 to modrm's "reg"field
+rex.x is for adding 8 to SIB's "index" field
+rex.b is for adding 8 to SIB's "base" field *or* to r/m field if no SIB present
+      it is also used in the "opcode encoded" versions of the instructions, but
+      semantically, because those are hardcoded AX dests, it's pretty much the
+      same as saying "the r/m field".
+
+Examples:
+
+  rex.r r8 bx mov, \ copy EBX to R8D
+  rex.b bx r8 add, \ add R8D to EBX
+  rex.w rex.b bx r8 add, \ add R8 to RBX
+  rex.w rex.b ax r8 4 d) add, \ add [R8+4] to RAX
+  rex.w rex.b r8 4 d) ax add, \ add RAX [R8+4]
+  rex.b r8 42 imm) mov, \ set R8D to 42
+
+Because encoding stays the same, all you need to access 64-bit registers and
+features is to sprinkle REX around. Immediates are all 32-bit even in 64-bit
+mode, so really, nothing changes.
+
+... except for "mov,", which *does* have a 64-bit immediate when used with
+rex.w. There is no logic in this assembler to handle this. Therefore, if you
+really need this instruction, write the higher 32-bit yourself:
+
+  rex.w ax $12345678 imm) mov, $9abcdef0 le, \ set RAX to $123456789abcdef0
+
+On top of that, there are also many instructions that the AMD64 ISA adds. We
+support some of them in this assembler. In the listing below, instructions that
+are amd64-only are grouped together.
+
+### abs) and 64bmode
+
+Dusk is a 32-bit system and this assembler is designed to mostly assemble
+binaries to use within Dusk. In Dusk, 64-bit addresses don't make sense.
+
+What constitutes an absolute address in amd64's Dusk, as documented in
+[hw/amd64], is RBP+32b-offset.
+
+Therefore, when abs) is used in 64bmode, what it encodes is [RBP+d].
+
+### ?d+bp) ?bp+, and ?bp-,
+
+The caveats that applies to "abs)" above also applies to any indirect memory
+access: If you're not adding BP, you might be having a problem.
+
+However, in the case of "d)", we don't automatically apply anything because we
+want to give the operator maximum flexibility.
+
+This means that if you want to write "portable" assembly, that is, assembly that
+is going to work on both a Dusk running on i386 and a Dusk running on amd64, you
+shouldn't use "d)" directly. Instead, use "?d+bp)", which if in 64-bit mode, is
+the equivalent of "d) bp r+)", otherwise, it's the equivalent of "d)".
+
+A similar thing happens when we want to refer to an address, for example to use
+"callr," on it. That address is a bad one, you want to add BP to it. For this,
+you can use "?bp+, ( operand -- )" which adds BP to the target only if we're in
+64bmode.
+
+Therefore, if for example AX contains a 32-bit address to call, you'd do:
+
+  ax ?bp+, callr,
+
+?bp-, is there for symmetry, in case you need it.
+
+### Encoding logic
+
+To use the REX logic reliably, the operator needs to know a few things about the
+assembler's encoding logic.
+
+First, the "inc," and "dec," instructions never encode the "$40" form, so
+there's no REX clash on that level.
+
+Then, there's the case of ambiguous forms. For example, when we have straight
+registers on both dst and src fields, any of the directions can be used in the
+modrm instruction forms. This assembler always chooses the one where
+source is in the "reg" field. Therefore, "rex.b" reliably applies to the
+source field (or the r/m field if one operand is direct and the other is
+indirect).
+
+## Operand structure
+
+When we refer to an operand, we refer to a number with this structure. It is
+intentional that it follows closely the structure of x86 opcodes:
+
+b2:0   regid
+b5:3   zeroes except when register is a "special" one for mov,
+b7:6   mod ( displacement in bank if present )
+b8     0=8b 1=32/16b
+b15:9  opcode's lower byte  (b8 is also part of it)
+b16    opcode is 2 bytes (has $0f extension byte)
+b17    has66hprefix?
+b18    immediate? ( value in bank )
+b19    zero
+b23:20 Number bank index
+b31:24 SIB
+
+When we refer to "opmod", it's this structure
+When we refer to "opcode", it's only the opcode part, shifted right.
+Most of the time, we deal with an "opmod" structure.
+
+## Instructions
+
+Instructions are divided in multiple groups with different signatures.
+
+### Inherent ( -- )
+
+ret,     nop,      hlt,      cli,      sti,      cld,      std,
+lodsb,   lodsw,    lods,     stosb,    stosw,    stos,
+cmpsb,   cmpsw,    cmps,
+movsb,   movsw,    movs,     scasb,    scasw,    scas,
+insb,    insw,     ins,      outsb,    outsw,    outs,
+repz,    repnz,    rep,
+pusha,   popa,     pushf,   popf,     iret,
+
+### Single operand ( dst -- )
+
+push,    pop,
+neg,     not,
+mul,     div,      imul,     idiv,
+dec,     inc,
+setg,    setl,     seta,     setb,
+setge,   setle,    setae,    setbe,
+setnge,  setnle,   setnae,   setnbe,
+setz,    setnz,    setc,     setnc,
+seto,    setno,    sets,     setns,
+setp,    setnp,    setpe,    setpo,
+sete,    setne,
+lgdt,    lidt,
+
+With "mul,", "imul,", "div," and "idiv," the destination is always ax and you
+don't specify it. So, you'll write them like "bx mul," or "cx div,"
+
+"push," is the only instruction that can take an immediate as its first (and
+only) operand.
+
+### Two operands ( dst src -- )
+
+add,     or,       adc,      sbb,
+and,     sub,      xor,      cmp,
+test,    xchg,
+mov,     lea,
+
+### Shift instructions ( dst shiftby -- )
+
+"shiftby" is either an immediate or "cl".
+
+rol,     ror,      rcl,      rcr,
+sal,     sar,      shl,      shr,
+
+### movsx, and movzx,
+
+movsx, and movzx, are like a regular two operand instructions, but widths are
+funky. "dst" is always full-width, but as you know, src is always either 8b or
+16b. For the 8b variant, you apply byte) to src, but for the 16b variant, you
+apply nothing. Examples:
+
+bx $1234 abs) byte) movsx, \ 8-bit sign-extended move into ebx
+bx $1234 abs) movzx, \ 16-bit sign-extended move into ebx
+bx ax movsx, \ 16-bit sign-extended move from ax to ebx
+
+### ?movzx, macro ( dst src -- )
+
+"?movzx," is a macro that does the "right thing" to get a possibly smaller "src"
+into a full width "dst" register ("dst" has to be a register and it has to be
+full width).
+
+If src is full width, then a simple "mov," is written. If it's an immediate too.
+Otherwise, it's a movzx,.
+
+This macro is not supported for realmode (16-bit) assembling.
+
+Example equivalences:
+
+  ax bx ?movzx,        ax bx mov,
+  ax bx word) ?movzx,  ax bx movzx,
+  al bl ?movzx,        al bl movzx,
+
+### in, and out,
+
+The "in," and "out," instructions support both their immediate form and their
+ax/dx form. You have to specify registers even if only al and ax are legal. ax
+is always first for both instructions. Width modifier is applied to ax, not dx
+Examples:
+
+  al 42 imm) out, \ 8-bit out to port 42
+  ax word) 42 imm) in, \ 16-bit in from port 42
+  ax dx out, \ 32-bit out to port DX
+  ax word) dx in, \ 16-bit in from port DX
+
+### Jumps and calls
+
+"jmp," and "call," have two possible forms: Immediate or modrm. To stay
+consistent with conditional branch words which only have immediate forms, "jmp,"
+and "call," are for the immediate form and "jmpr," and "callr," are for the
+modrm form. Examples:
+
+  ax jmpr,
+  bx 4 d) callr,
+  $1234 jmp,
+
+The immediate offset form is used directly, without the "imm)" word. The number
+supplied to it is expected to be an offset relative to the instructions
+*beginning* position (yes, *beginning*, unlike what the i386 instruction
+expects, which is an offset from the end of the instruction). This means that "0
+jmp," is always an infinite loop.
+
+At this point a bit of fiddling happens to this offset. First, we check if the
+offset is small enough to fit in 8-bits. If it is, we write the 8-bit form of
+the jump/call. If it's not, we write the 32-bit form (or 16-bit form if we're
+in real mode).
+
+Then, after that, we need to adjust that offset so that it jumps to where it's
+supposed to by subtracting 2, 3 or 5 bytes (depending on the opcode width)
+before writing it.
+
+Conditional jumps (jz, jnc, etc.) work the same way except that they only
+support the immediate mode (again, no "imm)") and will subtract an additional 1
+from the resulting offset in 16-bit/32-bit because the opcode is 2 bytes wide.
+
+jo,      jno,
+jb,      jnb,      jbe,      jnbe,
+jc,      jnc,
+je,      jne,      jz,       jnz,
+ja,      jna,      jae,      jnae,
+js,      jns,
+jp,      jnp,      jpe,      jpo,
+jl,      jnl,      jle,      jnle,
+jg,      jng,      jge,      jnge,
+loop,    loopz,    loopnz,
+
+There is also "jmpfar," and "callfar," with signature "seg16 absaddr --"
+(regular number, not imm) immediates).
+
+### int,
+
+"int," is special and is called with a regular number: $80 int,
+
+### Low level API
+
+Other units such as [asm/x87] use some words from this unit, which we document
+here.
+
+regid@ ( opmod -- n )
+  Extract the "regid" field (b2:0) from opmod.
+
+modrm, ( opmod -- )
+  Write the modrm described by "opmod", including all the extra bytes (SIB,
+  displacement, immediates) if appropriate.
+
+  The low 8-bit of opmod are written as-is, so it is expected that an
+  appropriate "reg" field has been ORed in.
+
+## See also
+
+* [hw/i386]
+* [hw/amd64]
+* INTEL 80386 PROGRAMMER'S REFERENCE MANUAL
+* AMD64 Architecture Programmer’s Manual (3 volumes)

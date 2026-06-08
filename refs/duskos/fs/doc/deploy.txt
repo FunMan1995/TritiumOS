@@ -1,0 +1,160 @@
+# Deploying Dusk OS
+
+To deploy Dusk OS on your hardware, you need to craft a bootable media for it.
+If you're deploying to an already supported platform, then it's only a matter of
+using the existing build scripts, maybe tweak the init.fs a bit.
+
+## The general steps
+
+All supported targets have a deploy script with documentation accompanying it.
+For example, the PC target lives at [drv/i386/pc/deploy]. This is the first
+place to look at as it contains instructions specific to that target.
+
+The broad steps to follow to create a build media are the same everywhere:
+
+1. Prepare a media with FAT on it.
+2. Devise a way to make this media bootable so that it loads the kernel and boot
+   layer in memory, and execute it.
+3. Compile the kernel, install it on the media.
+4. Create the boot "payload" (see [doc/boot]) and place it on the media.
+5. Copy all Dusk files in the target FAT volume.
+6. Create a init.fs file and place it in the target FAT volume.
+
+## Example
+
+Let's imagine ourselves on a old school PC with a floppy drive. We're running
+Dusk OS on it from the primary ATA drive and we want to create a new floppy boot
+media. Our floppy drive, from [drv/ps/fdc] is already initialised.
+
+The first step is to create a new FAT on the floppy. We can't create any new
+FAT, is has to have the right parameters, in particular rsvdsec. You must use
+the "mkfat" helper:
+
+  needs xcomp/i386/pc/mkfat
+  floppy dofloppy
+
+You now have an empty FAT on the floppy as well as a bootloader on the first
+sector. Next come the kernel and payload:
+
+  needs xcomp/i386/pc/deploy
+  floppy install
+
+The kernel and payload are in place! The last step is to copy all files from
+your Dusk system into the new one. If this wasn't a floppy, you'd do:
+
+  needs fs/sh
+  0 floppy newfatfs dst! 0 bootfs src! copydir
+
+but Dusk OS doesn't fit in a 1.44M floppy. Only by doing a careful selection of
+files will it fit. There's a helper for that in [xcomp/i386/pc/deploy]:
+
+  0 floppy newfatfs dst! copyfloppy
+
+And that's almost it! The floppy will now boot Dusk OS alright... but using your
+host's "init.fs" file. What you need to do before using this floppy is to edit
+the "init.fs" file on the floppy so that it does the right thing.
+
+And that's it, deploy complete!
+
+## System upgrade
+
+To update the kernel and payload of the system you're currently running, it's
+even easier. All you need is to call the "install" word of your deploy script by
+targeting the drive that your bootfs targets.
+
+Then reboot and you'll be in your new kernel.
+
+Sometimes, it's a bit dangerous to do so. You might be nervous to break your
+system and not be able to boot into it anymore.
+
+Many deployment units will also include a "rebootinto" which will do a great
+job of easing your anxiety. Instead of writing the kernel and payload to disk,
+they write them to where the bootloader would place them and jump to them,
+effectively doing a soft reboot.
+
+It doesn't boot? no problem. power down the machine, reboot and the old kernel
+will boot. Looks alright? good, you can confidently do a real install.
+
+## New platforms
+
+Deploying Dusk to a new platform is quite a challenge which involves a lot of
+trial and errors. Maybe these little guidelines can help you.
+
+### Bootloader
+
+The first thing you have to do is to write your bootloader. I don't know your
+platform, so I can't tell you how, but what I can tell you is that it has to
+load both the kernel and the boot "payload" in memory. By "payload", I mean that
+the content of all the source files that compose the boot sequence are lined up
+one after the other so that the Forth interpreter can consume it all from
+memory.
+
+You have to place your boot payload so that the "in<" word reads from it. It's
+generally going to be right after the kernel in memory, but it doesn't have to.
+
+### Writing the kernel
+
+Writing the kernel is pretty hard. The big challenge here is that the HAL is
+difficult to implement and you won't get any interactivity from Dusk as long as
+it's not complete and perfect.
+
+My advice when writing that kernel would be to aim for interactivity first, and
+then incrementally implement the HAL. This requires a bit of cheating.
+
+First, you implement the interpret loop, but then you "cheat" by implementing
+early words that actually live in xcomp/boot such as "@", "!", ",", ":", etc..
+Then, you plug "in<" and "emit" to some sort of serial device on your target
+machine and hook that machine to your Dusk development machine. When you're done
+developing the kernel, you'll remove the scaffolding.
+
+At that point, you have no HAL, but you have interactivity, which is a big step.
+It allows you to try things without having to shutdown, update the boot media,
+boot up all the time. The feedback loop is thus much quicker.
+
+Then, you begin implementing HAL words on your *development* machine (so you
+have access to an assembler), sending raw binary down the serial wire. You might
+have to build tooling to allow you to coveniently do this, but it's worth it.
+
+That binary code you send down can then be interactively tested. You can try a
+few code generation scenarios, maybe get inspiration from actual code in
+[xcomp/boot.fs], interactively test the result. All good? You can "commit" this
+by building a new kernel with the developed word(s), reboot, and continue from
+that new baseline.
+
+After a while, you'll be able to compile a bigger and bigger part of xcomp/boot.
+When you can compile it all, it means your pretty close to be done!
+
+### Storage
+
+Magic is about to trickle in. You'll want to get to your first "f<<". You need
+to begin writing your storage driver. I can't tell you how, but as always, you
+should proceed in incremental steps. Read a sector, test it. Does it work for
+other sectors too? Well, that sounds good, it looks like you can plug fs/fat in.
+
+For this, I recommend looking at how the PC platform does it. It should look the
+same for all targets: we stream xcomp/boot in, then then io/stream and fs/core,
+then the storage driver, then fs/fat, then the "glue" file, which create an
+instance of Filesystem and feed it to "bootfs!".
+
+### init.fs
+
+You're almost done! Your next step is to create a dummy init.fs, again blinking
+your LED. Working? good!
+
+Did you try a f<< call? Working too? You're on a roll!
+
+You have a working Dusk system. The rest is up to you. You probably want a
+prompt, right? To have that, you need to set the console. So, write your drivers
+for input and output (a serial console is usually the quickest way to this) and
+have those drivers create structures that extend IO. You'll want your input
+driver to implement readbuf and your output driver to implement writebuf. I
+recommend looking at PC drivers for inspiration.
+
+Once you have those drivers, you instantiate them in your init.fs and plug them
+to the console.
+
+That's all you need driver-wise. You're now ready to write the "user" part of
+your init.fs, the one that will load the app/prompt unit and boot to whatever
+system you want.
+
+You're done, Congratulations!

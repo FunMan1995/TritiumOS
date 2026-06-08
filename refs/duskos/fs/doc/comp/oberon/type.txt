@@ -1,0 +1,83 @@
+# Oberon types
+
+The unit at [comp/oberon/type.fs] define types used when compiling Oberon code,
+but also for managing runtime type checks. This unit is built upon [lib/type].
+
+All basic types are straight integer types, but each of them is still a
+distictive type, which means that as a general rule, strict type checking is
+done. For example, CHAR and BYTE can't be added with "+". BOOLEAN either. As per
+specs, only BYTE and INTEGER can be mixed in binary operations.
+
+The RECORD type is a straight up [lib/struct] type, which makes Dusk structs and
+Oberon structs interchangeable.
+
+## Arrays
+
+Arrays are tricky because Oberon supports runtime length checks. With sized
+arrays such as "ARRAY 42 OF INTEGER", we know that length at compile time. With
+open arrays such as "ARRAY OF INTEGER", we only know it at run time. But we
+*must* know it. LEN() must work on both types of arrays.
+
+For sized arrays, it's easy. It's the same thing as in C. We know the length and
+what we work with is a pointer to the first element of the array.
+
+For open arrays, what we must do is to wrap our array into a (size, dataptr)
+pair. Open arrays can only be used as procedure parameters, so they're not
+permanent constructs, they're something you generate on-the-fly when you call
+a procedure.
+
+This means that this compiler needs to activate special behavior for such
+arrays. What we call an "open array" here is an array with 0 elements in it.
+That 0 means that the size of the array is dynamic.
+
+## API
+
+### Types
+
+INTEGER   Integer(4S)
+BYTE      Integer(1)
+CHAR      Integer(1)
+BOOLEAN   Integer(1)
+SET       Integer(4)
+OPAQUE    Integer(4) (see [comp/oberon])
+StreamRef Pointer(OPAQUE) (see [comp/oberon/gc])
+
+### Words
+
+newopenarray ( type -- type )
+  Shortcut for "0 swap newarray".
+
+newgcpointer ( type -- type )
+  Like "newpointer" [lib/type] but for GC pointers.
+
+type= ( type expected -- f )
+  Compare types according to general Oberon rules. That is:
+
+  1. In general, type equality is identity only. That is, BYTE is equal to BYTE,
+     but not CHAR, even if they have the exact name content.
+  2. If both types are Pointer, we compare reftype.
+  3. If both types are GCPointer, types are equal if "type" reftype is equal
+     or extends "expected" reftype.
+  4. If both types are Array, both reftype and count have to be equal.
+  5. If "expected" is an OpenArray, "type" must be an Array of a matching
+     reftype. Count is ignored.
+
+expecttype# ( type expected -- )
+  Abort if type= yields false.
+
+unwrapptr# ( type -- type )
+  Assert that type is a pointer and yield its reftype.
+
+arraykind# ( type -- reftype count ptr? 1 OR reftype 0 )
+  When dealing with arrays, we have 3 kinds:
+
+  1. Open array from arguments (always a pointer)
+  2. Fixed array pointer from argument
+  3. Fixed array reference (either from global or local variables)
+
+  This word asserts that "type" is one of those 3. then yields easy-to-consume
+  info from it. The top flag is whether it's fixed. If it is, the flag is 1 and
+  and PS contains the count of that array and whether it's wrapped in a pointer.
+  Otherwise, the top flag is 0 which means it's an open array.
+
+  In all cases, reftype is the type that the array wraps.

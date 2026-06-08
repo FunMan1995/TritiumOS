@@ -1,0 +1,161 @@
+# ChaCha stream cipher
+
+This unit implements the ChaCha stream cipher which is suitable for
+communication and secure random number generation.
+
+As a stream cipher, ChaCha uses the same function for both encryption and
+decryption of the given data stream. A stream cipher is a class of symmetric-key
+algorithm. This means that both ends of the communication use the same key
+which must be kept secret. The nonce can optionnally be secret.
+
+## Security considerations
+
+This implementation has not been reviewed nor audited by any competent authority.
+It is provided purely as a best effort basis and only follows the indications
+given by the IRTF's RFC 8349.
+
+The ChaCha20 cipher is designed to provide 256-bit security. While 20 rounds
+is the biggest usual round count, other round counts (8 or 12) are generally
+considered good enough for most applications. The algorithm speed is
+proportional to the round count, hence the use of smaller ones.
+
+Variant differences:
+* The Legacy variant operates on a 64-bit nonce.
+* The IETF variant operates on a 96-bit nonce.
+* The XChaCha variant operates on a 192-bit nonce.
+
+The key length is always 32 bytes / 256 bits.
+
+Note that the Legacy variant initially uses a 64-bit counter instead of a 32-bit
+one. However for simplicity's sake, this implementation only provides a 32-bit
+counter. This results in the Legacy variant only having a smaller nonce compared
+to other variants.
+
+As explained in the RFC document:
+>  The most important security consideration in implementing this
+>  document is the uniqueness of the nonce used in ChaCha20.  Counters
+>  and LFSRs are both acceptable ways of generating unique nonces, as is
+>  encrypting a counter using a block cipher with a 64-bit block size
+>  such as DES.  Note that it is not acceptable to use a truncation of a
+>  counter encrypted with block ciphers with 128-bit or 256-bit blocks,
+>  because such a truncation may repeat after a short time.
+>
+>  Consequences of repeating a nonce: If a nonce is repeated, then both
+>  the one-time Poly1305 key and the keystream are identical between the
+>  messages.  This reveals the XOR of the plaintexts, because the XOR of
+>  the plaintexts is equal to the XOR of the ciphertexts.
+
+This is why the XChaCha variant should be used for most applications.
+The performance penalty for using this variant is the calculation of a single
+modified ChaCha round -- named HChaCha -- during the setup of the cipher.
+
+## Architecture support
+
+This implementation makes use of HAL to get maximum speed and work on all
+architectures supported by DuskOS. However, the algorithm is "endian-sensitive"
+and has not been tested on big-endian architectures.
+
+Thus, as of now, big-endian architectures are not supported and may not work.
+
+## Example usage
+
+\ An in-memory stream is used for this example.
+needs num/chacha mem/stream
+
+### Encryption
+
+newChaCha20 const CHACHA
+create TEXT ,"A text to be encrypted and decrypted."
+TEXT 37 newmemstream TEXT_ST
+
+create KEY map< c, $00 $01 $02 ... $1f \ a key is 32 bytes long
+create NONCE map< c, $00 $01 ... $0b \ IETF variant: a nonce is 12 bytes long
+\ Now KEY and NONCE both point to empty regions of memory
+
+NONCE KEY CHACHA setup \ Initialize the key and the nonce
+TEXT_ST CHACHA to wrappedstream \ Set the underlying stream to be used
+37 CHACHA readbuf 2drop \ Encrypt the stream
+\ Note: For memstream, readbuf only returns a view to the underlying memory.
+\ This is why we can drop the return values of readbuf here, the encrypted
+\ data is directly written in-place.
+
+\ TEXT is now encrypted
+CHACHA close
+
+### Decryption
+
+\ To decrypt, just repeat the operation
+create KEY map< c, ...
+create NONCE map< c, ...
+NONCE KEY CHACHA setup
+TEXT_ST CHACHA to wrappedstream \ Same setup as before
+37 CHACHA readbuf 2drop \ Decrypt the stream
+
+\ TEXT is now decrypted and equal to its original value
+CHACHA close
+
+### Decryption reusing the same structure
+
+\ For the exotic case where we wish to use the same structure for both
+\ encryption and decryption of a stream, we just have to reset its counter.
+
+\ Suppose "CHACHA close" wasn't called
+0 CHACHA counter!
+0 CHACHA wrappedstream to pos
+37 CHACHA readbuf 2drop \ The wrapped stream is now decrypted!
+
+## API
+
+### Struct
+
+extends Stream struct ChaCha {
+  [uint,16] wstate ; \ working state
+  [uint,16] bstate ; \ base state
+  *Stream wrappedstream ;
+  uchar rounds variant remaining _pad ;
+}
+
+wrappedstream  The stream wrapped by the ChaCha instance which will be queried
+               before its content encrypted.
+rounds         The number of rounds. This should be either 8, 12, or 20.
+variant        The cipher variant. It should be either IETF, Legacy, or XChaCha.
+remaining      The remaining bytes to be consumed before increasing the inner
+               counter. This is used for implementation only.
+
+Method reimplementations:
+
+readbuf ( n chacha -- a? read-n )
+  Transparently encrypt or decrypt the underlying stream. This always returns
+  the same address and number given by the wrapped stream.
+
+writebuf ( a n chacha -- written-n )
+  Completely ignore the given arguments and always return 0.
+
+close ( chacha -- )
+  Void the internal state of the ChaCha cipher as a security mean.
+  The cipher can then be reused for other streams.
+
+### Words
+
+newChaCha20 ( -- chacha )
+ChaCha *newChaCha20();
+  Initialize a new ChaCha cipher with a count of 20 rounds.
+  The counter is set to 1 and the variant is IETF.
+
+newChaCha ( rounds variant -- chacha )
+ChaCha *newChaCha(uint variant, uint rounds);
+  Initialize a new ChaCha cipher with the given round count and variant.
+  The round count must be even. By default the counter is set to 1.
+
+setup ( an ak chacha -- )
+void setup(ChaCha *c, void *ak, void *an);
+  Set the given key and nonce from addresses ak and an respectively to the
+  ChaCha cipher. Depending on the variant the expected length of the nonce can
+  differ and further calculation can happen.
+  Both key and nonce are voided (set to 0) once this function returns.
+
+counter! ( u chacha -- )
+void `counter! (ChaCha *c, uint count);
+  Allow setting the counter manually. This can help parallelize the encryption
+  or decryption process, or jump at a specific position.
+

@@ -1,0 +1,35 @@
+# 6502 emulator
+
+The 6502 emulator lives at emul/6502.fs and interprets 6502 native code. It
+exposes itself through the a struct which extends the CPU struct [emul/cpu]
+and holds register values.
+
+## API
+
+Fields:
+
+A X Y S P
+  8-bit fields corresponding to the register of the same name
+
+PC
+  16-bit field corresponding to the register of the same name
+
+Values (not tied to the struct, but inside namespace):
+
+verbose
+  If nonzero, will call .cpu at each instruction it runs.
+
+Words:
+
+exec(
+  mem( + $200, where execution begins.
+
+)mem
+  mem( + $10000, where emulated memory ends
+
+reset ( cpu -- )
+  Set P to 0 and PC to $200.
+
+new6502 ( mem( -- cpu )
+  Create a new 6502 CPU struct with its memory beginning at address "mem(".
+  Memory is *not* allocated.

@@ -1,0 +1,124 @@
+# FAT filesystem
+
+The unit at [fs/fat.fs] implements the Filesystem API [fs/core] for the FAT
+filesystem. It supports FAT12 and FAT16 but is still quite rough around the
+edges.
+
+* No FAT32
+* No long filenames. It does gracefully ignore their presence though.
+* No cluster reallocation. You are constantly leaking them through usage.
+
+## Usage
+
+You mount a FAT through "newfatfs ( blk -- fs )". For a given Blk [io/blk]
+"blk" where the first sector has a proper FAT header, this call will yield a
+struct that extends Filesystem and implements it entirely.
+
+You might also be interested in [doc/fs/fatt], the "FAT tools" unit.
+
+## direntry
+
+In the code, a "direntry" is a small static buffer containing a single directory
+entry at once. "readentry" reads the current walking position into it and
+"writeentry" writes it to the current walking position.
+
+## API
+
+newfatfs ( blk -- fs )
+  Initialize a new FATFS structure and yield it.
+
+fatstorage! ( blk fs -- )
+  Change the underlying storage for FAT fs "fs". You generally don't need to do
+  that, but there's an exception with PCs, which boot using [drv/pc/int13h] and
+  later need to upgrade to a "real" storage driver. Rather than creating a new
+  FS structure entirely, it's better to just swap the underlying storage.
+
+## Private API
+
+### FS ivalmap
+
+This extends FS from [fs/core].
+
+addrof curfs offsetof walkcontext ivalmapfrom {
+  uint widx wcl _pad _pad ;
+  uint fatpart lastfreecluster ;
+  [void,0] fatheader ;
+}
+addrof curfs offsetof fatheader ivalmapfrom {
+  +$0b leshort fatsecsz ;
+  +$0d uchar   secpercluster ;
+  +$0e leshort reservedseccnt ;
+  +$10 uchar   FATcnt ;
+  +$11 leshort rootentcnt ;
+  +$13 leshort fatseccnt ;
+  +$16 leshort FATsz ;
+}
+
+widx            The "walk index", the direntry index where the walk context
+                points within the "wcl" cluster.
+wcl             The "walk cluster", the cluster, which is expected to contain
+                directory entries, where the walk context currently points.
+fatpart         A [io/part] targeting the FAT sectors
+lastfreecluster Cache of last findfreecluster result
+
+All the other fields is the FAT reader, directly read into "fatheader" from
+disk.
+
+fatsecsz        BPB_BytsPerSec
+secpercluster   BPB_SecPerClus
+reservedseccnt  BPB_RsvdSecCnt
+FATcnt          BPB_NumFATs
+rootentcnt      BPB_RootEntCnt
+fatseccnt       BPB_TotSec16
+FATsz           BPB_FATsz16
+
+### Structures
+
+extends Stream struct FATFile {
+  uint cl0 clidx curcl adirty fcl fidx fat ;
+}
+
+cl0    First cluster of the file
+clidx  Index in the chain where "curcl" is
+curcl  Cluster containing current position
+adirty Attributes dirty. When 1, must update entry on flush
+fcl    The value of "wcl/widx" where the directory entry of this file is
+fidx   located.
+fat    Pointer to parent FATFS struct
+
+### Words
+
+FAT@ ( cluster -- entry )
+  Yield the entry present in in the FAT table at the specified cluster index.
+  Automatically chooses between the 12-bit lookup or the 16-bit one.
+
+  Note that clusters 0 and 1 are invalid.
+
+FAT! ( entry cluster -- )
+  Set entry in FAT table at specified cluster index to specified value.
+
+nFAT@ ( cluster n -- entry f )
+  Iterate cluster n times through FAT@ or as long as EOC is not reached.
+
+  IF EOC is not reached, f=1 and entry is the result. Otherwise, f=0 and entry
+  is the last cluster of the chain.
+
+clusterpos ( cluster -- off )
+  Yields the offset in bytes, in the FAT storage blk, where the specified
+  cluster begins.
+
+  Errors out if cluster is out of range.
+
+readentry ( -- )
+  Read contents of wcl/widx into "dirent", a static 32-bytes buffer.
+
+writeentry ( -- )
+  Write contents of "dirent" into wcl/widx.
+
+iterentry ( -- f )
+  Increase widx by 1. If we cross a cluster boundary, correctly change wcl.
+  Yield f=1 unless EOC was encountered when iterating wcl.
+
+## See also
+
+* FAT: General Overview of On-Disk Format

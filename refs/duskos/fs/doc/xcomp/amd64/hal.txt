@@ -1,0 +1,33 @@
+hal.fs can't have comments and can't use asm/x86, which means that there are
+numerical opcode literals around. This means brutally under-commented code.
+This is where the comments are.
+
+Well, in fact, not here, because this HAL shares a lot of code with i386. Most
+of the docs are at [doc/xcomp/x86/hal]. This file is for amd64-specific stuff.
+
+modrm, ( op -- )
+  Write "op" with disp8/disp32 if appropriate. As per AMD64 limitations,
+  memory access must be relative to RBP. Therefore, unless mod=3, we set r/m to
+  5 (SIB) and write a SIB byte with ss=0 index=BP base=r/m.
+
+dropf, ( -- )
+  8b 04 2e     ax si bp r+) mov,
+  67 8d 76 04  si si 4 d) lea,
+
+popret ( -- )
+  58           ax pop,
+  48 29 e8     rex.w ax bp sub,
+
+?mem+, ( op -- op )
+  If op has HALDIRECT set, write an add of RBP the source register in "op".
+  Otherwise, fetch effective address in RDI, then add RBP to it.
+  "op" must not be a HALIMM.
+
+  8b bd     di bp XX d) mov,
+  48 01 e8  rex.w <src> bp add,
+
+## Range words
+
+Same as with i386, except that we need to add RBP to EDI/ESI before the op,
+hence "?si+," and "?di+,". For words that have a "return value", we also need
+to subtract RBP afterwards, hence "?si-," and "?di-,".

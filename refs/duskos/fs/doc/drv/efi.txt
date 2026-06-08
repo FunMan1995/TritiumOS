@@ -1,0 +1,179 @@
+# EFI wrapper
+
+The unit at [drv/efi.fs] wraps EFI/UEFI services, supporting both their 32-bit
+and 64-bit versions. For the latter version, a special API is required since
+Dusk is a 32-bit OS. In this API, we introduce the "64" notation in word
+signatures.  This means that the top of stack register holds a 64-bit value.
+Such values *cannot* be pushed further to the stack and must be "used" right
+away. When doing arithmetics with such numbers, special care must be taken to
+ensure that the 64-bit value is pushed last. "q" if for "quad".
+
+It's important to keep in mind, when playing with EFI, that 64-bit values are
+quirky. They lose they upper value as soon as pushed to stack. This means that
+64-bit values cannot be used in an interpret context because parsing words push
+and pop from the stack, which means that as soon as you read your 64-bit value,
+it loses its upper part. Therefore, those "quad" words can only be compiled.
+
+This is the API that the kernel must provide:
+
+SystemTable ( -- a64 )
+  Yields the 64-bit pointer to the EFI system table.
+
+ImageHandle ( -- a64 )
+  Yields the 64-bit pointer to the EFI Image Handle.
+
+absaddr ( a -- a64 )
+  Add the "64-bit base pointer" to a 32-bit address "a", thus transforming it
+  into a 64-bit absolute address.
+
+reladdr ( a64 -- a64 )
+  The opposite of "absaddr". It yields a 64-bit number because it's possible
+  that the result doesn't fall in the range of RBP+4GB.
+
+q@ ( a64 -- n64 )
+  Read the 64-bit value at absolute memory address "a64".
+
+q+n, ( n -- )
+  Compile a 64-bit addition of W with immediate "n".
+
+qrshift32 ( n64 -- n )
+  Same as "32 rshift" but with a 64-bit number.
+
+q* ( n -- n )
+  On a 32-bit system, multiply by 4. On a 64-bit one, by 8.
+
+qmove ( dst u src64 -- )
+  Same as "cmove" but with a 64-bit absolute source address. Note the weird
+  signature. It's necessary to preserve the 64-bitness.
+
+argstart ( -- )
+  Setup the stack for a "efiexec".
+
+arg0! ( n64 -- )
+arg1!
+arg2!
+arg3!
+arg4!
+arg5!
+arg6!
+arg7!
+arg8!
+arg9!
+arg10!
+arg11!
+  Set value for "argX" for the next "efiexec" call.
+
+arg0k! ( n64 -- n64 )
+  Like arg0! but keeps "n64" on stack. Useful for functions where the first
+  argument is "This", which is then used to fetch the actual function to call.
+
+efiexec ( a64 -- res64 )
+  Providing that function arguments have been set, call EFI function at
+  absolute address "a64", following the proper calling convention for it.
+
+inccb ( *SPECIAL* )
+  This word is designed to be used as a callback function for EFI events and
+  thus has the signature "void (EFI_EVENT event, void *ctx)" in whatever is
+  the call convention on that CPU.
+
+  It expects "ctx" to be an absolute address to a 32-bit number and increases
+  that number by 1.
+
+  This is used by [drv/efi/timer]
+
+## Using efiexec
+
+The "argstart" "argX!" and "efiexec" words listed above all go together. Each
+"efiexec" call must have a corresponding "argstart" call, before any "argX!"
+call happens, on the same "RSP level".
+
+The reason for this is that "argstart" allocates RSP space right away. This is
+where "argX!" words write. If you return after a "argstart" call, you'll return
+at the wrong address.
+
+Then, after "efiexec" is called, RSP space is deallocated and you can return.
+
+## API
+
+[q+] ( "n1" "n2" -- ) *I*
+  Call "run1" twice, expecting a ( -- n ) signature each time.
+  Then call apply "q*" to n2, then add n1, then call "q+n,".
+  For example, "[q+] 8 2" would apply an offset of 24 on a 64-bit system and
+  16 on a 32-bit system.
+
+[q+@] ( "n1" "n2" -- ) *I*
+  Same as "[q+]" but compile a "q@" afterwards.
+
+aq@ ( a -- n64 )
+  Shortcut for "absaddr q@".
+
+noq ( n64 -- n )
+  Clear the upper part of a 64-bit number.
+
+.x8 ( n64 -- )
+  Prints a 64-bit number in hexadecimal representation.
+
+qvariable ( -- )
+  Shortcut for "create 8 allot0"
+
+?reladdr ( a64 -- ?a f )
+  Call "reladdr" and check if the result is within the 2G range following the
+  base address. If it is, f=1 and a is present, representing the 31-bit offset.
+  Otherwise, f=0 and a is absent.
+
+efiexec# ( a64 -- ) *I*
+  Compiles a call to "efiexec" followed by a condition abort with "EFI error" if
+  result is nonzero.
+
+  This is an immediate because "efiexec" *has* to be called directly at
+  "argstart" RS level.
+
+efistr ( str -- char16 )
+  Copy "str" into a static buffer in the NULL-terminated 16-bit Unicode EFI
+  string format and yield a pointer to it.
+
+  It's static, it must be used right away.
+
+ConOut ( -- a64 )
+ConIn
+RuntimeServices
+BootServices
+  Yields a pointer to the associated entry in SystemTable.
+
+OutputString ( str64 -- )
+  Call the OutputString function from the ConOut protocol with the specified
+  string at "str64".
+
+efirtype ( a u -- )
+  Wrapper around OutputString with RTYPE semantics.
+
+  When a character is NL, we spit CRNL instead.
+
+ReadKeyStroke ( -- struct-or-0 )
+  Check if a key press is waiting in the buffer. If not, yield 0. If yes, yield
+  a 32-bit pointer to a filled "ReadKeyStroke result" struct, that is:
+
+    +0 2b scan code
+    +2 2b unicode character
+
+LocateProtocol ( guidaddr -- ?a u-or-0 )
+  Calls "LocateHandle" with SearchType=2, looking for GUID at 32-bit address
+  "guidaddr". Target is a static buffer. If successful, yields a range with the
+  results. Otherwise, u=0 and a is absent.
+
+create interface 8 allot
+HandleProtocol ( guidaddr a64 -- res64 )
+  Calls "HandleProtocol" with specified arguments, using "interface" as a target
+  buffer for the resulting interface pointer. "interface" is only valid with
+  "res64" is 0.
+
+HandleProtocol# ( guiaddr a64 -- a64 )
+  Same as "HandleProtocol", but aborts on error and yields "interface aq@".
+
+DisableWatchdog ( -- )
+  EFI is designed for bootloading. Most EFI implementations come with a watchdog
+  timer that resets the system after 5 minutes. To avoid that, we must set the
+  watchdog timer to 0, which is what we do here.
+
+reboot ( -- )
+  Initiates a ResetSystem() of the "cold" type.

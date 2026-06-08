@@ -1,0 +1,15 @@
+# ATA driver
+
+The unit at [drv/pc/ata.fs] implements [io/blk] for the "legacy" ATA
+controller. It uses good old I/O ports for this.
+
+Because there is only 4 possible drives, this unit pre-instantiates all possible
+combinations under the names "ATA0:0", "ATA0:1", "ATA1:0" and "ATA1:1".
+
+## Example initialization
+
+This snippet does what you'll commonly want to do: override the boot-time INT13H
+drive with a "proper" ATA driver.
+
+  needs drv/pc/ata
+  ATA0:0 newfatfs bootfs!

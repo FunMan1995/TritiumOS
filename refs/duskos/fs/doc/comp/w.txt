@@ -1,0 +1,161 @@
+# Compile-time W management
+
+Compiling binary operations poses a challenge in terms of compile time register
+management. They can require arbitrary large nesting. Fancy compilers will do
+fancy register assignments, we stay on the side of simplicity.
+
+The rule: whenever two sides of a binop require W (from [hal]), we push one to
+PS.
+
+This rule allows arbitrary complexity while at the same time make the common
+simple cases efficient. This works because binary operation consume PS elements
+in the reverse push order. All we have to do is to remember to pop PS at the
+right time.
+
+For example, in "a + b", both sides are straight symbols, that is, references to
+PSP or RSP or absolute memory. None of them need W, so we can resolve this
+without pushing anything.
+
+Same thing for "a + b[c]". Only the right side needs W for the calculation. We
+can manage to solve it without pushing to PS.
+
+"a[b] + c[d]", however, needs pushing. We resolve the left side, push, resolve
+the right side, pop PS and add the two.
+
+If it was always the same side of the binop that required W, we wouldn't need a
+fancy unit for W management. However, because we want to be able to compile the
+efficient version of the binop in all cases where it's possible, we need this.
+
+So, in short, this unit manages a boolean "usesW?" flag. At its lowest level,
+you just set it with "useW" and "freeW", but most of the time you'll be using
+its higher level API.
+
+That upper API, which is much more convenient, also comes with its own set of
+assumptions. We assume that in a binop, the right side is compiled first,
+followed by the left side. This way, when both sides need W, the left one ends
+up on W, with the right side in PSP). This way, all HAL operations can be used
+directly.
+
+Whenever this API pushes or pops to PS, it appropriately calls PS+ and PS- from
+[comp/sym]. When it's a PSP) HAL op that pushes W, we automatically add 4 to its
+offset to compensate the fact that we've just pushed something to PS.
+
+One might ask why the upper API bothers returning "Wop" at all. That's because
+it contains referencing data. There's a big difference between "W)" and "W) &)".
+
+In most cases, you'll want to run "Wop" through "W&#", but in some other cases,
+such as assignments, you'll want to keep it referenced so that you can run "!,"
+on it.
+
+## Canonical example
+
+Let's imagine a compile-time situation where you have two ASTs of a binop and
+you want to compile them. Your PS is ( leftast rightast ).
+
+You have a "expr," word with a signature "( ast -- halop )" which compiles the
+AST and yields the HAL op where the resulting value lives. You want to
+subtract right to left.
+
+In that situation, you would write something like that:
+
+  expr, swap expr, ( rightop leftop )
+  bothW? if -, nip, PS- else
+    anyW? if swap-, else ?2>W -, then then
+
+This snippet results, in all cases, in the "usesW?" flag to be true because in
+all cases, the subtraction result is in W. You must be careful to call "freeW"
+when you're done using that result.
+
+## API
+
+### Values
+
+usesW?  The flag at the heart of that unit
+
+### Words
+
+useW ( -- )
+  Set usesW?
+
+freeW ( -- )
+  Unset usesW?
+
+freeW# ( -- )
+  Ensures that W is free. Abort with error if not.
+
+useW# ( -- )
+  Shortcut for "freeW# useW"
+
+?pushW ( -- f )
+  If usesW? is set, f=1 and run "dup, PS+ freeW". Otherwise, f=0.
+
+?popW ( f -- )
+  If f=1, call "freeW# drop, PS- useW". Otherwise, do nothing.
+
+hasW# ( halop -- halop )
+  Asserts that either usesW? is unset OR halop is W. In other words, we "have"
+  W and thus don't need to push anything to PS.
+
+W&# ( halop -- )
+  Assuming that halop's src register is REGW, ensure that halop is fully
+  dereferenced. That is, if halop is anything else than "W) &)", call "@,".
+
+  If halop's src is not REGW, abort with error.
+
+?W& ( halop -- halop )
+  If halop is W, but something else than a straight "W) &)", dereference it and
+  yield "W) &)". Otherwise, yield halop as-is.
+
+?>W ( halop -- )
+  Ensure that halop lives, dereferenced, in W. That is, unless "halop" is
+  "W) &)", call "@,".
+
+  If "usesW?" is already set, run "dup, PS+" first. If "halop" is a PSP), run
+  "4 +)" on it.
+
+  Then, call "useW".
+
+?>W$ ( halop -- )
+  All in all, can be seen as a shortcut for "?>W freeW". You'll use this for
+  "return" your value.
+
+  However, unlike "?>W", it can never result in a push to PS. If it does, aborts
+  with error.
+
+?2>W ( otherop halop -- otherop )
+  In general, equivalent to ?>W, except in one case: when a push to PS happened
+  *and* "otherop" is a PSP operand. In that case, 4 is added to otherop's
+  offset.
+
+  In other words, when you're dealing with two operands at once, use this word
+  instead of ?>W, it's going to do the right thing.
+
+?PSP+n ( halop oldpsdisp -- halop )
+  With "oldpsdisp" being the PSdisp value saved before a subexpression
+  compilation operation, if "halop" is a PSP HAL operator, then add the
+  difference between current PSdisp and old PSdisp to its offset.
+
+bothW? ( rightop leftop -- Wop PSP) 1 OR rightop leftop 0 )
+  First of all: this word assumes that rightop was generated before leftop.
+
+  Second of all: this word assumes that your expression generation mechanism
+  checks the W flag and, when "usesW?" is true in a situation where we want to
+  use W, ?>W is used, or equivalent.
+
+  If both rightop and leftop are W, this means that rightop has been pushed to
+  PS. In that case, we yield "Wop PSP) 1", with PSP) being rightop and Wop being
+  leftop. Otherwise, we yield "leftop rightop 0".
+
+  When using that word, you are expected, in the f=1 branch, to drop PS and call
+  PS- from [comp/sym].
+
+anyW? ( rightop leftop -- Wop otherop right? 1 OR rightop leftop 0 )
+  Assuming that "bothW?" has been called already and yielded 0, check whether
+  any of left or right is already W. If there is none, keep rightop and leftop
+  as is, with top flag being 0.
+
+  If any of the ops is W, top flag is one, followed by the "right?" sub flag.
+  If "right?=1", rightop is "Wop" and "otherop" is leftop. Otherwise,
+  "right?=0", leftop is "Wop" and "otherop" is rightop.
+  If rightop was W, f=1 and otherop is leftop. Otherwise, f=0 and otherop is
+  rightop.

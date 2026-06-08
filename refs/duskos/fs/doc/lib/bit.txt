@@ -1,0 +1,63 @@
+# Bit manipulation
+
+## API
+
+findbit0 ( n -- idx )
+  Starting at b0, search for the index of the first unset bit in "n".
+  For example, 3 yields 2, $17 yields 3, -1 yields 32.
+
+bitscnt ( n -- cnt )
+  Count the number of set bits in "n".
+  For example, 3 yields 2, $17 yields 4, -1 yields 32.
+
+bitmask ( bit -- mask ) *A*
+  Given a bit number, yield the associated mask. 2 --> $04, 31 --> $80000000
+
+bit? ( n bit -- f )
+  Yields whether bit number "bit" is set in "n".
+
+bit1! ( n bit -- n )
+  Ensures that bit number "bit" is set in "n".
+
+bit0! ( n bit -- n )
+  Ensures that bit number "bit" is unset in "n".
+
+bitsplit ( n bit -- hi lo )
+  Split "n" in two "hi" and "lo" part by splitting it at "bit".
+
+  $12345678 4 bitsplit .x spc> .x \ Prints 12345670 00000008
+
+bitflag ( n "name" -- )
+  Create a constant "name" with the nth bit set. For example, "3 bitflag FOO"
+  is the same as "8 const FOO".
+
+bitfield ( shift sz "name" -- )
+  Compile a new word "name", along with a setter [doc/usage/word] , conveniently
+  allowing getting and setting bitfields from a 32-bit integer. When setting
+  such a field, the destination values resets the affected bits to zero before
+  or-ring the new value in.
+
+  The signature of the getter is ( bits -- n )
+  The signature of the setter is ( n bits -- )
+
+  Example usage:
+
+    4 6 bitfield foo
+    $12345eaf foo . \ prints 42
+    42 $12345110 to foo .x \ prints $123452a0
+
+sex8 ( n -- n )
+int sex8(int n);
+  Provided that "n" is an 8-bit number, sign-extend it to 32-bit, that is, copy
+  b7 to all upper bits. Example: $80 sex8 --> $ffffff80
+
+sex16 ( n -- n )
+int sex16(int n);
+  Same as sex8, but for 16-bit numbers. Example: $8000 sex16 --> $ffff8000
+
+swapbits8 ( n -- n )
+  Swap the low 8 bits of n and leave upper bits as is.
+  Example: $12c0 --> $1203
+
+swapbits8, ( -- )
+  Compile the body of "swapbits8". Clobbers S.

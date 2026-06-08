@@ -1,0 +1,32 @@
+# Serial communications
+
+The driver at [drv/pc/com.fs] allows transmission of data through PC's COM1 port
+(yes, for now it's hardcoded. It's even hardcoded to 115200 bauds 8N1).
+
+It provides the "com1" stream [io/stream], through which you can read and write
+to the serial line.
+
+This driver uses the interrupt mechanism of the underlying UART 16550 to
+receive characters in a timely manner without skipping one. When you read from
+the stream, you in fact read from the internal buffer [mem/roll] of characters
+already received from the UART and handled in IRQ4, the IRQ on which COM1 is
+hooked on a PC.
+
+Sending characters is not buffered. We're waiting for the UART to be ready to
+receive a character, then send it.
+
+To use it, initialize it with "com$" then start reading and writing on "com1".
+
+## API
+
+### Constants
+
+BUFSZ     512. Size of the internal buffer.
+
+### Words
+
+com$ ( -- )
+  Initializes COM1 to 115200 bauds 8N1.
+
+com1 ( -- a )
+  A IO stream [io/stream] reading and writing to the COM1 UART.

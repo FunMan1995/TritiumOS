@@ -1,0 +1,9 @@
+# io/kbd bench
+
+This unit provides "kbdbench ( kbd -- )", a routine that checks for key strokes
+on the specified keyboard, printing ascii, NKC and modkey states.
+
+You quit the routine by pressing the same key 4 times. Additionally, if "kbd" is
+not the global "keyboard" from [io/kbd], any key press from "keyboard" stops
+the loop, which allows the operator to conveniently stop the loop even when the
+target keyboard is completely broken.

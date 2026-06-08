@@ -1,0 +1,107 @@
+# Virtual I/Os
+
+CPUs are emulated through units based on [emul/cpu], but for emulation to be
+convenient, you often need a bit of meat around it. The unit at [emul/virtio.fs]
+is that meat.
+
+This meat is there mostly for Virtual I/Os, which is a structure that uses
+memory shared by the host and the guest to allow serial I/O and mass storage
+access.
+
+Through this memory area, the guest and the host send commands to each other.
+The area is 8b in size and has this structure:
+
+1b index of command coming from the guest
+3b argument (little endian)
+1b index of command coming from the host
+3b argument (little endian)
+
+List of guest command IDs:
+
+1. Serial out              Arg: character
+2. Set sector ptr          Arg: guest address where sectors go
+3. Set sector size         Arg: size in bytes (default 512)
+4. Read a sector           Arg: sector number
+5. Write a sector          Arg: sector number
+6. Exit "enter"            Arg: none
+
+List of host command IDs:
+
+1. Serial in              Arg: character
+
+The role of this unit is to act as an indirection mechanism for those commands
+to be fulfilled by plugging adequate IO and File structs in it. It does so
+through the VirtIO struct.
+
+The host is able to process commands between each instruction, so from the point
+of view of the guest, command processing is instant, no need to implement any
+status polling mechanism.
+
+In the other direction, it's another matter. If the host needs to send a command
+to the guest but that the command field is nonzero, it will block and run the
+CPU until the command is processed by the guest.
+
+When the guest is waiting for a serial input, it is expected to halt.
+
+## Serial communication
+
+Outgoing communications are simply funneled to "out putc".
+
+For incoming communication, just write to the virtio struct which is a stream
+[io/stream]. If you try to write more than one byte at once, "writebuf" will
+block and cycle the cpu until all bytes are written.
+
+## Sector read and write
+
+Sector seeking is simply done by doing "block number * sector size" and then
+read or writing "sector size" bytes into/from guest's pointer.
+
+## Running the machine
+
+The virtual machine, along with its CPU, is ran by writing to it, that is,
+feeding it contents for its "Serial in" command.
+
+For each character being put in the command queue, the CPU is going to be ran
+until it halt and until it the CPU has reset the input command queue. Then, it
+will write contents again, looping again, until there is no more contents to be
+had.
+
+After that, it will do one last CPU "run" (run instructions until it halts),
+then we're done. If you want, you can write again to the VM to start the cycle
+again.
+
+## Interactive mode
+
+Instead of writing contents to the VirtIO struct, you can enter in interactive
+mode with it with "enter". This will loop forever, waiting for input and then
+sending it to the VirtIO. Between each character sent, we call "cpu run".
+
+The loop stops when CMD6 is sent by the guest.
+
+## API
+
+### Struct
+
+extends Stream struct VirtIO {
+  uint cpu cmdptr out storage secsz secptr shouldexit ;
+}
+
+cpu       A pointer to a CPU (see [emul/cpu]) struct.
+cmdptr    A pointer to a *host* address where to check for commands.
+out       A pointer to the IO receiving outgoing communications.
+storage   A pointer to a File struct that is a src/dst for sectors.
+secsz     Sector size, defaults to 512
+secptr    A pointer to a *host* address for sector's src/dst.
+
+### Words
+
+runvm ( virtio -- )
+  Run virtio's cpu, processing outbound guest commands as they come, until the
+  CPU halts.
+
+enter ( virtio -- )
+  Enter an interactive loop with the specified VM, as described above.
+
+newvirtio ( storage out cmd cpu -- virtio )
+  Allocate a new virtio with specified initial values for fields. It also sets
+  the cpu's "hook" value to its process method.

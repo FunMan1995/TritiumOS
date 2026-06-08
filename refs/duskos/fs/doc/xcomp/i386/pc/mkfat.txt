@@ -1,0 +1,18 @@
+# Bootable FAT maker
+
+The unit ast [xcomp/i386/pc/mkfat.fs] is a helper to create a FAT partition that
+is bootable, that is, that contains the bootloader compiled by
+[xcomp/i386/pc/mbr.fs].
+
+## API
+
+doit ( drv -- )
+  Create a new FAT on drive "drv"
+
+doitpbr (drv -- )
+  Same as "doit" except it writes a PBR in place of the MBR, suitable
+  for a partition deployment of Dusk.
+
+dofloppy ( drv -- )
+  Same as "doit", but with parameters suitable to a 1.44M floppy. Note that
+  floppies require "installchs" not "install" from [xcomp/i386/pc/deploy].

@@ -1,0 +1,33 @@
+# Clipboard
+
+The clipboard lives at text/clip.fs and seamlessly integrates with both the
+ed and ged editors.
+
+It uses mem/reuse to provide an automatically growing buffer with the name
+"clipboard". Its role is to allow to copy or move existing text around.
+
+It exposes these convenience words:
+
+clipboard[] ( -- a u )
+  Yields the range of the last clipped content. u=0 if there is none.
+
+clipensure ( n -- )
+  Make sure the clipboard can hold "n" characters. Grow if needed.
+
+clipset ( n -- a )
+  Grows the clipboard, if needed, so that it can hold "n" characters.
+  Then, set clipboard size to "n" and yield the address of the clipboard. You
+  are then expected to write than many bytes to that address.
+
+clipclear ( -- )
+  Clears the clipboard.
+
+clip[ ... ]clip
+  Appends what ... emits to the clipboard
+
+cliprun
+  Runs/executes/injects forth code in the clipboard
+
+cliprun" prefix"
+  First runs prefix and then the code in the clipboard. Useful to e.g. define
+  a word from contents in the clipboard.

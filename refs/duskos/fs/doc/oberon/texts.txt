@@ -1,0 +1,323 @@
+# Duskberon's Texts module
+
+As the name indicates, the Texts module manages styled sequences of characters.
+This management revolves around the two main structures of the module: Piece
+and Text.
+
+Funnily enough, those structures don't contain actual characters. They reference
+offsets in File [oberon/files] structures.
+
+The building block of this system is the Piece, which is a doubly-linked list of
+itself. Each Piece is the combination of a style (font [oberon/fonts], color,
+vertical offset) and a range in a File.
+
+Pieces are linked sequentially... but in a ring! That is, the last piece links
+to the first one. Apparently, it's an optimization somehow. It follows that
+Piece links are never NIL.
+
+To detect whether you're at the beginning or end of the ring, you check for the
+"trailer" piece, that is, a Piece struct that links to the TrailerFile global
+variable and has a NIL font.
+
+A Text holds a Piece linked list along with a "trailer" reference to know where
+the first piece of the text is.
+
+It is also on the receiving end of notifications. In other words, Text
+structures are what you pass around. Piece structures are an implementation
+detail.
+
+You don't really build Texts from scratch. You Open() them from a file. If you
+want an in-memory Text, you can use an empty filename.
+
+And even then, you don't really modify Texts directly. You read them using
+Readers, write to them using Writers. Scanners are fancy readers.
+
+This extra layer allows us to more conveniently walk a text
+character-by-character rather than piece by piece. They hold current style
+information in their structure, then when a character is pushed or consumed,
+they will do the "right thing", piece-wise.
+
+To move pieces around, a Buffer struct is needed. This structure is only a
+holder of Piece structs, but with the purpose of moving them around. For
+example, if you want to move a specific character range from one Text and insert
+it in another, you have to do a little Piece split/merge dance for this
+transition to be a happy one. This dance happens in a Buffer.
+
+## LF is the new CR
+
+To harmonize Duskberon with the rest of Dusk, LF is the line terminator instead
+of CR.
+
+## Scanner classes
+
+In Texts, the "name" class include the "/" character. That class is used for
+file paths scanning and Dusk paths include "/", so we need this.
+
+## Global selection
+
+This module has 3 global variables, "Sel", "SelBegin" and "SelEnd" which
+together represent what we call the "Global selection". Whenever a viewer, for
+example a TextFrames.Frame, selects some text, it updates these variables.
+
+This allows us to do cross-viewer copy/pasting.
+
+## Constants
+
+Operation IDs used in Notifier calls:
+
+  replace  0
+  insert   1
+  delete   2
+  unmark   3
+
+Scanner classes:
+
+  Inval    0
+  Name     1
+  String   2
+  Int      3
+  Char     6
+
+## Structures
+
+Piece = POINTER TO PieceDesc;
+PieceDesc = RECORD
+  f: Files.File;
+  off, len: INTEGER;
+  fnt: Fonts.Font;
+  col, voff: INTEGER;
+  prev, next: Piece
+END;
+
+f/off/len     The range describing the contents of the piece
+fnt/col/voff  The style of the piece
+prev/next     Doubly-linked list
+
+Text* = POINTER TO TextDesc;
+Notifier* = PROCEDURE (T: Text; op: INTEGER; beg, end: INTEGER);
+TextDesc* = RECORD
+  len: INTEGER;
+  changed: BOOLEAN;
+  ascii: BOOLEAN;
+  notify: Notifier;
+  trailer: Piece;
+  pce: Piece;
+  org: INTEGER
+END;
+
+len      Total length, in bytes, of pieces included in the text
+changed  Whether the text has changed since it was loaded
+ascii    If true, was loaded from a plain ASCII file rather than from a rich
+         text format. If true, will be stored as a plain ASCII file too.
+notify   Called whenever an operation (see constants) is made on the text,
+         *after* it has been done. beg/end is the range of the operation.
+         "unmark" has no range.
+trailer  A reference of the trailer piece of the linked list
+pce/org  Cache values used for internal purposes
+
+Reader* = RECORD
+  eot: BOOLEAN;
+  fnt: Fonts.Font;
+  col, voff: INTEGER;
+  ref: Piece;
+  org: INTEGER;
+  off: INTEGER;
+  rider: Files.Rider
+END;
+
+eot    Whether the reader has reached the end of its text
+       When using ReadBackwards(), eot is set at the beginning of its text
+fnt
+col
+voff   Style of the last character to have been read
+ref    The piece we're currently reading
+org    Offset position of "ref" in its parent text
+off    Current reading offset within the "ref" Piece
+       (*not* an offset within ref.f)
+rider  Rider used on ref's file to read contents
+
+Scanner* = RECORD (Reader)
+  nextCh: CHAR;
+  line, class: INTEGER;
+  n: INTEGER;
+  c: CHAR;
+  len: INTEGER;
+  s: ARRAY 32 OF CHAR
+END;
+
+nextCh  Lookahead buffer used during scanning
+line    Number of line terminators encountered during scanning
+n       Value for class = Int
+c       Value for class = Char
+len     Length for class = Name/String
+s       Value for class = Name/String
+
+Buffer* = POINTER TO BufDesc;
+BufDesc* = RECORD
+  len: INTEGER;
+  header, last: Piece
+END;
+
+len     Length in bytes of pieces in buffer
+header  First piece of the buffer
+last    Last piece of the buffer
+
+Writer* = RECORD
+  buf: Buffer;
+  fnt: Fonts.Font;
+  col, voff: INTEGER;
+  rider: Files.Rider
+END;
+
+buf    Buffer in which writes happen
+fnt
+col
+voff   Style of the text being written to the buffer
+rider  Rider into the file containing the actual contents of the buffer
+
+## Global variables
+
+Sel: Text;
+SelBegin, SelEnd: INTEGER;
+
+  Represent the current "global selection". See above.
+
+## Procedures
+
+Load (VAR R: Files.Rider; T: Text);
+  Load the serialized rich text contents at current R position into T.
+
+  If the rich text refers to fonts that aren't loaded yet, they are loaded.
+
+Store (VAR W: Files.Rider; T: Text);
+  Serialize contents of T into W, in Oberon's rich text format.
+
+  Sets T.changed to FALSE and send an "unmark" notification to T.
+
+StoreASCII (VAR W: Files.Rider; T: Text);
+  Serialize contents of T into W as a plain ASCII file, ignoring all styling.
+
+  Sets T.changed to FALSE and send an "unmark" notification to T.
+
+Close (T: Text; name: ARRAY OF CHAR);
+  Ensure that file "name" exists, then save the contents of T, using Store() or
+  StoreASCII(), depending on T.ascii, to that file.
+
+  TODO: yeah, it's a bit of a weird name for what it does.
+
+OpenBuf (B: Buffer);
+  Initialize B as en empty buffer.
+
+Save (T: Text; beg, end: INTEGER; B: Buffer);
+  Write the specified range in T into B, splitting pieces if needed.
+
+Copy (SB, DB: Buffer);
+  Copy all pieces of SB into DB.
+
+Insert (T: Text; pos: INTEGER; B: Buffer);
+  Insert pieces of B into T at specified position, merging pieces if needed.
+
+  Sets T.changed to TRUE and sends an "insert" notification to T.
+
+Append (T: Text; B: Buffer);
+  Shortcut for inserting at the end of T.
+
+Delete (T: Text; beg, end: INTEGER; B: Buffer);
+  Write the specified range in T into B, splitting pieces if needed, then remove
+  that range from T.
+
+  Sets T.changed to TRUE and sends an "delete" notification to T.
+
+ChangeLooks
+  (T: Text; beg, end: INTEGER; sel: SET; fnt: Fonts.Font; col, voff: INTEGER);
+
+  Change the style of the selected range in T to the specified font, color and
+  voffset.
+
+  "sel" represent the attributes to change. 0=fnt 1=col 2=voff. For example,
+  if sel is {0,1,2}, all attributes are changed.
+
+  Sets T.changed to TRUE and sends an "replace" notification to T.
+
+Attributes (T: Text; pos: INTEGER; VAR fnt: Fonts.Font; VAR col, voff: INTEGER);
+  Yield the style of T at specified position.
+
+  When the position doesn't exist as text (which happens, for example, then the
+  text is empty), a default value is yielded, that is, fnt=Fonts.Default, col=15
+  and voff=0. When T.ascii is TRUE, fnt=Fonts.Mono instead.
+
+OpenReader (VAR R: Reader; T: Text; pos: INTEGER);
+  Initialize R to read T starting at pos.
+
+Read (VAR R: Reader; VAR ch: CHAR);
+  Read single char from R into ch, setting style fields in R.
+
+  The "R.eot" flag is set when we reach the end of the text.
+
+ReadBackwards (VAR R: Reader; VAR ch: CHAR);
+  Read single char from R into ch, going *left*, setting style fields in R.
+
+  The "R.eot" flag is set when we reach the beginning of the text.
+
+Pos (VAR R: Reader): INTEGER;
+  Yields position of R as an offset into the text that R reads into. In other
+  words, the start position plus number of characters read.
+
+OpenScanner (VAR S: Scanner; T: Text; pos: INTEGER);
+  Initialize S to scan T starting at pos.
+
+Scan (VAR S: Scanner);
+  Scan a single "element" from the target text, then set the scanner fields
+  to indicate the nature and value of that element. Possible types are described
+  by the "class" constants, then other fields are values.
+
+  For example, if we scan "42", S.class will be Int and S.i will be set to 42.
+
+  A subsequent call to Scan will scan the following element, until end of text
+  is reached, at which point S.class will be Inval.
+
+OpenWriter (VAR W: Writer);
+  Initialize W. Writing is done to its internal buffer, W.buf. When you want to
+  put that contents into a Text, use procedures like Insert().
+
+Write (VAR W: Writer; ch: CHAR);
+  Write ch into W.buf using current style.
+
+WriteLn (VAR W: Writer);
+WriteString (VAR W: Writer; s: ARRAY OF CHAR);
+WriteInt (VAR W: Writer; x, n: INTEGER);
+WriteHex (VAR W: Writer; x: INTEGER);
+  Proxies for Write()
+
+Open (T: Text; name: ARRAY OF CHAR);
+  Load file with the specified name into T while handling the possible case
+  where that file isn't of the rich text format. In that case, the file is
+  loaded as a plain ASCII file.
+
+  When "name" is an existing file, T.ascii is set to whether the file is plain
+  ASCII or not. When "name" is a non-existing file, T is setup to be empty and
+  T.ascii is left untouched.
+
+AsStream (T: Text; beg, end: INTEGER): OPAQUE;
+  Create a read-only stream [io/stream] wrapping the specified range of text.
+
+  The yielded Stream (not a StreamRef like in [oberon/files]!) is a single
+  global instance. Therefore, when you use this, you must consume it before
+  calling AsStream() again.
+
+SelectionAsStream (): OPAQUE;
+  Shorthand for AsStream(Sel, SelBegin, SelEnd);
+
+  If Texts.Sel is NIL, return NIL;
+
+Print (T: Text);
+  Call DUSK.Emit() for each character of T.
+
+DebugPiece (piece: OPAQUE);
+DebugBuffer (buf: OPAQUE);
+DebugText (text: OPAQUE);
+DebugWriter (writer: OPAQUE);
+  Print as much information about specified struct pointer as possible.
+
+DebugPieces (piece: OPAQUE);
+  Runs DebugPiece repeatedly until the end of the LL is met.

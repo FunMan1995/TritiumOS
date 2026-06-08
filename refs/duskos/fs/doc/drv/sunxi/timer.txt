@@ -1,0 +1,16 @@
+# sunxi timer
+
+This driver implements the Timer protocol [drv/timer] using the timer peripheral
+included in the Allwinner SoC.
+
+It uses timer 0 in continuous mode, no interrupt, $ffffffff interval, 32kHz
+mode. Because that counter runs backwards, we have our "ticks" implementation
+negate the counter before yielding it.
+
+No snooze yet.
+
+## API
+
+sunxitimer$ ( -- )
+  Initialize timer 0 as described above ave make it our [drv/timer] active
+  timer.

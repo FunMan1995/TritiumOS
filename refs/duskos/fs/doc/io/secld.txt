@@ -1,0 +1,17 @@
+# Sector loader
+
+This unit is a boot time helper with a simple modus operandi: Load the specified
+sector on specified drive and make the input feed from it and the following
+sectors. The feed never stops and has to be stopped from the code it interprets.
+
+Because early boot time is very tight on some platforms (such as the PC), this
+unit has no dependency (for example on [io/blk]). It expects a
+"bootsec@ ( sec buf -- )" word which reads a sector to specified buffer address.
+It also expects the BOOTSECSZ constant, the size in bytes of a sector.
+
+## API
+
+secload ( fromsec -- )
+  Allocate enough space for reading one sector, then switch the input stream to
+  the beginning of "fromsec" on the boot drive. Whenever we reach the end of a
+  sector, we load the subsequent one and continue from there, forever.

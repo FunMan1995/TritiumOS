@@ -1,0 +1,119 @@
+# Font drawing
+
+The unit at [gr/font.fs] is an abstract interface for drawing glyphs on a
+[gr/buf].
+
+Although the real work is done by concrete implementations like [gr/font/bit],
+this API here is what you'll likely want to use to draw fonts.
+
+## A glyph?
+
+A glyph is a fancy name for a character. We just want to emphasis that a glyph
+is in index in an array contained in a font. The vast majority of the time, the
+glyph number corresponds to the ASCII character number. It's just that for
+values over $7f and under $20, a few liberties can be taken by the font to pack
+more stuff in it.
+
+## Drawing glyphs
+
+Before drawing a glyph, you'll first set your target pixbuf and coordinates
+with "fonttarget!", then set the foreground and background colors with
+"fontcolors!".
+
+Then comes a series of calls to "drawglyph", which specifies the index of the
+glyph to draw. This call will advance target X by the width of the glyph.
+
+## Registry
+
+Loaded fonts stay in permanent memory forever. To avoid facilitate referencing
+and memory management, we refer to fonts by name, which is the file name of the
+font, without its "data/font" prefix. Yes, all fonts live in "data/font". For
+example, the name of the font "data/font/atari8.uf1" is "atari8.uf1".
+
+This means that, in general, you don't explicitly load a font. You request it
+through "getfont".
+
+However, for auto-loading to work, the appropriate sub-unit has to be loaded in
+memory. For example, for '"atari8.uf1" getfont' to work, the unit gr/font/uf1
+has to be loaded already.
+
+## Example usage
+
+  needs gr/buf gr/font gr/font/uf1
+  "atari8.uf1" getfont# const fnt
+  0 0 screen fnt fonttarget!
+  0 $ffff fnt fontcolors!
+  'X' fnt drawglyph \ Draws a X at bottom left corner
+  'Y' fnt drawglyph \ Draws a Y to the right of previous X
+
+## API
+
+### Struct
+
+struct Font {
+  uint maxwidth height tgtbuf tgtx tgty bgcolor fgcolor ;
+  xt (drawglyph) ;
+  [uchar,$100] widths ;
+}
+
+maxwidth Maximum width in pixels of glyphs
+height   Height in pixels of glyphs
+tgtbuf   Target pixbuf [gr/buf] for drawing
+tgtx
+tgty     Target coordinates for drawing
+bgcolor  Background color of drawn glyph
+fgcolor  Foreground color of drawn glyph
+widths   Array of widths (byte-sized) for each glyph
+
+(drawglyph) ( glyph font -- )
+  The implementation-specific drawglyph word. Does everything except increasing
+  tgtx.
+
+### Words
+
+drawglyph ( glyph font -- )
+  Draw glyph index "glyph" as described in "Drawing glyphs" above.
+
+glyphwidth ( glyph font -- n )
+  Yields the width of the specified glyph.
+
+glyphwidth, ( -- )
+  Compile the code of "glyphwidth", expecting A=font and W=glyph, result in W.
+
+getfont ( name -- font-or-0 )
+  Look into the registry for font with specified name. If found, yield it.
+
+  Check if the file corresponding to "name" exists. If not, yield 0.
+
+  Otherwise, call the registered loader words one after the others until one of
+  them report a success. Yield the resulting font when that's the case.
+
+  Otherwise, yield 0.
+
+getfont# ( name -- font )
+  Call "getfont" and abort with error if not found.
+
+newfont ( width height draw-xt -- font )
+  Allocate and initialize a font struct. All unspecified fields are zero.
+
+fonttarget! ( x y pixbuf font -- )
+  Set tgtbuf, tgtx and tgty.
+
+fontcolors! ( bg fg font -- )
+  Set bgcolor and fgcolor.
+
+fontinvalidate ( font -- )
+  Call "invalidate" on tgtbuf with the proper arguments.
+
+registerfont ( name font -- )
+  Add "font" to the registry under the specified name.
+
+findfont ( name -- font-or-0 )
+  Look for specified name in the registry of loaded fonts and yield the
+  associated font if found, otherwise 0.
+
+addfontloader ( ext xt -- )
+  Add word "xt" with the signature ( path -- font ) to the global loader
+  list that is called in "getfont", and associate it with "ext", a string.
+
+  That is, when a font name ends with "ext", this is the loader we'll call.

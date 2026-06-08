@@ -1,0 +1,33 @@
+# Dusk deployment utilities
+
+The unit at [xcomp/deploy.fs] contains a few words helping with deploying Dusk
+to a drive. This is notably useful for crafting a "boot payload", that is, the
+string that the kernel interprets at boot time.
+
+## API
+
+### Stringlists [lib/str]
+
+fsUnits
+tarUnits
+fatUnits
+  These stringlists represent a flattened dependency list of the few units
+  that are typically crucial to have in a boot string. You'll want to use these
+  in conjuction with "spitunits".
+
+### Words
+
+spitunit ( dstio name -- )
+  Given a destination stream [io/stream] "dstio", spit the contents of unit
+  name "name" (example "lib/str") to that IO, followed by the string " endunit "
+  which emulates what happens when we load such file through "f<<".
+
+spitunits ( dstio stringlist -- )
+  Call "spitunit" for each element of the string list.
+
+spitboot ( dstio archname -- )
+  Spits the xcomp/lo, HAL and xcomp/boot part of the boot payload to dstio.
+  Example:
+
+  mystream "i386" spitboot
+

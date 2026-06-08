@@ -1,0 +1,32 @@
+# EFI timer
+
+The unit at [drv/efi/timer.fs] implements [drv/timer] using EFI events of type
+"notify" as well and "inccb" to increments the ticks.
+
+This works well enough, but with one caveat: EFI timer resolution is pretty bad,
+requiring us to set "uspertick" to 50000 (50 ms).
+
+The "snooze" word uses WaitForEvent() on a 50ms timer event.
+
+This unit also implement "efiidle", which wait on either 50ms to pass, or for
+keyboard or mouse input to come in. You'll probably want to add that to your
+[lib/coop] bacground tasks.
+
+TODO: In fact, "efiidle" errors out in my tests. The workaround for now is:
+
+:> 100 Stall ;
+
+TODO: "ticks" doesn't increase on both QEMU IA32 and a 32-bit Intel Mac.
+Figure out why.
+
+## Why not GetTime()
+
+The GetTimer() result structure has a nanoseconds field. Theorically, it could
+be used for ticks. However, on machines I've tested on, this field always stays
+0.
+
+## Why not EFI_TIMESTAMP_PROTOCOL?
+
+This protocol maps exactly to the "ticks" requirements. Unfortunately, not only
+it is a UEFI-only protocol, but on the UEFI machines I've tried, this protocol
+is absent.

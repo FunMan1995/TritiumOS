@@ -1,0 +1,107 @@
+# XXHash hashing function
+
+This unit implements words related to the XXHash32 hashing function.
+XXHash is a non-cryptographic hash algorithm built to be extremely fast.
+
+## API
+
+### Struct
+
+extends Stream struct XXH32 {
+  uint total_len ;
+  [uint,4] accs ;
+  [uchar,16] buf ;
+  uchar buf_len flags ;
+  ushort _pad ;
+}
+
+### Words
+
+xxh32[] ( a u seed -- hash )
+uint `xxh32[] (uint seed, uint u, void *a);
+  Compute the hash of a range with a specified seed.
+  This function has the advantage that it can be a bit faster than XXH32 for
+  small inputs and doesn't allot space.
+
+xxh32 ( stream seed -- hash )
+uint xxh32(uint seed, Stream *s);
+  Compute the hash of specified [io/stream] from its current position until
+  EOF with the given seed.
+
+xxh32<< ( seed "path" -- hash )
+  Compute the hash of file at "path" with specified seed.
+
+newXXH32 ( seed -- xxh32 )
+XXH32 *newXXH32(uint seed);
+  Initialize an XXH32 structure used for streaming with a given seed.
+
+update ( a u xxh32 -- )
+void update(XXH32 *x, uint u, void *a);
+  Update the hash of the current XXH32 structure with input a of length u.
+  This method is the whole point of this structure abstraction and allows a hash
+  to be iteratively computed instead of all in one go.
+
+  Tips for maximum speed:
+  - align a on 4 byte boundaries to use aligned loads
+  - update with multiple of 16 byte chunks as much as possible
+
+reset ( seed xxh32 -- )
+void reset(XXH32 *x, uint seed)
+  Reset the XXH32 structure with the given seed, this structure can now be used
+  again for the hashing of other input.
+
+digest ( xxh32 -- hash )
+uint digest (XXH32 *x);
+  Finalize the operation of the XXHash32 function onto the given stream and
+  return its digest.
+
+## Streaming API
+
+Due to the updating nature of the XXH32 structure a streaming API provided too.
+While mixing writebuf with digest is safe, following readbuf with anything other
+than writebuf or close will result in undefined behavior.
+
+writebuf ( a n xxh32 -- written-n )
+  Update the hash just as the usual update method does. Note that however it is
+  made to be used with readbuf and will make sure that a digest is not being
+  read at the same time.
+  written-n is either n or 0 depending on whether a digest is being read.
+
+readbuf ( n xxh32 -- a? read-n )
+  Read the digest byte by byte in little-endian.
+  Once this method has been called non streaming method shouldn't be used.
+  read-n will at most be 4 and once the digest has been totally read it will
+  always be 0.
+
+close ( xxh32 -- )
+  "Close the stream." This effectively make read and write operations noop as
+  specified in [io/stream]. To make use of this struct again, use reset.
+
+## Private API
+
+In the following section the numbers named k correspond to accumulators. Those
+are just 32bit unsigned numbers which we wish to manipulate as defined by the
+XXHash reference implementation.
+
+_initAccs ( u -- k1 k2 k3 k4 )
+  Initialize the accumulators from the given seed u.
+
+_mergeAccs ( k1 k2 k3 k4 -- k )
+  Merge all four accumulators into a single accumulator to finalize the hashing
+  process.
+
+_avalanche ( k -- k )
+  Mix the bits of the accumulator to assure maximum repartition.
+
+_finalize ( a u k -- k )
+  Finalize the digestion of input a with length u in bytes; updating the
+  accumulator k retrieved from merge_accs.
+
+_round ( a ak -- a ak )
+  Perform a single round by reading from the input a and the array of
+  accumulators ak of length 4. Return both addresses incremented by 4.
+
+_consumeLong ( a u ak -- a )
+  Consume 16 bytes chunk of input a with length u -- thus u must be greater or
+  equal than 16. Mutate the array of accumulators ak in place and return the
+  updated input.

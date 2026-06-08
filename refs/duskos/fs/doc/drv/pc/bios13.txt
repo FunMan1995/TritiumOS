@@ -1,0 +1,32 @@
+# BIOS INT13H debug tool
+
+The program at xcomp/i386/pc/bios13.fs is a little program written in real mode
+designed to be written in the MBR and help debug problems with INT13H.
+Therefore, all you have to do is to assemble it and then place it in the first
+sector of the boot drive, then boot. Every number printed in in hex format.
+
+The first thing it does is print the value of DL (the boot drive).
+
+The second thing it does is to try to auto-detect geometry through INT13H,8 on
+the boot drive (the value of DL at boot). It then prints that geometry: heads
+(DH) then sectors per track (CL). If you prefer to use hardcoded parameters,
+then you should comment that part and set registers accordingly.
+
+Then, we enter the main part of the program: try reading sectors. The loop
+starts at the first sector of the drive. It prints "Sect" followed by
+CH/CL/DH/DL, that is, cylinder, sector, head, drive. Then, it tries reading that
+sector.
+
+If there's an error, it prints "Err" as well as the value of AL then AH.
+
+If there is no error, it prints the first 8 bytes of the sector.
+
+Then, it waits for a keypress. If "s" is pressed, sector is increased by one. If
+"h" is pressed, sector is reset and head is increased by one. If "c" is pressed,
+sector and head are reset and cylinder is increased by one. If any other key is
+pressed, we retry the same sector. Then, we loop again.
+
+The geometry of the drive is not used to roll heads/cylinder over automatically.
+All of this is made manually through the appropriate keypresses. By the sound of
+it, some drives don't like to be queried outside they geometry, so be careful
+with what you ask for.

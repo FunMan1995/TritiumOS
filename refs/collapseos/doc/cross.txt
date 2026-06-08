@@ -1,0 +1,232 @@
+# Cross-compilation
+
+When you naively compile binary (see doc/asm) or forth code, the
+resulting binary will only run on the machine it was compiled
+on.
+
+If you want to compile for another machine, you need to cross-
+compile. Collapse OS includes tools to do so.
+
+There are two distinct tasks that require distinct tools: binary
+xcomp and forth xcomp.
+
+# 1. Binary xcomp
+
+Assemblers, when encoding absolute addresses, do so naively. If
+you write "$1234 jmp,", $1234 will always be the encoded
+address. So far, so good.
+
+Where there's a problem is when labels are involved. For exam-
+ple, the result of "pc to L1 ... L1 jmp," depends on where in
+memory this opcode was created. As long as the code runs on the
+machine that compiled it at the address it was compiled, this
+will always do the right thing. Otherwise, we need to stop being
+naive. We do so with the "xcomp" loader word (it loads B300).
+
+This loader introduces 2 new values that determine how labels
+work: xorg and bin(.
+
+xorg is the address at which our binary starts on the host
+machine. When you're ready to spit your cross-compiled binary,
+you'll want to do "here to xorg".
+
+bin( is the address at which our binary is expected to live in
+the target machine. By default, it's 0.
+
+There's a convenience "xstart ( bin( -- )" word which sets bin(
+and xorg in one fell swoop.
+
+Together, these words give you control over what the assembler
+considers it's current PC (program counter) at any given
+moment. For example, right after a "xstart", "pc to L1" will
+give L1 the value of bin(. $100 bytes later, PC will be
+bin(+$100.
+
+To do binary xcomp, you will want to load xcomp before you load
+your assembler and only call xstart when you're ready to spit
+binary.
+
+Example of xcomp from fresh Z80 Collapse OS boot:
+
+xcomp z80a 0 xstart pc to L1 nop, L1 jp,
+
+This produces a binary that is designed to run an infinite loop
+from address 0. Without xcomp, the jump would be incorrect and
+jump somewhere in the middle of the memory, where here was
+during compilation.
+
+Cross-compiling for another CPU architecture is the same thing,
+all you need to do is to load the proper assembler. You just
+have to be extra careful if compiling for a different endian-
+ness. See below.
+
+# 2. Forth xcomp
+
+Binary xcomp is relatively straightforward. Forth xcomp is a bit
+hairy. Because forth words are nothing but references to other
+words all the way until we "hit rock" (hit native code), that
+code is tricky to relocate.
+
+Collapse OS has tools (which builds upon the tools explained in
+section 1) to produce a Collapse OS forth dictionary designed to
+run on another machine at another address.
+
+These tools are loaded with the "xcompc" (xcomp for Collapse OS)
+which requires "xcomp" to be loaded first.
+
+As with binary xcomp, xcompc requires xorg and bin( to be pro-
+perly set before you begin spitting cross forth words.
+
+xcompc overrides defining words (:, create, constant, etc.) so
+that it adds an offset to every wordref it compiles. With this
+override, you end up with a dictionary that is separate from the
+host dictionary and is internally consistent.
+
+What should that offset be? xorg, of course! As with binary
+xcomp, xorg corresponds to the beginning of the binary being
+built. In fact, every Collapse OS binary begins with purely
+binary code, and thus, "regular binary xcomp" code.
+
+It's only when the first word is created (the first "code" word
+of the boot code) that xcompc mechanism kicks in.
+
+# Dual-current
+
+Although the principle behind cross-compilation is simple, the
+devil's in the details. While building our new binary, we still
+need access to a full-fledged Forth interpreter. To allow this,
+we'll maintain two current: the regular one and xcurrent, the
+current value of the cross-compiled binary.
+
+xcurrent's value is a *host* address, not a cross one. For
+example, if xorg is $1000 and the last word added to it was at
+offset $234, then xcurrent is $1234.
+
+During cross compilation, we *define* in xcurrent and we
+*execute* in current.
+
+During the compilation of a word, if the word doesn't exist in
+our "X" dictionary, we look for it in our host directionary. If
+it's an immediate, execute it. If it's not, something is wrong:
+word not found.
+
+In no case do we execute immediate cross-compiled words. It
+wouldn't make any sense as those words can't be executed by the
+host.
+
+# xcomp unit
+
+Cross-compilation of a Collapse OS binary is achieved through
+the writing of a cross-compilation unit of code, xcomp unit for
+short.
+
+The xcomp toolset at xcompc alters core words in a deep way, so
+ordering is important. First, we load our tools. xcomp,
+assembler.
+
+We also define some support words that will not be part of our
+resulting binary, but will be used during xcomp, for example,
+declarations units and macros.
+
+Then, it's time to apply xcompc overrides. From this point on.
+every defining word is messed up and will produce offsetted
+binaries.
+
+The xcompc loader implicitly calls "0 xstart", so if your bin(
+is 0, you can start spitting right away. Otherwise, call xstart
+with a proper bin( value before you spit.
+
+What to spit? See doc/bootstrap for details, but in short it's:
+
+1. CPU-specific coot code
+2. corel
+3. Drivers
+4. xwrap (which loads coreh and wraps it up)
+
+Once xwrap is called, and if you did things the right way, what
+is between xorg and here is your fancy new Collapse OS binary!
+
+After you're done, you can run "forget PS_ADDR" (or whatever
+is the first word declared by your xcomp unit) to go back to a
+usable system.
+
+# Immediate compiling words trickyness
+
+When using an immediate compiling word such as "if" during
+xcomp, things are a bit tricky for two reasons:
+
+1. Immediates used during xcomp are from the host system.
+2. The reference of the word(s) they compile is for the host
+   system.
+
+Therefore, unless the compiled word (for example (?br) compiled
+by IF) has exactly the same address in both the host and target,
+the resulting binary will be broken.
+
+For this reason, we re-implement many of those compiling words
+in xcomp overrides, hacking our way through, so that those
+compiling words compile proper target references. We don't do
+this for all compiling words though. This means that some words
+can't be used in core and drivers, for example, abort" and .".
+
+# Does words
+
+does> can't work in an xcomp environment. It's too tricky be-
+cause the word that does> compiles has to work in both the host
+and the target system at the same time. The hoops to jump
+through to make this kind of word work are horrific.
+
+However, does words do allow for some juicy space saving, so the
+xcomp program has an alternate way to compile does words: ~doer.
+
+Instead of creating a "generator" word as you do with doer, you
+first create an anonymous word with ":~", which is the equi-
+valent of the code following the "does>" word. And then, you
+create your does words with ~doer at runtime. Example:
+
+:~ ( n 'n ) @ + . ;
+~doer foo 42 t,
+~doer bar 54 t,
+
+In the compiled system, "1 foo" will print 43 and "1 bar" will
+print 55. "t," is for endian-ness. See below.
+
+# Endian-ness
+
+16 bit numbers you write when cross-compiling will often need to
+follow your target's endian-ness, which might not be the same as
+your host's. To this end, xcomp defines these words:
+
+|t: Split word into 2 bytes, using Target's endian-ness.
+t!: Like "!", but uses Target's endian-ness.
+t,: Like ",", but uses Target's endian-ness.
+t@: Read a word using Target's endian-ness. Used, for example,
+    in xfind to read prev to traverse a cross-compiled dict.
+
+You control the active endian-nedd through the "bigend?" value,
+which defaults to 0 (little endian). To activate big endian, you
+do "1 to bigend?".
+
+# Constants and immediate-ness, oh my!
+
+One thing that is particularly tricky with xcomp code is the
+management of constants. Values declared before xcompc is loaded
+are *only* accessible outside of compilation mode. For example,
+PS_ADDR will not be a word in the target system. When writing
+assembly, you can reference it just fine because you're in
+runtime mode. However, if you're inside a ":", you can't
+reference PS_ADDR. You have to add a literal of its value with
+"[ PS_ADDR litn ]" (or by creating a value inside the target,
+but this will take precious binary space!).
+
+# Extra words
+
+xcomp tools define a couple of extra words that are specific to
+it:
+
+oallot   oa --   allot0 n bytes where n = oa-PC. In other words,
+                 make current binary oa bytes, filling with 0.
+*value   --      A read-only, indirect value
+*alias   --      An indirect alias
+~doer x  --      Create a xcomp-compatible DOES word. See above.
+pc2a     pc -- a Transforms a target's PC into a host's addr.

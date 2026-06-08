@@ -1,0 +1,92 @@
+# Duskberon Fonts module
+
+The Fonts module loads fonts in memory and, for a particular fonts, yield the
+pattern [oberon/display] of a particular glyph for the purpose of drawing it on
+screen.
+
+## Oberon compatibility
+
+This module is a port of the original Oberon project, with modifications.
+
+### Dusk fonts loading
+
+In addition to being able to load Oberon fonts, This() can also convert fonts
+from [gr/font]. See below.
+
+### Monospace font
+
+We add the "Mono" global var.
+
+## Structures
+
+Before we look at FontDesc, let's consider the main (anonymous) structure
+handled by this module, the raster bounding box. This box is effectively the
+same as a pattern [oberon/display], but with 3 bytes preceding it. Those bytes
+are, in order, "dx", "x", "y", which are immediately followed by the pattern's
+"w" and "h" field.
+
+dx  Number of pixels by which we "advance" after having drawn the glyph.
+    Will often be the same as "w", but could differ.
+x   X offset of the pattern compared to drawn origin
+y   Y offset of the pattern compared to drawn origin
+
+Font* = POINTER TO FontDesc;
+FontDesc* = RECORD
+  name: ARRAY 32 OF CHAR;
+  height, minX, maxX, minY, maxY: INTEGER;
+  next: Font;
+  T: ARRAY 128 OF INTEGER;
+  raster: INTEGER;
+END;
+
+name
+  Name of the font, without the "data/font/" part.
+
+height
+  Height of the font, that is, the height that a line drawing its glyphs should
+  have.
+
+minX, maxX, minY, maxY
+  Minimum/Maximum values of the "x" and "y" fields of all the glyphs included
+  in the raster.
+
+next
+  Fonts are organized as a linked list. This is a link to the next Font.
+
+T
+  List of pointers to raster box into the "raster" buffer, indexed by glyph
+  index. These point to the pattern part of the structure. For example, to get
+  "dx", you subtract 3 to the pointer before fetching your byte.
+
+raster
+  Pointer to a buffer containing the structure described above. Those structures
+  are accessed using the T index.
+
+## Global Variables
+
+Default: Font
+  The default proportional font to use everywhere.
+
+Mono: Font
+  The default monospace font. Sometimes, you need a monospace font.
+
+## Procedures
+
+This (name: ARRAY OF CHAR): Font;
+
+  Check if a Font with the specified name is already loaded. If yes, yield it.
+
+  If no, look for the font of the same name in [gr/font]'s registry. If found,
+  convert that font to the Duskberon raster and add that font to Duskberon
+  registry. Yield it.
+
+  Otherwise, tries to load the specified file name by looking it up in
+  "data/font" and then parsing that file the regular Oberon way. If that parsing
+  is successful, yield it.
+
+  Otherwise, yield Default.
+
+GetPat (fnt: Font; ch: CHAR; VAR dx, x, y, w, h, patadr: INTEGER);
+
+  Yield the pattern, along with bounding box data, of the glyph corresponding to
+  ASCII char "ch" in specified font.

@@ -1,0 +1,50 @@
+# UEFI's fancy keyboard
+
+The unit at [drv/efi/kbdex.fs] wraps ReadKeyStrokeEx, which is only present in
+UEFI. Unlike [drv/efi/kbd], it has the ability to track mod keys status so that
+we can detect key presses like CTRL+something. Fancy right?
+
+Unfortunately, setting this keyboard up is more trouble because there is more
+than one SIMPLE_INPUT_EX_PROTOCOL implementations. Therefore, do set it up,
+you'll first have to figure out which protocol you want to use.
+
+We identify those protocols like we do in [drv/efi/blkio], by index.
+
+First of all, there is "bootkbd", which yields the kbd index of the
+ConsoleInHandle. It's most likely what you're interested in.
+
+You can also use "lskbdex", which will print out paths of all found protocols.
+
+Then, you create a [io/kbd] struct by supplying its constructor with that ID.
+
+## Example initialization
+
+  needs drv/efi/kbdex
+  bootkbd newefikbdex to keyboard
+
+## Implementation details
+
+The default key modifier logic flags of ReadKeyStrokeEx() is bonkers. It only
+set the mods flag if the yielded ASCII code doesn't already reflect it. That's
+not what we want. Fortunately, this behavior can be changed through
+"EFI_KEY_STATE_EXPOSED" toggle ($40) in SetState, which is what we do.
+
+But this doesn't change the fact that what is yielded is a "processed" ASCII
+code. Therefore, we do like in drv/efi/kbd and yield a Passthrough NKC. However,
+we also update the keyboard's "mods" field using KeyState data.
+
+And that's not all! When a mod key is released, ReadKeyStrokeEx doesn't return
+EFI_SUCCESS, it returns EFI_NOT_READY. This means that the keyboard's "mods"
+field had to be updated even when ReadKeyStrokeEx doesn't return EFI_SUCCESS.
+
+## API
+
+bootkbd ( -- kbdid )
+  Yields the ID corresponding to ConsoleInHandle.
+
+lskbdex ( -- )
+  Prints out all SIMPLE_INPUT_EX_PROTOCOL we can find along with their devpath.
+
+newefikbdex ( kbdid -- )
+  Allocates a new [io/kbd] wired on ReadKeyStrokeEx using the specified
+  protocol.

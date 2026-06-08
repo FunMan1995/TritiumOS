@@ -1,0 +1,152 @@
+# Managing memory
+
+## Allocating
+
+As with any Forth, Dusk has "allot ( n -- )" which allocates "n" bytes of
+memory. By default, it does so from the "permanent heap" and such memory can
+never be reallocated.
+
+As with any Forth, "HERE" is a cell containing a pointer ("here" is a shortcut
+to "HERE @") to "where we are". That pointer advances as we allocate memory.
+
+Where Dusk diverges is that "HERE" is an indirect pointer to CURALLOC, a sysvar
+pointing to the "current allocator".
+
+### Allocator
+
+An allocator is a 12b struct [doc/data] containing HERE, a pointer to "where the
+allocator is", but also "HEREMAX", its upper bound and "NEWHERE", a pointer to a
+word allowing fancy allocation schemes.
+
+Whenever an "allot word" (this includes "," and its friends, but it does *not*
+include HAL words, which are too low level for this) is called, we check if we
+bust the HEREMAX value. If we do, we try to acquire a new HERE by calling
+"NEWHERE ( -- a u )". The default allocator's NEWHERE unconditionally raises
+an "out of memory" (OOM) error.
+
+### CURALLOC
+
+The default value for CURALLOC is SYSALLOC, an allocator that behaves like any
+good old Forth. At any time, you can make CURALLOC point to another allocator
+struct and then all allocation words will then use this new struct has its
+HERE/HEREMAX/NEWHERE values.
+
+Whenever "quit" is called, CURALLOC is reset back to SYSALLOC.
+
+### NEWHERE
+
+The NEWHERE ( -- a u ) pointer allows fancier allocation schemes [mem/alloc].
+This word is called as an opportunity to supply a replacement range for
+HERE/HEREMAX instead of raising OOM.
+
+For example, in the scratchpad [mem/scratch], we have NEWHERE yield the range
+of the pad instead of raising OOM. This makes HERE rewind to the beginning of
+the buffer whenever we reach its end (HEREMAX).
+
+### Reserve
+
+As long as we don't use custom allocators, all allocated memory will be
+contiguous. But when we begin using NEWHERE, we open the door to unexpectedly
+ending up with non-contiguous allocations.
+
+For example, let's imagine a 8b struct. If we write it with "42 , 54 ," it's
+possible, with custom allocators, that "54" is written at an address that
+doesn't directly follow "42". This would break the struct.
+
+You can pre-allocate the whole struct before writing to it, but that often
+results in more complicated code.
+
+What you can do is use "reserve ( n -- )", which does the OOM check (and thus
+conditionally call NEWHERE) of "allot" without actually allocating anything.
+
+Therefore, the correct version of the example above would be:
+
+    8 reserve 42 , 54 ,
+
+## Alignment discipline
+
+Some platforms that Dusk OS runs on (ARM) have restrictions with regards to
+unaligned memory access: 16-bit memory access have to be done on even addresses
+and 32-bit ones have to be done on addresses divisible by 4.
+
+This imposes what we call an "alignment discipline" on all of Dusk OS' code.
+
+The biggest unalignment source is already handled by the kernel: all new
+dictionary entries are always created aligned. Therefore, whenever you use
+"create" or "value" or other such words, you don't have to worry about whether
+you're aligned.
+
+However, in some cases, you do have to worry about alignment as an operator:
+"here" is not always aligned! For example, starting from an aligned "here",
+this code:
+
+  ,"foo"
+
+results in "here" becoming unaligned because 3 bytes were written.
+
+Therefore, the general rule is that when you're about to access memory related
+to here in 16-bit or 32-bit mode, you need to align "here". You can do so with
+the "align4" word, but there's also the shortcut "here#" which aligns "here" and
+then yield it.
+
+Therefore, the general rule of thumb is: use "here#" instead of "here".
+
+For structs, (which includes C structs), you have to arrange your fields
+accordingly. By principle, no auto-alignment takes place on structures. The idea
+is that looking at a structure's definition should always tell the reader the
+exact structure without them having to second guess.
+
+To help, there are alignment checks built in. When a structure's definition
+results in misaligned fields, Dusk aborts with "alignment error".
+
+## Endian-ness
+
+In Dusk, memory accesses are done in the CPU's native endian-ness, but also
+allows memory accesses in arbitrary endian-ness.
+
+Two endian-ness are supported, little-endian (LE) and big endian (BE). Let's
+consider this memory arrangement:
+
+A+0  A+1  A+2  A+3
+$12  $34  $56  $78
+
+This memory can be read as little endian, that is, the least significant byte
+first, with "le@ ( a -- n ). It reads as $78563412. It can also read as big
+endian, that is, the most significant byte first, with "be@ ( a -- n )". It then
+reads as $12345678. Same principle for writing.
+
+Each of these words have a 16-bit variant, so they can be called with a "w"
+prefix. They don't have a "c" one because it makes no sense.
+
+Additionally, these words can ignore alignment discipline [doc/usage/mem]
+because they are guaranteed to read and write byte by byte.
+
+The tradeoff is that these words are slower than their native counterpart.
+
+## Fancy storage in RS with []>r and friends
+
+Forth programmers quickly get used to treating RS as storage using >r and r>.
+This is especially true of recursive words, where RS is the best place to keep
+execution state.
+
+As long as what you need to keep around fits in 32, or maybe 64, bits,
+everything is fine and dandy.
+
+But what if it's a string? Then things get murky. You could use scratchpads
+[mem/scratch] for this, but it's a bit hackish.
+
+Dusk has a set of words for you:
+
+  []>r  ( a u -- )
+  r>[]  ( -- a u )
+  str>r ( str -- )
+  r>str ( -- str )
+
+All of these words are immediate and compile code that store the specified range
+of data directly in RS. To get that data back, you call the "mirror" word, but
+there's a twist: we can't just use the RS address directly because as soon as
+you begin working with that data, you'll corrupt it through regular RS usage!
+
+Therefore, the "extractor" part needs a destination buffer to extract itself
+into. For that purpose, the string pool [usage/lit] is used. Therefore,
+addresses yielded by "r>[]" and "r>str" are string pool addresses.

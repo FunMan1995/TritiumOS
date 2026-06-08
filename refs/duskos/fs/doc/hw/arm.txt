@@ -1,0 +1,43 @@
+# ARM architecture
+
+## Register usage
+
+r0  Used as HAL tmp register
+r1  Used as HAL tmp register
+r2  unused
+r3  R3 [hal/vreg]
+r4  R2 [hal/vreg]
+r5  R1 [hal/vreg] and used as a HAL tmp register
+r6  R0 [hal/vreg]
+r7  pointer to SYSVARS
+r8  S register
+r9  PS Top of Stack
+r10 PSP
+r11 A register
+r12 unused
+r13 RSP
+r14 Link Register
+r15 PC
+
+HAL generates code that uses r0, r1 as temporary values. Those values are
+never used beyond the scope of a single HAL operation. Therefore, if you mix and
+match HAL and assembler, you don't have to preserve r0/r1 in between HAL
+operations. However, you can consider that all HAL operations destroy these
+registers.
+
+Note that r5 is cloberred on 8b)/16b) dir) rrot,/lrot, combinations. This is
+due to the way these algorithms must be written. r5 has been chosen to avoid
+introducing a new temporary register as the HAL register R1 is already clobbered
+because of x86 (ECX). If the destination is 32 bit, may it be through dir) or
+not, r5 is *not* clobbered.
+
+## Interrupt conventions
+
+The kernel boots with all IRQ and FIQ disabled. If the system needs it, it needs
+to enable them itself.
+
+ARM has separate SP registers set up in IRQ and FIQ mode. Each system will
+has to define where those stack live and set it up in "isrsave," (see
+[doc/intr]). On ARM systems, saved registers will generally be r0 and r1 because
+at least one register is needed to check on a memory address, and because HAL
+code uses r0 and r1, well, we might as well save those two right away.

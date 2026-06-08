@@ -1,0 +1,118 @@
+# MBR Partition Tables
+
+This unit defines the bits and pieces out of which an operator can make their
+own "fdisk" tool.
+
+There are two important data types being used here -- the 512 byte Master Boot
+Record (MBR) sector at the very beginning of the disk, and the 4 consecutive
+PTblEntry structs very close to the end of this sector (starting offset $1be,
+or P1OFFSET). The former is a static buffer named SECBUF and the latter appears
+in word signatures as "entry".
+
+A partition table entry (PTblEntry) has a boot indicator, a system ID, and the
+included range of sectors represented in both CHS and LBA formats. A system ID
+byte of $00 indicates an unused partition, though it's better to zero the
+entire entry. At most one entry should be bootable.
+
+Note that CHS support is mostly missing from this -- it's ignored on read and
+set to $ff $ff $ff on write. This is really only important for DOS. In that
+case, use DOS fdisk to create or modify partitions.
+
+Note also that extended partitions are unimplemented; however, support for this
+can easily be added as a layer on top of this unit.
+
+## API
+
+### Struct
+
+struct PTblEntry {
+  uchar     bootind ;
+  [uchar,3] startchs ;
+  uchar     systemid ;
+  [uchar,3] endchs ;
+  leint lbastart lbasize ;
+}
+
+### Words Operating on SECBUF
+
+mbrentry ( pn -- entry )
+  Given a partition number (1-4), get a pointer to the PTblEntry. Aborts if pn
+  is out of range.
+
+setboot (pn-or-0 -- )
+  If pn-or-0 is nonzero, set that partition to bootable and set all others to
+  non-bootable. If zero, set all partitions to non-bootable. Aborts if pn-or-0
+  is nonzero but that partition is not in use.
+
+.mbrentry ( pn -- )
+  Like "entry" except the PTblEntry is spit rather than left on PS.
+
+.mbrentries ( -- )
+  Display partition table by running ".mbrentry" for each of the 4 entries in
+  the table, followed by newlines.
+
+partcreate ( lbastart lbasize systemid pn -- )
+  Create a new partition table entry at pn if that entry is unused; aborts
+  otherwise.
+
+partdelete ( pn -- )
+  Delete the partition table entry at pn.
+
+lookup ( lbastart lbasize -- pn-or-0 )
+  Identify the partition number given its start and size. 0 if not found.
+
+validate# ( -- )
+  Validate the MBR sector. Aborts if invalid. Checking for non-overlapping
+  ranges and for valid CHS are currently unimplemented.
+
+### Words Operating on Partition Table Entries
+
+startchs@ ( entry -- c h s )
+  Extract the starting cylinder, head, and sector of the entry.
+
+endchs@ ( entry -- c h s )
+  Same as above but for the end. TODO: is it the last sector in the partition,
+  or the first sector after the partition?
+
+startchs! ( c h s entry -- )
+  Set the starting cylinder, head, and sector of the entry. Does not validate
+  that they are in range.
+
+endchs! ( c h s entry -- )
+  Same as above but for the end.
+
+used? ( entry -- f )
+  Indicates whether the entry is in use (nonzero system ID or size).
+
+.systemid ( entry -- )
+  Spit the System ID of the entry.
+
+### Other Useful Words
+
+.chs ( c h s -- )
+  Print cylinder, head, and sector.
+
+### Example of Reading and Printing
+
+0 SECBUF INT13hDrive readsector
+.entries
+
+#### Also Create [io/part] for Partition 1
+
+needs io/part io/part/mbr
+1 entry INT13hDrive newpart value mypart
+\ read sector 0 of partition 1
+create sec0p1 512 allot0
+0 sec0p1 mypart readblk
+
+### Example of Identifying Boot Partition
+
+LBASTART LBASIZE lookup .
+
+This will lookup the partition offset and size from glue.fs in the partition
+table, and print the partition number if identified, or 0 if not.
+
+The partition number can not be identified if:
+* This is not a partition installation of Dusk, or
+* SECBUF contains an MBR sector from the wrong drive or sector, or
+* changes have been made since boot.

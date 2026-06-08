@@ -1,0 +1,54 @@
+# Line typing buffer
+
+In a [lib/coop] application, it's a common feature to want to let the operator
+type in a line of text and then act on it. However, doing so within the context
+of the event loop is a bit tricky. This unit contains logic to make the feature
+easier to add in your application.
+
+This unit can be used outside of the [lib/coop] KEYPRESS event handling context,
+but it's mainly designed to be used thus.
+
+The simplest example of a user of that logic is [app/prompt], which is a hollow
+shell over this unit.
+
+## Typing logic
+
+The accumulation logic of our buffer is that we accumulate into the buffer,
+echoing back typed characters, as long as one of those conditions is met:
+
+1. The buffer is full
+2. CR or LF was typed
+3. ESC was typed
+
+Additionally, when the buffer is full, we make sure that the last character is
+a LF.
+
+## API
+
+## Structures
+
+struct TypeBuffer {
+  uint maxlen curlen ;
+  [uchar,0] typebuf ;
+}
+
+## Words
+
+newtypebuf ( maxcnt -- typebuf )
+  Create a new TypeBuffer structure with the specified maximum length,
+  initialized with curlen=0.
+
+type1 ( c typebuf -- ?a ?u f )
+  Accumulate character "c" into the typebuffer struct. Yield f=0 when
+  accumulation must continue, with "a" and "u" being absent.
+
+  When a condition for stoping the accumulation is met, f=1 and "a u" is the
+  range of the typed buffer. Also, the typed buffer is emptied, ready for the
+  next accumulation.
+
+  The range thus yielded always ends with a LF character. If you don't want it,
+  you should apply "1-" to that range which can, in this case, end up being a
+  null range.
+
+  When accumulation ends with an ESC, f=1, but u=0 and a is absent to indicate
+  that the typed buffer shouldn't be acted upon.

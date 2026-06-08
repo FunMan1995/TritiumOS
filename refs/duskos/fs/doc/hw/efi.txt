@@ -1,0 +1,117 @@
+# EFI implementation and hardware notes
+
+## EFI vs UEFI
+
+When we refer to "EFI", we refer to both its v1.x (EFI) and v2.x (UEFI)
+specifications. They are very close. UEFI adds a lot of new protocols, but the
+crucial ones are in EFI and they're compatible.
+
+Unless specifically noted, our EFI code is entirely 1.x compatible.
+
+Intel Macs are special because they're a "hybrid" EFI. Officially, they're on
+EFI 1.10, but they follow the x64 calling convention and implement the Graphical
+Output Protocol, which are both UEFI specifications.
+
+It should be noted that EFI 1.x system will be somewhat underpowered, I/O wise.
+The lack of [drv/efi/kbdex] for example means a keyboard that can't be fully
+utilized. While the EFI drivers are a good launchind pad and exploration
+platform, it's likely that for such a system, we'll want to "grow out" of EFI
+with hardware-specific drivers.
+
+## PE header
+
+At xcomp time, we generate a minimal and simplistic PE+ header for our
+executable. It contains a single RWX section.
+
+Even if the PE image has no relocation section, we still "mark" it, through the
+different PE flags scattered across, as relocatable (it *is* relocatable by its
+own clever mechanisms, not with the help of a ".reloc" section). Without those
+flags, many UEFI firmware refuse to load the executable.
+
+## Initial memory allocation
+
+Getting memory is tricky. ".bss" sections in the PE+ headers can't be very big,
+experimentations showing refusal from some firmwares to load the EFI
+application.
+
+However, to have a "comfy" Dusk, we need at least a few megabytes, especially if
+graphics are involved.
+
+BootServices.AllocatePages() comes to mind, and it's indeed what we use, but two
+obstacles are met by a naive approach to its use:
+
+1. Those allocations won't be adjacent to Dusk's main memory and some glueing
+   needs to happen.
+2. Intel Macs EFI firmware show weird behavior with AllocatePages() being called
+   late in the boot process. Allocations happening early work fine.
+
+On 32-bit EFI, this isn't much of a problem. We allocate early, set SYSVARS and
+PS in the new memory, then set HERESTART right aftwerwards. We're good.
+
+On a 64-bit system, it's another matter. The memory being allocated might not
+live within "throwing distance" (32-bit address space) of our kernel!
+
+Because of that, we choose to boot into two distinct stages when booting under
+a 64-bit system.
+
+But first things first, and this happens in the same way on both 32-bit and
+64-bit, we need to allocate as much contiguous memory as possible.
+
+The "get as much as possible" logic goes as follow: try 2GB, then as long as
+AllocatePages() fails, half that amount and try again. There is no logic for
+getting to 0 without success. When that happens, we're screwed anyways.
+
+As stated above, on a 32-bit system, we just setup SYSVARS/PS/HERE.
+
+On a 64-bit system, we copy the kernel and payload to the newly allocated memory
+and then we jump to it.
+
+The entry point for both stages is the same, we discriminate between the two by
+setting AllocatedPages, which initializes to 0, to the newly allocated size. In
+the entry point, when that AllocatedPages is nonzero, we know we're in the
+second stage and we have our HEREMAX.
+
+The second stage is the regular Dusk boot process [doc/boot].
+
+## Macs
+
+### Disable SIP
+
+To do anything interesting on a Mac, it's likely that you have to disable its
+SIP mechanism. To do so:
+
+1. Boot in Recovery mode by holding Cmd+R at boot time
+2. Open the Terminal for the Utilities menu
+3. Type "csrutil disable"
+4. Reboot
+
+## Troubleshooting
+
+### Graphical console blank on boot
+
+Some machines have more than one GOP/UGA interfaces. If the first one isn't
+where your screen is, you won't see anything at boot. If you're in a situation
+where you have nothing being output on the screen, try adding something like "1
+gop!" or "1 uga!" to your init.fs, after having loaded the unit, but before you
+initialize it, to select an alternative graphical output. It might work.
+
+## Tested hardware
+
+Dusk EFI deployment has been tested on those machines:
+
+* Intel NUC6i3SYH
+* System 76 Ratel Performance
+* Dell Latitude 5320
+* Mac Mini Model A1347 (Intel, 2012)
+* iMac Model A1208 (Intel 32-bit, 2006)
+
+## See also
+
+* [hw/i386]
+* [hw/amd64]
+* [drv/efi]
+* [xcomp/efi]
+* [xcomp/amd64/efi/deploy]
+* [xcomp/i386/efi/deploy]
+* Extensible Firmware Interface Specification v1.10, Intel
+* Unified Extensible Firmware Interface (UEFI) Specification v2.10, UEFI Forum

@@ -1,0 +1,42 @@
+# Diagnostic tools
+
+This unit provides word for system introspection.
+
+## API
+
+.sz ( bytes -- )
+  Print a "human readable" size in bytes, such as "42K", "2G" etc.
+
+.free ( -- )
+  Print the amount of used and free memory, HERE-wise.
+
+spit[]
+wspit[]
+cspit[] ( a u -- ) *B*
+  Print data in range "a u" in chunks of 4/2/1 bytes (depending on binary width
+  modulator) separated by spaces.
+
+squarespit ( a width height -- )
+  Spit a square of bytes, with a newline in between each row.
+
+psdump ( -- )
+  Print the contents of PS.
+
+.S ( -- )
+void `.S ();
+  Prints a formatted line with scnt, rcnt and psdump in it.
+
+dump ( a -- )
+void dump(uint addr);
+  Shortcut for "128 dumpn".
+
+dumpn ( a n -- )
+  Print a nicely formatted representation of the contents of address "a" in 
+  lines of contents with 16 bytes per line. Each line begins with the address of
+  the line, followed by the contents in 2 bytes chunks. The representation is
+  endianness independent (or, we could say, big endian). The first byte being
+  displayed really is the content of the first byte of the line.
+
+  The number of lines printed is enough to cover "n" bytes of data, but because
+  lines are always 16 bytes long, actual number of printed bytes might be
+  higher.

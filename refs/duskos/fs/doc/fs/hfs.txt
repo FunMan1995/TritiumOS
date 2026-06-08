@@ -1,0 +1,82 @@
+# Hierarchical File System
+
+There is no implementation for this FS yet, these are just notes.
+
+## HFS structure
+
+The first 2 logical blocks (sectors) of the volume (partition) are the boot
+blocks. Those blocks are followed by the Master Directory Block (MDB).
+Then comes the Volume bitmap at block 3, which has a variable size. Then the
+Catalog file, then the Extents Overflow file, then the rest.
+
+String fields are counted strings (byte length followed by chars). Numbers are
+big endian.
+
+## Boot blocks
+
++00 2  Signature (4c 4b)
++02 4  BootEntry (m68k jump)
++06 2  Version
++08 2  PageFlags
++0a 16 SysName
++1a 16 ShellName
++2a 16 Dbg1Name
++3a 16 Dbg2Name
++4a 16 ScreenName
++5a 16 HelloName
++6a 16 ScrapName
++7a 2  CntFCBs
++7c 2  CntEvts
++7e 4  128KSHeap
++82 4  256KSHeap
++86 4  SysHeapSize
++8a 2  reserved
++8c 4  SysHeapExtra
++90 4  SysHeapFract
+
+This is what is documented, but on real images, we see jumps go to +8c, which
+indicates that the two last fields are ignored.
+
+## Master Directory Block
+
++00 2  Signature (42 44)
++02 4  CreationDate
++06 4  ModificationDate
++0a 2  Attributes
++0c 2  NumberOfFiles (in root dir)
++10 2  VBMaster (first block of volume bitmap)
++12 2  AllocPtr
++14 2  NmAlBlks
++16 4  AlBlkSiz
++1a 4  ClpSiz
++2e 2  AlBlSt
++30 4  NxtCNID
++34 2  FreeBks
++36 28 VN
++52 4  VolBkUp
++56 2  VSeqNum
++58 4  WrCnt
++5c 4  XTClpSiz
++60 4  CTClpSiz
++64 2  NmRtDirs
++66 4  FilCnt
++6a 4  DirCnt
++6e 32 FndrInfo
++8e 2  VCSize
++90 2  VBMCSize
++92 2  CtlCSize
++94 4  XTFlSize
++98 16 XTExtRec
++a8 4  CTFlSize
++ac 16 CTExtRec
+
+## Volume bitmap
+
+One bit per used allocation blocks. Size of volume bitmaps, in bytes is NmAlBlks
+/ 8.
+
+TODO: Catalog files, extents, etc. For now, I can play with this.
+
+## See also
+
+* Inside Macintosh: Files

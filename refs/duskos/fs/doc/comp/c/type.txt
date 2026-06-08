@@ -1,0 +1,47 @@
+# C types
+
+This unit is mostly about implementing C's type parsing logic. Because
+[lib/type]'s names are the same as C type names, only a handful of extra types
+have to be created.
+
+The main API of this unit consist of two words, "parsetype ( -- ?type f )" and
+"decl ( type -- type name )". These words consume the input stream for a type
+to fetch or define.
+
+The "parsetype" part fetches or defines the type, "decl" goes on and defines a
+declaration to go with that type. For example, if you have this stream:
+
+  int *foo;
+
+"parsetype" will stop right after the "int" token and yield it, a Integer(4S)
+type. "decl" will consume "*" and "foo" to yield Pointer(Integer(4S)) as the
+type and "foo" as the name. Anonymous declarations yield NULLSTR [lib/str] as
+the name.
+
+Structure declarations recursively parse subtypes and yield a [lib/struct].
+Alignment discipline is enforced and all structure sizes are aligned to 4 bytes.
+
+Unions are parsed like structs, but with all fields having a 0 offset and its
+size being the size of the largest member of the struct.
+
+Array declarations yield the Array type.
+
+## Function signatures
+
+Function signatures yield [comp/sig] types. When parsing a function declaration
+followed by a body, that is, the "int foo()" form rather than the "int (*foo)()"
+one, argument symbols are added to [comp/sym] for each argument.
+
+## The flexuint/flexint type
+
+There's are types called "flexuint" and "flexint" which are the same as a
+uint/int, but are yielded by constant, values, literals, pointer subtractions
+and boolean operators. The idea is that flex types are compatible with all other
+types. Also, it's a "weak" type, so when an expression has to merge two types
+into one, the flex type disappears.
+
+This means, for example, that if "foo" is a char, "foo + 42" does the expected
+thing, that is, consider 42 a char.
+
+Note that a pointer to void, "void*" is also considered a flexible type to any
+other Pointer.

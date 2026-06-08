@@ -1,0 +1,26 @@
+# Compiled values matching wizardry
+
+The unit at lib/match.fs contains a few "match to constants" words that have the
+peculiarity of being compiler words embedding the values to match, resulting in
+very, very fast code.
+
+## API
+
+rmatch" ( "..." -- ) ( c -- f ) *ICA*
+  Given a list of character ranges following the opening quote, compile code
+  with signature "c -- f" that checks whether input character is in that range.
+  For example, ": foo rmatch"azAZ" ;" compiles the word "foo ( c -- f )" that
+  yields f=1 if c is within a-z or A-Z.
+
+  Input character list must be even (in pairs).
+
+And we have a few compiled matcher words ( c -- f ):
+
+  0-9?    rmatch"09"
+  A-Za-z? rmatch"AZaz"
+  alnum?  rmatch"AZaz09"
+
+rfind" ( "..." -- ) ( a u -- ?idx f ) *IC*
+  Piggy-backs on rmatch" and compiles code that looks in range "a u" for the
+  first character fitting in the specified character ranges. If found, f=1 and
+  "idx" is the index of the found character. Otherwise, f=0 and "idx" is absent.

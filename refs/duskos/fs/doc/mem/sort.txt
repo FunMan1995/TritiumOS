@@ -1,0 +1,16 @@
+# Sorting routines
+
+The unit at [mem/sort.fs] contains sorting routines.
+
+## API
+
+sort ( a u -- )
+  Sort u 32-bit elements at address a using the Quick Sort algorithm with
+  Hoare's partitioning.
+
+sort@ ( offset a u -- )
+  Sort a list of pointers to structures, using the field at offset as a sort
+  key.
+
+  There is no buffering of the keys. Instead of doing complex list management,
+  we choose to run the key fetch more often.

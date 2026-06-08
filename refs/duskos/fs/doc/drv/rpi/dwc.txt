@@ -1,0 +1,112 @@
+# DesignWare On-The-Go USB Host Controller notes
+
+The driver for the DWC controller in Dusk OS is a port from Plan 9 (9legacy
+version).
+
+The datasheets for this controller, which is the USB controller on the Raspberry
+Pi, aren't publicly available. To whoever is involved in this decision: fuck you
+dearly, there's some people stuck with your crappy hardware out there.
+
+The Linux kernel DWC driver has been written by Synopsys itself, which should
+normally be a good source of information about the driver. In a sense, it is,
+but the driver is so complicated that, well, in the end, it's not. Plan 9's
+version is much more approachable.
+
+## Indirect information
+
+When I was looking for information about this controller, I was studying QEMU's
+dwc2 code for clues and did a "git blame" for fun. Bingo! Paul Zimmerman (big
+thanks Paul!), the author of the DWC2 emulator, mentions his source information
+(huge thanks for mentioning this Paul!) in his commit.
+
+http://www.capital-micro.com/PDF/CME-M7_Family_User_Guide_EN.pdf page 370.
+
+At the time of this writing, the direct link is broken, but you can get the PDF
+from the Internet Archive. and... bingo! This is it! The specs for that damn
+controller. Now *this* is of tremendous help!
+
+## Driver usage
+
+The DWC driver is a USB controller driver, so it works as described in
+[drv/usb]. You load it through [drv/rpi/dwc.fs] and initialize it through
+"dwc$". Once that initialization has been done, the DWC root hub will be in the
+hub list, which will allow device enumeration through "usbwork".
+
+## Structures
+
+struct Hostchan {
+  uint hcchar hcsplt hcint hcintmsk hctsiz hcdma _pad hcdmab ;
+}
+
+Host channel specific registers for offsets $500-$700. Used for the array in
+Dwcregs.
+
+hcchar   Characteristic
+hcsplt   Split Control
+hcint    Interrupt
+hcintmsk Interrupt Mask
+hctsiz   Transfer Size
+hcdma    DMA Address
+hcdmab   DMA Buffer Address
+
+struct Dwcregs {
+  uint gotgctl gotgint gahbcfg gusbcfg grstctl gintsts gintmsk grxstsr
+       grxstsp grxfsiz gnptxfsiz gnptxsts gi2cctl gpvndctl ggpio guid
+       gsnpsid ghwcfg1 ghwcfg2 ghwcfg3 ghwcfg4 glpmcfg gpwrdn gdfifocfg
+       adpctl ;
+  +$100 uint hptxfsiz ;
+  [uint,15] dtxfsiz ;
+  +$400 uint hcfg hfir hfnum _pad hptxsts haint haintmsk hflbaddr ;
+  +$440 uint hport0 ;
+  +$500 [Hostchan,16] hchan ;
+  +$e00 uint pcgcctl ;
+}
+
+Mapping to the DWG registers.
+
+gotgctl   OTG Control and Status
+gotgint   OTG Interrupt
+gahbcfg   Core AHB Configuration
+gusbcfg   Core USB Configuration
+grstctl   Core Reset
+gintsts   Core Interrupt
+gintmsk   Core Interrupt Mask
+grxstsr   Receive Status Queue Read (RO)
+grxstsp   Receive Status Queue Read & POP (RO)
+grxfsiz   Receive FIFO Size
+gnptxfsiz Non Periodic Transmit FIFO Size
+gnptxsts  Non Periodic Transmit FIFO/Queue Status (RO)
+gi2cctl   I2C Access
+gpvndctl  PHY Vendor Control
+ggpio     General Purpose Input/Output
+guid      User ID
+gsnpsid   Synopsys ID (RO)
+ghwcfg1   User HW Config1 (RO) (DEVICE)
+ghwcfg2   User HW Config2 (RO)
+ghwcfg3   User HW Config3 (RO)
+ghwcfg4   User HW Config4 (RO)
+glpmcfg   Core LPM Configuration
+gpwrdn    Global PowerDn
+gdfifocfg Global DFIFO SW Config (DEVICE?)
+adpctl    ADP Control
+hptxfsiz  Host Periodic Transmit FIFO Size
+dtxfsiz   Device Periodic Transmit FIFOs (DEVICE)
+hcfg      Configuration
+hfir      Frame Interval
+hfnu      Frame Number / Frame Remaining (RO)
+hptxsts   Periodic Transmit FIFO / Queue Status
+haint     All Channels Interrupt
+haintmsk  All Channels Interrupt Mask
+hflbaddr  Frame List Base Address
+hport0    Host Port 0 Control and Status
+hchan     See Hostchan above
+pcgcctl   Power & clock gating control
+
+extends Hci struct DWCHci {
+  *Dwcregs regs ;
+  uint nchan splitretry ;
+}
+
+regs       controller registers
+nchan      number of host channels
+splitretry count retries of Nyet

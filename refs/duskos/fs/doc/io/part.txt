@@ -1,0 +1,35 @@
+# Block partitions
+
+A partition is a restricted window over a target Blk [io/blk]. That window
+has a first blk as well as a pos/size.
+
+The partition is also a Blk, so it has the same API as a regular Blk. When a
+block is referenced, the "first blk" number is added to that reference and
+passed on to its target Blk. When a request is made that go outside the
+partition, we abort with an "out of range" error.
+
+Note that because partitions extend blks, they have their own buffers. A
+partition struct doesn't use its target blk's buffer.
+
+## Example usage
+
+  42 512 8 * myblk newpart mypart \ a 8-blocks-wide partition at blk 42
+  $100 here mypart read# \ read first $100 bytes of blk 42
+
+## API
+
+### Struct
+
+extends Blk struct Partition { uint tgtblk first ; }
+
+tgtblk  Target Blk [io/blk]
+first   First block of the window
+
+### Words
+
+reframe ( first blkcnt part -- )
+  Have the partition target another part of the same blk device. This
+  invalidates buffers and sets pos to 0.
+
+newpart ( first blkcnt tgtblk -- part )
+  Create a new partition targeting "tgtblk" with block count and first sector.

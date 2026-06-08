@@ -1,0 +1,644 @@
+# Collapse OS usage guide
+
+This usage guide begins with a Forth primer, but a complete
+introduction to Forth is out of the scope of this document.
+
+Therefore, it is strongly recommended to read an introduction
+to Forth before reading this below. "Starting Forth" be Leo
+Brodie is a very good one.
+
+If you don't have access to such documentation, you can try
+yourself with the primer below, but it's likely to be a steep
+learning curve.
+
+# First steps
+
+Before you read this primer, let's try a few commands, just for
+fun.
+
+42 .
+
+This will push the number 42 to the stack, then print the number
+at the top of the stack.
+
+4 2 + .
+
+This pushes 4, then 2 to the stack, then adds the 2 numbers on
+the top of the stack, then prints the result.
+
+If you just type ".", you'll see "stack underflow" because the
+"." word tries to fetch a number from the stack, which is empty.
+You can inspect your stack with ".S".
+
+42 $8000 c! $8000 c@ .
+
+This writes the byte "42" at address $8000 ($ prefix is for hex
+notation), and then reads back that byte from the same address
+and print it.
+
+# Interpreter loop
+
+Forth's main interpeter loop is very simple:
+
+1. Read a word from input.
+2. Is it a number literal? Put it on the stack.
+3. No? Look it up in the dictionary.
+4. Found? Execute.
+5. Not found? Error.
+6. Repeat
+
+# Word
+
+A word is a string of non-whitepace characters. We consider that
+we're finished reading a word when we encounter a whitespace
+after having read at least one non-whitespace character.
+
+# Character encoding
+
+Collapse OS doesn't support any other encoding than 7bit ASCII.
+A character smaller than $21 is considered a whitespace,
+others are considered non-whitespace.
+
+Characters above $7f have no special meaning and can be used in
+words (if your system has glyphs for them).
+
+# Comments
+
+Both () and \ comments are supported. The word "(" begins a
+comments and ends it when it reads a ")" word. It needs to be a
+word, that is, surrounded by whitespaces. "\" comments the rest
+of the line.
+
+# Dictionary
+
+Forth's dictionary link words to code or data. Unless you're
+cross compiling (doc/cross), there is only one dictionary. On
+boot, this dictionary contains the system's words (look in
+doc/dict for a list of them), but you can define new words with
+the ":" word. For example:
+
+: foo 42 . ;
+
+defines a new word "foo" with the code "42 ." linked to it. The
+word ";" closes the definition. Once defined, a word can be
+executed like any other word.
+
+You can define a word that already exists. In that case, the new
+definition will overshadow the old one. However, any word def-
+ined *before* the overshadowing took place will still use the
+old word.
+
+: foo 42 . ;
+: bar foo ;
+: foo 43 . ;
+foo \ prints 43
+bar \ prints 42
+
+You can get the address of a word with "'":
+
+' foo
+dup .X \ prints an address
+execute \ prints 43
+
+You can "rewind" the dictionary with "forget". This word
+"forgets" the specified word along with all words following it:
+
+forget bar
+bar \ error: word does not exist
+foo \ prints 42
+
+Forgeting a system word breaks the system.
+
+# Cell size and endian-ness
+
+The cell size in Collapse OS is 16 bit, that is, each item in
+stacks is 16 bit, @ and ! read and write 16 bit numbers.
+Whenever we refer to a number, a pointer, we speak of 16 bit.
+
+Endian-ness is CPU-dependent and core words dealing with words
+will read-write according to native endian-ness. On a z80,
+"$8000 @" puts $8000 in LSB and $8001 in MSB, but on a 6809,
+it's the opposite.
+
+To read and write bytes, use c@ and c!.
+
+# Number literals
+
+Traditional Forths often uses HEX/DEC switches to go from deci-
+mal to hexadecimal parsing. Collapse OS has no such mode.
+
+Straight numbers are decimals, numbers starting with "$" are
+hexadecimals (example "$12ef"), char literals are single
+characters surrounded by ' (example 'X'). Char literals can't be
+used for whitespaces (conflicts with the concept of "word" as
+defined above).
+
+# Signed-ness
+
+For simplicity purposes, numbers are generally considered
+unsigned. For convenience, decimal parsing and formatting
+support the "-" prefix, but under the hood, it's all unsigned.
+
+This leads to some oddities. For example, "-1 0 <" is false.
+To compare whether something is negative, use the "0<" word
+which is the equivalent to "$7fff >".
+
+# Parameter Stack
+
+Unlike most programming languages, Forth executes words
+directly, without arguments. The Parameter Stack (PS) replaces
+them. There is only one, and we're constantly pushing to and
+popping from it. All the time.
+
+For example, the word "+" pops the 2 numbers on the Top Of Stack
+(TOS), adds them, then pushes back the result on the same stack.
+It thus has the "stack signature" of "a b -- n". Every word in
+a dictionary specifies that signature because stack balance, as
+you can guess, is paramount. It's easy to get confused so you
+need to know the stack signature of words you use very well.
+
+# Return Stack
+
+There's a second stack, the Return Stack (RS), which is used to
+keep track of execution, that is, to know where to go back after
+we've executed a word. It is also used in other contexts, but
+this is outside of the scope of this primer.
+
+# Conditional execution
+
+Code can be executed conditionally with if/else/then. "if" pops
+PS and checks whether it's nonzero. If it is, it does nothing.
+If it's zero, it jumps to the following "else" or the following
+"then". Similarly, when "else" is encountered in the context of
+a nonzero "if", we jump to the following "then".
+
+Because ifs involve jumping, they only work inside word defin-
+itions. You can't use if directly in the interpreter loop.
+
+Example usage:
+
+: foo if 42 else 43 then . ;
+0 foo \ prints 43
+1 foo \ prints 42
+
+# Loops
+
+Loops work a bit like conditionals, and there's 3 forms:
+
+begin..again --> Loop forever
+begin..until --> Loop conditionally
+X for..next --> Loop X times
+
+"until" works exactly like "if", but instead of jumping forward
+to "then", it jumps backward to "begin".
+
+"for" is the equivalent of ">r begin"
+
+"next" decreases RS' TOS by one and if zero isn't reached, jumps
+backward to "for".
+
+You can use the word "leave" to exit a "next" loop early. When
+used, it will finish the current loop and then stop looping when
+"next" is reached.
+
+: foo 5 for r@ 3 = if leave then r@ . next ;
+foo \ prints 543
+
+# Exiting early
+
+You can leave a word early with "exit":
+
+: foo 42 . exit 43 . ;
+foo \ only 42 is printed
+
+When you're inside a begin..again or begin..until, you can use
+"exit" just fine, but if you're inside a "next" loop, you have
+to drop RS' TOS with r~ before calling "exit" or else you have a
+messed up Return Stack and all hell breaks loose.
+
+# Memory access and HERE
+
+We can read and write to arbitrary memory address with @ and !
+(c@ and c! for bytes). For example, "1234 $8000 !" writes the
+word 1234 to address $8000. We call the @ and ! actions
+"fetch" and "store".
+
+There's a 3rd kind of memory-related action: "," (write). This
+action stores value on PS at a special "HERE" pointer and then
+increases HERE by 2 (there's also "c," for bytes).
+
+HERE is initialized at the first writable address in RAM, often
+directly following the latest entry in the dictionary. Explain-
+ing the "culture of HERE" is beyond the scope of this primer,
+but know that it's a very important concept in Forth. For examp-
+le, new word definitions are written to HERE.
+
+# Linking names to addresses
+
+Accessing addresses only with numbers can become confusing, us
+humans often need names associated to them. You can do so with
+"create". This word creates a dictionary entry of the "cell"
+type. This word, when called, will put its own address on the
+stack. You are responsible for allocating a proper amount of
+memory to it.
+
+For example, if you want to store a single 16-bit number, you
+would do "create foo 2 allot". You can then do stuff like
+"42 foo ! foo @ . ( prints 42 )"
+
+Cells can store more than just a number, they can hold
+structures and array. Simply ALLOT appropriately and then use
+this memory as you wish.
+
+There is "cell" which always yields 2 and "cells ( n -- n )"
+which multiplies "n" by 2. This allows to allocate more clearly,
+for example "create foo cell allot" or "create bar 4 cells
+allot".
+
+Another way to link a name to an address is value. The "value"
+word takes a value parameter and creates a special "value" type
+word. This word type always allocates 2 bytes of memory and when
+called, instead of spitting its address, spits the 16-bit value
+at that address.
+
+You can change the number associated with a value with "to".
+Example:
+
+42 value foo foo . ( prints 42 )
+43 to foo foo . ( prints 43 )
+
+Values make more readable code in cases where the value is more
+often read than written. Also, reading it is faster (writing is
+slower). Compactness is the same.
+
+Multiple values can be declared at once with "values" and
+"consts":
+
+3 values foo bar baz \ all values are 0
+3 consts 1 foo 2 bar 3 baz \ foo=1 bar=2 baz=3
+
+# The semantics of "to"
+
+The word "to" as described above might seem a bit like magic
+and requires further explanation. The mechanism through which
+the call to the value "foo", which normally reads the value
+becomes a write is special.
+
+"to" does one very simple thing: it sets the "TO?" flag in
+SYSVARS (see doc/impl). Then, the code that handles value calls
+(which is a core routine, see doc/impl) checks whether the flag
+is set. If it's not, it's a regular read. If it is, it resets
+the flag and does a write.
+
+Because the TO? flag is global, the call to "to" has to be very
+close to its target, ideally adjacent. If you call other words
+in between, the value of the TO? flag will mess things up and
+transform reads into writes, writes into reads, hell freezes
+over, cats and dogs living together. Be responsible with "to"
+placement.
+
+# doer and does>
+
+"doer" and "does>" allow to bind data and behavior together in a
+space-efficient way. Those words are called "does words" and,
+when created, behave a bit like a cell (a create word): it
+pushes its own address to PS. But then, instead of just
+continuing along, it executes its does> instructions. Example:
+
+: printer doer , does> @ . ;
+42 printer foo
+43 printer bar
+foo \ prints 42
+bar \ prints 43
+
+"doer" creates a special "does" entry and "does>" tells the
+latest doer entry where to jump for its behavior. The instruc-
+tions following does> are not executed when the doer is defined,
+only when it's executed. This execution always happen in a
+context where the doer's address in on PS. This is why, in the
+example above, we call "@" before ".".
+
+# Immediate
+
+So far, we've covered the "cute and cuddly" parts of the
+language. However, that's not what makes Forth powerful. Forth
+becomes mind-bending when we throw IMMEDIATE into the mix.
+
+A word can be declared immediate thus:
+
+: foo ; immediate
+
+That is, when the immediate word is executed, it makes the
+latest defined word immediate.
+
+An immediate word, when used in a definition, is executed
+immediately instead of being compiled. This seemingly simple
+mechanism (and it *is* simple) has very wide implications.
+
+For example, The words "(" and ")" are comment indicators. In
+the definition:
+
+: foo 42 ( this is a comment ) . ;
+
+The word "(" is read like any other word. What prevents us from
+trying to compile "this" and generate an error because the word
+doesn't exist? Because "(" is immediate. Then, that word reads
+from input stream until a ")" is met, and then returns to word
+compilation.
+
+Words like "if" and "begin" are all regular Forth words, but
+their "power" come from the fact that they're immediate.
+
+Starting Forth by Leo Brodie explains all of this in detail.
+Read this if you can. If you can't, well, let this sink in for
+a while, browse the dictionary (doc/dict) and try to understand
+why this or that word is immediate. Good luck!
+
+# Memory map
+
+Memory is filled by 4 main zones:
+
+1. Boot binary: the binary that has to be present in memory at
+   boot time. When it is, jump to the first address of this bin-
+   ary to boot Collapse OS. This code is designed to be able to
+   run from ROM: nothing is ever written there.
+2. Work RAM: As much space as possible is given to this zone.
+   This is where HERE begins.
+3. SYSVARS: Hardcoded memory offsets where the core system
+   stores its things. It's $80 bytes in size. If drivers need
+   more memory, it's bigger. See doc/impl for details.
+4. PS+RS: Typically around $100 bytes in size. Their implemen-
+   tation is entirely CPU-specific. Overflows aren't checked,
+   PS underflows are checked through "stack?".
+
+Unless there are machine-related constraints, these zones are
+placed in that order (boot binary at addr 0, PSP at $ffff).
+
+# Strings and lines
+
+Strings in Collapse OS are an array of characters in memory
+with the first byte of that array being the length of the
+string. There are no termination.
+
+When a word signature mentions "s", it's an address pointing to
+the first byte of that string.
+
+When we refer to a "line", it's a string that is of size LNSZ,
+a constant that is always 64. It corresponds to the size of the
+input buffer and to the size of a line in a Block (16 lines per
+block).
+
+Because those lines have a fixed length, we sometimes want to
+know the length of the actual content in it (for example, to
+emit it). When we do so, for example in "lnlen", we go through
+the whole line and check when is that last visible character,
+that is, the last one that is higher than $20 (space). That's
+where our line ends.
+
+We don't use any termination character for lines, it's too
+messy.  Blocks might not have them, and when we want to display
+lines in a visual mode (that is, always the full 64 characters
+on the screen), we need complicated CR handling. It's simpler
+to fill lines in blocks with spaces all the way.
+
+# Branching
+
+Branching in Collapse OS is limited to 8-bit. This represents
+64 word references (or a bit less if there are literals and
+branches) forward or backward. While this might seem a bit tight
+at first, having this limit saves us a non-negligible amount of
+resource usage.
+
+The reasoning behind this intentional limit is that huge
+branches are generally an indicator that a logic ought to be
+simplified. So here's one more constraint for you to help you
+towards simplicity.
+
+When you compile branches, if you go over that limit, you'll
+get a "br ovfl" (branch overflow) error.
+
+# Interpreter and I/Os
+
+Collapse OS' main I/O loop is line-based. "interpret" calls
+"word" which then iterates over the current "input buffer"
+(INBUF) for characters to eat up. That input buffer is a 64
+characters space in SYSVARS where typed characters are buffered
+from "key", but that's not always the case.
+
+During a "load", the input buffer pointer changes and points to
+one of the 16 lines of the BLK buffer. "word" eats it up just
+the same, but it ain't coming from "key" anymore. When the 16th
+line is read, we come back to the regular program.
+
+Back to "key". It always yields a characters, which means it
+blocks until it yields. It loops over "key?" which returns a
+flag telling us whether a key is pressed, and if there is one,
+the character itself.
+
+"key?" is an alias which points to a driver implementing this
+routine. It can also be overridden at runtime for nice tricks.
+For example, if you want to control your computer from RS-232,
+you can do "' rx<? KEY? !".
+
+Interpreter output is unbuffered and only has "emit". This word
+can also be overriden, mostly as a companion to the *raison
+d'etre* of your "key?" override.
+
+# Interpreting and compiling words
+
+When the interpret loop reads from INBUF, it separates its input
+in words which yields chunks of characters.
+
+Whenever we have a word, we begin by checking if it's a number
+literal with "parse". If yes, push it on the stack and get next
+word. Otherwise, check if the word exists in the dictionary.
+If yes, execute. Otherwise, it's a "word not found" error.
+
+Compiling words with ":" follows the same logic, except that
+instead of putting literals on the stack, it compiles them with
+"litn" and instead of executing words, it writes their address
+down (except immediates, which are executed).
+
+This "parse then find" order is the opposite of many traditional
+Forths, which generally go the other way around. This is because
+traditional forths often don't have hexadecimal prefixes for
+their literals and the "parse then find" order would prevent the
+creation of words like "face", "beef", cafe", etc. This is not
+a problem we have in Collapse OS.
+
+"parse then find" is faster because it saves us a dictionary
+lookup when parsing a literal.
+
+# Word Not Found override
+
+It's possible to override the "word not found" behavior and
+instead execute some kind of "catch all" word. You do so through
+the '(wnf) sysvars.
+
+By default, this variable points to (wnf), which simply spits
+out the "word not found" error. You can make this variable point
+to any word with a ( -- ) signature.
+
+To access the word currently being parsed, use CURWORD.
+
+# Native words
+
+Native words are regular forth words wrapping binary executable
+code.
+
+With the proper assembler loaded in memory, you can compile
+words that directly execute native code. Here's a z80 example:
+
+code foo BC push, BC 42 ld, ;code
+
+See doc/asm/intro for more details.
+
+# Aliases
+
+Sometimes, often for fulfilling protocols, we want to "plug" a
+word into another, for example, we want FOO and BAR to mean the
+same thing. Of course, you can do ": BAR FOO ;", but this
+represents an annoying overhead, both in terms of speed and RS
+space. In this case, you'll want to create an alias like this:
+
+ALIAS FOO BAR
+
+Which means "make BAR point to FOO". This generates a native
+jump which is pretty much as low overhead as it can be.
+
+Those aliases are read-only. Once created, they can't be
+changed. If you want to use a word as an indirection, you need
+to use execute like this:
+
+: FOO ;
+' FOO VALUE 'BAR
+: BAR 'BAR EXECUTE ; \ BAR executes FOO
+: BAZ ;
+' BAZ TO 'BAR \ BAR EXECUTES BAZ
+
+# System aliases
+
+Core words have 2 special aliases, which jump to an address
+determined in their corresponding SYSVAR. These are "emit" and
+"key?".
+
+Each of these system aliases have their corresponding SYSVAR
+address constant, which is the same name in uppercase letters.
+You go through them to modify where the alias jumps to. Example:
+
+' RX<? KEY? !
+' TX> EMIT !
+
+# System values
+
+Most SYSVARS described in doc/impl have a constant corresponding
+to their absolute address. For example, you get the value of
+"NL" with "NL @" and set it with "NL !".
+
+Some SYSVARS are very often used and necessitate faster access.
+These SYSVARS are split in 2 words: the accessor and the
+address. For example, we have "here" and "HERE". "here" returns
+"HERE"'s value directly and "HERE" returns "HERE"'s address.
+Therefore, you get HERE with "here" and set it with "HERE !".
+
+The list of such SYSVARS is:
+
+HERE CURRENT IN( IN>
+
+# The A register
+
+The A register is an out of stack temporary value that often
+helps minimize stack juggling. Its location is arch-dependent,
+but it's often in SYSVARS. On register-rich CPUs, it's a
+register.
+
+Access to it is fast, but its downside is that words using it
+must be careful not to use words that also use the A register.
+doc/dict indicate such words with *A*.
+
+# Dealing with performance bottlenecks
+
+Because Collapse OS runs on multiple CPUs, dealing with bottle-
+necks is a bit tricky. We want to avoid, in CPU-independant
+application code (VE, ME, assemblers), to maintain bottleneck
+words in all supported CPUs.
+
+The way we deal with this situation is by declaring bottleneck
+words as "back-overridable" with the word ?: (instead of :).
+
+This word creates a new word only if the specified name doesn't
+already exist in the dictionary. With this, what you can do is
+optionally load "speedup words" for your arch, and then load
+your app. Your sped-up version will superseed the default, slow
+version and your bottlenecks will be faster. Example:
+
+\ My super app
+?: slowstuff ( ... ) ;
+: myapp ( ... ) slowstuff ( ... ) ;
+
+\ My arch-specific speedup
+code slowstuff ( ... ) ;code
+
+If you load the app without loading speedups, "slowstuff" will
+be slow, but will work under all CPUs. If you load your speedups
+first, then the forth version of "slowstuff" will never be
+created and "myapp" will refer to the fast "slowstuff" instead.
+
+# Mass storage through disk blocks
+
+Collapse OS can access mass storage through its BLK subsystem.
+See doc/blk for more information.
+
+It is through this subsystem that applications are loaded, so
+you'll want to look at doc/blk on this subject too.
+
+# Useful little words
+
+In Collapse OS, we try to include as few words as possible into
+the cross-compiled core, making it minimally functional for
+reaching its design goals.
+
+However, in its source code, it has a section of what is called
+"Useful little words" at B1-B9 and you'll probably want to load
+some of them quite regularly because they make the system more
+usable.
+
+# Contexts
+
+B3 provides the word "context" allowing multiple dictionaries to
+exist concurrently. This allows you to develop applications
+without having to worry too much about name clashes because
+those names exist in separate namespaces.
+
+A context is created with a name like this:
+
+context foo \ creates context "foo"
+
+When a context is created, it is "branched off" CURRENT as it
+was at the moment the context was created.
+
+To activate a context, call its name (in the case, "foo"). This
+will do two things:
+
+1. Save CURRENT in the previously active context.
+2. Restore CURRENT to where it was the last time "foo" was
+   active (or created).
+
+Note that creating a context doesn't automatically activate it.
+
+# Code generation
+
+The kernel has 2 words that generate native code and although
+they're there as support for define words (:, value, etc.), they
+can be used for interesting thing.
+
+These words are jmpi! calli! and have the same signature of
+"n a -- len".
+
+For example, let's say that you're debugging the kernel and want
+to ruthlessly patch a word with another behavior you're trying
+out. You could do:
+
+' newword ' wordtopatch jmpi! drop
+
+And poof! wordtopatch is now an alias to newword.

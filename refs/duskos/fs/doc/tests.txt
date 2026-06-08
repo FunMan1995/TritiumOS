@@ -1,0 +1,97 @@
+# Automated tests
+
+The directory "tests" contains automated tests for the whole system. Coverage
+is pretty good. As a general rule, it mirrors Dusk's directory structure. For
+example, [tests/lib/str.fs] tests [lib/str].
+
+Each test file can be loaded independently and will run its tests. For example,
+to run [lib/str] tests, you do "f<< tests/lib/str.fs".
+
+Tests are a series of assertions. As soon as a test fails, an error message is
+spit and testing stops.
+
+You can run all tests with "f<< tests/all.fs". Some tests do pretty wonky stuff
+and after having run the suite, the system might be in a weird state. You might
+want to reboot.
+
+## Test harness
+
+Tests use helper words from [tests/harness.fs]. Look at the code to see what's
+available. But it's mostly about assertion words. For example "#true ( f -- )"
+asserts that f is nonzero. "#eq ( n n -- )" assert that numbers are equal. etc.
+
+There are also PS imbalance detection mechanisms. For these mechanisms to work,
+tests need to happen inside "testbegin" and "testend". This is why all test
+units include these words. You can assert a neutral PS with "scntneutral#"
+
+To have an idea of which tests fail, tests units are littered with "\test"
+invocation, which simply print a running counter and then the rest of the line.
+"\test" implicitly runs "scntneutral#", which means that you can't carry PS
+element across tests. Store them in constants of values if needed.
+
+### API
+
+testbegin ( -- )
+  Begin being in "test mode".
+
+scntneutral# ( -- )
+  Asserts that current PS level is the same as when "testbegin" was called,
+  errors out otherwise.
+
+testend ( -- )
+  Stop being in "test mode". Implicit "scntneutral#" call.
+
+\test ( "..." -- )
+  Mark new test. Reads the rest of the line as a comment, printing it along with
+  a test number. Implicit "scntneutral#" call.
+
+#true ( f -- )
+  Error if f=0.
+
+#eq ( n n -- )
+  Error if numbers are different
+
+#s= ( str str -- )
+  Error if strings are different.
+
+#s[]= ( str a u -- )
+  Error if "str" is different from range "a u".
+
+#hal= ( op op -- )
+  Errors if HAL operands are different. This unslots HAL number bank, so even if
+  the slot encoded in the operand is different, if the number in the slot is the
+  same, the operands are considered equal.
+
+exec>str ( "name" -- str )
+  Execute the following word in the input stream and capture what it's emitting,
+  storing it into a string, which is then yielded. Max $ff bytes. Example:
+
+  42 exec>str . stype \ prints 42
+
+expectabort ( "name" -- )
+  Execute the following word in the input stream and expect it to abort,
+  "capturing" that abort and continuing execution as if it didn't happen.
+
+  Errors out if no abort occurs. Don't use inside "exec<" [io/stream], it's not
+  pretty.
+
+rundir<< ( "path" -- )
+  Lookup specified path and recursively run interpret all files ending with
+  ".fs" in it.
+
+expectevent ( xt -- )
+  Replace root context of [lib/coop] with a special context that *doesn't*
+  dispatch any event, but counts them. Then, call specified XT and then restore
+  the previous root context.
+
+  Errors out if it didn't receive (and inhibit) exactly one event. That event
+  will be the one "curevent" is currenly pointed at when this word returns.
+
+## Graphical test harness
+
+The unit at [tests/grh.fs] contains utilities to test graphical buffers. This
+harness is mostly about describing an expected buffer using text. To have text
+of manageable sizes, most buffers we test with will be 16x16 pixels. Each pixel
+is a 4-bit number described in hexadecimal notation, one text line per graphical
+line. Color encoding larger than 4-bit can be tested using this harness, but
+colors tested have to fit in 4-bit.

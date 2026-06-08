@@ -1,0 +1,42 @@
+# Double Numbers
+
+This unit implements words related to handling Forth double numbers, these are,
+words that are 2 cells wide.
+
+In other Forths the signature of such words will often take a "d" parameter, in
+Dusk, to emphasize their double sized nature, these will be written as "d ~"
+instead, where ~ is the higher part of the number.
+When talking about them the pair "dN ~" will still be written dN.
+
+## API
+
+dswap ( d1 ~ d2 ~ -- d2 ~ d1 ~ )
+  Swap two double numbers, the equivalent of standard swap.
+
+dnip ( d1 ~ d2 ~ -- d2 ~ )
+  Remove the second highest double number from the stack.
+
+d+ ( d1 ~ d2 ~ -- d ~ )
+  Compute the sum of d1 with d2, taking care of carry across word boundaries.
+
+d- ( d1 ~ d2 ~ -- d ~ )
+  Return the substraction of d1 by d2, this function also handles carries.
+
+dneg ( d ~ -- d ~ )
+  Negate the double number d1 returning d2.
+
+n>d ( n -- d ~ )
+  Convert a standard number to a double number.
+
+d>n ( d ~ -- n )
+  Convert a double number to a standard number, this is currently an alias to
+  drop.
+
+d2/ ( d ~ -- d ~ )
+  Divide the double number by 2, equivalent to shifting by 1 bit to the right.
+
+d2* ( d ~ -- d ~ )
+  Multiply the double number by 2, equivalent to shifting by 1 bit to the left.
+
+d= ( d1 ~ d2 ~ -- f )
+  Test for equality between d1 and d2, returning true if they are equal.

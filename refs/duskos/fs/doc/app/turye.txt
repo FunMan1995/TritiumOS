@@ -1,0 +1,45 @@
+# Turye -- A UF2 font editor
+
+This unit wraps [app/turye.tal], which is a uxn+varvara [emul/uxn]
+[emul/varvara] application, is designed to edit UF2 [gr/font/uf2] fonts. On the
+system, those fonts live in "data/font".
+
+The idea is that you modify individual glyphs by first selecting them on the
+character matrix, then left-click on empty space to add a dot or right-click on
+a dot to remove it.
+
+A particularity of UF2 is that it's easy to edit "raw". The raw contents of the
+UF2 file is present in memory. The memory range of the currently being edited
+is exposed as "turye[] ( -- a u )". You can read and write to that range as you
+wish.
+
+There are the convenience words "turye<<" and "turyesave" that allow a quick
+load/edit/save pattern.
+
+Upon loading the unit, it contains the contents of "data/font/sans12.uf2".
+
+## Example usage
+
+needs gr/turye
+turye<< data/font/term12.uf2
+\ GUI shows up, click around, then press ESC to quit
+turysave
+
+## API
+
+turye[] ( -- a u )
+  Yields the range of the UF2 data that Turye edits.
+
+  This range is only valid after turye has been running, or right after it
+  stopped, before another uxn app runs. In other words, this is a window
+  directly in uxn memory
+
+turye<< ( "path" -- )
+  Load "path" into turye, then launch turye through a varvara runloop.
+
+turye ( -- )
+  Shortcut for f<< data/font/sans12.uf2.
+
+turyesave ( -- )
+  Write the contents of turye to the file path last used with "turye<<", or to
+  "data/font/sans12.uf2" if there wasn't such call.

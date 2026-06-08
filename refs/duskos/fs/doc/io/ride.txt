@@ -1,0 +1,34 @@
+# Riding an I/O stream
+
+We call "riding" the act of hooking the console, that is, "rtype" and "key",
+to a specified I/O stream, then loop until a stopping condition occurs:
+
+1. "key" yields the CTRL+Q key
+2. The ASCII EOT ($04) character is read from the stream
+
+The unit at [io/ride.fs] provides "ride ( stream -- )" which does that. This is
+mostly for being used on a communication line.
+
+## Example usage
+
+needs drv/pc/com io/ride
+com1 ride
+\ Typed stuff goes over the wire, what comes from the wire goes on screen.
+
+## API
+
+### Values
+
+autoLF (default 0)
+  When nonzero, emits a LF whenever it receives a CR, after it.
+
+### Words
+
+ride ( stream -- )
+  Repeatedly read stream for input until stopping condition described above
+  occurs. When there is input, call "rtype" on it.
+
+  In parallel poll "?key". When there's a key typed, write it to stream.
+
+  If your target stream uses CR-only as line terminators, you should enable
+  the autoLF flag if you want to have proper newlines.

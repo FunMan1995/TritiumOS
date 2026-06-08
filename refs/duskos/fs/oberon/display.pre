@@ -1,0 +1,230 @@
+needs hal/vreg gr/color gr/damage gr/buf gr/rdwr gr/blt
+
+4BPPL PALETTE screen Pixbuf.width screen Pixbuf.height newpixbuf const obscreen
+obscreen ?allotbuf
+
+variable mydmg
+
+:~ >screencolor , ;
+here#
+  rgbwhite ~   rgbred ~    rgbgreen ~ rgbblue ~
+  rgbmagenta ~ rgbyellow ~ rgbcyan ~  $aa0000 ~
+  $009a00 ~    $00009a ~   $0acbf3 ~  $008282 ~
+  $8a8a8a ~    $bebebe ~   $dfdfdf ~  rgbblack ~
+obscreen to Pixbuf.palette
+
+obcode GetDisplayParams (VAR Base, Palette, Width, Height: INTEGER);
+compile]
+  obscreen Pixbuf.buffer swap !
+  obscreen Pixbuf.palette swap !
+  obscreen Pixbuf.width swap !
+  obscreen Pixbuf.height swap ! ;
+: Damage ( x y w h -- ) damage mydmg @ damage+ mydmg ! ;
+annotatelast ( INTEGER INTEGER INTEGER INTEGER -- )
+
+: fulldamage 0 0 obscreen Pixbuf.width obscreen Pixbuf.height Damage ;
+
+create arrow map< wbe,
+  $0F0F $0060 $0070 $0038 $001C $000E $0007 $8003 \
+  $C101 $E300 $7700 $3F00 $1F00 $3F00 $7F00 $FF00
+create star map< wbe,
+  $0F0F $8000 $8220 $8410 $8808 $9004 $A002 $C001 \
+  $7F7F $C001 $A002 $9004 $8808 $8410 $8220 $8000
+create hook map< wbe,
+  $0C0C $070F $8707 $C703 $E701 $F700 $7F00 $3F00 $1F00 $0F00 $0700 $0300 $0100
+create updown map< wbe,
+  $080E $183C $7EFF $1818 $1818 $1818 $FF7E $3C18
+create block map< wbe,
+  $0808 $FFFF $C3C3 $C3C3 $FFFF
+create cross map< wbe,
+  $0F0F $0140 $0220 $0410 $0808 $1004 $2002 $4001 \
+  $0000 $4001 $2002 $1004 $0808 $0410 $0220 $0140
+create grey map< wbe,
+  $0802 $0000 $0F0F $0F0F $F0F0 $F0F0
+
+obcode GetSysPatterns (VAR arrow, star, hook, ud, blk, cross, grey: INTEGER);
+compile]
+  arrow swap ! star swap ! hook swap ! updown swap !
+  block swap ! cross swap ! grey swap ! ;
+
+\ all routines below have the same PS/RS layout
+: y) PSP) 12 +) ;
+: x) PSP) 8 +) ;
+: patadr) PSP) 4 +) ;
+: col) PSP) ;
+: clipx) RSP) 16 +) ;
+: patw) RSP) 12 +) ;
+: path) RSP) 8 +) ;
+: runh) RSP) 4 +) ;
+: runw) RSP) ;
+
+: prelude, ( bitwidth -- )
+  dup, 0 i) @, RSP) -!, \ clipx)
+  x) @, 0 i) signed) <) if,
+    x) dir) -, 0 i) swap-,
+    swap ( bitwidth ) 1- i) &, RSP) !, [compile] then
+  patadr) @, W) 8b) S>) @+, RSP) S>) -!, \ patw)
+  W) 8b) S>) @+, RSP) S>) -!, patadr) !, \ path)
+  0 i) S>) =) if, 12 rs+, 16 ps+, drop, exit, [compile] then
+  RSP) S>) -!, \ runh)
+  -4 rs+, ; \ runw)
+
+: postlude,
+  y) @, x) @!, y) !, drop,
+  patw) @, PSP) !,
+  path) @,
+  20 rs+, ['] Damage bbr, ;
+
+: ylooppre, ( -- loopbr condbr )
+  [compile] begin
+    obscreen i) A>) @, y) @, runh) +, 1 i) -, x) S>) @,
+    xyaddr, 0 i) <>) if,
+      x) R1>) @, \ R1=xpos
+      3 inv i) &,
+      R3) !, 0 i) S>) @, \ R3=dstaddr S=outputbuf
+      patw) @, runw) !,
+      clipx) @, 0 i) <>) if, runw) dir) -, W) &) A>) <<, [compile] then ;
+
+: ylooppost, ( loopbr condbr -- ) [compile] then -1 runh) +n, ?brnz, ;
+
+\ optx sig: R3=dstaddr S=4bitpattern R1 can be clobbered
+: xloop, ( opxt -- )
+  >r [compile] begin \ V1=opxt
+    4 i) S>) >>,
+    1 A) &) &nf, ifnz, $10000000 i) S>) |, [compile] then
+    1 i) A>) >>,
+    1 i) R1>) +, 7 i) R1>) &, ifz,
+      r@ execute 4 R3) +n, 0 i) R1>) @, [compile] then
+    -1 runw) +n, ?brnz,
+  0 i) R1>) <>) if,
+    8 i) R1>) swap-, 2 i) R1>) <<, R1) &) S>) >>,
+    r> execute 0 i) R1>) @, [compile] then ;
+
+: read8, \ A=inputbuf
+  runh) A>) @, patadr) A>) +, 1 i) A>) -, A) 8b) A>) @, ;
+
+: read16,
+  runh) A>) @, 1 i) A>) <<, patadr) A>) +, 2 i) A>) -, A) 16b) A>) le@, ;
+
+: read24,
+  runh) @, A) &) !, 1 i) <<, W) &) A>) +, patadr) A>) +, 3 i) A>) -,
+  A) A>) le@, $ffffff i) A>) &, ;
+
+: read32,
+  runh) A>) @, 2 i) A>) <<, patadr) A>) +, 4 i) A>) -, A) A>) le@, ;
+
+: invert, col) S>) *, R3) @, W) dir) S>) ^, ;
+
+: drawroutine, ( drawxt readxt bitwidth -- )
+  prelude,
+  ylooppre,
+    rot execute
+    rot xloop,
+  ylooppost,
+  postlude, ;
+
+code InvertPattern8 ' invert, ' read8, 8 drawroutine,
+code InvertPattern16 ' invert, ' read16, 16 drawroutine,
+code InvertPattern24 ' invert, ' read24, 24 drawroutine,
+
+obcode InvertPattern (col, patadr, x, y: INTEGER);
+  PSP) A>) @, A) 8b) S>) @, \ S=patwidth
+  ' InvertPattern8 8 i) S>) <=) ?br,
+  ' InvertPattern16 16 i) S>) <=) ?br,
+  ' InvertPattern24 24 i) S>) <=) ?br,
+  ' invert, ' read32, 32 drawroutine,
+
+: paint,
+  S) &) @, $11111111 i) ^, $f i) *, col) S>) *,
+  R3) R0>) @, R0) &, S) &) |, R0) !, ;
+
+code PaintPattern8 ' paint, ' read8, 8 drawroutine,
+code PaintPattern16 ' paint, ' read16, 16 drawroutine,
+code PaintPattern24 ' paint, ' read24, 24 drawroutine,
+
+obcode PaintPattern (col, patadr, x, y: INTEGER);
+  PSP) A>) @, A) 8b) S>) @, \ S=patwidth
+  ' PaintPattern8 8 i) S>) <=) ?br,
+  ' PaintPattern16 16 i) S>) <=) ?br,
+  ' PaintPattern24 24 i) S>) <=) ?br,
+  ' paint, ' read32, 32 drawroutine,
+
+\ all routines below have the same PS/RS layout
+: h) PSP) 16 +) ;
+: w) PSP) 12 +) ;
+: y) PSP) 8 +) ;
+: x) PSP) 4 +) ;
+: fill) PSP) ;
+: runh) RSP) 4 +) ;
+: runw) RSP) ;
+
+: bailout, 20 ps+, drop, exit, ;
+
+\ partialxt: R3=dstaddr S=fill) A=mask
+\ fullxt:    R3=dstaddr S=fill)
+: body, ( partialxt fullxt -- )
+  2>r $11111111 i) *, dup, \ W=junk V1=partialxt V2=fullxt
+  w) @, 0 i) signed) <=) if, bailout, [compile] then
+  h) @, 0 i) signed) <=) if, bailout, [compile] then
+  x) @, 0 i) signed) <) if, x) dir) -, w) dir) +, [compile] then
+  h) @, RSP) -!, \ runh)
+  -4 rs+, \ runw)
+  [compile] begin
+    obscreen i) A>) @, y) @, runh) +, 1 i) -, x) S>) @,
+    xyaddr, 0 i) <>) if,
+      3 inv i) &, R3) !, \ R3=dstaddr
+      w) @, runw) !,
+      x) @, 7 i) &, 0 i) <>) if,
+        8 i) swap-, runw) dir) -,
+        -1 i) A>) @, \ A=mask
+        2 i) <<, W) &) A>) <<, W) &) A>) >>,
+        runw) @, 0 i) signed) <) if,
+          0 i) swap-, runw) dir) +,
+          -1 i) S>) @,
+          8 i) swap-, 2 i) <<, W) &) S>) >>, W) &) S>) <<,
+          S) &) A>) |, [compile] then
+        fill) S>) @,
+        V1 execute 4 R3) +n, [compile] then
+      fill) S>) @,
+      [compile] begin
+        runw) @, 8 i) signed) >=) if, to L1
+        V2 execute 4 R3) +n, -8 runw) +n,
+        [compile] again L1 [compile] then
+      runw) @, 0 i) signed) >) if,
+        -1 i) A>) @, \ A=mask
+        2 i) <<, W) &) A>) >>, W) &) A>) <<,
+        V1 execute
+      [compile] then
+    [compile] then -1 runh) +n, ?brnz,
+  \ We want P+16=x P+12=y P+8=w P+4=h
+  x) @, h) @!, x) !,
+  y) @, w) @!, y) !, 2drop,
+  8 rs+, ['] Damage bbr, 2rdrop ;
+
+: partial, \ R3=dstaddr S=fill A=dst mask
+  R3) @, W) R0>) @, A) &) R0>) &,
+  -1 i) A>) ^, A) &) S>) &,
+  R0) &) S>) |, W) S>) !, ;
+
+: full, \ R3=dstaddr S=fill
+  R3) @, W) S>) !, ;
+
+obcode FillBlock (col, x, y, w, h: INTEGER);
+  ' partial, ' full, body,
+
+: partial, \ R3=dstaddr S=fill A=dst mask
+  -1 i) A>) ^, A) &) S>) &,
+  R3) @, W) dir) S>) ^, ;
+
+: full, \ R3=dstaddr S=fill
+  R3) @, W) dir) S>) ^, ;
+
+obcode InvertBlock (col, x, y, w, h: INTEGER);
+  ' partial, ' full, body,
+
+: drawbuf ( -- )
+  0 mydmg @! ?dup if
+    damagerect obscreen
+    [ dup, PSP) 16 +) @, dup, PSP) 16 +) @, ] ( x y w h src x y )
+    screen movepixels then ;
+annotatelast ( -- )

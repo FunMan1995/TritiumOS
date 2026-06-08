@@ -1,0 +1,109 @@
+# Mouse subsystem
+
+The mouse subsystem periodically polls a mouse driver for movement and clicks
+and maintains its position in a two dimensional environment.
+
+The mouse subsystem defines a Mouse structure as well as a global "mouse"
+value holding the active mouse. During initialization, what you'll want to do is
+create a mouse struct from the driver and set the "mouse" value to it.
+
+## Divisor
+
+The resolution of the mouse is sometimes a bit too sensitivefor convenient use.
+We sometimes wish that one "unit" of the mouse mouvement correspond to less than
+one "unit" (pixel or otherwise) on the screen.
+
+To this end, we can apply a divisor to those units. That's what the divisor
+field is about.
+
+## Mouse events
+
+This unit defines the following [lib/coop] event:
+
+MOUSEMOVE  ( arg1=x arg2=y arg3=buttons arg4=inhibit cursor? )
+  Dispatches when mouse x/y (not rawx/rawy) position changes compared to last
+  polling.
+
+  arg4 is a reverse parameter. It's always zero and can be set to 1 to inhibit
+  the drawing of the cursor that would normally occur.
+
+MOUSECLICK ( arg1=x arg2=y arg3=buttons arg4=oldbuttons )
+  Dispatched when button state of the global mouse value changes.
+
+  "oldbuttons" is the value of "buttons" right before mouse polling occured.
+
+This unit installs a generator into [lib/coop] that repeatedly polls the global
+"mouse" value, comparing its "buttons" field with the previous one, dispatching
+MOUSECLICK when they differ.
+
+## API
+
+### Structures
+
+struct Mouse
+  fields rawx rawy xmax ymax divisor buttons
+  xt update ( mouse -- )
+
+rawx    Current X pos before divisor is applied
+rawy    Current Y pos before divisor is applied
+xmax    Max rawx value
+ymax    Max rawy value
+divisor A divisor to apply to movement to make it go slower
+buttons Bitmask of buttons that are currently pressed
+
+update ( mouse -- )
+  Poll the mouse and update the structure accordingly.
+
+### Constants
+
+BTN_LEFT   $01
+BTN_RIGHT  $02
+BTN_MIDDLE $04
+
+### Values
+
+mouse
+  Points to the main mouse of the system. By default, points to a dummy mouse
+  with a noop update.
+
+## Words
+
+x ( mouse -- n )
+  X with divisor applied
+
+y ( mouse -- n )
+  Y with divisor applied
+
+xy ( mouse -- x y )
+  Shortcut for both "x" and "y".
+
+moveto ( rawx rawy mouse -- )
+  Set rawx and rawy to mouse fields of the same name, ensuring that the field
+  doesn't go negative or exceeds its maximum value.
+
+moveby ( rawx rawy mouse -- )
+  Add rawx and rawy to mouse fields of the same name, ensuring that the field
+  doesn't go negative or exceeds its maximum value.
+
+configuremouse ( screenwidth screenheight divisor mouse -- )
+  Configure mouse with specified parameters. Screen width and height end up,
+  with 1 subtracted, in xmax and ymax.
+
+evxy ( event -- x y )
+  Shortcut for "bi Event.arg1 | Event.arg2" on a MOUSECLICK or MOUSEMOVE event.
+
+Ldown?
+Rdown?
+Mdown?
+Lup?
+Rup?
+Mup?   ( event -- f )
+  Helpers that analyze a MOUSCLICK event and yield when the Left, Right or
+  Middle button went up (from 0 to 1) or down (from 1 to 0).
+
+drawmousecursor ( -- )
+  Whenever this unit dispatches a MOUSEMOVE event, if the inhibit flag isn't
+  set, a call to this word is made afterwards.
+
+  This word is an alias, initially targeting "noop". If you want to draw a mouse
+  cursor, realias this word.

@@ -1,0 +1,95 @@
+# Word signatures and name conventions
+
+Word name and documented signatures follow an elaborate convention, documented
+here.
+
+You might rather be looking the the concept of machine-readable signatures
+attached to words for the purpose of compiling. Dusk has those too, but they're
+documented at [comp/sig]. This page is only about documentation convention.
+
+A signature is a ( ) style comment directly following the word name. Its general
+format is "( <PS before> -- <PS after> )", which is consistent with general
+Forth convention.
+
+Rightmost is top of stack (TOS). For example, in "a b -- c d", b is TOS before,
+d is TOS after.
+
+Some words have a variable stack signature, most often in pair with a flag.
+These are indicated with "?" to tell that the argument might not be there. For
+example, "-- n? f" means that "n" might or might not be there depending on the
+value of "f".
+
+Most of the time, those variable elements are controlled by a boolean "f" and
+the elements are present when "f" is nonzero, absent otherwise. If things are
+different, the word's description will give the details.
+
+Some elements are surrounded in "" quotes, for example ""name" --". This
+indicates an element that isn't read from PS, but from the input stream (with
+"word", "wordorquote", "rest of line", etc.).
+
+Letters have consistent meanings:
+
+a  address
+n  number
+f  flag, 0 or 1
+s  string
+xt execution token
+e  dictionary entry
+u  count
+c  character, a 8-bit value
+
+The description of the words can contain letters in between "*" characters,
+indicating a special attribute:
+
+*I* indicates an immediate word.
+*A* Preserves A register
+
+Although "inlined" words [doc/usage/word], for example "dup", are technically
+immediate, they are not flagged as such because they behave like a regular
+non-immediate word. Their immediateness can be seen as an implementation detail.
+
+## Binary modulable words
+
+Some words are binary modulable, that is that there is a "w" (16-bit) variant
+and a "c" (8-bit) variant. They are presented thus:
+
+@          a -- n        *A* Fetch n at address a.
+w@
+c@
+
+This means that all these words have the same meaning, but a different width.
+
+16-bit access is seldom needed, so only core words have the "w" variant. Most
+modulable words only have the "c" variant.
+
+## Symbols
+
+Across words, different symbols are used in different contexts,
+but we try to be consistent in their use. Here's their definitions:
+
+! - Store
+@ - Fetch
+$ - Initialize
+( - Lower boundary
+) - Upper boundary
+[ - Beginning of a mode
+] - End of a mode
+' - Address of
+? - As a suffix, means "Is it ...?". As a prefix, "do ... if flag"
+[...] - Indicates immediateness
+
+## Signature ellipsis
+
+Some signatures have "..." in them. Examples:
+
+* ( ... -- )
+* ( -- ... )
+* ( ... n -- )
+
+The "..." represents an arbitrary number of elements. In some cases, such as
+the first two examples, a straight "..." is opaque to the caller of the word.
+It will usually mean that a special word will take care of consuming this bunch
+of elements.
+
+In other cases such as the ( ... n -- ) example, "n" indicates the number of
+elements that "..." represents.

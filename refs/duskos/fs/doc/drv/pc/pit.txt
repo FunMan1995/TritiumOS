@@ -1,0 +1,11 @@
+# Programmable Interval Timer
+
+The PIT driver that lives at /drv/pc/pit.fs and provides "ticks" for the system
+timer [drv/timer].
+
+When "pit$" is called, PIT's channel 0, which triggers IRQ0 is set up for mode
+0 which reloads the counter to 1193, for an IRQ interval of 1ms (PIT clock is
+1.193182 MHz).
+
+The PIT driver creates a "ticks" value which is incremented every time IRQ0 is
+triggered.

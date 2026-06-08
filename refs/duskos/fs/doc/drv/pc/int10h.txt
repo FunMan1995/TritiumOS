@@ -1,0 +1,11 @@
+# INT10H Driver
+
+The unit at [drv/pc/int10h.fs] supplies "int10hemit ( c -- )" which can be
+wrapped into something to plug into RTYPE for using "whatever the BIOS is using"
+as an emit destination.
+
+It suffers the same limitation as the INT13H drivers, that is that it doesn't
+play well with a fully setup system, with interrupts, PIC and all that stuff.
+
+You should avoid using it, but when you're debugging a brand new system, this
+can be very handy.

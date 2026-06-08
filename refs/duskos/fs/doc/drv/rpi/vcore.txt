@@ -1,0 +1,42 @@
+# VideoCore's Mailbox
+
+The unit at [drv/rpi/vcore.fs] provides convenience words for the ARM CPU to
+communicate with the VideoCore chip through the "mailbox" interface.
+
+## API
+
+vcwrite ( val chan -- )
+  Wait until the write buffer is free, then write "val" to channel "chan".
+
+vcwrite ( chan -- val )
+  Wait for a value to come for channel "chan", then read and yield that value.
+
+vcreq ( rsplen vallen buf tag -- res )
+  Make a request "tag" with payload "buf vallen" (length is in bytes) to
+  VideoCore, with an expected result length "rsplen", then yield "res", the
+  address to the response buffer.
+
+setpower ( on dev -- )
+  Enable (if "on" is nonzero) or disable (if it's zero) power on the specified
+  device "dev", which is one of these constants: PowerSd PowerUart0 PowerUart1
+  PowerUsb PowerI2c0 PowerI2c1 PowerI2c2 PowerSpi PowerCcp2tx
+
+getclock ( -- hz )
+  Get ARM CPU clock frequency.
+
+getmaxclock ( -- hz )
+  Get maximum ARM CPU clock frequency.
+
+setclock ( hz -- )
+  Set ARM CPU clock frequency.
+
+fbgetres ( -- width height )
+  Get default resolution for video framebuffer.
+
+fbgetdepth ( -- depth )
+  Get default depth (in bits) for video framebuffer.
+
+fbinit ( width height depth -- a u )
+  Initialize framebuffer with specified resolution and depth and yield a memory
+  range where this framebuffer can be accessed. For now, only depth "16" have
+  been tested, which has a color encoding RGB565 [doc/gr/color].

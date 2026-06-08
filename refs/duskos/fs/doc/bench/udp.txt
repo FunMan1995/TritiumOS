@@ -1,0 +1,33 @@
+# UDP bench
+
+This unit plays with [com/udp].
+
+## Example setup for a HP Mini
+
+needs drv/nic/rtl8169 bench/udp
+rtl8169pci$
+rtl8169 makeactive
+$c0a8002a to selfaddr \ 192.168.0.42
+' NetIncoming newcontext launchcontext
+udpdump \ press any key to stop
+
+## API
+
+udpdump ( -- )
+  Launch a [lib/coop] app listening to IP4UDPRECV [com/udp] and printing the
+  whole datagram at each event.
+
+  On any key press, it quits.
+
+udpdumpbg ( -- )
+  Same as udpdump, but launches as a background app instead.
+
+udpecho ( -- )
+  Launch a [lib/coop] app listening to IP4UDPRECV [com/udp], printing its
+  payload on reception and echoing the same UDP message back to its sender.
+
+  On any key press, it quits.
+
+sendudp[] ( a u srcport dstport dstaddr link -- )
+  Send a UDP message with the payload "a u" to the specified source and
+  destination on the specified link [com/link].

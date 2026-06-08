@@ -1,0 +1,43 @@
+# Serial driver
+
+If I actually managed to make it work, there *would* be a unit at
+[drv/mac68k/serial.fs] for driving the A/B serial ports on m68k macs.
+
+This text below are my failure notes so I can get back into context later.
+
+I thought it would be easy. I got myself a mini din-8 to DB-9 adapter, began
+writing Open, Control and Write call to them... but it doesn't work. I've tried
+many things. The A/B thing, disabling hardware flow control, enabling it, all
+possible baud rates and stop bits.
+
+I'm pretty sure the A port can't work because it's, I think, the one connected
+to the internal modem of my Powerbook 520. I've tried both port, but mostly the
+B port.
+
+I *know* I toggle some right bits in memory because, for example, there's a
+difference between when I write on a freshly opened port (hangs because of CTS)
+and when I call SerHShake with fCTS=0 (reports a successful write, but I get
+nothing on the other side). I've even tried to re-enable fCTS=1 with another
+call, to see that it makes Write hang again. So it's definitely fCTS I'm
+toggling.
+
+There's this weird 00 00 00 00 ff 00 status I get with SerStatus. The ff is
+ctsHold. The docs says "If output has been suspended because the hardware
+handshake was disabled, ctsHold will be nonzero".
+
+First, I think "disabled" is a typo and they meant "enabled". Second, this flag
+is always ff, before I write, after I write with fCTS=0. It's always ff. I don't
+know why.
+
+## Next step
+
+I need to debug the other end of that serial cable with something fancier than
+just a computer. I don't possess that kind of fancy RS-232 debugger. I'm sure
+such device exists somewhere, but where would be the fun in using those?
+
+I'll dust off my AVR and design a makeshift RS-232 debugger. Of course, the
+software will be written in Dusk assembler, so this means adding asm/avr. I
+won't copy the one from Collapse OS, this is the worst assembler I've ever
+written. I'll write one from scratch.
+
+So that will be a new adventure... for later. Not right now.

@@ -1,0 +1,353 @@
+# Keyboard subsystem
+
+The keyboard subsystem lives at [io/kbd.fs] and wraps keyboard drivers in a
+uniform manner. The driver supplies a stream of "pressed" and "released" events
+and the keyboard subsystem interprets them to yield a stream of what we call
+"key presses".
+
+## What is a key? what is a press?
+
+There are broadly two types of keys on a keyboard: the "normal" keys and the
+"modifier" keys. Normal keys are the keys you expect an action from when you
+press and then release them. Modifier keys are keys you press before pressing a
+normal key, then press the normal key while you keep the modifier key pressed.
+You then expect the modifier key to modify the action that results from the
+normal key press.
+
+For example, "A" is a normal key, "Shift" is a modifier key. The letter that is
+ultimately typed will be different if you press "A" with the Shift key pressed
+than if you do so without the Shift key pressed.
+
+In Dusk OS, normal key events happen at the moment a key is pressed. That key
+will stay in the "pressed" buffer (see below) until the key is released.
+
+## Normalized Key Codes
+
+The key press event is encoded in what we call a Normalized Key Code (NKC) and
+contains, of course, a code corresponding to the normal key that was pressed. In
+addition to that code, it also contains flags to indicate which modifier keys
+were pressed at the same moment. The NKC is a 32-bit number with this structure:
+
+b31    Passthrough bit
+b30    Always ignored (reserved for driver usage)
+b29:24 Reserved
+b23    Right GUI (the "Windows" key)
+b22    Left GUI
+b21    Right Alt
+b20    Left Alt
+b19    Right Control
+b18    Left Control
+b17    Right Shift
+b16    Left Shift
+b15:8  Reserved
+b7:0   Normal key code
+
+Broadly speaking, the "normal key code" part of the NKC is the same as the ASCII
+code that a US keyboard would yield.
+
+For example, the code for the Tab key is 9. The code for the key directly
+to the right of that key is 81, ASCII code for uppercase 'Q'. The code to the
+key to the upper left of that key is 49, the ASCII code for '1'.
+
+You will notice that a lot of ASCII code point stay unassigned: lowercase
+letters, most ASCII control characters, most symbols. This is normal, they
+really are unassigned.
+
+Many keys don't have a representation in ASCII. For them we use the upper part
+of the 8-bit key code. Assignment go as follow:
+
+80    Reserved
+81-9f Function keys (F1=81, F2=82, etc..)
+a0    Print Screen
+a1    Scroll Lock
+a2    Break
+a3    Insert
+a4    Delete
+a5    Home
+a6    End
+a7    Page Up
+a8    Page Down
+a9    Arrow Left
+aa    Arrow Right
+ab    Arrow Up
+ac    Arrow Down
+ad    That little "context menu" key between Right GUI and Right Control
+ae    Caps Lock
+af    Reserved
+b0    Keypad NumLock
+b1    KP Enter
+b2    KP "/"
+b3    KP "*"
+b4    KP "-"
+b5    KP "+"
+b6-bf Reserved
+c0    KP 0
+c1    KP 1
+c2    KP 2
+c3    KP 3
+c4    KP 4
+c5    KP 5
+c6    KP 6
+c7    KP 7
+c8    KP 8
+c9    KP 9
+ca    KP "."
+cb-cf Reserved
+d0    Left Shift
+d1    Right Shift
+d2    Left Control
+d3    Right Control
+d4    Left Alt
+d5    Right Alt
+d6    Left GUI
+d7    Right GUI
+d8-ff Reserved
+
+The d0-df range isn't for actual key code, but rather "mods" placeholder. A
+driver that wants to yield a "mods" key code in "?event" can either yield a NKC
+with the "mods" flags or a NKC with a "normal" key code in the d0-df range.
+They're equivalent (but only for "?event").
+
+## The keyboard struct
+
+All this logic above is encoded in a struct called "keyboard", which will have
+a "?event" method (see below) that differ depending on the underlying driver.
+
+This unit also provides a global "keyboard" value that represents the main
+keyboard of the system.
+
+The operator can then load the proper driver for their hardware, create a new
+keyboard struct of the appropriate type and set "keyboard" to it to have that
+keyboard become active.
+
+The keyboard struct works by polling the driver. A system with a keyboard will
+typically poll it through the builtin [lib/coop] KEYPRESS generator.  That
+generator asks the driver whether they have new events through the "?event"
+method. Then, the keyboard struct "compounds" them using the "ignore mods and
+only generate events on press" logic. If that compounding logic yields and
+event, then the polling will yield an event. Otherwise, it will nothing, but
+keep compounding information in the struct.
+
+## The ?event method
+
+The "?event ( kbd -- ?nkc event-type )" method, which must be implemented by
+the device-specific driver, works as follow.
+
+Whenever it is called, it must yield whether a "press" or "release" event has
+occurred since the last time it was polled. If more than one event has occurred,
+it must yield the oldest one. If no event has occurred, event-type=0 and nkc is
+absent.
+
+If an event has occurred, event-type is 1 being for "pressed" and 2 being
+for "released", and nkc is present. event-type=3 can also be yielded to indicate
+that a key has been pressed but released immediately. Keyboards will typically
+not yield them, but emulated keyboards can.
+
+The value yielded must be the "normal key code" part of the NKC without any
+modifier flag set.
+
+The driver is expected to maintain an event buffer large enough to keep a
+handful of key events at once.
+
+### Handling modifier key events
+
+If the key pressed or released is a modifier key, then "nkc" must have only one
+bit set which correspond to the appropriate modifier bit of the NKC structure.
+No "normal key code" bits.
+
+The io/kbd.fs unit will then take care of accumulating those NKCs into the
+"mods" field of the keyboard and will not yield any NKC to "?nkc".
+
+Sometimes, the underlying hardware yields us mod keys that are *already*
+compounded, which means that if we follow the logic above, we need to do a
+double work: de-coumpounding, then re-compounding. Don't do this. Instead, have
+the "?event" method write the compounded value directly to the "mods" field and
+then yield NONE. The end result is the same.
+
+## Layout translation
+
+Having a NKC is fine, but most of the time, what we actually want is a character
+corresponding to the key. This will depend on the keyboard layout.
+
+The Keyboard struct has a "layout" field which is a link to a $200 bytes table.
+The first $80 bytes map NKC to character code (for now, "character code" means
+ASCII code, but it might mean something else later) when Shift is not pressed,
+the following $80 bytes map NKC to character codes when Shift is pressed. Then
+comes the map for when RAlt (often called "AltGr") is pressed. And finally comes
+the Shift+RAlt mapping.
+
+If the NKC is one of the "keypad" codes, the key that is yielded is hardcoded
+to the ASCII counterpart of the keypad key.
+
+The rest of the "upper" part of the NKC don't yield any character. For example,
+"Up Arrow", code $ab, never yield a character in the "layout translation"
+process.
+
+When Control is pressed, we go fetch a character code as per the logic above,
+but we only keep the lower 5 bits of it, then yield it.
+
+If the result of that logic above yields 0, this means that we have "no
+character", which means we yield nothing (the "polling" word will say we have
+nothing) and the NKC will be discarded.
+
+One should be aware that control character handling in Dusk OS, as of now, is
+a bit wonky. It's seldom expected. Typing it will often lead to unexpected
+results. But in general rule, they're treated as whitespaces. But if you're
+typing on a serial link communicating with a system that needs them, then you're
+glad to have the possibility of typing them.
+
+Keyboard layouts are typically loaded from data files living in "data/kbdl".
+
+## The Passthrough bit
+
+If the "Passthrough" bit (b31) is set on the NKC, character translation becomes
+a noop. That is, b7:0 of the NKC are expected to be the value that the
+translation layer would yield.
+
+The rest of the NKC stays as is. This means that it's legal to have a
+passthrough NKC with modifier flags set.
+
+This mode is needed for situations where we the data we get already has
+translation applied to it, for example in the POSIX VM or Usermode, but also in
+[drv/efi/kbdex].
+
+Note that special keys (Arrows etc.) are unrepresentable with the Passthrough
+bit.
+
+## Melted NKC
+
+Even though "normalized" is part of the NKC acronym, that normalization happens
+from the perspective of the hardware. When looked at from the applicative
+perspective, some NKCs are functionally equivalent.
+
+For example, the "A+passhtough" NKC is functionally equivalent to "A+LShift".
+For the majority of the cases, "A+LShift" is functionally equivalent to
+"A+RShift".
+
+The act of "melting" a NKC is to deduplicate those codes that are considered
+equivalent from an applicative perspective. This is done through the
+"melt ( nkc kbd -- nkc )" word.
+
+What it does is:
+
+1. If the passthrough flag is set:
+1a. Look in the current layout for this character and yield the NKC that would
+    yield this character. The NKC yielded thus can have the "LShift" flag set.
+    If the character is not found, NKC stays as is.
+1b. If the NKC isn't present in the layout (that is, not CR, ESC, LF, BS) and if
+    the character is less than $20, add $40 to it along with the LControl flag.
+2. Normalize mods. If any of the "right" mods flags are set, transform them into
+   "left" mods flags.
+
+## Keyboard API
+
+### Struct
+
+struct Keyboard {
+  uint layout mods pressed ;
+  xt ?event ;
+}
+
+layout
+  Pointer to the currently active layout table.
+
+mods
+  NKC with only the "mods" bits set that represent the currently pressed
+  modifier keys.
+
+pressed
+  This represents the current "normal" keys being pressed, holding a maximum of
+  4 keys at once, each key using a byte of the buffer. The byte corresponds to
+  the "normal key code" part of the NKC. Keys are in no particular order. This
+  buffer is best queried through the "pressed?" helper word.
+
+?event ( kbd -- ?nkc event-type )
+  See paragraph above for implementation details.
+
+### Constants
+
+Key constants
+  All of the key assignments described above have an associated constant.
+  For example, "PageUp" will yield $a7. Full list:
+
+  F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PrintScreen ScrollLock Break Insert
+  Delete Home End PageUp PageDown ArrowLeft ArrowRight ArrowUp ArrowDown Popup
+  CapsLock KPNumlock KPEnter KP/ KP* KP- KP+ KP0 KP1 KP2 KP3 KP4 KP5 KP6 KP7 KP8
+  KP9 KP.
+
+  There are also constants describing NKC bit flags. Full list:
+
+  Passthrough ModMask CodeMask RGUI LGUI GUI RAlt LAlt RControl LControl Control
+  RShift LShift Shift
+
+Other constants:
+
+  NONE    0
+  PRESS   1
+  RELEASE 2
+  BOTH    3
+
+### Values
+
+keyboard
+  Pointer to struct of the main keyboard of the system.
+  Defaults to a "null" keyboard that never yields anything.
+
+### kbd words
+
+?nkc ( kbd -- ?nkc f )
+  Poll the keyboard for a key press event. If such an event occurred since the
+  last polling, the oldest one to have occurred is yielded as "nkc" and f=1.
+  Otherwise, f=0 and "nkc" is absent.
+
+nkc>char ( nkc kbd -- c )
+  Transforms "nkc" into a character as per the "layout translation" logic
+  described above.
+
+?char>nkc ( c kbd -- ?nkc f )
+  Try a reverse lookup of "c" in current keyboard layout, if found, f=1 and nkc
+  is set to the correct cpde. If "c" was found in the "shifted" part of the
+  layout, nkc will have the LShift flag set. If "c" was not found, f=0 and nkc
+  is absent.
+
+melt ( nkc kbd -- nkc )
+  "Melt" specified nkc through the process described in "Melted NKC" above.
+
+pollkbd ( kbd -- c-or-0 )
+  Puts "?nkc" and "nkc>char" together. Note that c=0 will be returned both
+  when ?nkc yield nothing or when it yields something, but that nkc>char yield
+  c=0.
+
+pressed? ( nkc kbd -- f )
+  Yields whether that particular nkc is being pressed, as per the "pressed"
+  buffer.
+
+loadkbdl ( stream -- layout )
+  Allocate space for a new keyboard layout and read from stream into it. Then,
+  close stream and yield a pointer to the layout. Example usage:
+
+  f"data/kbdl/dk" loadkbdl keyboard to layout
+
+USLayout ( -- a )
+  A pre-loaded "data/kbdl/us" binding. "newkbd" uses this as a default layout.
+
+newkbd ( '?event -- kbd )
+  Create a new kbd struct targeting USLayout and bound to the specified ?event
+  method.
+
+newstreamkbd ( stream -- kbd )
+  Create a new kbd struct that polls "stream", which is supposed to yield ASCII
+  characters when it has something to yield.
+
+### Global words
+
+?key ( -- ?c f )
+  Check global "keyboard" for new data. If available, f=1 and c is present as a
+  ASCII character. Otherwise, f=0 and c is absent.
+
+key ( -- c )
+  Block until "?key" yields something, then yields it.
+
+promptforkey ( -- )
+  Called once at the beginning of the "key" loop. Defaults to a noop, but can
+  be realias for, for example, display a prompt cursor.

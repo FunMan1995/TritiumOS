@@ -1,0 +1,202 @@
+# Duskberon's Oberon module
+
+The [oberon/Oberon.mod] module holds and manages the structures and global
+variables that constitute the beating heart of the system. In particular, it
+implements "LoopOnce", which [oberon/sys.fs] repeatedly calls to run the main
+Oberon loop.
+
+## The Oberon Loop
+
+That main loop is about:
+
+1. Polling mouse events and act accordingly
+2. Polling keyboard events and act accordingly
+
+Processing a key is about:
+
+1. Set/unset the "Viewer mark".
+2. Send an KeyMsg to the focused viewer.
+
+Processing mouse events is about:
+
+1. When there's no click and the mouse has moved, send a MouseMsg to the
+   displayed viewer under the cursor.
+2. When there's a click, we do the same, but we do it *repeatedly*, until the
+   all mouse buttons are released. That's a separate inner loop.
+
+## Markers and Cursors
+
+There's a handful of things, namely the mouse cursor, the caret and the viewer
+mark, that we need to track globally. That is, drawing them can involve stepping
+over more than one frame. Also, when that element moves, we need to erase their
+previous incarnation and restore the underlying contents.
+
+This is what the Cursor structure is about. Holding draw and restore (fade)
+information and make it indirect enough to allow on the fly changes in patterns,
+for example to change the mouse cursor when hovering the scroll bar.
+
+## Oberon compatibility
+
+* Tasks don't exist. They're a Dusk responsibility.
+* InputMsg has been split in KeyMsg and MouseMsg.
+* SelectionMsg doesn't exists. Global text selection is handled in TextFrames.
+* Markers are structured differently.
+* The concept of command return values (formerly RetVal) doesn't exist.
+  Duskberon doesn't do scripting. That's a Dusk thing.
+
+## Constants
+
+ControlMsg IDs:
+
+defocus     0
+neutralize  1
+mark        2
+
+## Structures
+
+Marker* = RECORD patadr, DX, DY: INTEGER END;
+
+A Marker is a pattern [oberon/display] with an indicator of where its center is.
+We need this because when we draw a pointer, we don't necessarily draw its lower
+left corner at mouse position. Sometimes, the "pointy end" in the image is
+elsewhere.
+
+patadr    Address of the pattern
+DX/DY     Amount to subtract to X/Y coordinated before drawing
+
+Cursor* = RECORD marker: Marker; on: BOOLEAN; X, Y: INTEGER END;
+
+A Cursor is a Marker that remember whether and where it was drawn so it can be
+erased.
+
+marker   The marker that was drawn or should be drawn
+on       Whether it's drawn somewhere on the screen
+X/Y      If drawn, where it is
+
+MouseMsg* = RECORD(Viewers.FrameMsg) keys: SET; X, Y: INTEGER END;
+
+Sent on mouse movement and/or click.
+
+keys    Buttons currently being pressed b0=right b1=middle b2=left
+X/Y     Current mouse coordinates
+
+KeyMsg* = RECORD(Viewers.FrameMsg) ch: CHAR END;
+
+Sent on keyboard key press, "ch" being the key pressed.
+
+ControlMsg* = RECORD (Viewers.FrameMsg) id, X, Y: INTEGER END;
+
+Sent when a viewer loses focus, on when the "mark" is gained or lost
+
+id     One of the constants above
+X/Y    For id=mark, position of the mouse when it happens. Unused otherwise.
+
+CopyMsg* = RECORD (Viewers.FrameMsg) F: Viewers.Frame END;
+
+Sent on System.Copy [oberon/system]. When received, a viewer is supposed to
+copy the contents of F into itself.
+
+## Global Variables
+
+Arrow, Star: Marker;
+
+The two main markers used in the system. Arrow is the main pointer, Star is the
+"mark" star.
+
+FocusViewer: Viewers.Viewer;
+
+The view that currently has the focus. Most likely, this means the caret.
+Keyboard events are sent there.
+
+Log: Texts.Text;
+
+The Text associated with the "Duskberon Log" viewer. Writing to this Text writes
+to this viewer.
+
+Par: RECORD
+  vwr: Viewers.Viewer;
+  frame: Viewers.Frame;
+  text: Texts.Text;
+  pos: INTEGER
+END;
+
+When a command is called (most likely by TextFrames.Call [oberon/textfram]),
+this structure is set with its calling parameter, that is, the viewer and
+subframe where the call was placed as well as the Text and position where the
+command arguments live, most likely the text directly following the M.P command
+that has just been clicked on.
+
+What you'll probably want to do with that is open a Scanner [oberon/texts] on
+it and parse arguments.
+
+BackgroundColor, TextBackgroundColor, FrameColor, CursorColor,
+ScrollMarkColor, ChangeMarkColor, SelectionColor, MenuBackgroundColor,
+ScrollBarColor, UnderlineColor: INTEGER;
+
+Colors to use (in 4-bit palette indexes) in different roles used throughout the
+system.
+
+DW*, DH*: INTEGER;
+
+Width and Height that Oberon was configured under. Will generally be the same
+as in [oberon/display], but if the display changes, can be temporarily different
+until UpdateScreenSize() is called.
+
+## Procedures
+
+DrawMouse (VAR m: Marker; x, y: INTEGER);
+  Draw specified marker at specified position and set the Mouse cursor to it.
+
+DrawMouseArrow (x, y: INTEGER);
+  Shortcut for DrawMouse with Arrow marker.
+
+FadeMouse ();
+  Erase previously draw Mouse cursor.
+
+DrawPointer (x, y: INTEGER);
+  Draw Star marker at specified position and set the Pointer cursor to it.
+
+RemoveMarks (X, Y, W, H: INTEGER);
+  If the Mouse and/or Pointer cursors are drawn in the specified rectangle,
+  erase them.
+
+OpenDisplay (UW, SW, H: INTEGER);
+  Initialize the Oberon display with the specified user track width (UW),
+  system track width (SW) and height (H).
+
+OpenTrack (X, W: INTEGER);
+  Open a new track (see Viewers.OpenTrack) of specified width at specified
+  X position.
+
+AllocateUserViewer (DX: INTEGER; VAR X, Y: INTEGER);
+  Yields the position at which a new "user" viewer should be created. If there's
+  a "marked" position, it's going to be there. Otherwise, it's at the bottom of
+  the user track.
+
+AllocateSystemViewer (DX: INTEGER; VAR X, Y: INTEGER);
+  Same as AllocateUserViewer(), but for a "system" viewer.
+
+MarkedViewer (): Viewers.Viewer;
+  Yield the viewer under the Pointer cursor.
+
+PassFocus (V: Viewers.Viewer);
+  Set focus to the specified viewer, properly defocusing the previous one.
+
+SetPar (F: Viewers.Frame; T: Texts.Text; pos: INTEGER);
+  Set the Par global fields to specified values.
+
+UpdateScreenSize ();
+  Adjust viewers on screen for a change in Display [oberon/display] size.
+
+LoopOnce ();
+  Run a single pass of the Oberon Loop described above.
+
+Call (name: ARRAY OF CHAR; VAR res: INTEGER);
+  Invoke the given Module.Command, loading the module if required.
+  Return an error code in res.
+
+GetCommand (module, name: ARRAY OF CHAR) : Oberon.Command;
+  Find the command in given module, return a reference to it
+  (procedure parameter that takes no arguments and returns nothing).
+  Module is loaded if required. Returns NIL in case no such
+  command exists.

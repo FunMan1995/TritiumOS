@@ -1,0 +1,45 @@
+# VESA
+
+VESA is the Video Electronics Standard Association and they created VBE, the
+VESA BIOS Extension standard. VESA 1.2 was released in 1991 and is the version
+that really caught on, so that's our baseline. VESA is much easier to work with
+than VGA, so that's why we prefer it.
+
+TODO: at this point, only VESA2 is supported.
+
+The driver lives in [drv/pc/vesa.fs]
+
+After you've loaded it, you can get general VESA information with ".vesa" and
+you can list available modes with ".vesamodes". The output is
+"<id> width/height/bpp". A "*" at the end indicates that this mode is a "linear"
+mode.
+
+There's a big difference between VESA 1.2 and VESA 2.0: the presence of linear
+buffer modes. A "regular" mode requires bank switching to access the totality of
+the memory for that mode, which comes in 64K banks. It's a hassle to manage.
+Linear modes provide a contiguous memory area, which is much nicer. When
+available, you always want linear mode, it's much faster.
+
+Because the VESA mode and VGA text mode are mutually exclusive, you are likely
+to want to set up a [gr/grid] to handle your console in graphical mode.
+
+## Example initialization
+
+  needs gr/font/uf1 gr/grid drv/pc/vesa
+  "data/font/atari8.uf1" loaduf1 const gridfont
+  $111 vesamode gridfont grgrid$
+
+## API
+
+### Words
+
+.vesa ( -- )
+  Print general information about VESA support.
+
+.vesamodes ( -- )
+  List all available VESA modes.
+
+vesamode ( mode -- )
+  Put the screen in VESA mode. "mode" is a VESA mode ID, as listed in
+  .vesamodes. Safe bets are $111 (640x480x16) or $112 (640x480x24) present on
+  a vast majority of VESA cards.

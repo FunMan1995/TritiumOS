@@ -1,0 +1,27 @@
+# I/O ports
+
+This module exposes the "IN" and "OUT" i386 operations.
+
+p@ ( port -- n )  32-bit read of "port".
+pw@ ( port -- n ) 16-bit read of "port".
+pc@ ( port -- n ) 8-bit read of "port".
+p! ( n port -- )  32-bit write to "port".
+pw! ( n port -- ) 16-bit write to "port".
+pc! ( n port -- ) 8-bit write to "port".
+
+## ioports
+
+This unit also provides the "ioport", "ioportw" and "ioportb" which generate
+getters setters for a particular port. Example usage:
+
+  42 ioportw foo
+  foo . \ prints the result of a 16-bit ioport fetch of port 42
+  54 to foo \ 16-bit write of value 54 to port 42
+
+## port8/port16/port32 types
+
+This unit also provides types [lib/type] mapping to ioport IN/OUT:
+
+  port8  --> pc@  pc!
+  port16 --> pw@  pw!
+  port32 --> p@   p!

@@ -1,0 +1,55 @@
+# Word tables
+
+The unit at [lib/wordtbl.fs] allows the creation of word tables allowing those
+words to be called by their index. Example:
+
+  wordtbl[
+  :> 42 . ;
+  ' anotherword
+  :> 54 . ;
+  ]wordtbl mytbl
+
+  mytbl 2 wexec \ prints 54
+  : foo mytbl 1 wexec, ;
+  foo \ calls "anotherword"
+
+What we call a "word table" is a structure where the first cell contains the
+table's length (in number of elements) followed by that many cells, containing a
+execution tokens.
+
+The "wordtbl[" and "]wordtbl" pair work by looking at PS accumulation betweeen
+the two calls and consider this a series of execution tokens. That is why the
+"'" word can be used without problem.
+
+## API
+
+wordtbl[ ( -- )
+  Record current PS level for word table accumulation. This call cannot be
+  nested.
+
+]wordtbl ( ... "name" -- )
+  Create a new word table named "name" and write elements accumulated since the
+  previous "wordtbl[" call to that table.
+
+wordrefs ( n "tbl" -- )
+  If all you have are references to existing words (that is, that you're only
+  going to use "'"), this word saves you some typing:
+
+    3 wordrefs mytbl foo bar baz
+    wordtbl[ ' foo ' bar ' baz ]wordtbl mytbl
+
+  are the same thing.
+
+wtbl@ ( tbl idx -- xt ) *Preserves A*
+  Return execution token at index "idx" in "tbl". Aborts if idx is out of
+  bounds.
+
+wexec ( tbl idx -- ) *Preserves A*
+  Execute word at index "idx" in "tbl". Aborts if idx is out of bounds.
+
+wexec, ( tbl idx -- )
+  Compile execution of word at index "idx" in "tbl". Aborts if idx is out of
+  bounds.
+
+wordtbllen ( tbl -- len )
+  Yields the number of elements in "tbl".

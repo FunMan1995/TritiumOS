@@ -1,0 +1,423 @@
+# Cooperative multi-tasking in Dusk
+
+The aim of this unit is to allow multiple runloops that consume I/O events to
+coexist peacefully without having to be, themselves, aware of other consumers of
+I/O events.
+
+Dusk OS started as a single console system. Under such a system, multi-tasking
+isn't a problem. If, for example, you launch [app/ed], it becomes the runloop
+until you quit it. All fine.
+
+However, if you run Duskberon [doc/oberon], then you have the possibility of
+running multiple instances of, for example, [app/ed]. At that point, runloops
+fight each other and they fight Duskberon's runloop. That's a problem.
+
+Therefore, we need to say "hey! there's only ever going to be one runloop around
+here, and it's lib/coop! Respect my authoritah!" and have everyone play nice
+with this idea.
+
+## The runloop
+
+This runloop is:
+
+1. Is the "state" field of root context STOPPED? Stop the loop
+2. Poll for a I/O event through generators
+3. For each event generated:
+   3a. Dispatch it to the root context
+   3b. Dispatch it to every active background context
+4. Idle and goto 1
+
+## I/O events
+
+What we call an event is a numerical ID associated with arguments. For example,
+when [io/kbd] yields a keypress, a KEYPRESS event is dispatched with arg1 being
+the character pressed and arg being its NKC.
+
+There is only ever one event being dispatched at once and the information about
+this event is held in the "curevent" structure, which is exposed as an ivalmap
+[lib/ival].
+
+## Event slots
+
+This unit defines a handful of "internal" events (REGISTER, INITIALIZE,
+FINALIZE, IDLE) but also lets other units come here and define their own events.
+
+They do so by filling what we call an event "slot". A slot is only an index that
+is then associated with an event type constant. For example, REGISTER fills slot
+0, INITIALIZE, slot 1, etc.. There's a limited number of them, because slots
+correspond to an entry in the handler array that we allocate for each
+Application. These arrays can't grow.
+
+Most of those events will, in parallel to that slot, register a "generator" word
+which is repeatedly called and has the responsibility of dispatching events
+through "rootdispatch" when there is one. An event doesn't necessarily have a
+generator. A generator can spawn more than one event type.
+
+Practically though, the generator array is as big as the slots array because
+it's unlikely that we'll end up with more generators than event types.
+
+Theoretically, this unit shouldn't generate any event by itself. Those
+generators are the realm of [io/kbd], [io/mouse], [com/net] etc.
+
+... But practically, we have a bit of a circular dependency problem and the
+KEYPRESS event generator needs to live here, so there's that.
+
+## Event handlers
+
+When events are generated, they'll be passed to what we call a event handler, a
+xt with the signature ( -- ). Information about the event being dispatched lives
+in the "curevent" ivalmap.
+
+## Applications
+
+What we call an application is an opaque structure (its fields are not publicly
+exposed) with 3 elements:
+
+1. A "dispatcher" pointer, a pointer to a XT ( -- ).
+   Usually points to :selfdispatch.
+2. An array of event handler XTs ( -- ).
+3. A string with its name in it.
+
+You create an application with "createapplication". Example:
+
+  createapplication myapp
+  : keypress ... ;
+  current KEYPRESS myapp sethandler
+  \ a single global ctx means we don't support multiple instances of the same
+  \ app.
+  myapp newcontext const myctx
+  : runmyapp myctx launchcontext ;
+
+Unspecified handlers are filled with appropriate noops (or errors, in the
+case of REGISTER).
+
+## Context
+
+An application is something static. A context is an instance of an application.
+If your application "myapp" above runs in two simulatneous copies, they'll both
+point to the same application, but have different contexts.
+
+lib/coop defines a base context ivalmap [lib/ival] which contains only a pointer
+to its application as well as its run status. Applications are expected to
+extend that structure with their own specific contextual information. See
+[app/ed] as an example of how to extend such a context structure.
+
+The context ivalmap is bound to the "context" variable. Whenever an event is
+being triggered, this "context" variable always points to the context this event
+is being dispatched to.
+
+## Launching a context and the root context
+
+All this is all well and good, but how are these context ran? By launching them.
+You launch a context through "launchcontext ( context -- )". What it does is:
+
+1. Is there already a root context running?
+2. If not, this context is the new root context.
+3. Otherwise, dispatch REGISTER with arg1 being the context to launch. Let the
+   current root context handle this as it wishes.
+
+The concept of "root context" is central to this unit. Except for background
+contexts (see below), it's the only context that lib/coop cares to dispatch
+events to. If there's re-dispatching to do, it's entirely the job of whatever
+application took the job of being the root context.
+
+## Background contexts
+
+An application that doesn't define a KEYPRESS handler holds a special status
+with regards to lib/coop: it's called a "background application".
+
+Because this application isn't designed to interact with the operator, launching
+it will not trigger the process described above. Instead, this context will be
+placed in an array of contexts and as long as it's active, it's going to stay
+there. It will receive event dispatches after they have been dispatched to the
+root context.
+
+You can list the background contexts currently running with ".bg" and forcefully
+stop one with "bgkill". You can restart such stopped context with "bgrevive".
+
+## Sub-runloops and stopping runloops
+
+The "stop the loop" part of the runloop description is worth mentionning. Why
+would you ever want to stop the loop? In a system that is "full coop", that is,
+a system that called "coop$", the lib/coop mainloop is the system's MAINLOOP, so
+it can't stop.
+
+And indeed, it can't. If, my some mistake, the root context of the root runloop
+stops, it will be restarted because otherwise, we have nothing more to run.
+
+However, lib/coop allows running sub-runloops within another runloop. This
+mechanism will be triggered through REGISTER. For example, [app/gcon] is not a
+full multi-dispatcher. However, it has the ability to run arbitrary commands,
+and when in does, some of those commands might end up calling "launchcontext",
+which will trigger a REGISTER event on [app/gcon]. When it receives it,
+[app/gcon] will call "ctxrunloop", which runs a *sub* runloop within the
+main runloop, which temporarily has the launching context replace the root
+context, that is, the [app/gcon] context.
+
+*This* sub-runloop will stop when the context stops, which allows [app/gcon] to
+resume its activities. So, that's what we mean when we say "stop the loop".
+
+## Event dispatching
+
+When the runloop description above says "dispatch the event", hwre's what it
+does:
+
+1. Find the appropriate handler in the root context and call it.
+2. For each active background context, find the appropriate handler and call it.
+
+And that's all there is to it. Then, might you ask, how do we run multiple
+applications?
+
+For this, we need "dispatcher applications", that is, applications that are made
+specifically to handle events for sub-applications. [app/gmux] is such an
+application.
+
+But how do "regular" applications register themselves with a dispatcher? They
+don't, because we want any dispatcher to be able to work with any regular
+application. They thus need to be unaware of each other.
+
+This registering happens through the REGISTER event, which is generated when
+"launchcontext" is ran at a moment where there's already a runloop running.
+
+The REGISTER event, when unhandled by an application, will generate an error
+(disorderly runloops!), but when handled, will let the dispatcher do its thing
+how it wants.
+
+## Idling
+
+The IDLE event is dispatched on two occasions:
+
+1. Once after every event generator loop
+2. When "idle" is called
+
+This makes IDLE a good place to put background tasks, stuff to be executed semi-
+regularly.
+
+"idle" is a core word because it's used in early bootstrapping units, but it's
+realiased by this unit, at loading time, to an implementation that dispatches
+IDLE to the root context and the background contexts.
+
+### When to idle?
+
+When writing code, sometimes it's appropriate to insert a "idle", but it's not
+always clear when. The general guideline is that idling should happen every few
+tens of milliseconds.
+
+Although we could, if we wanted, idle at every mass storage access, or every
+"f<<", we don't. It's too deep in granularity. Most of the time, such access is
+instant from the perspective of the operator.
+
+But sometimes, we know that some operations take longer than it should for the
+operator to stay without feedback.
+
+One such example is the test suite. It take several seconds to run. We can't
+leave the operator without a idle loop. Therefore, we idle at "testbegin" and
+"testend" in [tests/harness.fs].
+
+Another example is Duskberon [oberon]. On a Raspberry Pi, it takes a few seconds
+to load it all. It's a close call, but it's enough to pass the threshold.
+Therefore, we add a idle call in the "Loading module" message in
+[comp/oberon.fs].
+
+Another obvious example is the booting sequence. For a while, we have no way to
+output anything on the screen, but when we do, we appreciate the feedback.
+Therefore, it's a good idea, on systems that don't have instant boot, to litter
+theit init.fs file with ".." calls.
+
+One place *not* to call idle in is in low level drivers. When you do, it's
+likely that you end up in a self-referential loop. When drivers need to wait,
+they must use [drv/timer].
+
+## The runloop and blocking handlers
+
+This event loop that this unit runs, it's supposed to be smooth. This means that
+event handlers are supposed to return immediately, in the sense that they
+shouldn't block waiting for input.
+
+Sometimes, it's inconvenient. For example, if you want the user to type
+something and then act on the typed string, it adds complexity to restructure
+the app around context states. The most straightforward solution is to
+repeatedly call "key" [io/kbd], which is blocking.
+
+But don't do it, your app won't behave well. Instead, design a system that takes
+advantage of "ctxstate". See ":bottomtype>" in [app/ed] for an example.
+
+## API
+
+### context ivalmap
+
+context ivalmap { uint ctxapp ctxstate ; }
+8 const CONTEXTSZ
+
+ctxapp   Pointer to the application of the context
+ctxstate One of the state constants (STOPPED, RUNNING or an app=specific one)
+
+CONTEXTSZ is used by applications to extend this ivalmap's fields. For example:
+
+context CONTEXTSZ ivalmapfrom { uint myappfield1 myappfield2 ; }
+
+### curevent ivalmap
+
+curevent absvalmap { uint evtype evarg1 evarg2 evarg3 evarg4 ; }
+
+evtype    one of the event types enum below
+evarg1-4  Arbitrary values, depending on event type
+
+### Constants
+
+SLOTCNT  16. The maximum number of slots that can be filled.
+BGMAXCNT 32. The maximum number of background contexts.
+STOPPED   0. For ctxstate
+RUNNING   1. For ctxstate
+
+### Event types
+
+REGISTER   ( arg1=newcontext )
+  Dispatched when a new application is ran but there's already a root app
+  running.
+
+INITIALIZE ( noarg )
+  Dispatched before starting the runloop on the root application, or by the root
+  application to a newly registered sub-application.
+
+FINALIZE   ( noarg )
+  Dispatched to a context after it has been put in STOPPED state. This is the
+  last event this context is going to receive unless it is launched again.
+
+IDLE       ( noarg )
+  Dispatched on idling . Unlike other events, which are generally sent only to
+  the "active" application, multi-dispatchers are expected to send the IDLE
+  event to all applications.
+
+KEYPRESS   ( arg1=c arg2=melted-nkc )
+  Dispatched when a key is pressed on the keyboard.
+
+External units also defining events (see their docs for details):
+
+MOUSEMOVE    [io/mouse]
+MOUSECLICK   [io/mouse]
+IP4UDPRECV   [com/udp]
+
+### Variables
+
+context     Context being currently dispatched an event
+
+### Values
+
+curevent     (static pointer) Event struct where generated events go
+rootcontext  Context of our root application
+
+### Words
+
+:selfdispatch ( -- )
+  Dispatch specified event to "self", that is, the current context.
+
+.bg ( -- )
+  Print a list of all active background context, 3 fields per line. The first
+  field is an index, to be used with "bgkill". The second field is a numerical
+  state. 0=STOPPED, 1=RUNNING, etc. The third is the name of the application as
+  defined during "createapplication".
+
+addeventtype ( -- slotidx )
+  Fill an event slot, thus creating a new event type.
+
+addgenerator ( xt -- )
+  Register a new generator word, which must have the signature ( -- ) and
+  dispatch event when they are generated. A generator call can result in more
+  than one dispatch.
+
+  This xt can use "curevent".
+
+bgdispatch ( -- )
+  Dispatch "curevent" to all active background contexts.
+
+bgpause ( index -- )
+  Forcefully pause a background context by putting it to a stopped state.
+  "index" is taken from the list returned by ".bg".
+
+bgresume ( index -- )
+  Forcefully put a background context back to a running state. This is often
+  associated with a previous call to "bgpause".
+  "index" is taken from the list returned by ".bg".
+
+bgkill ( index -- )
+  Forcefully stop a given background context. This puts it to a stopped state
+  then dispatches FINALIZE. "index" is taken from the list returned by ".bg".
+
+bgrevive ( index -- )
+  Revive a background context as if it was launched for the first time. This
+  puts the context to a running state then dispatches INITIALIZE. This is
+  often associated with a previous call to "bgkill".
+  "index" is taken from the list returned by ".bg".
+
+bgget ( index -- context-or-0 )
+  Get the corresponding background context. Aborts on out of bounds index and
+  returns 0 on unused index. "index" is taken from the list returned by ".bg".
+
+bgremove ( index -- context-or-0 )
+  Remove the given context from the list of background contexts and return it.
+  Aborts on out of bounds index and returns 0 on unused index. "index" is taken
+  from the list returned by ".bg".
+
+bghas ( context -- f )
+  Yield whether the given context is present in the list of background contexts.
+
+bg? ( app -- f )
+  Yield whether the given application is a background one or not.
+
+coop$ ( -- )
+  Install the cooperative runloop into "main", which means that whenever we
+  abort, we go back to this runloop. It's pretty much always what you want on
+  an interactive system.
+
+cloneapplication ( app "name" -- )
+  Create a new application, cloning the dispatch method and handlers from the
+  specified app.
+
+createapplication ( "name" -- )
+  Create a new application with its "dispatch" method set to :selfdispatch and
+  dummy handlers set to it.
+
+ctxrunloop ( context -- )
+  Sets "context" as the active context, then run a coop loop as long as ctxstate
+  is not STOPPED. Note that even though this can be called on something else
+  than the root context, I/O events are still dispatched the regular way, that
+  is, to the root context.
+
+  Then, then the runloop is done, restore the previous active context.
+
+  You will find this word useful in cases where you want to block until the
+  specified context is closed.
+
+dispatch! ( xt app -- )
+  Set dispatcher XT of specified app.
+
+launchcontext ( context -- )
+  If there is no root application running, start a runloop with "context" as
+  root. Otherwise, generate a "REGISTER" event with "context" as argument.
+
+launchrootcontext ( context -- )
+  Run specified context, forcing it to be a root application. This guarantees
+  that this call results in a runloop running (so it doesn't return until that
+  runloop is over). After the runloop is over, this word restores old root
+  context.
+
+newcontext ( app -- context )
+  Create a new context for specified app.
+
+rootdispatch ( -- )
+  Dispatch "curevent" to root context, then calls "bgdispatch".
+
+sethandler ( xt eventtype app -- )
+  Set specified handler to specified app.
+
+stopcurrent ( -- )
+  Set state field of current context to STOPPED.
+
+context[ ( newctx -- oldctx )
+  Override current context with context "newctx". This pair allows for easy
+  inspection of a context's ivalmap without disturbing the cooperation process.
+
+]context ( oldctx -- )
+  Restore current context to "oldctx". Each "context[" must be paired with a
+  corresponding "]context".

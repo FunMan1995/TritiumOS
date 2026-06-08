@@ -1,0 +1,186 @@
+# Control flow
+
+Control flow words look a lot like those of other forths. Rather than explaining
+how they work, let's just use example:
+
+  : foo if 42 else 54 then . ;
+  0 foo --> prints 54
+  1 foo --> prints 42
+
+  : foo begin dup . 1- ?dup not until ;
+  5 foo --> prints 54321
+
+  : foo begin 'X' emit again ;
+  foo --> prints X forever
+
+  : foo begin ?dup while 1- dup . repeat ;
+  5 foo --> prints 43210
+
+  : foo 5 0 do i . loop ;
+  foo --> prints 01234
+
+  : foo 5 0 do i . 2 +loop ;
+  foo --> prints 024
+
+  : foo 2 7 do i . 2 -loop ;
+  foo --> prints 753
+
+  : foo 0 5 do i . 2 -loop ;
+  foo --> prints a whole lot of numbers! see below.
+
+A begin..repeat loop can have more than one while. In that case, things get
+weird and it behaves like "if", that is that each while has its own "loop exit
+point". Weird, but often useful.
+
+  : foo begin
+    dup 10 <> while dup 15 <> while dup . 1+ repeat
+    ( second while exit point ) .x1 else
+    ( first while exit point ) . then ;
+
+  5 foo --> prints 5678910
+  11 foo --> prints 111213140f
+
+The "case" structure allows us to "fan out" to many possible branches depending
+on a single value. It's the functional equivalent of nested "if..then", but
+more readable. Code like this:
+
+  case
+    1 = of ."foo!" endof
+    2 > of ."bar!" endof
+    drop ."baz!"
+  endcase
+
+is the exact equivalent of:
+
+  r! 1 = if ."foo!" else
+  r@ 2 > if ."bar!" else
+  r@ drop ."baz!" then then
+  rdrop
+
+As you can see, the "base value" is automatically duplicated to PS before each
+"of". The last part is the final "else", if no condition match. This branch also
+has its base value duplicated, so even if you do nothing on the fallthrough
+condition, you need to "drop" that value to keep PS balance.
+
+During the execution of a "of" branch, the value in question is available
+through "r@". This is an important gotcha when local variables [usage/to] are
+used: case statements "use" a local variable slot.
+
+All control flow words are immediates and none of these control structures above
+can be ran in interpret mode. They only work when compiled. Sometimes, a little
+conditional in interpret mode can be useful.
+
+  42 [if] ."this will be executed" [then]
+  0 [if] ."this won't" even if the code is nonsensical [then]
+
+[if]..[then] work like comments and simply drop words until "[then]". There is
+no "[else]".
+
+## do..loop
+
+Dusk's do..loop constructs work pretty much like in traditional Forths. They're
+immediates and the runtime signature of "do" is "( limit initval -- )" and those
+values are pushed to RS using "2>r". Then "loop" increases RS top by 1 and
+compares it to RS+4. As long as it's lower, we loop.
+
+We can increase the counter by more than 1 by using "+loop ( n -- )" instead of
+"loop". Looping condition stays the same. Don't use negative numbers, it doesn't
+work.
+
+We can also loop downwards with "-loop ( n -- )". In that case, the loop
+condition is reversed. As long as RS+0 is higher than RS+4, we loop.
+
+do..loop constructs are "zero guarded", that is, that if the initial values make
+the loop condition false, we jump over the whole loop and don't execute the body
+at all.
+
+"i" fetches RS+0 to PS and "j" fetches RS+8 to PS, which makes it suitable in
+nested loops to fetch the counter of the outer loop.
+
+### Breaking
+
+It's a common pattern to break from loops early. To do so, you can use the
+"break" word. This words jumps to the end of the loop without executing the rest
+of the loop body. Example:
+
+  : foo 5 0 do i . i 2 = if break then loop ; foo --> prints "012"
+
+Because break jumps are "out of band" with other structured jumps (that is, they
+don't obey "clean nesting" rules), they can't use PS directly, so they use
+a global variable. This means that:
+
+1. There can only be one "break" per loop.
+2. A break cannot appear before a nested loop, otherwise it's the nested loop
+   that's going to process the "break" and it won't have the expected results.
+3. These limitations are compile time ones, which means that "break" works fine
+   when the loop calls a word that has a loop inside it.
+4. Break only works in do..loop.
+
+It's also useful to know, once we're outside the loop, whether the loop has
+exited through breaking or through exhausting its iteration source. For this,
+there's "broke?", which yields 1 if the previously executed do..loop exited
+through "break", 0 otherwise.
+
+## Aborting
+
+As with any Forth, Dusk has the word "abort" which, at face value, behaves as
+expected. However, it has a few layers of indirections making it pretty
+configurable.
+
+First of all, "abort" is a simple indirect alias to the "ABORTPTR" cell. This
+means that if you want to change the meaning of "abort", you can set the
+ABORTPTR cell to the address of your new abort implementation. This is, for
+example, used in test harness to test whether aborts are called without stopping
+the test suite.
+
+Most of the time, ABORTPTR will point to "(abort)", the regular abort
+implementation. This empties PS and calls "quit".
+
+At boot time, ABORTPTR will point to a "boot failure" word that enters an
+infinite loop. The idea is that if "abort" is called during boot time, where our
+payload is not yet interactive, it's better to fail with an infinite loop than
+to continue consuming the payload, which might end up eating uninitialized
+memory. It's when interactivity is gained, for example in [lib/coop], that
+ABORTPTR is set to its "regular" word.
+
+## Quitting
+
+As with many Forths, Dusk has "quit" which strips itself out of whatever
+execution context it was in to return to the main interpret loop. In details,
+this means:
+
+  * Empty RS
+  * Set COMPILING to 0
+  * Set CURALLOC to SYSALLOC [doc/usage/mem]
+  * Set RTYPE to CONSOLETYPE
+  * Jump to the main interpret loop
+
+By default, that interpret loop is "main", defined in every Dusk kernel. It's a
+standard interpret loop. However, there's a layer of indirection in quit, under
+the name of MAINLOOP. MAINLOOP is a variable that holds what "quit" ends up
+calling. It defaults to "main".
+
+But wait, there's more! There is also the concept of "quit hooks". Right before
+calling main (that is, after RS and COMPILING are reset), it calls the word
+where the cell QUITHOOK points to.
+
+By default, it points to "noop", so it does nothing. But you can make it point
+to whatever you want. The idea behind this hook is to give some modules the
+opportunity to reinitialize some global values on an unexpected flow break.
+
+Generally, rather than brutally set QUITHOOK directly, you'll want to "compose"
+your hooks with other hooks in a decoupled manner. For this purpose, there's the
+":quithook" word, which appends whatever contents you compile to the current
+hook. Example:
+
+  :quithook ."foo!" ;
+  :quithook ."bar!" ;
+  abort \ prints "foo!bar!" then returns to the interpret loop
+
+## A register preservation
+
+Flow words preserve the A register [doc/hal]. This means, for example, that
+it's safe to use the A register within a do..loop.
+
+There is one exception: break. Breaking destroys the A register. Not inside the
+loop, but outside it.

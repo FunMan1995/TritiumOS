@@ -1,0 +1,776 @@
+# Harmonized Assembly Layer
+
+The Harmonized Assembly Layer is a set of words implemented by all Dusk systems
+which have the same semantics across CPU architectures and compile native code
+that has consistent results on all of them.
+
+It opens the door of direct register accesses, which are otherwise closed to
+Forth semantics, but in a portable manner, something direct assembler isn't.
+
+The HAL blends seamlessly with Forth. For example, let's consider this:
+
+  : bi1+ ( n n -- n+1 n+1 ) 1+ swap 1+ swap ;
+
+It works alright, but if speed was an issue, you just *know* there's something
+wrong with it. In HAL, you could do:
+
+  code bi1+ ( n n -- n+1 n+1 ) 1 i) +, 1 PSP) +n, exit,
+
+You can even insert HAL in the middle of a word:
+
+  : bi1+ ( n n -- n+1 n+1 ) 1+ [ 1 PSP) +n, ] ;
+
+The HAL allows us to generate performant code in a cross-arch manner. It is also
+what compilers such as the C compiler rely on to generate code.
+
+Of course, as with any abstraction, we sometimes lose a little bit in speed and
+binary space compared to direct assembler instructions, but in general, the
+result is pretty good and direct assembler should be needed only in the tightest
+of the loops.
+
+The HAL is implemented at the very beginning of the boot sequence, so it's
+always available. Dusk OS makes an extensive use of it in its bootstrap
+sequence.
+
+The HAL is always for the "live" system. It has not been designed with cross-
+compiling in mind.
+
+## Register allocation
+
+The HAL has 5 virtual registers: W, A, S, PSP, RSP. Each architecture
+implementing the HAL will need to map those virtual registers to actual
+registers. Here is the list of mappings for all supported CPUs:
+
+      W   A   S   PSP RSP  Temporary
+i386  eax ebx edx esi esp  ecx edi
+amd64 eax ebx edx esi R15  ecx edi
+ARM   r9  r11 r8  r10 r13  r0 r1
+RISCV x4  x5  x6  x3  x2   x10 x11 x12
+m68k  D7  D6  D5  A6  A7   D0 A0
+
+See below for the meaning of the Temporary column.
+
+### Top of stack register
+
+Before we delve deeper into HAL's registers, here's an important reminder: Dusk
+has a "top of stack" register, the W register. This means that its PS pointer
+doesn't point to its top element, but to its *second top*. The top element is
+the W register.
+
+This small peculiarity deeply shapes Dusk's code. We always have to keep it in
+mind.
+
+### RSP and PSP registers
+
+RSP and PSP registers map directly to Forth's RS pointer and PS pointer. They're
+the same.
+
+As a general rule, PSP and RSP are always aligned to 32-bit. In a piece of code
+written in HAL, you *can* PSP break alignment for a short while, but you have to
+make it aligned again before you return from your function.
+
+RSP, however, if off-limits to disalignment. It must at all times be 32-bit
+aligned.
+
+### W register
+
+The W register is the "work" register and the default destination of all HAL
+instructions. For example, "W) @," will compile the exact equivalent to the "@"
+word, that is, compile a "fetch" instruction with W as a source (that's what
+"W)" means) and W as a destination (default).
+
+The W register is PS's top of stack. This means that, for example, increasing
+the W register by 1 is the exact same thing as executing the "1+" word.
+
+### A and S register
+
+The HAL has two extra registers that regular Forth doesn't have: the A (Address)
+register and the S (Scratch) register.
+
+Both are general purpose registers that can be used both as source and
+destination. To use as a source, there's the A) and S) words that behave like
+W).
+
+To have an operand target one of those registers as their destination, you use
+the A>) and S>) words.
+
+In terms of capabilities, the A register has the exact same ones as W. The S
+register can also be used in the same way, but it's used by the "/mod,"
+operation as a result register, so it's a tiny bit less "permanent".
+
+### Register permanence
+
+The A and S registers cannot be expected to keep their value across word calls.
+As soon as another word is called, we can generally consider those values
+destroyed.
+
+However, all HAL operations and macros must preserve A's value (unless A is the
+destination, of course). Therefore, we can rely on A's value as long as the code
+we generate doesn't branch to other words.
+
+Many words also make the promise of preserving the A register. They will
+indicate that they do so with the *A* tag in their description.
+
+Number literals always preserve the A register.
+
+Some units might expand on that promise. If they do so, they'll explicitly
+mention it in their documentation.
+
+The S register doesn't have the same guarantees and is used by some HAL
+operations and macros as temporary storage. That's why it's called "Scratch".
+Operations and macros using it with will mention it in their documentation. When
+there is no mention, the S register is preserved.
+
+Rule of thumb: if you're coding a HAL macro, use the S register. If you're
+coding a regular word, use A because the S register might be swept under your
+feet.
+
+It goes without saying that W, being PS's top of stack, is preserved at all
+times.
+
+### Preserving registers during interrupt handling
+
+Interrupts can happen at any moment and an interrupt handler has to save all
+the registers it uses to restore them when it's finished doing its thing.
+
+Those routines will typically be written in assembler, so you have full control
+over the registers you use... until you begin writing some HAL.
+
+HAL implementations sometimes need to use temporary registers. Normally, we
+don't care about clobbering those registers because they're not part of any
+register preservation convention in either the Forth or the HAL part of Dusk.
+
+... except when in an interrupt. Because these can happen at any moment, it
+could happen in the middle of a HAL operation.
+
+Therefore, when writing interrupt handlers that contain HAL code, save the
+registers listed in the "Temporary" column of the register mapping described
+above. If the CPU has a concept of "flags" (that is, everyone except RISC-V),
+these have to be saved too.
+
+## Operands
+
+All HAL instructions take either no operand (inherent) or one operand parameter.
+That operand parameter is a 32-bit number with an arch-specific (that is,
+opaque) bit structure and that contains all the information the instruction
+needs to know the source and destination of the instruction. Those operands are
+detailed in:
+
+* [doc/xcomp/x86/hal]
+* [doc/xcomp/arm/hal]
+* [doc/xcomp/riscv/hal]
+* [doc/xcomp/m68k/hal]
+
+Operand words all end with ")". For example, "A) +," means "add 32-bit location
+where the A register points to the W register".
+
+Some operand words are not directly operands, but operand modifiers. For
+example, "+)" adds a numerical offset to an operand. "W) 4 +)" refers to the
+memory location where W points to, with a 4 bytes displacement. The "8b)"
+modifier transforms the operand into a 8-bit operand.
+
+By default, all operands refer to a memory location. Only through the "&)"
+operand (see below) can we refer directly to a value in a register.
+
+### &) operand modifier
+
+The &) word takes an input operand and returns its "direct" counterpart. For
+example, m) becomes i), W) becomes a direct reference to W, etc. This also works
+with displacements. For example, "RSP) 4 +) &)" yields an operand that points
+to RSP+4.
+
+This operand might not be adressable directly by the host CPU. In that case, the
+HAL instruction will in fact compile two CPU instructions. For example, "RSP) 4
++) &) +," under i386 would yield "di sp 4 +) lea, ax di add," ("di" being any
+unallocated register).
+
+Operand words never write CPU instructions directly, only instruction words do.
+The "lea," above wouldn't be written when "&)" is called, but when "+," is.
+
+The &) operand always results in a 32-bit operation. Applying &) sets the
+operand to 32-bit, like 32b) would do.
+
+&) and width modifiers, that is, 8b) 16b) 32b), cancel each other. Using a width
+modifier on an operand with &) applied will unset the associated flag. A width
+operator applied to a i) will transform it into a m).
+
+&) applied to i) has no effect.
+
+The &) symbol might evoke the "reference" concept from other programming
+languages, and indeed, that's effectively what it does. If, for example, RSP)
+points to a variable, then RSP) &) points to its reference. However, the HAL
+avoid this term because it's confusing when we think in terms of registers. &),
+in HAL-speak, should rather been seen as "direct".
+
+### dir) operand modifier
+
+The dir) word inverts the direction of the HAL instruction, storing the result
+in the source. This also inverts the order of the operands.  For example, "$1234
+m) 8b) dir) -," subtracts W from the 8-bit value at address $1234 and stores the
+result at that address without affecting W.
+
+### RSP) and PSP) with both &) and dir)
+
+RSP and PSP registers can be directly accessed through &). As sources, there are
+no special restrictions. But when the dir) modifier is used, only a subset of
+the instructions are allowed and that is: @, +, -, +n,
+
+### RSP) and [rcnt]
+
+The only HAL operation that automatically adjusts [rcnt] (see "Local variables"
+in [usage/to]) is "rs+,". Other HAL operations don't touch [rcnt]. Therefore,
+special care must be taken when using the RSP) operand.
+
+If you're inside of a regular "code" word, you don't care about [rcnt], so you
+can ignore this warning.
+
+However, if you're writing HAL as part of a macro that could be used in a word
+that has local variables, then every time you write a HAL operation that
+modifies RSP ("RSP) @+," for example), you need to adjust [rcnt] accordingly or
+else you'll break local variables.
+
+## le@, be@, ale@, abe@, u@,
+
+le@, and be@, instructions work like the @, instruction except they read their
+data in the specified endian-ness. In all cases, using these instructions with
+8b) is exactly the same as using @,.
+
+In addition to reading and writing in specific endian-ness, these instructions
+also allow unaligned memory accesses, unlike @,.
+
+HAL implementations for CPUs that natively allow unaligned accesses will alias
+one of le@, or be@, to @, for speed.
+
+On CPUs that don't allow native unaligned accesses such as ARM, using "le@,"
+when you know for sure that your address is aligned is wasteful. You'd be much
+better off with a straight "@,", but you need "le@," because that's what your
+data is. For this purpose, there is "ale@," (aligned le@,) which aliases to @,
+on all CPUs except big-endian ones, otherwise it's le@,. Inversely, there's also
+"abe@,".
+
+And then there's u@, which means "unaligned @,". It's like @, but allows
+unaligned accesses. In other words, on CPU where unaligned native accesses is
+allowed, "u@," aliases to "@,". On other CPUs, it aliases either to "le@," or
+"be@,".
+
+These operations make no sense with &) or i).
+
+## 8b) and 16b) arithmetics
+
+8b) and 16b) modifiers only apply to memory accesses. Arithmetic operations
+can be written with 8b) or 16b) modifiers. However, you must be aware that
+unless the "dir)" modifier is used, all arithmetic operations are upscaled to
+32-bit, using a temporary register if needed.
+
+This means, for example, that if W contains $101 and the byte at $1234 contains
+$ff, then "$1234 m) 8b) +," will result in W containing $200. The value of the Z
+flag (see below) can be relied upon.
+
+When the "signed)" flag is set, the source value is sign-extended. See the
+"signed)" section.
+
+When "dir)" is used, things are different because the destination of the
+operation is a memory address and that address is 8-bit or 16-bit. In that case,
+any overflow is lost and the value of the Z flag cannot be relied upon.
+
+This applies to "+n," and other "source-only" operations: the Z flag for them
+can only be relied upon in their 32-bit version.
+
+An exception is "testz,", which works as expected in both 8-bit and 16-bit mode.
+
+## 8b), 16b) and stacks
+
+It should be noted that 8b) and 16b) accesses to stack elements that are 32-bit
+in size always results in broken code. We tend to forget it because we generally
+use little endian CPUs, where it incidentally works, but any such code is broken
+in big endian. Don't do it.
+
+This means that using 8b) and 16b) with PSP) should raise a red flag: it's
+almost certainly wrong. Using it with RSP) is possibly ok, for example for local
+variables.
+
+## Branching
+
+The HAL has 3 broad classes of branching operations: unconditional,
+conditional with implied comparison, and conditional on Z flag value.
+
+### Unconditional branching
+
+Unconditional banching is done with "br, ( op -- )" or "brr, ( op -- )". The
+first one is a straight branch, the second one is a "call" (branch and return),
+that is, a branch that stores its return address.
+
+In both cases, "op" is a HAL operand describing where to jump. An immediate
+address is described with "i)", but a register-based jump, including an indirect
+one, can be compiled too. Destination of the operand is ignored. Examples:
+
+  mylabel i) br,
+  W) 4 +) brr,
+
+### Forward branching
+
+Branching as described above works for backward branches, but what about forward
+ones? They are achieved through "br! ( br tgt -- )". If you create a dummy
+branch with "0 i) br," and remember where "here" was before you called it, you
+can call "br!" with "br" being the recorded "here" and "tgt" being the
+target absolute address to switch your branch to. Example:
+
+  here 0 i) br, ... here br!
+
+The "fbr, ( -- a )" macro makes things shorter:
+
+  fbr, ... here br!
+
+"br!" is designed to take the beginning of the operation as a parameter. It does
+CPU-specific handling of whatever it needs to do to write the resulting target
+at the correct place.
+
+"then", yes the same "then" as in regular Forth, is a shortcut for "here br!".
+
+On this subject, you might also want to read "Labels and flow" in [doc/asm].
+
+### Conditional branching
+
+Conditional branching is done with "?br, ( a op cond -- )" for backward jumps
+and "if, ( op cond -- a )" for forward branches. "cond" is one of the
+conditional constants such as "=)", ">=)", etc. "op" is a HAL operand
+describing the comparison to make.
+
+Comparison order is tricky to remember. In regular reading order, destination
+is the *left* operand and source is the *right* operand. For example:
+
+  ' foo A) &) S>) <) ?br,
+
+will jump to "foo" if the S register is smaller than the A register. In Forth
+pseudocode, it would be:
+
+  S A < if foo then
+
+"?br," only support immediate address branching. Unlike unconditional branches,
+it doesn't take a HAL operand as a jump target argument, but directly an
+absolute address.
+
+"if," is for forward conditional branching. It is used with "br!" like "fbr,"
+described above. The condition for "if," is inverted. For example:
+
+  42 i) =) if, ... then
+
+will execute the "..." code when W is 42.
+
+Forward branches without inversion are difficult to reason about and are error
+prone, so we don't have them.
+
+### Branching on Z flag value
+
+Many CPUs, and the HAL too, have this concept of the "Z flag", a flag that is
+set when the target value is zero, unset otherwise. Some HAL operation have a
+"Z" in their description. It means that they make the promise of setting the
+Z flag appropriately.
+
+Right after such an operation, the one of these words can be used:
+
+  ?brz,  ( a -- )
+  ?brnz, ( a -- )
+  ifz,   ( -- a )
+  ifnz,  ( -- a )
+
+The first two are for backward branching, the other twos are for forward
+branching.
+
+If the Z flag is set, "?brz," and "ifnz," will branch. If Z is unset, "?brnz,"
+and "ifz," will branch.
+
+These words only work when placed immediately after a word promising a Z flag
+value.
+
+### bool,
+
+While "bool, ( op cond -- )" is not a branching word, it has a similar API and
+works a lot like a branch. What it does is that it performs a comparison like
+"?br," does and sets W to 1 if we would branch and to 0 otherwise. Example:
+
+  42 i) A>) =) bool,
+
+W is set to 1 if A is 42. Otherwise, it's set to 0.
+
+## signed) operands
+
+Operands can be flagged as signed (default is unsigned) with "signed)". This
+changes the behavior of conditional branching as well as "bool," for conditions
+<) >) <=) and >=).
+
+This also changes the behavior of ">>," which becomes an arithmetic shift
+right, that is, it repeats its b31 bit value in the new shifted bits rather than
+pushing zeroes.
+
+Lastly, this changes the behavior of 16-bit and 8-bit arithmetics. When
+extending the source value to 32-bit, if the HAL operand is signed, that value
+will be sign-extended instead of being zero-extended.
+
+### signed) and /mod,
+
+signed) also works with /mod, which becomes a signed division. A small note on
+the meaning of "remainder": When quotient is positive, "remainder" and "modulo"
+mean the same thing. When quotient is negative, they dont! While modulo is
+always positive, the remainder is how much you must add, after having multiplied
+the quotient by the divisor, to get to your original dividend. In other words,
+the sign of the remainder is the sign of the dividend.
+
+This means that "/mod," is a misnomer when used with signed). Sorry about that.
+We could say that the S register is the modulo rather than the remainder, but
+the thing is, all native CPU division instructions yield remainder rather than
+modulo. Rather than generating the often non-trivial code to make remainder
+positive all the time, we leave this task to you. By the way, this is also what
+the C language does.
+
+## pushlr, poplr, and popexit,
+
+In Dusk, "Call" means "Push the address of the instruction following the current
+one to RSP and then jump to the address being called". "Return" means "Pop RSP
+and jump to that address".
+
+On "traditional" CPU architectures, this maps exactly to the behavior of the
+native "call" and "return" instructions, so we can live a happy life of
+blissful ignorance when using these CPUs.
+
+On some CPUs such as ARM and RISC-V, the native "call" model is to save the
+address we'll want to return to to a register and leave the task of push/popping
+to RSP to the programmer. In Dusk, we call that register the "Link Register"
+(LR).
+
+Of course, one thing we could do is to simply wrap all calls and returns in Dusk
+into RSP push/pop operations, but that would squander a wonderful speedup
+opportunity: With such an approach to calling, we can avoid one push and one pop
+on each "leaf" routine call, that is, on each call to a routine that doesn't
+call any other routine. That adds up to quite a lot of pushes and pops.
+
+To grab this opportunity, the HAL has three words: pushlr, poplr, and popexit,
+
+On "traditional" CPUs, these are hollow shells. The first two are noops and the
+last one is an alias to "exit,". On ARM and RISC-V, these words push and pop the
+return address register to and from RSP.
+
+Words defined through "high level" mechanisms such as ":" call those words
+automatically, no need to worry. However, words created with "code" don't
+because it could be a "leaf" word.
+
+This means that if you create a "code" word that happens to not be a "leaf"
+(that calls another word), it needs to call "pushlr," as a prelude and to call
+"poplr," before it returns. Leaf words don't need to do that, which makes them
+faster.
+
+## popret
+
+On most CPUs, the return address for a call is a 32-bit absolute address living
+in RS. This means, for example, that if you want to pop that return address
+"manually", all you need to do is "r>".
+
+But wait, don't do it! It's the wrong way. The problem is that some CPUs don't
+hold their return addresses in such manner. For example, AMD64 pushes a 64-bit
+address that will contain the RBP Base Address, where what we want is a 32-bit
+offset relative to that base address.
+
+"popret" is a semantical equivalent to "r>" but for situations where you want
+to pop a return address that has been pushed by a call. It will yield the same
+kind of result on all CPUs.
+
+## Instruction cache clearing
+
+Some CPUs such as ARM have separate data and instruction cache (icache). This
+means that writing to an address and then executing it right away might result
+in executing the wrong code if that address happened to be in the icache.
+
+Clearing the icache at the right moment is tricky, but it's also possible to
+cover a lot of grounds with simple rules, such as:
+
+On CPUs needing to clear the icache, the HAL does so at the end of exit,
+popexit, br, and br!.
+
+Because any kind of code that is immediately reachable and not broken has to end
+with one of these, it covers pretty much all possible cases.
+
+## HAL powerups
+
+The API described here is what the kernel and [xcomp/boot.fs] supply, but Dusk
+has even more than that in the form of "HAL powerups". Units in the "hal/"
+directory such as [hal/muldiv] or [hal/opq] augment the HAL with new
+capabilities.
+
+## HAL API
+
+### Operands
+
+W)       -- op          Indirect W register
+A)       -- op          Indirect A register
+S)       -- op          Indirect S register
+PSP)     -- op          Indirect PSP register
+RSP)     -- op          Indirect RSP register
+i)       n -- op        Immediate operand. Can't use with dir)
+m)       addr -- op     Absolute address
+sys)     off -- op      SYSVARS reference [doc/data]. Depending on systems,
+                        might be register-based or absolute memory reference.
++)       op disp -- op  Apply displacement to op. Can be applied multiple times.
+                        Displacement can be negative.
+W>)      op -- op       Set destination to W (default)
+A>)      op -- op       Set destination to A
+S>)      op -- op       Set destination to S
+&)       op -- op       Direct operand. Transforms m) into i)
+-&)      op -- op       Remove &) flag. *Doesn't* work on i)
+(&?      op -- f        Is &) flag set? *Doesn't* work on i)
+dir)     op -- op       Invert direction of the operation
+-dir)    op -- op       Remove dir) flag
+(dir?    op -- f        Is dir) flag set?
+8b)      op -- op       Make op 8-bit
+16b)     op -- op       Make op 16-bit
+32b)     op -- op       Make op 32-bit (default)
+signed)  op -- op       Make op signed
+-signed) op -- op       Remove signed) flag
+(signed? op -- f        Is signed) flag set?
+
+### Branching and conditions
+
+=) <>) <) <=) >) >=)
+
+invcond ( cond -- cond )
+  Invert condition. =) becomes <>), >) becomes <=), etc.
+
+bool, ( op cond -- )
+  Set W to 1 if condition is met, 0 otherwise.
+
+br, ( op -- )
+  Branch to HAL operand "op"
+  Cannot be used with A>) S>) dir) 8b) 16b).
+  If used with &), destroys the value of source.
+
+brr, ( op -- )
+  Compile a branch to HAL operand "op" while at the same time setting the
+  "return address" (commonly, that means pushing to RSP, but not always) to the
+  instruction directly following this one. This is commonly called a "call".
+  Cannot be used with A>) S>) dir) 8b) 16b).
+  If used with &), destroys the value of source.
+
+?br, ( a op cond -- )
+  Branch to address a if condition is met.
+
+if, ( op cond -- a )
+  Forward version of "?br,"
+
+?brz,  ( a -- )
+?brnz, ( a -- )
+ifz,   ( -- a )
+ifnz,  ( -- a )
+  Branching based on Z flag.
+
+br! ( braddr tgtaddr -- )
+  Given "braddr" pointing to a branch instruction, change the reference at the
+  address so that it targets "tgtaddr". Used for forward branching.
+
+exit, ( -- )
+  Compile a return from a call.
+
+pushlr, ( -- )
+  Push the current return address to RSP (on relevant CPUs)
+
+poplr, ( -- )
+  Pop RSP in return address register (on relevant CPUs)
+
+popexit, ( -- )
+  Equivalent to "poplr, exit," but faster.
+
+popexit ( -- ) *I*
+  Same as "r>" for for call return addresses (see above)
+
+### Instructions
+
+@,       op --      Read source into dest
+le@,     op --      Read source into dest in little endian byte order. No &) i)
+ale@,    op --      Specialized le@, for aligned source only
+be@,     op --      Read source into dest in big endian byte order. No &) i)
+abe@,    op --      Specialized be@, for aligned source only
+u@,      op --      Read possibly unaligned source into dest. No &) i)
+@!,      op --      Swap dest and source
++,       op --   Z  dest + source
+-,       op --   Z  dest - source
+swap-,   op --   Z  source - dest
+*,       op --      dest * source.
+/mod,    op --      divide dest by source and put remainder in S register.
+                    Can't be used with S>). Works with signed).
+<<,      op --   Z  dest lshift source
+>>,      op --   Z  dest rshift source. With signed), becomes an arithmetic
+                    right shift.
+lrot,    op --      dest rotated to the left by source. Bitwise rotation is
+                    close to shift but any bit overflowing goes back to the
+                    other side.
+rrot,    op --      dest rotated to the right by source
+&,       op --   Z  dest and source
+|,       op --   Z  dest or source
+^,       op --   Z  dest xor source
+@+,      op --      Read source into dest and then add 4/2/1 to operand's
+                    direct source. Cannot be used with m) i) &)
+                    If source is the same as dest, behavior is undefined.
+-@,      op --      Subtract 4/2/1 to operand's direct source and then
+                    read source into dest. Decrement happens before fetch,
+                    hence the symbol order being the opposite of "@+".
+                    Cannot be used with m) i) &).
+testz,   op --   Z  Set Z flag if source operand is zero, unset otherwise.
+                    Destination is ignored.
+                    Can't use with i) or dir)
+dropz,   --      Z  Equivalent to "W) &) testz, drop,"
++n,      n op -- Z  Add n to source. Destination is ignored.
+                    Can't use with i) or dir)
+!n,      n op --    Write n to source. Destination is ignored.
+                    Can't use with i) or dir)
+
+### Caveats
+
+#### Limits to shifting by variable values
+
+The shifting instructions using a variable source, for example "A) &) <<," will
+result in undefined behavior if the shift amount is greater than 31.
+
+This is x86's fault. It's the only CPU having this limitation.
+
+Yes, this is unfortunate because it blocks us from a few useful patterns that
+would save us a conditional jump, but otherwise it means adding a conditional
+check to *all* variable shifts codegen on x86.
+
+Because even ANSI C considers this undefined behavior, we go with the flow.
+
+### Range instructions
+
+The range instructions below don't take any HAL operand as a parameter, so they
+always generate the same code, with a fixed meaning for registers. These words
+come in 3 forms for the 3 possible byte widths, with the "w" prefix for 16-bit
+and "c" prefix for 8-bit width.
+
+Note that when we refer to a number of elements, it's not the same thing as
+bytes unless we're in 8-bit width. See "Ranges" in [doc/usage/lit].
+
+Code generated by those compilers are "zero guarded", that is, they are noop if
+S is 0.
+
+When the description for register values aren't specified in the descriptions
+below, their value is unspecified and shouldn't be relied upon.
+
+fill, --   Fill memory range of S elements starting at A with value W.
+wfill,     Afterwards, A point to the address following the last written
+cfill,     element.
+
+move, --   Copy S elements from W to A.
+wmove,     Afterwards, W and A point to the address following the last read and
+cmove,     written element.
+
+[]=,  --   Compare S elements in addresses W and A. As soon as an element
+w[]=,      differ stop right there. If all elements were equal, Z is set.
+c[]=,      Otherwise, Z is unset. On empty range, Z is set.
+
+idx,  --   Compare S elements in address A to value W. As soon as an element
+widx,      is equal, stop right there. If an element was found, Z is set, S
+cidx,      is its index (first element is 0). Otherwise, Z is unset.
+           On empty range, Z is unset.
+
+### HAL macros
+
+These words below aren't implemented in kernels and are combinations of the
+words above, but they're pretty useful nonetheless.
+
+ps+,    n --    Add n to PSP
+rs+,    n --    Add n to RSP
+
+!,      op --   Write dest to source. Shortcut for "dir) @,"
+!+,     op --   Equivalent to "dir) @+,". Source==dest is weird, but fine.
+-!,     op --   Equivalent to "dir) -@,".
+-n,     n op -- Equivalent to "swap neg swap +n,"
+
+fbr,     -- a    Forward branch. Equivalent to "here 0 i) br,"
+bbr,     a --    Backward branch. Equivalent to "i) br,"
+execute, a --    Equivalent to "i) brr,"
+
+### Mirror compilers
+
+There are also some compiler words that all have the same "( -- )" signature and
+that compile the same operation as their name, without the "," part. You can use
+them to create a "code" word or to inline an operation instead of calling it.
+
+dup, swap, nip, drop, 2drop, rot, over, rot>, tuck, 2dup,
+
+## Generating code in multiple widths
+
+Sometimes, we want to generate a piece of code in multiple widths and repeating
+the code 3 times is tedious and noisy. "MOD)" might help. "MOD)" is an
+indirection put over "8b)", "16b)" and "32b)" that is set at compile time with
+"8b" "16b" and "32b". Here's an example usage:
+
+  : _, W) MOD) @, exit, ;
+  code @ 32b _,
+  code w@ 16b _,
+  code c@ 8b _,
+
+## Examples
+
+PSP) @,           Fetch second top of stack into W
+A) 8b) !,         Set byte where A points to lower bits of W
+RSP 4 +) A>) +,   Add second top item of RS to A
+PSP) &) A>) @!,   Set PS pointer value to A, and A to old PSP value
+PSP) dir) <<,     Left shift second top of stack by W bits
+RSP) @+,          Pop RS into W
+A) 16b) !+,       Set 16-bit value where A points to W and increase A by 2
+A) 16 +) &) @,    Set W to A+16 (direct, no memory fetch)
+42 $1234 m) +n,   Increase 32-bit value at address $1234 by 42
+42 PSP) &) +n,    Increase PS pointer by 42
+54 i) -,          Decrease W by 54
+
+Here are actual word implementations:
+
+code drop PSP) @+, exit,
+code dup PSP) -!, exit,
+code swap PSP) @!, exit,
+code nip 4 ps+, exit,
+code over PSP) -!, PSP) 4 +) @, exit,
+code 1+ 1 i) +, exit,
+code lshift PSP) dir) <<, PSP) @+, exit,
+code c@ W) 8b) @, exit,
+code not 0 i) =) bool, exit,
+code execute S) &) !, drop, S) &) br,
+
+## HAL number bank
+
+Numbers supplied to i) m) and +) can be any number of the 32-bit range.
+Nevertheless, as per HAL API constraints, all operands occupy only one PS slot.
+
+Therein lies a problem: how can a 32-bit operand include its necessary metadata
+along with a possible offset that can be anything in the 32-bit range? It does
+so through a number bank mechanism.
+
+The number bank is a 4b * 15 global and static rolling buffer. This allows us to
+assign arbitrary numbers to slots numbering from 1 to 15. This slot number
+occupies only 4 bit in our HAL operand, which is much more manageable. Slot 0
+always yields the number 0 and isn't part of the rolling buffer.
+
+This allows up to 15 operands associated with numbers to coexist at once on PS,
+making the HAL pretty macro-able.
+
+If you need to hold onto a HAL operand for longer than the HAL bank allows, look
+into "(bank" and "bank)" in [hal/opq].
+
+The "+)" word is worth a special mention here. It can be applied multiple times,
+each time adding over the previous offset. This happens in a non-destructive
+way, that is, a new HAL number bank is allocated on each call. This means, for
+example, that "W) 4 +) dup 4 +)" will yield W+4 and W+8 rather than W+8 twice.
+
+Every kernel implement this number bank and expose this API:
+
+hbank' ( slot -- a )
+  Get address associated to bank slot.
+
+hbank! ( n -- slot )
+  Reserve a new slot and write "n" to it. Yield the ID of the new slot.
+
+hbank@ ( slot -- n )
+  Yield number in slot.
+
+slot) ( op slot -- op )
+  Set op's associated slot.
+
+(slot ( op -- slot )
+  Get op's associated slot

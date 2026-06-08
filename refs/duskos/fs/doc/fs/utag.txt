@@ -1,0 +1,57 @@
+# Unit tags
+
+Dusk has units [doc/usage/unit] and those units are usually incorporated into
+two files: the source file and the documentation file.
+
+Units name generally follow the form "unit/name" and their source and
+documentation files follow the forms "unit/name.fs" and "doc/unit/name.txt".
+
+We very often refer to units, either in documentation or in source files and we
+often wish, for example in [app/ed], to refer to files associated with those
+references.
+
+This unit at [fs/utag.fs] contains logic to derive those file names from those
+unit names. There are 3 possible queries: get path, get source path, get
+documentation path.
+
+Those queries are made on what we assume to be a word, a string without
+whitespace.
+
+When answering those queries, the first step is to extract the unit name:
+
+1. Does the word begin with a '['? then strip it as well as everything following
+   and including the closing ']'.
+2. Does the word begin with "doc/"? Strip it.
+3. Does the word contain a "."? Strip it as well as the contents following it.
+
+## Get source path
+
+Perform the logic above, then add ".fs" to it.
+
+Resulting path isn't checked for existence.
+
+## Get documentation path
+
+Before it performs the logic above, check if the word exists in the system
+dictionary. If it does, the unit under which this word lives is our unit name.
+
+Perform logic above, then add "doc/" prefix and ".txt" suffix.
+
+Resulting path isn't checked for existence.
+
+## Get path
+
+This query is like the "get source path" one except that if, after debracketing,
+we happen to have a valid and existing filename, we yield that instead.
+Otherwise, follow through with "source" logic.
+
+## API
+
+utag>.fs ( str -- path )
+  Transform a utag into a source path.
+
+utag>.txt ( str -- path )
+  Transform a utag into a documentation path.
+
+utag>path ( str -- path )
+  Transform a utag into a path.

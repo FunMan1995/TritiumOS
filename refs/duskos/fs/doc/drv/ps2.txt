@@ -1,0 +1,23 @@
+# PS/2 keyboard
+
+The unit at [drv/ps2.fs] implements keyboard structs [doc/io/kbd] for PS/2. It
+consists of "newps2kbd" that creates a new keyboard struct feeding itself from
+the "(ps2@?) ( -- ?keycode f )" word, which must be implemented and then
+realiased by specific drivers.
+
+For example, 8042kbd@? from [drv/pc/pc28042.fs] is such an implementation.
+
+That word checks if the controller has received a keycode from its keyboard.
+If it has, f=1 and keycode is the PS/2 key code received from the device.
+Otherwise, f=0.
+
+Example initialization:
+
+  ' 8042kbd@? ' (ps2@?) realias
+  1 newps2kbd to keyboard
+
+## API
+
+newps2kbd ( scancodeset -- kbd )
+  Create a new PS2 keyboard [io/kbd] with the specified Scan Code set, which
+  can be either 1 or 2. Any other value triggers an error.

@@ -1,0 +1,22 @@
+# Compile time m68k CPU selection
+
+The m68k family has a few backward incompatibilities that forces us to select a
+target CPU at compile time, notably because of cache control mechanisms.
+
+Unless I've missed something, it's impossible to generate a piece of native code
+that can clear the instruction cache on both the M68040 and the M68030.
+
+Hence the unit at [xcomp/m68k/cpusel.fs]. It provides useful macros like
+"clearcache," and a way to select a target CPU, which changes how those macros
+behave.
+
+The default target CPU is the M68040.
+
+## API
+
+selectM68030
+selectM68040 ( -- )
+  Select a target CPU.
+
+clearache, ( -- )
+  Compile native code that clears both the data and instruction cache.

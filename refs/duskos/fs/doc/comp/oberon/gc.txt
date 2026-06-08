@@ -1,0 +1,115 @@
+# Oberon's garbage collector
+
+The unit at [comp/oberon/gc.fs] is a garbage collector that is used for pointers
+to dynamically allocated records. It's pretty different from [mem/cons], the
+other GC in Dusk, because allocation sizes varies. It's not an easy 8 bytes
+across the board.
+
+This GC is implemented as two levels of linked lists. We call the top level list
+"type groups" and the second level, "GC handles", or gchdls. Type groups have
+this structure:
+
++00 link to next
++04 link to type [link/type]
++08 link to gchdl
+
+and gchdls have this structure:
+
++00 link to next
++04 used?
++08 link to type (yes, repeated)
++0c data
+... data is of type's size
+
+This structure allows us to use "gchdl+0c" as an address that serves as what
+Oberon calls a "Record Pointer". Because Dusk's Oberon can have pointers to
+non-GCed data, we find this naming confusing, so we call the pointer to gchdl+0c
+the "GC Pointer", or gcptr.
+
+When we want to dynamically access our type, we use "gcptr-4".
+
+Why two LL levels? To have a quick runtime access to all gcptrs of a particular
+type.
+
+When NEW is called, we look in the LL for an unused handle of a matching type.
+If there is none, we allocate a new one and add it to the list. We never free
+that memory, only mark it as used or unused. We don't reassign that memory to
+another type either. Such memory is always reserved for memory of that
+particular type.
+
+Having to traverse a linked list makes this GC slower than [mem/cons], but
+that's the price to pay to have heterogenous sizes.
+
+## GC slot
+
+For the collection mechanism to work, we need to have a list of all addresses
+that point to GC-able data. We call these GC slots.
+
+GC slots are indirect links to GC *pointers* (not handle!). They're supposed to
+have the type GCPointer from [comp/oberon/type].
+
+Whenever a global variable is added, we potentially add one or more GC slot,
+depending on the type of the variable.
+
+## Collecting
+
+The collection mechanism is designed to be ran in an idle loop. It doesn't scan
+PS or RS, only global variables of all modules.
+
+When comes the time to collect, we begin by setting all "used?" flags to false.
+Then, we traverse all GC slots and set "gcptr-8" to 1. Then, we scan the
+structure and recurse this process for each gcptr.
+
+## StreamRef
+
+The original Oberon lets the GC collect Files.File structures entirely and
+leaves mass storage sector deallocation to another separate process. Because we
+hook in [fs/core], we don't do it thus. We hold onto [fs/core]'s file cursors
+and these need to be closed.
+
+... but no Oberon code closes their Files.File handles, at least not in the way
+we mean by "close" in Dusk.
+
+Therefore, what we need to do is to add special treatment to files in the GC.
+Whenever references to them are collected, we need to call "close" on them.
+
+Because "close" is a [io/stream] method, we call our special structure
+StreamRef and generalize to streams.
+
+StreamRef, defined in [comp/oberon/type], is an extra indirection over a Stream.
+It's a Pointer type that is designed to be itself pointed to by a GCPointer, and
+thus live in the GC. It points to a Stream from [io/stream]. Files.File is a
+POINTER TO DUSK.StreamRef.
+
+After its Collect phase, the GC goes over all handlers of the StreamRef type.
+For each unused handler that don't point to 0, call "close" on that pointer,
+then set the pointer to 0.
+
+And that's all there is to it.
+
+## API
+
+addgcslot ( addr -- )
+  Register "addr" as a gcptr holder, that is a GC slot.
+
+?addgcslot ( type addr -- )
+  If "type" is a GCPointer, call "addgcslot".
+
+  If "type" is a struct, recurse "?addgcslot" for each field.
+
+  If type is an Array, we recursively call "?addgcslot" for each element.
+
+newptr ( type -- a )
+  If a free slot of the specified type exists, mark it as used and yield its
+  address. Otherwise, allocate a new pointer of the specified type and yield it.
+
+gc ( -- )
+  Collect the garbage as described above.
+
+.gc ( -- )
+  Print a summary of the state of the GC.
+
+resetgc ( -- )
+  Remove all slots and pointers. This leaks all pointers.
+
+  There's no good reason to use this except for testing.

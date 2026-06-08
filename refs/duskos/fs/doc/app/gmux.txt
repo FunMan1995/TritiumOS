@@ -1,0 +1,57 @@
+# Grid multiplexer
+
+This unit implements a multi-context dispatcher [lib/coop] with each active
+context having its own private grid [io/grid].
+
+The key bindings for activating subcontexts are the F1-F4 keys, which means a
+maximum of 4 subcontexts. Initially, all these subcontexts are instances of
+[app/prompt].
+
+As documented in [lib/coop], it does so through a REGISTER handler. Whenever a
+new context registers, it is added to a list of subcontexts. This new context is
+then made active.
+
+In general, all events are dispatched to all subcontexts, except:
+
+* KEYPRESS
+* MOUSEMOVE
+* MOUSECLICK
+
+which are sent only to the active subcontext.
+
+## Grid swapping
+
+Each subcontext has its own private grid. Whenever an event is dispatched, the
+active grid is set to this subcontext's private grid. It can thus transparently
+play with that grid, oblivious to whether it is active.
+
+But then, after the event is handled, we revert back to the grid belonging to
+the active subcontext. This is the one that continually gets refreshed to
+screen.
+
+When the active subcontext changes, we clear that grid's "mirror" buffer to
+ensure a full refresh.
+
+## Example initialization
+
+A system that runs on a gmux with its first context being a [app/gcon]:
+
+needs lib/coop app/gmux app/gcon
+coop$ gmux$
+gconctx 0 gmuxctx!
+edload<< init.txt
+
+## API
+
+### Constants
+
+SUBCTXCNT   4. The number of subcontexts that gmux has.
+gmuxctx     The global GMuxApp context
+
+### Words
+
+gmux$ ( -- )
+  Initializes the gmux app with SUBCTXCNT [app/prompt] contexts as subcontexts.
+
+gmuxctx! ( context idx -- )
+  Replace the subcontext at index "idx" with the specified context.

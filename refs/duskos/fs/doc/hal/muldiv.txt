@@ -1,0 +1,23 @@
+# HAL mulorshift, and divorshift,
+
+mulorshift, ( op -- )
+  If "op" is an immediate and is also a power of 2, generate a left shift with
+  "<<,". If immediate is 1, nothing is generated. Otherwise, do "*,"
+
+divorshift, ( op -- )
+  If "op" is an immediate and is also a power of 2, generate a right shift with
+  ">>,". If immediate is 1, nothing is generated. Otherwise, do "/mod,"
+
+modorand, ( op -- )
+  If "op" is an immediate and is also a power of 2, generate a "&,".
+  Otherwise, do "/mod," followed by a copy of S to dst.
+
+  To be consistent with the rest of the HAL, when op has dir) applied, S is
+  copied to "op" instead of being copied to dst.
+
+[*n] ( n -- n ) *I*
+  Compiles a "mulordiv," of n by immediate value fetched by "n<" [doc/dict].
+
+[*n+] ( n a -- a ) *I*
+  Compile a multiplication of "n" by an immediate value fetched by "n<" followed
+  by an addition to "a". In other words, an indexing operation.

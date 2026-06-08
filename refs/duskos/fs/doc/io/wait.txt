@@ -1,0 +1,33 @@
+# Waiting after I/O streams
+
+When accessing some kinds of I/O streams [io/stream], we sometimes end up in an
+ambiguous situation: did my "read" yield 0 because there's really no contents
+to read, or because it hasn't arrived yet?
+
+When reading "local" streams, this doesn't happen, but when reading comm lines,
+it can. The unit at [io/wait.fs] uses [drv/timer] to provide a proxy I/O stream
+that has a timeout field. Whenever a read or write would yield 0, it instead
+repeatedly polls the target stream until either:
+
+1. It yields something else than 0.
+2. Timeout expires.
+
+Closing a waiting stream closes the target stream.
+
+## Example usage
+
+100 const TIMEOUTMS
+TIMEOUTMS commline newwaitingstream commlinew
+\ Use commlinew like any other stream
+
+## API
+
+### Structures
+
+extends Stream struct WaitingStream { uint tgtstream timeoutms ; }
+
+### Words
+
+newwaitingstream ( timeoutms tgtstream -- stream )
+  Create a new waiting stream targeting "tgtstream" with the specified timeout
+  in milliseconds.

@@ -1,0 +1,8 @@
+# EFI helpers
+
+## API
+
+spitpe ( machineid codesz -- a u )
+  Create a 512 bytes PE+ header with a single ".text" section in it, with the
+  declared size of "codesz" bytes and a declared machine ID "machineid". You can
+  use the PEI386 or PEAMD64 constants for this value.

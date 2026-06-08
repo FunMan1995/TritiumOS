@@ -1,0 +1,93 @@
+# Date and time
+
+This unit provides the concept of "time" as a timestamp from an epoch. When we
+refer to time, we refer to an unsigned 32-bit value that represents the number
+of seconds elapsed from our epoch, which is the january 1st 2000 at 00:00. Time
+before this date is unrepresentable.
+
+This differs from the POSIX epoch, which is in 1970, because this epoch
+overflows in 2032 in its signed form. We're building a new system entirely, we
+might as well give us some more wiggle room, time-wise.
+
+When dealing with time, we usually want to know what time it is now. This unit
+provides "now", but requires drivers such as [drv/pc/rtc] to implement it. Its
+default implementation is a dummy one that yields 0. It is expected to be
+realiased by a RTC driver.
+
+Time values don't imply a timezone. The concept of "now" is by convention a
+local time one.
+
+For time measurement ranging from microseconds to minutes, this unit is not what
+you want. You want [drv/timer].
+
+## Compose/decompose
+
+Timestamps can be decomposed in those elements (valid range in parens):
+
+* year (2000-2136)
+* month (1-12)
+* day (1-31)
+* hour (0-23)
+* minute (0-59)
+* second (0-59)
+
+The words "compose" and "decompose" work with static values of the names above
+and either decompose a timestamp into them or compose a timestamp out of them.
+
+For example, "0 decompose" would set year=2000, month=1, day=1, rest=0. Another
+example is that "0 decompose 1 to minute compose" would yield 60.
+
+"decompose" will always yield correct values, but not "compose". When setting
+an invalid combination of decomposed values, "compose" will yield a nonsensical
+timestamp.
+
+## Time format
+
+There's only one time format, "<year>/<month>/<day> <hour>:<minute>:<seconds>",
+year being 4 digits, all other fields being 2 digits each, prefixed with 0 if
+less than 10. This means that formatted timestamps are always 19 characters
+long.
+
+## API
+
+### Constants
+
+TIMEFMTSZ  Size in bytes of a formatted timestamp
+S/M        60. Seconds per minute
+M/H        60. Minutes per hour
+H/D        24. Hours per day
+S/H        3600. Seconds per hour
+S/D        86400. Seconds per day
+
+### Values
+
+year
+month
+day
+hour
+minute
+second      Static values used for "compose" and "decompose"
+
+### Words
+
+now ( -- time )
+  Yield current time. Yields 0 if RTC is not configured.
+
+minutes ( minutes -- seconds )
+hours ( hours -- seconds )
+days ( days -- seconds )
+  Transforms a number of minutes/hours/days into seconds.
+
+ago ( seconds -- time )
+  Yields "now - seconds".
+
+compose ( -- time )
+decompose ( time -- )
+  See "Compose/decompose" above.
+
+formattime ( time -- a u )
+  Formats time to the time format described above. Clobbers compose/decompose
+  values. The range thus yielded is static.
+
+.time ( time -- )
+  Shortcut for "formattime rtype".

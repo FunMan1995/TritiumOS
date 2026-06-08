@@ -1,0 +1,16 @@
+# EFI LoadedImage
+
+The unit at [drv/efi/image.fs] wraps the LOADED_IMAGE protocol, mostly to get
+more information about the boot device/file.
+
+## API
+
+### GUIDs
+
+loadedimageguid
+
+### Words
+
+BootDeviceHandle ( -- a64 )
+  Yields a pointer to the "DeviceHandle" field of "LoadedImage" which was
+  supplied at EFI's entry point.

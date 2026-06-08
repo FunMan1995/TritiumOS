@@ -1,0 +1,77 @@
+# Parameter and Return stack utilities
+
+A collection of words for manipulating the parameter stack.
+
+## The "... n" pattern
+
+This unit sees the birth of the "... n" pattern, otherwise called as a PS list.
+It is an arbitrary number of elements placed on PS, with a count on top.
+
+Using such a pattern comes with severe restrictions in terms of PS juggling, but
+it can represent a low tech trick to get out of a tight spot. There are a few
+convenience words around them here.
+
+## API
+
+dipdup ( a b -- a a b ) *A*
+  Equivalent of "dip dup |" but faster and not involving RS.
+
+dipswap ( a b c -- b a c ) *A*
+  Equivalent of "dip swap |".
+
+dipnip ( a b c -- b c ) *A*
+  Equivalent of "dip nip |".
+
+dipover ( a b c -- a b a c ) *A*
+  Equivalent of "dip over |".
+
+dig ( ... n -- ... val ) *A*
+  Copy the nth value of PS to top of stack. "0 dig" is the equivalent of "dup",
+  "1 dig", of "over", "2 dig", of "oover".
+
+ndrop ( ... n -- ) *A*
+  Drop "n" elements from PS.
+
+ndup ( ... n -- ... )
+  Duplicate "n" elements from top of PS. "1 ndup" is the equivalent of "dup",
+  "2 ndup" is the equivalent of "2dup".
+
+nconcat ( ... n ... n -- ... n )
+  Concatenate two PS lists into one.
+
+nfirst ( ... n -- elem-or-0 )
+  If n=0, yield 0. Otherwise, yield its first element and drop the rest.
+
+nsame ( ... n cnt -- ... n )
+  Repeat the pattern in input PS list "cnt" times, yielding a PS list with
+  "n * cnt" elements in it.
+
+  When cnt=0, a null PS list is yielded. When input PS list is empty, it stays
+  empty.
+
+ps[] ( ... n -- ... a u ) *A*
+  Yield the range represented by the "n" elements below "n" on PS. That address
+  range is in PS itself. "u" will be the same as "n".
+
+rs[] ( n -- a u ) *A*
+  Same as ps[] but for RS. This range does not include the return address for
+  the call to rs[].
+
+roll ( ... n -- ... )
+  Rotate n elements of the stack to the "left".
+  "0 roll" and "1 roll" are noops.
+  "2 roll" is the equivalent of swap.
+  "3 roll" is the equivalent of rot.
+
+roll> ( ... n -- ... )
+  Rotate n elements of the stack to the "right".
+  "0 roll" and "1 roll" are noops.
+  "2 roll" is the equivalent of swap.
+  "3 roll" is the equivalent of rot>.
+
+rollk
+rollk> ( ... n -- ... n )
+  Same as roll/roll>, but keep original "n" there.
+
+rswap ( R: a b -- R: b a ) *A*
+  Swap RS' top elements

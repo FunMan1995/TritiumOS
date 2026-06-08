@@ -1,0 +1,557 @@
+# System dictionary
+
+This is the list of words provided by the kernel and its boot sequence,
+organized by topics.
+
+You should read [doc/usage] first to understand concepts mentioned here.
+
+You should also read [doc/sig] for understanding the documented word signatures.
+
+## Maybe a HAL word?
+
+If the word you're looking for ends with ")" or "," and isn't in here, it might
+be a HAL word and is documented in [doc/hal].
+
+## System variables
+
+Some of the words below yield addresses in the SYSVARS area [doc/data], some of
+them are regular variables defined in [xcomp/boot.fs], but functionally, they're
+all the same. Those words yield an address to the cells containing the
+associated value. All those values can be written to at run time, but some are
+dangerous to change.
+
+COMPILING    Whether the system is currently compiling a word
+CURALLOC     Pointer to the current allocator [doc/usage/mem]
+SYSALLOC     System allocator [doc/usage/mem]
+PREVRESERVE  Value of "HERE" at the time of the last "reserve" call
+SYSDICT      Pointer to system dictionary's latest entry
+FINDSTR      Pointer to string last used for findentry
+[rcnt]       Current "R level" which is changed when compiling RS-related words
+             during compilation [doc/usage/to]
+FINDCOMPILER Used by "compiling" find selector to select behavior.
+             See [doc/usage/word].
+INPTR        Input stream pointer
+INSZ         Input stream buffer size in bytes
+NEXTIN<      Pointer to ( -- ?a u ) word for input stream rotation
+             [doc/usage/io]
+CURWORD      Address of last read word (with "word" word). Is a string.
+NEXTWORD     Contains the "next word override": When nonzero, the next "word"
+             call will yield (and clear NEXTWORD) this word instead of getting
+             it from the input stream.
+PSORIGIN     Address where PS begins and is reinitialized at "abort"
+PSSZ         Size of PS in bytes
+RSORIGIN     Address where RS begins and is reinitialized at "quit"
+SYSOFF       Offset of next dynamic SYSVARS free slot [doc/data]
+HBANKIDX     Current "HAL number bank" index [doc/hal]
+HBANK        HAL number bank [doc/hal]
+RTYPE        Address for the "rtype ( a u -- )" word
+CONSOLETYPE  What RTYPE resets to on "quit"
+SCRYING      Global flag controlled by "scry" [doc/usage/word]
+ABORTPTR     Word where "abort" points [doc/usage/flow]
+QUITHOOK     Called by "quit" right before it calls MAINLOOP [doc/usage/flow]
+MAINLOOP     What we end up calling during "quit" [doc/usage/flow]
+echoin       Controls input stream echo [doc/usage/io]
+
+Some of those variables above have a HAL operand:
+
+  curalloc) inptr) scrying) insz) rtype)
+
+Those values are indirect values depending on CURALLOC [doc/usage/mem]:
+
+HERE       The value of "here"
+HEREMAX    Upper bound for "here"
+NEWHERE    "OOM recovery" word pointer ( -- a u )
+
+## Constants
+
+ZERO        0
+ONE         1
+SPC         $20
+CR          $0d
+LF          $0a
+BS          $08
+ESC         $1b
+EOF         -1
+STR_MAXSZ   $100 Maximum size of strings, including size byte.
+KERNELSTART Address of the first dictionary entry living in the kernel
+KERNELEND   Address of the last entry living in the kernel
+HERESTART   The adress of the first non-kernel word of the system, that is,
+            where "HERE" originally started (a few bytes aside).
+
+## Stack
+
+drop       a --             *A*
+2drop      a b --           *A*
+dup        a -- a a         *A*
+?dup       a -- a? a        *A* dup if a is nonzero.
+2dup       a b -- a b a b   *A*
+swap       a b -- b a       *A*
+over       a b -- a b a     *A*
+oover      a b c -- a b c a *A*
+nip        a b -- b         *A*
+tuck       a b -- b a b     *A*
+rot        a b c -- b c a   *A*
+rot>       a b c -- c a b   *A*
+
+rdrop      --          *AI* Compile a RS shrink of 4 bytes.
+2rdrop     --          *AI* Compile a RS shrink of 8 bytes.
+r@         --          *AI* Compile a push of current RS top to PS.
+r!         --          *AI* Compile a push of current PS top to RS.
+r>         --          *AI* Equivalent to r@ rdrop.
+>r         --          *AI* Equivalent to r! drop.
+2>r        --          *AI* Equivalent to swap >r >r
+2r>        --          *AI* Equivalent to r> r> swap
+scnt       -- n        Number of elements in PS, excluding "n".
+rcnt       -- n        Number of elementS in RS, excluding this call.
+stack?     --          Error out if scnt < 0.
+
+[]>r       a u --      *I* see [usage/mem]
+r>[]       -- a u      *I* see [usage/mem]
+str>r      str --      *I* see [usage/mem]
+r>str      -- str      *I* see [usage/mem]
+
+V1 V2 V3 V4
+  Built-in local variables. See [usage/to].
+
+## Memory
+
+@          a -- n        *A* Fetch n at address a.
+w@
+c@
+!          n a --        *A* Store n at address a.
+w!
+c!
+be@        a -- n        Big-endian fetch
+wbe@
+be!        n a --        Big-endian store
+wbe!
+be,        n --          Big-endian write
+wbe,
+le@        a -- n        Little-endian fetch
+wle@
+le!        n a --        Little-endian store
+wle!
+le,        n --          Little-endian write
+wle,
++!         n a --        Add n to value stored at address a.
+@!         n1 a -- n2    *A* Fetch n2 at address a, then store n1 at address a.
+@+         a -- a+4 n    Fetch n at address a and increase a.
+c@+        a -- a+1 n    Fetch n at address a and increase a.
+!+         n a -- a+4    Store n at address a and increase a.
+c!+        n a -- a+1    Store n at address a and increase a.
+,          n --          *A* Write n to HERE and increase HERE by number of
+w,                       bytes written.
+c,
+align      a n -- n      *A* Align a to nearest n, a power of 2
+align4     n -- n        *A* same as "4 align"
+align#     n by --       *A* Abort with error if "n" is not divisible by "by"
+alignhere  --            *A* Align HERE to 4b.
+alignheren n --          Align HERE to nearest n, a power of 2.
+allot      u --          *A* Increase HERE by u
+allot0     u --          *A* Allot u and fill this space with zeroes
+allot@     u -- a        Same as "allot", but yield alloted address
+here       -- a          *A* Equivalent to "HERE @"
+here#      -- a          *A* Align HERE to 4b and return it.
+newhere    -- a u        Equivalent to "NEWHERE @ execute"
+cmoveallot src u --      Allocate u bytes then copy that many bytes there from
+                         src.
+fill       a u n --      Fill range [a, a+u] with n.
+cfill
+idx        n a u -- ?i f Search for n in range [a, a+u] and yield its index.
+cidx                     If found, f=1 and i is present. Otherwise, f=0 and i is
+                         absent.
+
+n,@ ( ... n -- a )
+  Replaces a series of "n" calls to ",", except that it reserves the "here"
+  memory for those writes beforehand, guaranteeing contiguous memory. Also,
+  calls "alignhere" before writing. Then, yield "a" like allot@ does.
+
+move ( src dst u -- )
+  Copy u 32-bit units from address src to address dst, moving upwards.
+  Register A contains the "dst" address following the last written byte.
+
+cmove ( src dst u -- )
+  Like "move", but for 8-bit units. However, "cmove" is "smart", that is, if
+  src, dst and u are divisible by 4, "move" is used instead, making it faster.
+
+## A register
+
+A>         -- n        *AI* push value of A register to PS
+>A         n --        *I* push PS top to A register
+A!         n -- n      *I* copy PS top to A register
+A+         n --        *I* Increase A register by n
+@A@        -- n        *AI* Fetch 32b value from addr in A
+@Ac@       -- c        *AI* Fetch 8b value from addr in A
+@A!        n --        *AI* Store 32b value in addr in A
+@Ac!       c --        *AI* Store 8b value in addr in A
+
+## Arithmetics
+
++          a b -- a+b  *A*
+-          a b -- a-b  *A*
+swap-      a b -- b-a  *A*
+*          a b -- a*b  *A*
+/          a b -- a/b  *A*
+/+         a b -- a/b  *A* and add 1 if remainder is nonzero
+/mod       a b -- r q  *A* r is remainder, q is quotient
+mod        a b -- n    *A* n is the remainder of a divided by b
+neg        n -- -n     *A*
+and        a b -- n    *A* n is the result of a binary "and" of a and b
+or         a b -- n    *A* binary "or"
+xor        a b -- n    *A* binary "exclusive or"
+inv        n -- n      *A* yield "n -1 xor", flipping all bits
+invand     a b -- n    *A* Equivalent to "inv and"
+lshift     n u -- n    *A* Shift n by u bits to the left
+rshift     n u -- n    *A* Shift n by u bits to the right
+lrot       n u -- n    *A* Rotate n by u bits to the left
+rrot       n u -- n    *A* Rotate n by u bits to the right
+1+         n -- n+1    *A*
+1-         n -- n-1    *A*
+2+         n -- n+2    *A*
+2-         n -- n-2    *A*
+4+         n -- n+4    *A*
+4-         n -- n-4    *A*
+8+         n -- n+8    *A*
+8-         n -- n-8    *A*
+2*         n -- n*2    *A*
+2/         n -- n/2    *A*
+4*         n -- n*4    *A*
+4/         n -- n/4    *A*
+8*         n -- n*8    *A*
+8/         n -- n/8    *A*
+16*        n -- n*16   *A*
+16/        n -- n/16   *A*
+256*       n -- n*256  *A*
+256/       n -- n/256  *A*
+
+## Logic
+
+<          a b -- f     *A* f=1 if a is lower than b
+>          a b -- f     *A* f=1 if a is higher than b
+=          a b -- f     *A* f=1 if a equals b
+<>         a b -- f     *A* f=1 if a is not equal to b
+>=         a b -- f     *A* f=1 if a is higher than or equal to b
+<=         a b -- f     *A* f=1 if a is lower than or equal to b
+0<         n -- f       *A* f=1 if n is negative
+0>=        n -- f       *A* f=1 if n is not negative
+not        n -- f       *A* f=1 if n is zero
+bool       n -- f       *A* f=1 if n is nonzero
+min        a b -- n     *A* n is the lowest number between a and b.
+max        a b -- n     *A* n is the highest number between a and b.
+max0       n -- n       *A* Return n if n is positive, otherwise 0.
+within?    n l h -- f   *A* f=1 if n >= l and n <= h.
+?swap      a b -- l h   *A* Sort a and b, putting the highest number on TOS.
+[]=        r1 r2 u -- f f=1 if memory ranges [r1, r1+u] and [r2, r2+u] have
+c[]=                    the same content.
+s=         s1 s2 -- f   f=1 if s1 and s2 have the same length and content.
+
+## Flow
+
+See [doc/usage/flow] for details.
+
+noop        --        Do nothing
+bye         --        Halt the machine.
+quit        --        Reset RS and return to the "main" loop.
+abort       --        Reset PS and quit.
+idle        --        A noop until [lib/coop] realiases it
+..          --        Shorcut for "'.' emit idle", to indicate progress
+execute     a --      Call address a.
+exit        --        *I* Compile a return from call.
+main        --        The mainloop. Reset RSP and repeatedly call "run1".
+break       --        *I* Break from an iterator early.
+broke?      -- f      Last loop exited through "break"?
+[if]        f --      If f=0, skip all following words until a "[then]" word is
+                      reached.
+[then]      --        No-op.
+:quithook   --        Create a new "quit" hook.
+addquithook xt --     Add "xt" to the "quit hooks" chain.
+
+Control structure patterns (All words below are *A*):
+
+if .. else .. then
+N case .. of condition .. endof .. endcase
+begin .. again
+begin .. until
+begin .. while .. repeat
+begin .. while .. while .. repeat .. else .. then
+HI LO do .. loop
+HI LO do .. N +loop
+LO HI do .. N -loop
+
+## Linked list
+
+Dusk's core contains the words:
+
+  llend lladd llfind
+
+But because of their thematic affinity, these words are documented in [mem/ll].
+
+## Dictionary
+
+Dusk's core contains the words:
+
+  findentry find find# ' 'e ['] e>xt e>xtsel e>wlen sysdict current
+  entry[] entry entrylen entryname[] entrytag findtagged
+
+But because of their thematic affinity, these words are documented in
+[mem/dict].
+
+## Strings
+
+Dusk's core contains the words:
+
+  c[] str< " ," n" strallot newstr endstr strmove s,
+
+But because of their thematic affinity, these words are documented in [lib/str].
+
+## Tags
+
+tagged# ( a tag -- a+4 )
+  Assert that "a" contains the specified tag and then yield a+4.
+
+tag, ( tag -- )
+  Shortcut for "alignhere ,".
+
+See also [doc/usage/tag].
+
+## Unit
+
+unit       "x" --    Create a new unit "x". The resulting word is not executable
+                     and must be referenced with "find".
+endunit    --        Stop associating further entries with the current unit.
+needs      "..." --  See [doc/usage/unit]
+needs"     "..." --  *I* See [doc/usage/unit]
+
+unittop ( unit -- a )
+  Yields a pointer to the "top entry" field of the unit
+
+unitbottom ( unit -- a )
+  Yields a pointer to the "bottom entry" field of the unit
+
+unitname ( unit -- str )
+  Yields the name of an entry
+
+system (unit)
+  Unit containing all kernel and xcomp/boot words
+
+currentunit (variable)
+  Points to the last unit to have been defined. Because Units are a LL, you can
+  access all units through that.
+
+## I/O
+
+in<         -- c     Read next character from system input source.
+in<#        -- c     Like in<, but aborts on EOF.
+emit        c --     Emit character to system output destination.
+nl>         --       Emit CR then LF.
+spc>        --       Emit SPC.
+rtype       a u --   Emit characters in range [a, a+u].
+stype       s --     Emit all characters in s.
+."          "x" --   *I* Compiles: "x" stype
+abort"      "x" --   *IC* Compiles: ."x" abort
+?abort"     "x" --   *IC* Compiles: if abort"x" then
+word        -- s     Try to read a word and error out if EOF is reached.
+wordorquote -- s     Read either a word or a quote from input. [doc/usage/io]
+\           --       Skip input stream until end of line (LF is the mark).
+(           --       Skip input stream until " ) " is read.
+console!    xt --    Set both RTYPE and CONSOLETYPE to xt
+
+stepback ( -- )
+  Go back one character in the input stream. Next "in<" call will re-yield the
+  same character. To avoid memory corruption, this should never be called more
+  than once for a given "in<" call.
+
+peekback ( -- c )
+  Yield the character that was yielded by the last in< call. This can't go past
+  the "single stepback" rule, so if called after a stepback, 0 is yielded.
+
+toword? ( -- f )
+  Advance input stream to next non-whitespace character then yield f=1. If EOF
+  is reached, yield f=0. If inptr already points to a non-whitespace, f=1 and we
+  don't advance.
+
+eol? ( -- f )
+  If "peekback" yields LF, exit immediately with f=1. Otherwise, consume the
+  input stream until either a non-whitespace, LF or EOF is encountered. f=1 if
+  LF or EOF was encountered. Otherwise, f=0. When eol? stops on a word boundary,
+  it calls "stepback" before exiting.
+
+  Additionally, whenever a '\' character is read, discard it, discard the
+  following character, then continue looping.
+
+  See [doc/usage/io] for more details about how this word is used.
+
+See also [io/stream].
+
+## Parsing, formatting and interpreting
+
+parse ( s -- n? f )
+  Try to parse string s as a number. f=1 and n exists if parsing was successful.
+
+parsedec ( a u -- n? f )
+  Parse range "a u" as decimal.
+
+parsechar ( a u -- n? f )
+  Parse range "a u" as a character.
+
+parsehex ( a u -- n? f )
+  Parse range "a u", *without* the "$" prefix", as a hexadecimal.
+
+formatdec ( n -- a u )
+  Format number n to decimal into static buffer then yield its range.
+
+formatdecu ( n -- a u )
+  Like "formatdec", but unsigned.
+
+formathex ( n -- a u )
+  Format number n to 32-bit hex into static buffer then yield its range.
+
+formathex2 ( n -- a u )
+  Format number n to 16-bit hex into static buffer then yield its range.
+
+formathex1 ( n -- a u )
+  Format number n to 8-bit hex into static buffer then yield its range.
+
+. .x .x2 .x1 ( n -- )
+  Call one of the "formatXXX" words on "n" and call rtype.
+
+run1 ( -- )
+  Accumulate a word from input stream (that is, call "word") and then run that
+  word according to the general interpretation logic, that is:
+
+  1. If it's a number literal, put it on PS.
+  2. Otherwise, try to find it in the dictionary.
+  3. If found, execute. Otherwise, "word not found" error.
+
+n< ( -- n )
+  Repeatedly call "run1" until a single number is placed on PS. If more than a
+  single number is placed on PS, abort with "n< overflow".
+
+map< ( "wordname" -- )
+  Find "wordname" in sysdict, then run n< on the rest of the line and call the
+  found word on each number found. Interpret only. Example usages:
+
+  map< 2* 1 2 3
+  . . . \ prints "642"
+
+  create foo map< c, 3 'f' ( comments work! ) 'o' \
+    \ full line comments like these work too
+    'o'
+  foo stype \ prints "foo"
+
+interpret ( -- )
+  Call "run1" as long a "in<" doesn't yield EOF.
+
+exec[] ( xt a u -- )
+  Execute "xt" with range "a u" as an input stream. Previous input stream is
+  restored after "w" returns.
+
+interpret[] ( a u -- )
+  Interpret the range of characters "a u" as Forth source code.
+
+## Compiling
+
+Compiling words operate on a higher plane: they write native code to "here",
+which can then be executed to have the desired effect. Words from the HAL
+[doc/hal] are omitted from the list below but are of course very useful on the
+subject of compiling.
+
+[          --       *I* Stop compiling. The following words will be interpreted.
+]          --       Begin compiling. The following words will be compiled.
+:          "x" --   Create entry x and begin compiling.
+:>         -- xt    Like ":", but don't add and entry to dictionary and push
+                    execution token to PS.
+:realias   --       Compile a word while at the same time "realias"ing the word
+                    it shadows to this new word.
+:~         --       Create an anonymous word and begin compiling.
+;          --       *I* Compile a return from call and then stop compiling.
+~          --       Reference to the latest anonymous word. See [usage/word]
+code       "x" --   Create entry with name from input stream in sysdict.
+code>      -- xt    Like ":>", but for "code".
+litn       n --     Compile a literal with value n.
+compile    "x" --   *I* Find word x and compile a compilation of a call to it.
+[rcompile]  "x" --  *I* Find word x and compile a call to it. Can be used to
+                    compile immediate words instead of executing them.
+[compile] "x" --    *I* Like [rcompile], but select the "compiling" behavior.
+compile]   --       Begin compiling as if we called ":", but without the
+                    dictionary entry part. That is: pushlr, ]
+compsel    --       Set FINDCOMPILER to 1
+immediate  --       Make last added entry into an immediate entry.
+create     "x" --   Create a new entry named "x" of type "cell".
+                    Resulting data is always aligned to 32-bit.
+variable   "x" --   Equivalent to "create 0 ,".
+value      n "x" -- See [doc/usage/to]
+to         --       *I* See [doc/usage/to]
+const      n "x" -- Create a new constant named "x" of value n.
+adder      n "x" -- Create a word that adds "n" to PS top. All adders are *A*.
+does>      n --     Compile a word that binds "n" to the contents following this
+                    very word.
+getset,             See [doc/usage/to]
+alias      "x y" -- See [doc/usage/word]
+entryalias e "y" -- Like "alias", but target entry is supplied as "e" instead of
+                    being looked up.
+@alias     a "x" -- Create word "x" that calls 4b address contained at "a".
+realias    xt t --  Make target word "t" into an alias to "xt".
+
+?scryentry ( e -- ?n f )
+  Try scrying entry "e". f=1 on success and n=scrutable value. Otherwise, f=0
+  and n is absent.
+
+scryentry# ( e -- n )
+  Call ?scryentry and abort with "inscrutable!" if f=0.
+
+scry ( "x" -- n )
+  Scry word "x". See [doc/usage/word].
+
+scryfind# ( str -- n )
+  Find scrutable word "str" and yield its scrutable value.
+  Aborts with "inscutable!" error when word is inscrutable.
+  Aborts with "word not found" if word doesn't exist.
+
+?scry, ( n -- )
+  Compile a scrying check that conditionally yields "n".
+
+compiling ( compxt runxt "name" -- )
+  Create a "findselector" word that yield "compxt" when COMPILING is true and
+  "runxt" otherwise. See [doc/usage/word].
+
+inline ( xt "name" -- )
+  With "xt" being a compiler word, call it to compile that behavior once, then
+  call "compiling" with "compw" being "w" and "runw" being the newly compiled
+  word.
+
+inline, ( xt "name" "cname" -- )
+  Like "inline", but also records the compiler word as "cname". Example:
+
+  :> PSP) @+, ; inline, drop drop,
+
+bind> ( n xt -- xt )
+  Compiles code that pushes "n" to PS then calls "xt", then yields the XT of
+  that code.
+
+bind ( n xt "x" -- )
+  Like "bind>", but compile that code into a word named "x" instead.
+
+sysvar ( "hal" "const" -- )
+sysalias ( "hal" "const" "alias" -- )
+  Create dynamic sysvars as described in [doc/data].
+
+consts "..." --
+  Reads input stream's rest of line to create multiple constants. Each pair of
+  words yields a "const". The first element, ran with "run1" and expected to
+  have a ( -- n ) signature, is the value. The second element is the name.
+  Example:
+
+    consts 42 foo 54 bar
+
+enum "..." --
+  Same as "consts", but with implicit values. Those values are a counter
+  starting at 0 and incrementing by 1 each time. Example:
+
+  enum zero one two three
+
+## Templates
+
+See [doc/usage/word] for explanations. In the core, we have:
+
+  bi dupbi tri dip doto

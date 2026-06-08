@@ -1,0 +1,105 @@
+# Understanding Dusk's code
+
+Dusk's code is not the easiest to read. Before a piece of code can be read, it
+has to be properly contextualized and that context is large.
+
+First of all, a solid knowledge of [doc/usage] and [doc/dict] is assumed. You're
+supposed to know the basic mechanisms of Dusk.
+
+Then come general patterns in code that only make sense when you're aware of
+them. This document can help.
+
+## Understanding a unit context
+
+Units are generally accompanied by a documentation page in "doc/<unitname>.txt"
+and this is where you'll have high level information about that code. The code
+is sometimes commented, but it's generally for something specific to those few
+lines of code, not macro information.
+
+If you want to understand the code in that unit, you need to get acquainted with
+its vocabulary. Dusk is a large system by Forth standards, so that's a lot of
+words to remember. Fortunately, most units depend only on a handful of other
+units, so by looking at the unit's top "needs" line, you can restrict your
+vocabulary context to those units. That's much more manageable.
+
+## Patterns in code
+
+@ means "fetch". Its presence in a word indicate that we fetch a value from
+somewhere.
+
+! means "store", the opposite of "fetch".
+
+, means "write", that is, storing a value to "here" and increment here by that
+value's width.
+
+Those symbols above are sometimes accompanied by letters such as "c" (character)
+or "w" (word), which means that instead of being 4 bytes wide (the default
+width everywhere), it's 1 or 2 bytes wide.
+
+' means "address of".
+
+. means "print".
+
+_ means "anonymous definitions" that are meant to be used locally.
+
+_ as a prefix indicates a private word that is meant to be only used in the
+context of the local unit. With "unit bubbling" making this patterm obsolete,
+it should gradually whither away from the code.
+
+? at the beginning of the word means "maybe we'll do it maybe we won't". For
+example, "?dup" is meant as "maybe dup".
+
+? at the end of a word indicate a yes/no answer. For example, "ws?" means "is
+it a whitespace?".
+
+# means "assert", meaning that an abort will take place in case of failure. For
+example, "lookup#" means "try to find specified path and abort if not found".
+
+[] indicates a range. For example, "[]=" means "compare ranges for equality".
+
+[ as a suffix indicates the beginning of a special interpretation of words. For
+example, "foo here[" overrides HERE until "]here" is reached.
+
+] as a prefix indicates the end of a special interpretation loop.
+
+( as a suffix indicates the beginning of a buffer. For example, "buf(" is the
+address of the beginning of a buffer.
+
+) as a prefix indicates the end of a buffer, exclusively. For example, ")buf c@"
+is an out of bounds fetch. ")buf 1- c@" fetches the last char of the buffer.
+
+> has ambiguous meaning. It's generally meant as "movement" or
+"transformation". ">r" means "move element from PS to RS" and "[]>str" means
+"transform a range into a string".
+
+< used as a suffix means that the word operates on/with the input stream
+[doc/usage/io]. "in<" consumes the input stream and "exec<" [doc/io/stream]
+overrides the input stream.
+
+<< is similar to <, but such words expect a file path to follow the word. For
+example, "f<< path/to/file".
+
+(words), that is, words inside parens, are "false words", that is, words that
+you aren't expected to call directly, but rather to compile in a special
+context. For example, calling "(cell)" makes no sense. "(cell)" is compiled by
+"create".
+
+## Understanding drivers
+
+To understand a driver, it is absolutely necessary to understand the target
+hardware, otherwise the code is gibberish. This is true not only of Dusk, but of
+a whole bunch of operating systems. Don't expect driver code to teach you about
+hardware. Dusk doesn't contain this information, you'll have to get this
+elsewhere.
+
+## Understanding C/Forth interoperability
+
+One of Dusk's primary goals is to elegantly marry C and Forth, so having C and
+Forth together is common in the code. All pieces of C code are wrapped in Forth.
+Invoking "cc<<" directly is a bit awkward for the operator, so even the purest
+of C unit, for example "foo.c", will not exist alone. It will always be
+accompanied by a "foo.fs" unit that takes care of compiling the unit. But more
+often than not, that's not the only thing that "foo.fs" will do. It will also
+include words that are easier to implement in Forth than in C. If some
+structures in C are useful to have in Forth, then that unit will also export
+those structures.

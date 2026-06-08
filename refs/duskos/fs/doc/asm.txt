@@ -1,0 +1,116 @@
+# Assemblers
+
+Assemblers are a crucial part of Dusk and a Dusk system will almost always have
+its native assembler loaded in memory because one of the machine drivers
+required it to load.
+
+On other systems, we're used to assemblers that parse a document containing a
+specific syntax and produce a resulting binary blob. In Dusk, assemblers are
+simple collections of words that sprinkle binary code around and can be called
+in many different context. For example, on a i386 system, you can insert binary
+contents in the middle of a word definition:
+
+  : foo 42 + [ ax 2 imm) shl, ] ;
+
+which is the equivalent to:
+
+  : foo 42 + 4* ;
+
+Each assembler is different and you'll want to refer to arch-specific assembler
+documentation before you begin using it, for example [asm/x86] or [asm/arm].
+
+While each assembler is different, they follow broad conventions which are
+described below.
+
+## Write symbol in words
+
+Words that write binary contents in assemblers all have a "," (write) suffix to
+indicate that effect.
+
+## Operands order
+
+Operands are specified before the instruction word is called and in the same
+order as the architecture "natural" order (the order specified on the CPU
+assembler documentation). For example, on i386, the destination register is
+specified first, followed by the source operand, if any.
+
+## Labels and flow
+
+The labels system at [asm/label] is arch-neutral and rests on top of
+arch-specific jump words, which have these properties:
+
+* They take their jump target directly from PS.
+* They can be either relative or absolute jumps.
+* In the case of a relative jump, "0" means an infinite loop. When the native
+  op doesn't have the same scheme, the op itself has to adjust the offset.
+
+For jumps to work, assemblers all need to have a point of reference, which is
+called "org". It's the address at which the binary your assembling begins. If
+you're assembling for the live system, "org" is 0, its default value. If you're
+cross-compiling, you'll want to set "org" to "here" when you begin assembling.
+
+If the binary you're assembling isn't designed to run at address 0, then you
+also need to define "binstart". For example, a x86 PC boot sector will want to
+have "binstart" set to $7c00.
+
+These 2 values give us a new word, "pc" (for Program Counter), which will yield
+the address where the next assembled byte will be, returned in terms of the
+target machine.
+
+Jumps to locations in Dusk are made easier by the use of labels. Labels are a
+simple "value" that you declare before beginning the code:
+
+  0 value mylabel
+
+There are two possible types of jumps, backward or forward. Backward jumps are
+easy:
+
+  pc to mylabel
+  nop, nop,
+  mylabel jmp, \ assuming "jmp," takes an absolute address
+
+If the jump you want to use takes a relative address, you can use "abs>rel":
+
+  mylabel abs>rel jmp,
+
+Forward jumps are something else. We don't know in advance what's the target pc,
+so what we need to do is to emit the jump with a dummy value and save the
+address where the jump was written in a label. Then, when we reach that forward
+label location, we go back to the jump address saved and fiddle with its offset:
+
+  forward jmp, to mylabel
+  nop, nop,
+  mylabel forward!
+
+That simple interface hides a few complexities we'll explain right here. You're
+probably asking yourself: how does the "forward!" word know about the
+properties of the "jmp," op? namely:
+
+* is it absolute or relative?
+* is the immediate 1b, 2b, 4b?
+* is its opcode part 1b or 2b in length?
+* if relative, what is it's "zero point"?
+
+and you would be quite right to ask these questions, because it's a tricky one.
+The answer is that the "forward!" word is implemented in an arch-specific manner
+that reads the target address itself and then decodes its own opcodes to answer
+those questions.
+
+Another question: how does "forward" know in advance the magnitude (4b? 2b? 1b?)
+of the jump? In most assemblers, jump words auto-detect their width based on the
+value they are passed.
+
+Answer: It doesn't. "forward" sends to jmp a value that intentionally doesn't
+fit in 2b so that, by default, forward jumps don't end up with space problems
+(at the expense of binary space). If you want to create tighter forward jumps,
+use "forward16" or "forward8" instead.
+
+## Clean up after yourself
+
+The general assumption in Dusk is that assemblers readily assemble for the
+"live" system unless otherwise specified.
+
+When you cross compile, you play with "org" and possibly "binstart". When you're
+done with it, you need to set them back to 0, or else you're breaking further
+assembling for the live system. You can use "resetasm" which is a shortcut for
+"0 to org 0 to binstart".

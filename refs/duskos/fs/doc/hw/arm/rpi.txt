@@ -1,0 +1,29 @@
+# Raspberry Pi
+
+Dusk OS runs on the RPi models 1, 2 and 3. The kernels for those machines are
+based on [xcomp/arm/kernel.fs] with RPi-specific modifications. The kernel for
+the model 1 is at [xcomp/arm/rpi/kernel1.fs] and the kernel for the model 2 and
+3 (it's the same kernel) is at [xcomp/arm/rpi/kernel2.fs].
+
+Those kernels, along with their associated boot payload, are expected to be
+loaded by the RPi firmware at address $8000 and then ran. A default config.txt
+works fine. All you need to do is to place the kernel+payload in "kernel.img"
+for the RPi1 and "kernel7.img" for the RPi 2 and 3.
+
+The simplest possible configuration is a UART [drv/rpi/uart] and eMMC
+[drv/rpi/emmc] one, but there's also support for the DWC USB controller
+[drv/rpi/dwc] as well as its video framebuffer [drv/rpi/vcore].
+
+The GPIOs [drv/rpi/gpio] provide a good way to implement a break [doc/break]
+mechanism, which is described in [drv/rpi/break].
+
+## Further information
+
+The main source of information for Raspberry Pi development is from the
+Raspberry Pi foundation itself[1].
+
+This Git repository contains, for example, the BCM2835 technical documentation,
+which is the main document against which Dusk's first foray into the ARM world
+is built.
+
+[1]: https://github.com/raspberrypi/documentation.git

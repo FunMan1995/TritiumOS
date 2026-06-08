@@ -1,0 +1,10 @@
+# Duskberon's DumpFont module
+
+The DumpFont module [oberon/dumpfont.mod] loads a font available to Dusk and
+stores it as an Oberon .Fnt font.
+
+## Commands
+
+Dump
+  Given a font name and a destination file name as arguments, loads that font
+  and stores it under the given name as .Fnt file.

@@ -1,0 +1,67 @@
+# Collapse OS
+
+Collapse OS is a minimal operating system created to preserve
+the ability to program microcontrollers through civilizational
+collapse. Its author expects the collapse of the global supply
+chain means the loss of our computer production capability. Many
+microcontrollers require a computer to program them.
+
+Collapse OS innovates by self-hosting on extremely tight resour-
+ces and is thus able to operate and be improved in a world
+without modern computers.
+
+# Forth
+
+This OS is a Forth. It doesn't adhere to any pre-collapse stand-
+ard, but is pretty close to the Forth described in Starting
+Forth by Leo Brodie. It is therefore the recommended introduct-
+ory material to learn Forth in the context of Collapse OS.
+
+If you don't have access to this book and don't know anything
+about Forth, learning Collapse OS could be a rough ride, but
+I'm sure you can do it. Begin with doc/usage.
+
+# Documentation and self-hosting
+
+Collapse OS is self-hosting, its documentation is not, that is,
+Collapse OS cannot read this document you're reading. Text
+blocks could, of course, be part of Collapse OS' blocks, but
+doing so needlessly uses blocks and make the system heavier than
+it should.
+
+This documentation is expected to be printed before the last
+modern computer of your community dies.
+
+# Where to begin?
+
+If you're reading this and don't know where to begin, you're
+likely to have access to a modern computer. The best place to
+begin is to build one of the ports of Collapse OS, that is,
+implementations of Collapse OS running on specific machines.
+A list of ports is available in Dusk's README file. The
+canonical Collapse OS port is the RC2014 one, but it doesn't
+have a Grid. For trying a Grid-enabled Collapse OS, using the
+PC/AT port is recommended.
+
+You can then begin playing with it with the help of doc/usage
+and doc/impl.
+
+# Other topics in this documentation
+
+* Dictionary of core Forth words (doc/dict)
+* Understanding Collapse OS (doc/grok)
+* Design considerations (doc/design)
+* Editing text (doc/ed)
+* Editing binary memory (doc/me)
+* Assembling binaries (doc/asm/intro)
+* Disassembling binaries (doc/dis)
+* Code conventions (doc/code/intro)
+* Cross-compilation mechanisms (doc/cross)
+* Collapse OS ports (doc/ports)
+* Dusk OS' compatibility layer (doc/compat)
+* Bootstrap Collapse OS to a new system (doc/bootstrap)
+* Hardware Drivers (doc/drivers)
+* Self-hosting notes (doc/selfhost)
+
+There are other subjects, you are invited to browse the doc/
+folder to discover them.

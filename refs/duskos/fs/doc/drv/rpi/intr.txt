@@ -1,0 +1,55 @@
+# Interrupt management
+
+On ARM, the interrupt vectors live either at $00000000 or $ffff0000 depending
+on the value of SCTLR.V. The initial values of those vectors are handled by
+[drv/arm/exc]. The unit at [drv/rpi/intr.fs] manages the registers that control
+interrupts and provides a few helper routine to write IRQ handlers.
+
+Under the BCM2835, we reserve memory $40-$5f for the IRQ stack and $60-$7f for
+the FIQ stack.
+
+This unit also defines "isrsave," [doc/intr] sets rSP to $60 and saves r0 and
+r1 to it. "isrrestore," pops r0 and r1 back.
+
+On the BCM2835, interrupts are managed through registers living at MMIO_BASE +
+$b200, which go as follow:
+
++00 IRQ pending basic
++04 IRQ pending 1
++08 IRQ pending 2
++0c FIQ control
++10 IRQ enable 1
++14 IRQ enable 2
++18 IRQ enable basic
++1c IRQ disable 1
++20 IRQ disable 2
++24 IRQ disable basic
+
+## API
+
+### Register mappings
+
+  $00 N4 pendingb $04 N4 pending1 $08 N4 pending2
+  $0c N4 fiqctrl
+  $10 N4 enable1  $14 N4 enable2  $18 N4 enableb
+  $1c N4 disable1 $20 N4 disable2 $24 N4 disableb
+
+### Words
+
+intr$ ( -- )
+  Enable IRQs on the ARM CPU.
+
+.intr ( -- )
+  Print interrupt configuration in a human readable fashion.
+
+### Interrupt Service Routines
+
+isrsave, ( -- )
+  Compile code that sets rSP to $60 and pushes r0 and r1 to it.
+
+isrrestore, ( -- )
+  Compile code that pops r1 and r0.
+
+israbort, ( -- )
+  Compiles a jump to "abort" that has the S flag set, thus properly returning
+  from interrupt.

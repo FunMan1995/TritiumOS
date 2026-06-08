@@ -1,0 +1,54 @@
+# Statement code generation
+
+The unit at [comp/c/stmt] generates code, using the HAL [doc/hal], for
+everything except expressions, which are covered by [comp/c/expr]. This means
+global variables, function prelude/postlude, forward declarations, typedefs and
+statements (if/while/for etc..).
+
+Unlike expression codegen, code in here isn't mind boggling. A bit messy, yes,
+because the devil is always in the details, but recursion logic is gentler on
+the mind.
+
+The main entry point of this logic is "cparse ( -- )", which is the word that
+both "cc<<" and ":c" front. This word consumes a single "element" from the input
+stream and does appropriate codegen. An element is:
+
+* A function
+* A forward declaration
+* A global variable declaration
+* An enum
+* A typedef
+
+There isn't much to say about any of these parsing logic. They are pretty much
+straightforward, offloading their expression complexity to [comp/c/expr]. Just a
+few small mentions:
+
+## PS level and statements
+
+It's worth remembering that every statement in codegen is PS neutral [comp/sym]
+Every statement begins and ends with a zero PS displacement. Every leftover PS
+displacement will, ast the end of a statement, have code generated to "wash it
+away".
+
+## Static labels for break/continue/goto
+
+Jumps that need to be made "out of bounds", that is, outside the orderly world
+of structured if/while/for, have their reference kept in static buffers. There
+is, therefore, a limit to how many of them there can be in a particular loop or
+function.
+
+## switch
+
+The switch statement is the most complex of the unit. Roughtly speaking, it
+fronts a [mem/kv] table.
+
+It works by constructing a lookup table of all the cases and generating all
+statements one after the other. Whenever there's a "case", we associate it to
+"here". Then, we evaluate the switch query and check in the lookup. Those lookup
+tables live in parena.
+
+However, this is tricky. We don't know beforehand how many cases we have for our
+lookup table. To palliate to this, we add a level of indirection. We generate
+our switch code so that it fetches its pointer to a lookup table at a specific
+literal. It's only when we're done generating the case code that we generate the
+lookup table and place a pointer to it at that placeholder.

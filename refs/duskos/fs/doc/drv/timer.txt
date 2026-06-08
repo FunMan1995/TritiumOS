@@ -1,0 +1,134 @@
+# Timer
+
+The unit at [drv/timer.fs] rests on a driver that provides a "ticks ( -- n )"
+word which yields a number that increases approximately (but at least)
+"uspertick" microseconds.
+
+This subsystem provides a convenience layer on top of that to facilitate the
+measurement of time through those "ticks".
+
+The layer itself is excessively simple. The idea is that you take a "tickstamp"
+by reading "ticks" and saving the result, then use that tickstamp later to
+measure how much time has elapsed since the tickstamp was taken.
+
+The system timer isn't designed to be very accurate. A "tick" is guaranteed to
+represent *at least* "uspertick" microseconds, but can be a bit longer.
+
+Moreover, special care is taken by the system timer to ensure that we wait at
+least the amount of time that is specified. Indeed, a problem can arise if we
+call "ticks" right before the counter increases, which means that you can get
+the next "tick" before "uspertick" has elapsed. To avoid this, "elapsedXX?" and
+"waitXX" will add one tick to their target.
+
+"uspertick" can't be less than 1, which means that you can rely on a 32-bit
+overflow being at least 70 minutes. This means that you shouldn't measure more
+than 70 minutes with this timer.
+
+Overflow is not a problem as long as tickstamps are subtracted to each other
+before doing a comparison (and that you don't measure more than 70 minutes worth
+of microseconds), but you should avoid comparing tickstamps directly. Something
+like "tickstamp 10 + ticks <" is *not* ok, because it will fail on overflow.
+Always do "ticks tickstamp -" before comparison, or use "elapsed?".
+
+## Snoozing
+
+The timer driver must also provide "snooze ( -- )" which waits for an
+indeterminate amount of time in power saving mode. If the CPU has some kind of
+"halt" instruction, then it can do that. Otherwise, a noop is fine, but it will
+waste power.
+
+The idea is to halt the CPU until the next interrupt. This will generally be a
+very small amount of time, since a typical system has a lot of interrupts firing
+all the time.
+
+However, it's possible that you have a configuration where you're exclusively
+in polling mode. In that case, you might want to forcefully define snooze as a
+noop, power savings be damned.
+
+## Waiting, idle and snooze
+
+The "idle ( -- )" word is called when we want to idle as specified in
+[lib/coop]. We specifically don't do this in "waitus" and "waitms" because
+timers are used in drivers and those drivers are often called in within event
+handlers, which means circular dependencies. What we call is "snooze".
+
+## Initialization
+
+Units in Dusk are generally all explicitly initialized, but because timers are
+sometimes needed in bootstrap code, this unit is implicitly initialized by its
+implementation units. This means that loading any driver implementation
+automatically initialized drv/timer to it, unless it has already been
+initialized.
+
+Until a timer implementation is loaded, "ticks" will abort with error.
+
+## Examples
+
+  ticks begin MYTIMEOUTUS over elapsedus? if ... else ... then ... until drop
+  ticks begin MYTIMEOUTMS over ?timeoutms"timeout!" ... until drop
+
+## API
+
+### Values
+
+uspertick
+  The number of microseconds, at minimum, that elapse between two ticks.
+  Is 0 when the unit is uninitialized.
+
+### Words
+
+ticks ( -- n )
+uint ticks();
+  Yield a running tick counter.
+
+snooze ( -- )
+void snooze();
+  Put the CPU in power saving state for an indeterminate amount of time,
+  normally a few microseconds at most.
+
+elapsedus ( tickstamp -- us )
+  Yields the number of microseconds elapsed since tickstamp.
+
+elapsedms ( tickstamp -- ms )
+  Yields the number of milliseconds elapsed since tickstamp.
+
+elapsedus? ( targetus tickstamp -- f )
+uint `elapsedus? (uint tickstamp, uint targetus);
+  Yield whether "targetus" has elapsed since "tickstamp" was taken.
+
+elapsedms? ( targetms tickstamp -- f )
+uint `elapsedms? (uint tickstamp, uint targetms);
+  Same as "elapsedus?", but in milliseconds.
+
+?timeoutus ( targetus tickstamp -- ) *I*
+  Shortcut for: elapsedus? ?abort"..."
+
+?timeoutms ( targetms tickstamp -- ) *I*
+  Shortcut for: elapsedms? ?abort"..."
+
+waitus ( us -- )
+void waitus(uint us);
+  Block until "us" microseconds have elapsed.
+
+waitms ( ms -- )
+void waitms(uint ms);
+  Block until "ms" milliseconds have elapsed.
+
+ifelapsedus ( us -- ) *I*
+  Creates a "if" block that maintains its own tickstamp storage and executes at
+  most every "us" microseconds. Example usage:
+
+    : foo begin [ 500 ] ifelapsedus ."hello" then again ;
+
+  Calling "foo" would enter an infinite loop where "hello" is printed
+  approximately every 500 microseconds.
+
+ifelapsedms ( ms -- ) *I*
+  Like "ifelapsedus" but for milliseconds.
+
+timer$ ( ticks-xt snooze-xt uspertick -- )
+  Realias "ticks" and "snooze" to the specified XTs and set uspertick.
+
+?timer$ ( ticks-xt snooze-xt uspertick -- )
+  If the unit is uninitialized (uspertick is 0), do the same as "timer$".
+  Otherwise, ignore initialization.

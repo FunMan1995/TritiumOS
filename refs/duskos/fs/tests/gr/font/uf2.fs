@@ -1,0 +1,35 @@
+needs tests/harness tests/grh gr/buf gr/font gr/font/uf2
+testbegin
+
+"data/font/sans12.uf2" loaduf2 const fnt
+
+16BPP RGB565 16 16 newpixbuf const mypb
+mypb allotbuf
+
+\test font size
+fnt maxwidth 14 #eq
+fnt height 15 #eq
+
+\test draw a 'A'
+0 0 mypb fnt fonttarget!
+1 2 fnt fontcolors!
+'A' fnt drawglyph
+16 16 mypb expectpix
+0000000000000000
+1111111111111100
+1111111111111100
+1111211111111100
+1111211111111100
+1112121111111100
+1112121111111100
+1121112111111100
+1122222111111100
+1211111211111100
+1211111211111100
+2111111121111100
+1111111111111100
+1111111111111100
+1111111111111100
+1111111111111100
+
+testend

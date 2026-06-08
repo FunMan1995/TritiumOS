@@ -1,0 +1,8 @@
+# Deploying to a EFI-compatible system
+
+The deploy procedure for a i386 deployment of EFI is exactly the same as the
+one outlined in [doc/xcomp/amd64/efi/deploy.txt], but you replace BOOTX64 with
+BOOTIA32.
+
+You can combine both IA32 and X64 EFI executables on the same boot media to have
+a media that will boot on both architectures at once.

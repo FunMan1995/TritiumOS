@@ -1,0 +1,234 @@
+# Dusk Tour
+
+The idea of a Dusk tutorial is a bit weird because it's not a forgiving system.
+If you haven't grokked Forth, if you poke at buttons without knowing what you're
+doing, you won't get anywhere. Therefore, if you want to begin using Dusk, you
+should learn about it using the serious path, which begins at [doc/operator]
+followed by [doc/usage].
+
+However, if what you want is to have an idea of Dusk's capabilities without
+having to invest significant time learning about Forth and Dusk semantics, then
+this tour walks you through a couple of interesting places. All you need to do
+is to follow the instructions and observe the results.
+
+Explanations are minimal because it's useless to understand what you're typing
+if you don't have a good understanding of Dusk's underpinnings. See this tour
+more like a show and tell.
+
+If something doesn't work as expected during the tour, check whether you're
+running it from a release tag (example "v11") or from the master branch. This
+tour is checked for correctness before releases but not after each commit.
+
+## Requirements
+
+This tour is designed to run on the "sdl" flavor of Dusk, either the POSIX VM or
+the Usermode version. This document is also interactive, so it must be opened
+from within Dusk.
+
+This means that if you aren't reading this from within an adequate Dusk system,
+you should do so now. Refer to the root README for build instructions. The Dusk
+welcome prompt in the "sdl" flavor contains instructions on how to get here.
+
+I'm waiting...
+
+You're there yet? Alright, we're almost ready to go. Let's run a command that
+will "install" the tour in "buffer zero" so that its instructions work as
+expected. Place your cursor on the line below, then press Ctrl+Return:
+
+  curbuf @ 4+ @ edbufs @ 4+ !
+
+You should see a message down below that the command has run. If you press
+CTRL+Z and that you're still here, then everything is good, let's go!
+
+## Let's go
+
+As the welcome prompt says, what's in front of you is a text editor that just so
+happens to also run commands. You move the cursor with arrow keys and page
+up/down. Typing stuff insert this stuff at the cursor.
+
+If you press the ESC key by mistake, you'll end up in "modal" mode, which works
+a bit like vi. If you like that, look at [app/ed] for details, but otherwise,
+press Return to go back to the regular mode.
+
+Where should we begin? What about memory? What are we running on? Run the
+command below by pressing CTRL+Return on it. This screen will change to what we
+call the "output buffer" and show the result. Press CTRL+Z to come back here.
+
+  .free
+
+From now on, when we say "run the command" , it's the same process as what
+you've just done. When you see indented lines, they are meant to be ran.
+
+So, a few kilobytes of memory used out of a few megabytes available. Dusk's
+system memory is a contiguous area. Forth has this concept of "here" to indicate
+where we "are" in that area. Let's take a look at it.
+
+  here .x
+
+So that's the hexadecimal representation of where you are in memory. That's your
+playground. Any address within "here" and 31MB is good to play with.  Let's dump
+what we have in front of us:
+
+  here dump
+
+What a nice bunch of zeroed out bits. What about those "used" memory in front of
+it? What does it look like?
+
+  ' + dump
+
+Ok. You can play with that memory. For example, write to it:
+
+  $cafebabe here !
+  here @ .x
+  here dump
+
+EDITOR NOTE: This is the first time we have multiple lines to run. You can run
+them one after the other, but you can also run them all at once by moving to the
+beginning of the block, hold shift, then move to the end of the block. You'll
+see a visual selection. If you press CTRL+Return, all selected code will run at
+once.
+
+As you can see, that's a little endian system. In fact, I'm going to tell you,
+unless you're running from Usermode, this is an emulated ARM system. How about
+we flex our assembler muscles?
+
+  needs asm/arm
+  code add42 add) rW rdn) 42 imm) ,) ret,
+  5 add42 .
+
+ALTERNATE REALITY: if you run the tour on Usermode, then Dusk runs directly on
+your host CPU, so unless your host CPU is also ARM, the code above will crash
+your system. What you can do, however, is to use the HAL, which will assemble
+the same thing in your native architecture:
+
+  code add42 42 i) +, exit,
+  5 add42 . \ works on any CPU
+
+What we did here is that we created a new native word, right "here". Let's look
+at what's in "add42".
+
+  ' add42 dump
+
+Keen eyes among you will recognize ARM binary format. But we aren't all nerdy
+weirdos, right? Let's use a disassembler.
+
+  needs asm/armd
+  ' add42 dis
+
+Only the first two lines, until the BX, are relevant. The rest is non-code
+garbage because the disassembler can't know when to stop disassembling, so it
+spits a pre-defined number of lines.
+
+That's pretty much what we've assembled right? Of course it is.
+
+What about compiling some C code now?
+
+  needs comp/c
+  :c int add54(int n) { return n+54; }
+  5 add54 .
+
+Good stuff. What does it look like, code wise?
+
+  ' add54 dis
+
+A bit looser than the straight assembler version, but not that bad heh?
+
+## Grid
+
+I haven't told you about the Grid yet. Your console is a Grid (see
+[doc/io/grid.txt]), which means the characters you see are arranged in a matrix
+of glyphs that are easy to address individually. In the UNIX world, the "curses"
+library provides this, but it uses terminal escapes to do so. In Dusk, hardware
+drivers provide this capability natively, no need to jump through VT100 hoops.
+Example:
+
+  needs io/grid
+  : line COLS 2/ over - over at-xy 2* 0 do ."#" loop ;
+  : tri LINES COLS 2/ min 0 do i line loop ;
+  grid clear tri
+
+## Graphics
+
+Let's try the simplest operation there is, setting a pixel:
+
+  needs gr/rdwr
+  rgbred >screencolor 123 42 screen pixel! key drop
+
+EDITOR NOTE: Because graphics and the grid share the same screen, the snippet
+above, and those below, need "key drop", which block until a key is pressed so
+that you can see the result on the screen before it runs the risk of being
+shadowed by a grid redraw.
+
+You will have to squint your eyes, but you'll see a pixel showing up near the
+bottom left corner of the screen (the origin is bottom left). Let's try
+something bigger:
+
+  : square 16 0 do 16 0 do
+      over i + over j + rgbblue >screencolor rot> screen pixel!
+    loop loop 2drop ;
+  123 42 square key drop
+
+EDITOR NOTE: These lines can't be ran line-by-line, you have to run them all
+at once by visually selecting them first.
+
+See it now? good. Let's create a mouse cursor!
+
+  needs io/mouse
+  : runmouse begin mouse update mouse buttons not while
+      mouse bi x | y square repeat ;
+  runmouse
+
+Whoa, just like that? Click on any mouse button to stop. You might have an
+inverted Y axis, but that doesn't prevent you from having fun, does it?
+
+As you can see, drawn pixels and console characters overwrite each other. Yup,
+the screen is a shared and global buffer. It's as simple as this. We just write
+to it.
+
+Dusk doesn't have a vector drawing API yet, so drawing is mostly about moving
+pixels around, but that doesn't mean we can't have fun with that. It has a
+sprite based API in [gr/varvara] and we can test that it works with:
+
+  f<< bench/gr.fs varvara key drop
+
+This will draw a rectangle along with a few hearts and diamonds here and there.
+This shows you that the varvara screen system works. At the heart of this API is
+the concept of sprite, which is a 8x8 bitmap, which can have 2 or 4 colors.
+Let's look at an example sprite:
+
+  heart 16 cspit[]
+
+The "heart" array comes from bench/gr.fs and is the sprite we use for our little
+test we've just drawn. Each byte represents a 8 pixels row, with each bit
+representing a pixel, b7 being leftmost and b0 being rightmost. The first 8
+bytes are the first color channel and the following 8 bytes are the second color
+channel. Therefore, a 1bpp sprite is 8 bytes long and a 2bpp sprite is 16 bytes
+long and its first 8 bytes is the same as a 1bpp sprite.
+
+So, hum, what kind of fun could we have with this. Let's draw a whole bunch of
+those hearts.
+
+  10 to X 10 to Y heart to sprite
+  1 2bpp) X+) 10 times) drawsprite
+  refreshscreen key drop
+
+You should see 10 hearts being drawn in a vertical line (why vertical when we
+use X+)? see [gr/varvara] for details). What about a horizontal line of flipped
+hearts using another color blend?
+
+  2 2bpp) Y+) flipY) 12 times) drawsprite
+  refreshscreen key drop
+
+Wait, I just had an idea. No wait, we can't do that... Can we? Could I... hook
+my mouse to those hearts? Of course you can!
+
+  needs io/mouse
+  : runmouse begin mouse update mouse buttons not while
+    mouse x to X mouse y to Y
+    3 2bpp) Y+) 3 times) drawsprite
+    refreshscreen repeat ;
+  runmouse
+
+So that's it for the Dusk Tour, with the hopes that it titillated your thirst
+for power. This power doesn't come for free though. Significant efforts have to
+be invested in learning Forth, then Dusk. You can begin at [doc/usage].

@@ -1,0 +1,20 @@
+# AHCI driver
+
+This unit implements [io/blk] for AHCI controllers and thus allows access to
+SATA disks.
+
+The AHCI controller is discovered through the PCI bus during "ahci$ ( -- )".
+After it has been discovered, it can be used by creating new blks with
+"newahcidrive ( portno -- blk )"
+
+The "portno" argument depends on how the AHCI controller is wired. You can see
+details about port configuration through ".ahci ( -- )". This will help you
+figure out the "portno" you want.
+
+## Example initialization
+
+  needs drv/pc/pci drv/pc/ahci
+  pcpci$ ahci$
+  0 newahcidrive dup enable const myahcidrive
+  \ myahcidrive is ready to use
+

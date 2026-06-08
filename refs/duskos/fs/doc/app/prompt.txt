@@ -1,0 +1,38 @@
+# Command prompt
+
+This unit is a [lib/coop] application that accumulates KEYPRESS event it
+receives into a line, echoing back each character as it receives them. When
+Return is pressed, that line is interpreted through "interpret[]". Backspace can
+be used to correct typing mistakes.
+
+This application is also a "single" context manager. That is, it implements
+REGISTER in a way that lets the emerging context temporarily take over the root
+context position. This means that if the interpretation of a command results in
+a foreground context to be launched, that context will become the root context,
+replacing the prompt, until it stops, at which point the prompt will resume.
+
+This application is fully contextualized, that is, that multiple prompt contexts
+are fully independent.
+
+## Example usage
+
+needs lib/coop app/prompt
+newpromptcontext launchcontext
+
+## API
+
+### Constants
+
+PromptApp   The prompt application
+LNSZ        $80, the maximum size of an input line
+
+### Words
+
+newpromptcontext ( -- ctx )
+  Create a new PromptApp context
+
+prompt$ ( -- )
+  Setup this prompt as the main system prompt with [lib/coop] as a main loop.
+  In other words, call coop$, then create a new prompt context and set it as the
+  root context, but don't launch it yet. The prompt will be launched upon
+  "quit".

@@ -1,0 +1,42 @@
+# Breaking away
+
+(This page doesn't talk about the "break" word for loops. For this, you
+want to read [doc/usage/flow].)
+
+Infinite loops are tricky because, well, they never end! On a preemptive multi-
+tasking system, the annoyance is minor as we can just kill the process being
+stuck.
+
+In Dusk OS, unless the loop happens to check for inputs (through the idle loop
+for example), this loop can only be broken through interrupts. Because you are
+unlikely to want to add a "idle" call to every loop you work on in case it locks
+up the system, you are probably interested in having some kind of "break away"
+system.
+
+The solution for breaking away in Dusk is to hook some kind of input to an
+interrupt and have that interrupt return to "abort" instead of returning where
+it's supposed to. Simple, elegant and can break away from all loops.
+
+But not all input devices are compatible with this scheme! PS/2 keyboards are
+fine, most UARTs are fine... but USB keyboards are not. Sure, USB controllers
+do have interrupts to notify of transfer status change, but those transfers
+always have to be initiated by the host controller. If your infinte loop doesn't
+call on your USB polling method, then your USB keyboard cannot be asked whether
+the "Break" key was pressed.
+
+Therefore, on systems where the primary input is a USB keyboard, an alternate
+input has to be set up for breaking away.
+
+TODO: I just had an idea. Maybe that "unplugging the USB keyboard" could work.
+On many USB controllers, this is going to generate an interrupt that is
+independent from currently active transfers. If the keyboard is plugged directly
+in a port, maybe that the logic "check if that unplugged device was the active
+keyboard, if yes, break away" could be simple enough for being carried through
+in an interrupt handler... But then, this would need to be coupled with a robust
+system for being able to hot-plug the system's primary input through USB...
+
+For example, on the Raspberry Pi, the proposed system [doc/hw/arm/rpi/break]
+goes through GPIOs. You plug a push button to a GPIO pin with GND, hook an
+interrupt handler to its falling edge event and break away in that event.
+Therefore, one can "break away" by pushing that button. Different systems will
+have different solutions to that problem.

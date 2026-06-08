@@ -1,0 +1,241 @@
+# Input/Output
+
+The io/stream subsystem offers a unified API to read and write from and to any
+device or filesystem. All words in this API revolve around a structure that we
+call the "stream". This stream represent one "place" we read and write to,
+and if needed save any state needed to fulfill the API's specification.
+
+I/O operations are byte based.
+
+When "EOF" is mentioned, it means "end of file". In some cases, it's a misnomer,
+but the idea is the same: if all possible data from the I/O source have been
+consumed, we're in EOF condition.
+
+## Not all streams are sized
+
+The Stream structure has the fields "pos" and "size" because many streams have
+this concept of size and position within that size.
+
+However, not all streams are sized. For example, a serial communication line
+has no size or position. When you read from it, you read from whatever's waiting
+on the line.
+
+The "correct" architecture for holding those two fields, that is, hold them in
+structure either extending Streams or referencing streams, results in too much
+fluff. The most straightforward way around is to just have those fields here.
+
+If a stream implementation isn't sized, it can simply leave these fields alone.
+They have no meaning, no use.
+
+If a stream implementation is sized, then it's its responsibility to keep those
+fields updated in its "readbuf", "writebuf" and "close" methods. This unit,
+except for words explicitly mentioning "pos" or "size" (seek, maxn, etc.), don't
+touch them.
+
+## Lifetime of readbuf result
+
+"readbuf ( n stream -- ?a read-n )" is somewhat magical because it yields a
+memory range without you needing to allocate anything. That's because the
+provenance of that data depends on the implementation. This data might already
+be in memory [mem/stream], or providing that data might require buffer
+management [io/blk].
+
+The lifetime of that "a" has a very weak guarantee: it's invalidated as soon as
+you call "readbuf" on *any* other stream. It's also invalidated if you call
+"close" on the same stream.
+
+You *can*, however, call "writebuf" on any stream, including itself, using this
+range as a source. Stream implementations must allow zero-copy scheme where we
+readbuf on one "side" and writebuf on the other "side".
+
+These weak guarantee concern generic streams. When you write code that is
+intended to work on any stream, that's all the guarantees you have. If you work
+on more specific streams, then there's wiggle room.
+
+For example, [io/blk]'s documentation mentions how its buffering system works.
+If you write code that is designed to work with Blks, then you can assume those
+guarantees instead.
+
+## API
+
+### Struct
+
+struct Stream {
+  uint pos size ;
+  method readbuf writebuf flush close resize ;
+}
+
+pos   Current position, in byte offset, relative to the beginning
+size  Size of the stream in bytes
+
+readbuf ( n stream -- a? read-n )
+  Try to read "n" bytes from stream at current position. Unless EOF is reached,
+  at least 1 byte must be read, but otherwise "read-n" can be lower than n, even
+  if that doesn't take the stream to EOF. The idea is to take the stream, at
+  most, to the end of its internal buffer. Return the number of bytes read and,
+  if it was nonzero, return an address to the beginning of that buffer.
+
+  After the read operation, advance current position by "read-n" bytes.
+
+  "a" has a tricky lifetime. See "Lifetime of readbuf result" above.
+
+  Input "n" cannot be 0.
+
+writebuf ( a n stream -- written-n )
+  Try to write "n" bytes from buffer "a" to stream at current position, growing
+  the file if needed. The idea is the same as with readbuf: the filesystem can
+  proceed as is best for its implementation, as long as it writes at least 1
+  byte. If no data can be written, return 0.
+
+  After the write operation, advance current position by "written-n" bytes.
+
+  Input "n" cannot be 0.
+
+flush ( steam -- )
+void flush(*Stream s);
+  If the stream has some kind of buffer and that this buffer is "dirty" (has
+  been changed compared to the permanent storage it represents), save that data
+  to permanent storage and flag the stream as clean.
+
+  Default implementation is a noop.
+
+close ( stream -- )
+void close(Stream *s);
+  Close stream and free its resources. When a stream is closed, operations on
+  it become noops (read return 0, writes/seeks do nothing).
+
+  Default implementation is a call to "flush".
+
+resize ( n stream -- )
+  Change the size of target I/O structure, in bytes.
+
+  It might surprise you that it defaults to "2drop" (a noop) rather than a word
+  that sets the "size" field to "n". That's because streams that can be resized
+  will generally have their own logic. The other streams are generally not meant
+  to be resized.
+
+### Words
+
+newstream ( 'readbuf 'writebuf -- stream )
+  Create a new stream struct with the specified methods.
+
+write ( a:*void n:uint stream:*Stream -- written-n:uint )
+  Repeatedly call writebuf until at most "n" bytes have been written from
+  buffer "a". Yields "written-n", the number of bytes that have actually been
+  written.
+
+write# ( a:*void n:uint stream:*Stream -- )
+  Call write and abort if "written-n" is not the same as "n".
+
+read ( a:*void n:uint stream:*Stream -- read-n:uint )
+  Repeatedly call readbuf until at most "n" bytes have been read into buffer
+  "a" (which of course must be big enough). Yields "read-n", the number of bytes
+  that have actually been read.
+
+read# ( a:*void n:uint stream:*Stream -- )
+  Call read and abort if "read-n" is not the same as "n".
+
+getc ( stream:*Stream -- c:uint )
+  Read 1 byte from stream an return it. Advance position by 1 byte. Return -1 on
+  EOF. This can be used to poll an interactive (keyboard, serial link, etc) I/O
+  device: -1 is returned as long as there's nothing to return.
+
+putc ( c:uchar stream:*Stream -- )
+  Write 1 byte to stream. Advance position by 1 byte. Aborts if unable to write.
+
+gets ( n stream -- str )
+  Read n bytes from stream into the string pool [doc/usage/lit] and yield it.
+  Aborts if we can't read n bytes.
+
+puts ( str stream -- )
+  Write str to stream. Abort if we can't write the whole string.
+
+spitn ( n dst stream -- )
+  Until "n" bytes are consumed or until EOF is reached, read "stream" and write
+  its contents to other stream "dst".
+
+spit ( dst:*Stream stream:*Stream -- )
+  Same as "spitn" with n=-1. That is, spit whole stream.
+
+spitclose ( dst stream -- )
+  Spit, then close "stream".
+
+spitcloseboth ( dst stream -- )
+  Spit, then close "stream" and "dst".
+
+exec< ( w stream -- )
+  Call "w" after having changed the input stream so that it spits "stream"'s
+  contents. When "w" returns, restore input stream and closes stream.
+
+  Note that the stream is read using "readbuf" with a "128" argument, which
+  means that it tries to read up to 128 bytes at once. It's efficient, but it
+  means that "exec<", unlike "exec1<", is only suitable for "w" consuming the
+  whole stream.
+
+  We use 128 rather than -1 (read as much as possible) because nested exec<
+  calls store unconsumed input stream contents on RS and we want to be gentle on
+  the stack.
+
+exec1< ( w stream -- )
+  Same as "exec<", but passes "1" to readbuf instead of "-1" (read one character
+  at once). This is less efficient, but is suitable for "w" which partially
+  reads the stream. Also, unlike "exec<", it doesn't close the stream.
+
+interpretstream ( stream:*Stream -- )
+  Run "interpret" with exec<.
+
+maxn ( stream -- n )
+  Yields the number of bytes between "pos" and the end of the stream.
+
+incposk ( n stream -- n )
+  Increase stream pos by "n" and yield the new position.
+
+seek ( n:uint stream:*Stream -- )
+  Change current position to "n", which is a byte offset.
+
+  Seeking implies bounds check. Negative positions are brought to 0, positions
+  greater than size are brough to size.
+
+seekrel ( n stream -- )
+  Move current position by "n" bytes.
+
+rewind1 ( stream -- )
+  Shortcut for "-1 swap seekrel".
+
+truncate ( stream:*Stream -- )
+  Truncate the I/O to current position, inclusively. It does so by calling
+  "resize".
+
+?grow ( newsz stream -- )
+  If "newsz" is larger than stream's size, call "resize".
+
+ioerr ( -- )
+  Aborts with "I/O error".
+
+## Null stream
+
+This unit provides "nullstream". Reading from this stream always yield EOF and
+writing to this stream is always a noop success (written-n same as n).
+
+## Here stream
+
+This unit provides "herestream", a write-only stream that is the equivalent of
+writing the contents to "here".
+
+## Fill stream
+
+Another handy stream is "fillstream ( a u -- stream )", a read-only stream that
+constantly repeats the same buffer. Unlike the other global streams, its
+accessor word must be called with a range to repeat, but the stream structure
+that it yields is always the same. For example, if you want to spit an endless
+stream of spaces to the console, you'd do "console SPC c[] fillstream spit".
+
+## Console stream
+
+This unit provides "console", a write-only stream that is hooked to "rtype".
+
+All global streams above are annotated [comp/sig] as:
+
+Stream* nullstream();
+Stream* herestream();
+Stream* console();

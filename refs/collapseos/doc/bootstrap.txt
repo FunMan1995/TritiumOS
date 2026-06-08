@@ -1,0 +1,157 @@
+# Bootstrap guide
+
+This guide tells you about the gory details you need to know to
+create or maintain a port of Collapse OS. This is some pretty
+hairy stuff and you should have read doc/usage, doc/impl and
+doc/cross first. Is is also recommended that you use the z80
+boot code as a reference as you read this guide.
+
+What is Collapse OS? It is a binary placed either in ROM or
+in RAM by a bootloader. That binary, when executed, initializes
+itself to a Forth interpreter. In most cases, that Forth
+interpreter will have some access to a mass storage device,
+which allows it to access Collapse OS' disk blocks and bootstrap
+itself some more.
+
+This binary can be separated in 4 distinct layers:
+
+1. CPU-specific boot code (B200 for Z80)
+2. CPU-independant core words (low) (B310)
+3. Drivers provided by the machine-specific port
+4. CPU-independant core words (high) (B325)
+
+# Boot code
+
+The boot code, which is CPU-specific, contains these elements:
+
+1. Early initialization code, which initializes RSP and PSP and
+   then jumps to BOOT.
+2. Core routines. Set lblnext, lblxt, lblcell, lblval and
+   lbldoes.
+3. Core words.
+
+Core words are a limited set of words that implement core
+operations:
+
+quit abort exit bye rcnt scnt * /mod (b) (n) (br) (?br) (next)
+c@ @ c! ! and or xor not + - r> >r r~ dup ?dup drop swap
+over rot execute
+
+If your arch's native absolute jumps and calls aren't in the
+form "1b opcode + 2b addr", you also need to implement a native
+version of jmpi! and calli!. Otherwise, the forth layer will
+provide implementations.
+
+On CPUs having I/O ports, pc! and pc@ are also needed.
+
+This is the absolute minimum set of words that a port needs to
+be functional. If it only implements those words, however, it's
+going to be very slow.
+
+Some forth core words are defined with "?:" instead of ":". If
+those words are part of the native words, they're going to be
+used instead of their forth version and will result in a much
+faster binary.
+
+# Core words (low)
+
+Then comes the part where we begin defining words in Forth.
+Core words are designed to be cross-compiled, from a full Forth
+interpreter. This means that it has access to more than boot
+words. This comes with tricky limitations. See doc/cross.
+
+# Drivers
+
+Core words don't include (key?) and (emit) implementations be-
+cause that's hardware-dependant. This is where we need to load
+code that implement it, as well as any other driver code we want
+to include in the binary. This includes subsystems.
+
+We do it now because if we wait until the high layer of core
+words is loaded, we'll have messed up immediates and ":" will
+be broken. If we load our code before, we won't have access to
+a wide vocabulary.
+
+See doc/drivers for more details.
+
+# Core words (high)
+
+The final layer of core words contains the "boot" word as well
+as tricky immediates which, if they're defined sooner, mess
+cross compilation up. Once this layer is loaded, we become
+severly limited in the words we can use without messing up.
+
+# Forward labels (boot, main and here)
+
+Because Collapse OS assemblers have limited support for forward
+labels, we organize the code in order to avoid it. When
+compiling Collapse OS, however, there are some cases where we
+reference an address without knowing it yet. These are:
+
+1. The initial jump to "boot"
+2. The jump to the "main" (see doc/impl) routine in "quit".
+3. Initial values for HERE and CURRENT.
+
+The xcompc program declares 3 labels, lblboot, lblmain and
+lblhere where address of these forward references must be
+written (in PC value, like any label, *not* host address).
+
+Core words manage the lblhere references by itself, arch-
+specific ports don't need to do anything about it. However, it
+needs to set lblhere and lblmain at the exact PC where the
+address of the corresponding routines will be written when
+they're created. You can look at the z80 port for examples.
+
+# Building it
+
+So that's the anatomy of a Collapse OS binary. How do you build
+one? If your machine is already covered by a recipe, you're in
+luck: follow instructions.
+
+If you're deploying to a new machine, you'll have to write a
+new xcomp (cross compilation) unit. Let's look at its
+anatomy. First, we have constants. Some of them are device-
+specific, but some of them are always there. SYSVARS is the
+address at which the RAM starts on the system. System variables
+will go there and use $80 bytes. See doc/impl.
+
+HERESTART determines where... HERE is at startup. 0 means
+"same as CURRENT".
+
+You will likely need more constants than that, but this depends
+on your architecture and drivers.
+
+Then comes time time to load the blocks that will compile the
+thing. Order is important.
+
+First come xcomp followed by the assembler (example, z80a). Then
+comes CPU-specific macros and constants. If your target CPU is
+big endian, now is the time to tell the xcomp system with:
+
+	1 to bigend?
+
+Now comes the real deal: xcompc. It's the "forth" part of xcomp
+and from this point on, we're in "target" mode. Everything we
+define ends up in the target binary (see doc/cross).
+
+The first unit that comes after this is the "c" unit (example:
+z80c). "c" is for "boot code". This is then directly followed by
+"corel", the low core words.
+
+Then comes the custom part: drivers and subsystems. This part
+is heavily dependant on the target system and varies a lot.
+
+After that, you need to define a "init" word. This will be
+called by "boot" right before spitting the prompt. This is
+usually used to call init words of all subsystems.
+
+All xcomp units end with "xwrap", a helper word that loads
+"high" core words and then wrap things up with regards to
+CURRENT and HERE initial values. You're done!
+
+To produce a Collapse OS binary, you run that xcomp unit and
+then observe the values of "xorg" and "here". That will give you
+the start and stop offset of your binary, which you can then
+copy to your target media.
+
+Good luck!

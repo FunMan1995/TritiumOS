@@ -1,0 +1,108 @@
+# Anatomy of a kernel
+
+A Dusk OS kernel needs these basic elements:
+
+* Cold boot initialization
+* The interpret loop
+* Entry creation words
+* Bare minimum stack/arithmetic/memory words
+* A few other little words
+* System Constants
+
+## Cold boot initialization
+
+Once the bootloader is done loading the kernel in memory, it will jump to its
+first address. That's cold boot initialization.
+
+In a "pure" system, this initialization is:
+
+1. Initialize SYSVARS (see [doc/data])
+2. Push the address of SYSVARS to PS (used at the very beginning of xcomp/boot)
+3. Jump to "abort", which initialises PS and RS and then jumps to the main
+   intepret loop.
+
+However, it's possible that the cold boot procedure needs to do some
+machine-specific task, for example setting the IDT on a i386 system.
+
+## The interpret loop
+
+The interpret loop is:
+
+word findentry (wnf) (div0) stack? run1
+
+Most of those words are specified in [doc/dict], except (wnf) and (div0), which
+are the "word not found" and "divide by zero" errors. They are implemented as
+noops in kernels. xcomp/boot realiases them with actual implementations.
+
+"stack? ( -- )" is also implemented as a simple noop because its actual
+implementation is in xcomp/boot.
+
+The specifications for "word" in the kernel are lesser than its behavior as
+specified in the documentation because "word" is reimplemented fully in
+xcomp/boot and then realiased.
+
+"word" doesn't have to apply NEXTWORD logic, EOF logic or buffer overflow logic.
+It can expect to never have to parse beyond its realias point in xcomp/boot. It
+can expect the memory where INPTR points to be writable and to begin with a
+whitespace. In other words, it can construct its counted string structures
+directly in the INPTR buffer. This of course isn't always true, but the actual
+"word" implementation does things the "right way". In the kernel, we can be
+expeditive for simplicity's sake.
+
+## Dictionary and execution state words
+
+Entry creation words are:
+
+entry[] code : ] [ ;
+
+All of those words are specified in [doc/dict].
+
+## Bare minimum stack/arithmetic/memory words
+
+The CPU-specific HAL layers (for example [xcomp/arm/hal.fs]) don't need much,
+but they do need something to work with, which is
+
+dup drop swap over rot
++ - lshift rshift or and xor invand bool not
+@ w@ c@ ! w! c! , w, c,
+
+All of those words are specified in [doc/dict].
+
+Some kernels will implement more words to "help" their HAL layers.
+
+## A few other little words
+
+It's the kernel's responsibility to implement these words:
+
+bye execute create parsehex parse HERE alignhere SYSVARS
+litn exit, popexit, pushlr, poplr,
+
+All of those words are specified in [doc/dict] and [doc/hal].
+
+## ARCH
+
+Every kernel supplies a constant named ARCH with is a number that describes the
+running architecture. Bits in this number have the following meaning:
+
+b31:16 unused yet
+b15:8  Machine options
+b7:0   CPU instruction set
+
+Possible CPU instruction set values are:
+
+0x  Invalid.
+1x  x86 family
+2x  ARM family
+  x is the ARM version. For example, $20 is ARMv1, $25 is ARMv6, etc..
+3x  RISCV family
+4x  amd64 family
+5x  m68k family
+
+Machine options are flags that are used by drivers to check on particular
+options that a kernel might enable or disable. The meaning of those bits depend
+on the machine and drivers, but they're reserved for this purpose.
+
+## SYSVARS
+
+Additionally, the kernel must set up and initialize the SYSVARS area as
+described in [doc/data].

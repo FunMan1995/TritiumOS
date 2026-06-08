@@ -1,0 +1,214 @@
+# m68k assembler
+
+The m68k assembler follows the lead of [asm/x86] in terms of style. That is, we
+have instruction writer words that take a number of operand parameters.
+Examples:
+
+  D4 A2 add, \ Add A2 to D4
+  A4 [An]+) byte) 42 subi,
+  A0 42 [An,d]) word) A1 A2 -12 [An,Xn,d]) word) move,
+
+## Registers
+
+There are 16 constants, D0 to D7 and A0 to A7 that identify the available
+registers.
+
+D0-D7 yields numbers from 0 to 7. A0-A7 yield numbers from 8 to 15.
+
+There's also the "SP" constant that is the same as "A7" to reflect the fact that
+the m68k ISA treats this register in a special way (as a hardware stack
+pointer).
+
+## Instructions parameters
+
+Some instruction take immediate or direct registers argument, in which case a
+direct number or a register constant is expected, but most of the time, we
+expect an Effective Address Specifier (EAS).
+
+For example, "A4 [An]) byte)" yields a EAS that represents the byte where A4
+points to in memory.
+
+A EAS is a 32-bit number and therefore always take up a single PS slot.
+
+## Width selection
+
+In Motorola format, width is selected through ".l/.w/.b" instruction mnemonic
+suffixes. Not here, we want to stay consistent with width selection semantics of
+other assemblers.
+
+Also, in other m68k assemblers, the default width if often Word. Here, it's Long
+(32-bit). Again, to stay consistent with the rest of Dusk.
+
+Width selection of displacement extension words is done automatically based on
+the value. There is no need to fiddle with flags such as "W/L".
+
+When instructions have two arguments, the size bits of both EAS are "orred"
+together. This means that if, for example, you specify "byte)" on the
+destination EAS, you don't need to do so for the source EAS. Specifying "byte)"
+on a EAS and "word)" on the other will result in miscompilation.
+
+## Strict mnemonic match
+
+Although it would be rather easy for this assembler to automatically, for
+example, select "ADDI" or "ADDA" through a single "add," frontend, we don't do
+so. The reason for this is that those instructions have very different semantics
+in terms of affected flags and valid Effective Address forms.
+
+This makes the grouping of those mnemonics under the same name a false good idea
+because it introduces uncertainty with regards to semantics.
+
+Therefore, "add," refers specifically and only to the "ADD" instruction, "addi,"
+to "ADDI", "adda," to "ADDA" and so on.
+
+## EAS format
+
+b31:26 Zeroes
+b25    Is byte sized? (1=yes)
+b24    Is word sized? (1=yes)
+b23:20 Outer displacement (od) (HAL bank, 0=none)
+b19:16 Base displacement (d) (HAL bank, 0=none)
+b15:12 Index Register (Xn) (present only on mode 110 and 111/011)
+b11:9  Zeroes
+b8     Index register is postindexed?
+b7:6   Scale
+b5:3   Mode
+b2:0   Register
+
+The name above have the same meaning as in m68k's specifications, see
+"Instruction Format" chapter.
+
+Notice the small trick here: as per m68k specs, the b2:0 Register field is
+3 bits. What happens if we pass a "An" const directly to a word that expects a
+EAS? The upper bit will spill into Mode, setting it to 1... Exactly the mode
+that selects An instead of Dn. Everything is fine and dandy!
+
+## Parameters
+
+byte) ( eas -- eas )
+word) ( eas -- eas )
+long) ( eas -- eas )
+  Select width of EAS. Default long).
+
+imm) ( n -- eas )
+  Create an immediate EAS with "n" as a value.
+
+abs) ( n -- eas )
+  Create an absolute address EAS with "n" as the address.
+
+[An]) ( reg -- eas )
+  Transform a register ID into an indirect EAS targeting that register.
+
+[An,d]) ( reg disp -- eas )
+  Same as [An]) but with a displacement "disp".
+
+[An]+) ( reg -- eas )
+  Same as [An]) but select the postincrement mode.
+
+-[An]) ( reg -- eas )
+  Same as [An]) but select the predecrement mode.
+
+[PC,d]) ( n -- eas )
+  Same as [An,d], but targets the Program Counter.
+  Note that PC-relative displacements in this assembler follow general relative
+  logic, like with branching, that is that 0 refers to the beginning of the
+  instruction. Therefore, 2 is subtracted to "n" before encoding. For example,
+  this means that "D0 0 [PC,d]) move," would mean that D0 would end up with this
+  very instruction as its value.
+
+Xn]) ( eas reg -- eas )
+  Given a EAS created with [An]) [An,d]) or [PC,d] and transform it into a EAS
+  with an index register.
+
+  Note: this assembler never encodes the "sign-extended word" version of index
+  modes. Index registers are always used at 32-bit registers.
+
+Xn],d) ( eas reg n -- eas ) TODO
+  Same as Xn]) but adds an outer displacement using the "preindexed" method.
+
+]Xn,d) ( eas reg n -- eas ) TODO
+  Same as Xn],d), but make it "postindexed" instead.
+
+## Instructions
+
+In the signatures below, "dst" and "src" are EAS. However, only "move," can have
+both "src" and "dst" as actual EAS. In other instructions, one of the operands
+must be a direct register reference.
+
+Not all EAS are valid for all instructions and this assembler won't stop you
+from assembling an invalid instruction. Refer to the m68k specifications to know
+what combinations are valid.
+
+TODO: implement addressing mode compatibility check. this assembler is very hard
+to use without them. It's worth the complexity.
+
+add, sub, and, or, eor, cmp, ( dst src -- )
+  Compile the specified arithmetic instruction. One of the operands must be a
+  Dn register. The appropriate encoding is automatically selected.
+
+  "cmp," must have "dst" as the Dn register.
+  "eor," must have "src" as the Dn register.
+
+adda, suba, cmpa, ( dst src -- )
+  Same principle, but dst is a An and is always the destination.
+
+addi, subi, andi, ori, eori, cmpi, ( dst n -- )
+  Compile the immediate version of the arithmetic instruction. "dst" is a EAS.
+
+rol#, ror#, asl#, asr#, lsl#, lsr#, ( dst n -- )
+  The ROR and ROL instructions come in forms that we choose to expose into
+  multiple words. This rotates dst by "n" bits. "dst" must be a Dn register.
+  "n" must be 8 or smaller. A size word can be applied to "dst".
+
+rol#r, ror#r, asl#r, asr#r, lsl#r, lsr#r, ( dst reg -- )
+  Rotates "dst" by the number of bits in register "reg". Both "dst" and "reg"
+  must be data registers. A size word can be applied to "dst".
+
+rol, ror, asl, asr, lsl, lsr, ( dst -- )
+  Rotates "dst" by 1 where "dst" is a EAS.
+  TODO: figure out how size works. According to GNU as, this form can only
+  target a word-sized EA.
+
+move, ( dst src -- )
+  Encode a MOVE instruction. Both "dst" and "src" can be EAS.
+
+moveq, ( dst n -- )
+  Move sign-extended 8-bit "n" into Dn "dst".
+
+movec, ( dst src -- )
+  Copies between a regular register and a control register. One of "dst" or
+  "src" must be a straight D0-D7 or A0-A7 constant, the other must be one of the
+  control register constants, which are:
+
+  SFC DFC USP VBR
+  CACR CAAR MSP ISP
+  TC ITT0 ITT1 DTT0 DTT1 MMUSR URP SRP
+  IACR0 IACR1 DACR0 DACR1
+
+clr, neg, not, tst,
+seq, sne, scc, scs, svc, svs, spl, smi,
+sge, slt, sgt, sle, shi, sls, ( dst -- )
+  This group has one dst argument that can be a EAS.
+
+exg, ( reg reg -- )
+  Arguments can be An or Dn.
+
+beq, bne, bcc, bcs, bvc, bvs, bpl, bmi,
+bge, blt, bgt, ble, bhi, bls,
+bra, bsr, ( rel -- )
+  This group take a relative offset as an argument. As per [asm/label] logic,
+  this offset is relative to the beginning of the instruction. "0 bra," is an
+  infinite loop.
+
+dbeq, dbne, dbcc, dbcs, dbvc, dbvs, dbpl, dbmi,
+dbge, dblt, dbgt, dble, dbhi, dbls,
+dbra, ( reg rel -- )
+  Same logic as their counterparts without a "d" prefix, but also take a Dn
+  argument as the loop counter register.
+
+rts, ( -- )
+  Inherent group, no argument.
+
+## See also
+
+* Motorola 68000 Family Programmer's Reference Manual
+* [asm/label]

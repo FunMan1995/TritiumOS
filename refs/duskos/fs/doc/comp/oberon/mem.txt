@@ -1,0 +1,31 @@
+# Oberon memory management
+
+The unit at [comp/oberon/mem.fs] centralizes its compile-time memory management.
+Broadly, it create two arenas [mem/arena]: tarena and parena.
+
+"tarena" is the temporary arena and can be used for data that is not meant to
+outlive the compilation of a module. It is cleared at the beginning of every
+module. Used for:
+
+1. On-the-fly and temporary types
+
+"parena" is the permanent arena. It is never cleared, but is a place to write
+data that is generated in the middle of code generation, and thus can't go in
+"here". Used for:
+
+1. String literals
+
+## API
+
+tarena[
+parent[    Binds to "bindalloc["
+tarena1
+parena1    Binds to "bindrun1"
+tarena1@
+parena1@   Binds to "bindrun1@"
+
+obmemreserve ( -- )
+  Call "ensurenext" on both tarena and parena.
+
+obmemclear ( -- )
+  Call "reset" on tarena

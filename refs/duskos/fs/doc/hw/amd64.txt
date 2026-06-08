@@ -1,0 +1,102 @@
+# amd64 architecture
+
+Dusk can run on a amd64 CPU in 64-bit long mode even though it's a 32-bit OS.
+It's weird but it works without too many complications.
+
+## Register map
+
+EAX W
+EBX A
+ECX R1 [hal/vreg]
+EDX S
+ESP Hardware Stack (64-bit)
+EBP Base address (64-bit)
+ESI PSP
+EDI R0 [hal/vreg]
+R8  R2 [hal/vreg]
+R9  R3 [hal/vreg]
+R10 unused
+R11 unused
+R12 unused
+R13 unused
+R14 used as a RBP+ addition dest in HAL. Essentially "can't use".
+R15 RSP
+
+(to avoid ambiguity with amd64's RSP register, the 64-bit ESP, and Dusk's RSP
+virtual register, the Return Stack Pointer, we use the "E" prefix for our names
+below even when referring to a 64-bit register)
+
+## Base address and Hardware Stack
+
+While in essence, amd64 is i386 with REX slapped on top, and its logic should
+thus be very close to i386, in practice it's not.
+
+The reasons why it's not is twofold:
+
+1. On both platforms where amd64 is relevant, that is Usermode and UEFI, we have
+   no control over the address where the kernel lives. Because we're on a 64-bit
+   system, we need to have a 64-bit "base register" that marks our 0 address and
+   have *all* memory accesses be relative to that register. This changes a lot
+   of things. A lot.
+2. PUSH and POP don't have a 32-bit mode. Return stack manipulations can't use
+   those instructions.
+
+The biggest point, the first, is solved by making EBP our 64-bit base address.
+All pointers in Dusk are offsets relative to EBP. All accesses to those pointers
+use the SIB byte with EBP as its base register.
+
+... but we can't do that trick with ESP! Native push, pop, call and ret require
+the ESP to point directly to a 64-bit address.
+
+In short: no register should ever hold 64-bit pointers except EBP/ESP or a very
+short lived scratch register.
+
+This is necessary to avoid the complexity of 64-bit oozing out to Dusk itself.
+
+But it does pose us a problem. Do we use ESP as the RSP register, like in i386?
+We could, but it would complicate the HAL. We'd need to add a "don't add the SIB
+whenever we reference ESP" logic in all instructions.
+
+A simpler way is to use a separate register for the RSP. This means that,
+weirdly, RSP under amd64 *don't* contain return addresses from calls. But it's
+fine because HAL's "popret" semantics allow this.
+
+This solution still require us to muck up the HAL so that we add support for
+extended registers, but we were gonna do this for [hal/vreg] anyways, so all in
+all, dual stack is simpler.
+
+So far, the amd64 kernel is only used in "embedded" contexts (Usermode and EFI)
+where it "cold boots" with a hardware stack already allocated. We choose to
+always use that stack for ESP. Therefore, at cold boot, we save ESP's value so
+that on "quit", we can jump back to it. This means that we don't have a third
+stack to allocate in our "Dusk address space". ESP lives outside Dusk.
+
+## Performance relative to i386
+
+While the 64-bit mode does give a whole 8 additional registers to play with,
+running Dusk under amd64 won't be much faster. In fact it's very probably going
+to be slower. There's three causes:
+
+1. The "EBP must be the base of everything" adds extra instructions in some
+   cases, especially on indirect calls, where "EBP+" must be applied twice. Once
+   to read the address, once before calling.
+2. We can't use the faster PUSH and POP instructions on RSP.
+3. The little "LODS" shortcut we take for "drop," on i386 can't work.
+
+Therefore, while one could be tempted to run the amd64 kernel on the PC
+platform, for example, I'm telling you it's not worth the fuss, the i386 kernel
+will probably be faster.
+
+## 2G is the limit
+
+While theoretically, "RBP + 32-bit" gives us a 4G address space within our
+64-bit host, in practice we can only use 2G because the 32-bit displacement in
+the mod/rm byte under ARM64 is sign-extended.
+
+But who's ever going to need 2G anyways?
+
+## See also
+
+* [hw/efi]
+* [xcomp/amd64/efi/deploy]
+* AMD64 Architecture Programmer’s Manual (3 volumes)

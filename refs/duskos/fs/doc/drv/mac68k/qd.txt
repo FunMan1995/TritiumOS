@@ -1,0 +1,16 @@
+# QuickDraw low-level unit 
+
+The unit at [drv/mac68k/qd.fs] is a bare unit that does 2 things:
+
+1. Erase the screen so that it's all white
+2. Set RTYPE to something that will spit characters using DrawChar
+
+This version of RTYPE is extremely limited, it doesn't even do newlines!
+
+But this unit, being very barebones, is designed to be inserted very early
+into the boot payload, that is, right after [xcomp/boot.fs]. However limited it
+is, it can be godsent when comes the time to debug the boot process.
+
+Later in the boot process, that crude RTYPE is replaced by a real console.
+
+There is no initialization necessary, loading the unit initializes it.

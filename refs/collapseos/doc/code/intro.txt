@@ -1,0 +1,57 @@
+# Code conventions
+
+Because compactness is a primary design goal of Collapse OS,
+comments in the code itself are terse. This represents an extra
+challenge when comes the time of understanding it.
+
+The code is designed to be accompanied by the documentation. If
+a piece of code seems underdocumented, you should look for more
+context in the documentation.
+
+# Stack comments
+
+Most comments in Collapse OS describe the expected stack at a
+point in time. Those comments almost always describe PS with
+Top-Of-Stack being the rightmost element. For example, a
+"( a b c )" indicate that at this point, we expect a PS of at
+least 3 items with "c" being on top of it.
+
+When we play with the Return Stack, we'll also include its sig-
+nature with "R:". Example: ( a b R:c d ) means that b is PS'
+TOS and d is RS' TOS.
+
+Those elements can be seen (and are often called such) as
+variables.
+
+Names used for those variables are contextual. They're supposed
+to be context-obvious, but to allow more compactness, some
+conventions are used:
+
+* A repeat of a previous variable are often 1 or 2 letters. For
+  example, "firstchar" would become "fc" in following comments.
+* "a" is an address.
+* "sa sl" is an unpacked string. 2 elements in the stack, sl
+  being the length, sa being the address of sl characters.
+* "w" is a "word reference".
+* "b" is a byte, "c" is a char (also a byte). You can generally
+  assume the MSB to be 0.
+* "n" is a cell-sized (2 bytes) number.
+* "u" is a byte count. Often used in ranges.
+* "f" is a boolean flag. 0 is false, nonzero if true.
+* "r" is a "result", often an accumulator in an algorithm.
+* For clarity purposes, the result of complex processing is
+  often described in comments (ex: "a*b+c"), but only once.
+* In loops, for clarity purposes, the same stack comment is
+  often put at the beginning and end of the loop to show that
+  we're looping in a balanced manner.
+* We indent by 2 (used to be 4) spaces in word defs, loops,
+  conditions. We do it loosely though: we often don't have
+  enough screen space to do it strictly.
+
+## Idioms
+
+Here are some common patterns you'll see:
+
+<<8 >>8: removes MSB. Faster than "$ff AND".
+>>8 IF: Checks if MSB > 0. Faster than "$ff >".
+

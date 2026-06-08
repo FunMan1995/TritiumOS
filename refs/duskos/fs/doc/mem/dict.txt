@@ -1,0 +1,140 @@
+# Dictionary handling
+
+The unit [mem/dict.fs] contains a few words that are useful to play around with
+dictionary structures.
+
+By "entry", we mean the address of the LL "next" field for the dictionary entry.
+By "word", we mean the executable address of the entry. Remember: xt>e
+translates an execution token to an entry, e>xt translates an entry into an
+execution token.
+
+Some of the words documented here actually live in kernel and [xcomp/boot.fs],
+but because of their thematic affinity, are here.
+
+## API
+
+### Constants
+
+ENTRYSZ
+  The maximum length of a dictionary entry, excluding the name. We say "maximum"
+  because the actual number of bytes depends on alignment constraints.
+
+### Words
+
+'e ( "x" -- e )
+  Find entry x in system dictionary and error out if not found.
+  Does not apply "find selector" logic [doc/usage/word].
+
+' ( "x" -- xt )
+  Find entry x in system dictionary and error out if not found. Yields the
+  associated execution token (e>xt).
+
+['] ( "x" -- ) *I*
+  Find x and compile its address as a literal.
+
+to' ( "x" -- )
+  Find the "to" xt of the specified word name [doc/usage/to]. If the found word
+  doesn't actually support "to", abort with error.
+
+e>xt ( e -- xt )
+  Yield an execution token from an entry.
+
+e>xtsel ( e -- xt )
+  Like e>xt, but if "e" has the findselector flag set, execute it, which will
+  yield the find-selected xt of the entry.
+
+e>wlen ( e -- a ) *A*
+  Yield the address of "e"'s length field.
+
+entrylen ( e -- n ) *A*
+  Yield the length of the name of "e".
+
+entrytag ( e -- n )
+  Yield the tag (garbage number if untagged) associated with entry.
+  See [doc/usage/tag].
+
+sysdict ( -- e )
+  Same as "SYSDICT @".
+
+current ( -- xt )
+  Yield the xt of the last word to be added to the system dictionary.
+
+entryname[] ( entry -- a u )
+  Yields the range containing "entry"'s name.
+
+entry[] ( 'dict a u -- )
+  Create entry with name corresponding to range "a u" in dictionary 'dict.
+
+entry ( 'dict str -- )
+  Shortcut for "c@+ entry[]".
+
+reserveentry ( 'dict str payloadsz -- )
+  Like "entry", but before creating an entry, reserves the size of the enntry
+  added to "payloadsz" to ensure that they will both be contiguous.
+
+findentry ( name 'dict -- entry-or-0 )
+  Find name in dictionary pointer 'dict and yield the found entry or 0 if no
+  match was found.
+
+  Does not apply "find selector" logic [doc/usage/word].
+
+find ( name 'dict -- xt-or-0 )
+  Call "findentry" and yield the xt associated with the found entry.
+
+find# ( name 'dict -- xt )
+  Same as "find", but abort with "word not found" if not found.
+
+findtagged ( tag name 'dict -- entry-or-0 )
+  Call "findentry" then, if an entry is found, check that "entrytag" matches
+  "tag". If yes, yield the entry. Otherwise, yield 0.
+
+.word ( xt -- )
+  Print "word"'s name.
+
+words ( -- )
+  Print all word name of the dictionary.
+
+delete ( "name" -- )
+  Find "name" and makes the entry unfindeable by setting its length to 0.
+
+forget ( "name" -- )
+  Find "name" in the dictionary and bring back the sysdict to the word that
+  precedes it.
+
+  This is different from the traditional Forth's "forget", which also rewinds
+  "here". In Dusk, rewinding "here" is too tricky, tons of things can go wrong.
+  Therefore, "forget" reclaims no memory. It merely tidies up the sysdict.
+
+dictlink ( "name" -- )
+  Create a new "Dictionary link", as described in doc/arch, named "name".
+  Whenever you want to hold an entry reference without having to dereference
+  held value before passing it to "find", you should use a dictlink rather than
+  a simple "create" to avoid the possibility of a false match.
+
+extractdict ( "lastword" "dictname" -- )
+  Remove the top entries from sysdict up to "lastword" (inclusively), then
+  create a new dictlink "dictname" with those entries that were removed.
+  Example usage:
+
+  : foo ;
+  : bar ;
+  : baz ;
+  extractdict bar mydict
+  \ "foo" stays in sysdict, "bar" and "baz" are removed. "mydict" is created
+  \ with 2 entries, "bar" and "baz".
+
+unitofentry ( e -- unit-or-0 )
+  Look in all loaded units to see if entry "e" is part of one. If yes, yield it.
+
+?xt>e ( a -- e-or-0 )
+  Checks whether address "a" is the payload of a word, that is:
+
+  1. Whether it's in "here" space or kernel space (memory can be read without
+     breaking the system).
+  2. Whether length byte is nonzero.
+  3. Whether all characters in the name are in the range $21-7e.
+
+  If all conditions are met, yield the associated entry. Otherwise, yield 0.
+
+xt>e# ( a -- e )
+  Calls ?xt>e and aborts with error message if 0.

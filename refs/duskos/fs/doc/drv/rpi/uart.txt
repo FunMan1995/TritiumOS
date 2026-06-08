@@ -1,0 +1,87 @@
+# BCM2835 UART
+
+The driver at [drv/rpi/uart.fs] wraps BCM2835 "primary" uart, the ARM PL011
+device, with a [io/stream]. Before using the hardware, it needs to be
+initialized with "uart0$".
+
+## Using interrupts
+
+By default, the UART is in polling mode. It's also possible to enable its IRQs
+so that you can fill its receiving buffer as soon as the bytes come in.
+
+You do so through "uart0irq$", but before you do, you must make sure that your
+IRQ handler is properly set up [drv/rpi/intr] with "uartisr," in it.
+## Example usage
+
+  needs drv/rpi/uart
+  uart0$
+  'x' uart0 putc \ prints "x" to serial link
+
+and now let's set up IRQ on a system that has no other handler:
+
+  needs drv/arm/exc
+  armexc$
+  needs drv/rpi/intr
+  intr$
+
+  code irqhandler ( -- )
+    isrsave,
+    uart0isr, then
+    isrrestore, reti,
+
+  current ARMEXCTBL $18 + !
+  uart0irq$
+
+## API
+
+### Register mappings
+
+  $00 N4 DR
+  $04 N4 RSRECR
+  $18 N4 FR
+  $20 N4 ILPR
+  $24 N4 IBRD
+  $28 N4 FBRD
+  $2c N4 LCRH
+  $30 N4 MCR
+  $34 N4 IFLS
+  $38 N4 IMSC
+  $3c N4 RIS
+  $40 N4 MIS
+  $44 N4 ICR
+  $48 N4 DMACR
+  $80 N4 ITCR
+  $84 N4 ITIP
+  $88 N4 ITOP
+  $8c N4 TDR
+
+NOTE: MCR is named "CR" on the datasheet, but we don't want to override the CR
+system word. M is for "Main".
+
+### Constants
+
+RXBUFSZ  $2000
+  Size in bytes of the receive rolling buffer.
+
+uart0
+  A [io/stream] plugged into Uart0. Sending is unbuffered, but it has a receive
+  buffer using [mem/roll].
+
+### Variables
+
+missedrx
+  Whenever we try to write a byte to the rolling buffer and we can't because
+  it's full, this variable is increased by one. When you end up with a nonzero
+  value here, it probably means that you should increase your buffer size.
+
+### Words
+
+uart0$ ( -- )
+  Initialize the hardware. Baud rate is hardcoded at 115200. Interrupts are
+  disabled, we're in polling mode.
+
+uart0irq$ ( -- )
+  Enable IRQ on receiving data and unmask the uart IRQ on the BCM2835.
+
+uart0isr, ( -- handled-br )
+  Compile a IRQ handler [doc/intr] for receiving data on the UART0.

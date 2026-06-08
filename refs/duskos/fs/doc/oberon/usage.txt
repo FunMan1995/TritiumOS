@@ -1,0 +1,166 @@
+# Duskberon usage
+
+Duskberon is a mouse-oriented graphical interface. It divides the screen
+[oberon/display] horizontally into 2 *tracks* and in those tracks, lays out
+*viewers* vertically.
+
+Upon launching, what you see are two tracks, the left one empty, the right one
+containing two viewers. The top one is the system log, the bottom one is the
+system *tool* (see below).
+
+Most viewers are in fact two viewers: the narrow one on top is a menu viewer and
+the big one is the contents viewer.
+
+Duskberon is designed to be used with a mouse with 3 buttons. We call *click*
+the action of pressing then releasing one of those buttons. Because there are 3
+buttons, there are 3 kinds of click: left click, middle click, right click.
+
+Tracks cannot be resized by mouse action, but viewers can. If you left click on
+a menu viewer, hold it, then move the mouse vertically, you'll see the menu
+viewer going green. When you release the mouse, the viewer will have grown or
+shrank vertically.
+
+## Text editing
+
+Both viewers you see now are text frames [oberon/textfram], which are designed
+to display and edit text contents. That text can be straight ASCII, but it can
+also be what we call *rich text*, that is, a stream of text where arbitrary
+parts of the text can have a different style.
+
+Style encompasses 3 attributes: Font [oberon/fonts], color and vertical offset.
+
+Style of a piece of text can be changed through commands, for example the
+"Edit.ChangeFont" command. See below for how to invoke commands.
+
+When text is involved, Duskberon has two important concepts: caret and
+selection. There is only one caret acrosss viewers, but each text frame can
+have at most one text selection active.
+
+You move the caret by left-clicking on a piece of text. An arrow icon -- a
+different one than the mouse cursor -- will show up where you click. Keyboard
+events insert (or delete, in the case of backspace) text at the caret. The caret
+is also where text is *pasted* (see below).
+
+You select text by right clicking on a piece of text, hold it, then mouse right
+and down (selection cannot happen "backwards"). Affected text will be
+highlighted to indicate that it's selected. Selection persist as long as you
+don't select something else in the same viewer or edit the text.
+
+Selection is mainly used for copy/paste, cut and command parameters. The first
+two are achieved through mouse *interclicking*, the last one is a subject in
+itself. See below.
+
+## Mouse interclicking
+
+Each mouse button has a primary purpose:
+
+left   Set caret
+middle Run command
+right  Select text
+
+Additionally, if you hold that mouse button and *then* click on another button,
+that's called *interclicking* and unlocks extra behaviors:
+
+left-then-middle   Copy text
+left-then-right    Copy style
+right-then-left    Delete text
+right-then-middle  Copy text
+
+It takes a while trying them around to feel them. Copy text interclicking come
+into two "flavors" because they're for two different screnarios. The first one
+is when you've already decided on the text to copy, then you left click to
+decide where it's going to go, and then boom, middle click to copy. The second
+one is when you've already decided where it's going to go, you right click to
+select and then boom, left click to copy.
+
+Copying style takes the style of the text at the caret and applies it to
+selected text.
+
+Deleting text is self-descriptive. Sometimes, a misclick have us mistakenly
+delete text. That's not cool, but it can be undone with the Edit.Recall command.
+
+## Scrolling
+
+Text frames have a small vertical bar on their left. This is the scroll bar and
+allows us to navigate a document where the contents is larger than the viewer.
+
+There's a small horizontal line in the scroll bar that indicate where we "are"
+in the document, proportionally.
+
+When the mouse cursor moves over the scroll bar, the cursor changes to indicate
+change in clicking behavior. Here's what happens when we click on a scroll bar:
+
+left
+  Scroll down so that the line in the text that is at the same height as the
+  click position ends up at the top of the viewer.
+
+middle
+  Show the document at the relative position of the click. In other words, move
+  the little horizontal line of the scroll bacr where you've clicked.
+
+  TODO: This is broken in Duskberon.
+
+right
+  Scroll up so that the top line ends up at the same height as the click
+  position.
+## Loading and saving text files
+
+New text files are loaded with the "Edit.Open" command. It will open the
+specified file in the right track if it's a ".ort" file (a tool) or in the left
+track otherwise. ASCII text files use a monospace font because it's most likely
+source code.
+
+After having edited your text, you can save it with "Edit.Store" or
+"Edit.StoreASCII" in the corresponding menu view. Use Store for .ort files and
+StoreASCII for other files.
+
+## Commands
+
+Invoking commands is central to Duskberon. Commands are references to
+parameterless procedures in modules. For example, Edit.ChangeFont corresponds
+to the ChangeFont procedure in the Edit module. Because that procedure has no
+return value or parameters and is public, it's a command. As simple as this.
+
+Commands are invoked by middle clicking on a piece of text where such a command
+name is written, with whitespaces as boundaries. Upon clicking, the procedure is
+called. Anywhere. As simple as this.
+
+But without the means to pass parameters to commands, this whole thing is a bit
+underwhelming, ain't it? Not if you tackle a convention for passing parameters
+through the Texts [oberon/texts] mechanism!
+
+So, we have a command, and it has no parameter. We're out of luck, right? No!
+One thing that a command knows is where in the Texts system it exists. It can
+also have access to current text selection. That's enough for passing
+parameters.
+
+Most commands follow the same convention. They scan the text following the
+command itself, then process it. If, for example, Edit.ChangeFont is followed by
+the text " ob16.fnt", then that's the font it's going to load.
+
+In this convention, two characters are handled in a special way:
+
+When a "~" is encountered, it indicates the end of parameters. This is used when
+a command handles a list of parameters rather than a fixed number of them.
+
+When a "^" is encountered, the text selection is used as a parameter. This one
+is crucial and often used. It allows us to have very composable commands laid
+around in our tool files.
+
+This is only a convention. Commands can do whatever they want. However, unless
+noted otherwise, when the documentation of a command talks of parameters, they
+will be described with this convention being assumed.
+
+## Tools
+
+Tool files are text files. Nothing else. They will typically be in the ".ort"
+format (Oberon Rich Text) which indicates that it contains styled text.
+
+The reason why they're a concept in themselves is the purpose of the text in
+that file. The contents of a tool is a series of commands with parameters
+pre-organized in it. It represents the shortcuts you need, as an operator, to
+get your work done.
+
+Duskberon comes with a pre-defined system tool, named "system.ort", that is
+opened by default at launch. You'll want to change this because this is only
+an example file. It is not tailored to your needs. So go ahead, change it.

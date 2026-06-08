@@ -1,0 +1,104 @@
+# Driving a UNIX tty from Dusk
+
+At face value, driving a UNIX tty requires noting else than a serial link to the
+machine and a UNIX system that is configured to listen to that link. For
+example, let's imagine that we're on a Raspberry Pi, we could have setup code
+that look like this:
+
+  needs drv/rpi/uart
+  uart0$
+
+Then, we'd have a word "uart0", provided by [drv/rpi/uart], which is a Stream
+[io/stream] that represents our serial link and is configured as 8N1 115200
+bauds.
+
+So far, so good. But are we really going to interact with it through command
+line in this fashion?
+
+  "ls\r" uart0 puts
+  console uart0 spit
+
+We *could*, but that wouldn't be very fun. Instead, what we can do is to use
+[io/ride] so that we can "ride" uart0, that is, temporarily wire our console,
+which is wired to the Forth interpret loop, to uart0. That is, have the keyboard
+send contents directly to uart0 and enter a loop where we constantly poll uart0
+for new contents that we spit to our console.
+
+  needs io/ride
+  uart0 ride \ we are now in the UNIX console
+  <return>
+  someunixprompt$ ls
+  foo   bar   baz ...
+  ...
+  someunixprompt$
+
+Ahh, better. So, is that all there is to it? Not quite because there are two big
+caveats.
+
+First, 115200 bauds, while not super fast by modern standard, is still quite a
+few characters per second, and chances are, that machine on the other side is
+saturating the line. If you're not ready to receive them, you'll miss some.
+
+In Dusk, not all UART drivers are written with speed in mind (yet). First
+iterations of UART drivers are almost always naive. If there isn't some kind of
+interrupt scheme set up to handling incoming characters, chances are that you'll
+miss many, which means you'll get corrupt output.
+
+So, make sure that your UART driver is designed for this kind of load. The RPi
+UART driver is, but you have to enable IRQs.
+
+Alternatively, you could lower the speed to something like 300 bauds and that
+should give you a setup that mostly doesn't miss characters, but that's not a
+good setup. It's better to pimp up your UART driver.
+
+The second caveat is that many, many UNIX tools are dependent on ANSI escape
+codes. Tools like "less" (and thus "man") or "vi" need it.
+
+Dusk has the Grid [io/grid], which is similar in capability to what application
+using ANSI escape codes can do, that is, use the character matrix that the
+screen represents as a kind of canvas.
+
+However, Dusk purposefully rejects the idea of needing awkward escape codes to
+use the Grid. You're directly on the machine, no need to limit yourself to a
+puny serial line!
+
+But not all hope is lost, because there *is* a unit, [text/ansi], which does
+ANSI-to-Grid translation. It provides a structure that extends the Grid and that
+can replace it.
+
+That ANSI Grid scans the input text for ANSI escapes and when it encounters
+them, translates them to the appropriate Grid action.
+
+Therefore, what you want to do is to press CTRL+Q to "unride" your link, then:
+
+  needs text/ansi
+  COLS LINES newansigrid to grid
+  uart0 ride
+  <return>
+  someunixprompt$ man vi
+  <ooh, it seems to work... but something's wrong, output is garbled!>
+  <press q to quit "man">
+  <CTRL+Q to "unride" uart0>
+
+Alright, you could see that this fancy grid kind of works, you could even see
+bold words and all this, very pretty. But as soon as you go down one page or one
+line, all hell seems to break lose.
+
+That's because your tty on the other side is likely set up for 80 columns and
+24 rows, but your grid is likely larger than that. You have to tell your unix
+system about your grid size. You could do so manually with:
+
+  uart0 ride
+  <return>
+  someunixprompt$ stty rows 75 columns 100
+
+but don't bother, there's a helper for this, "ttycfgcmd ( grid -- str )" which
+generates that line for you. So, before you ride your comm line, run this:
+
+  grid ttycfgcmd uart0 puts
+  uart0 ride
+
+"ttycfgcmd" also runs "export TERM=ansi" so that we don't end up receiving fancy
+escape codes we don't support.
+
+So *now* you have a very usable tty link to a UNIX machine!

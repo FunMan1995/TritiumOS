@@ -1,0 +1,31 @@
+# Terminology
+
+Some words in Dusk OS refer to particular concepts that we try to keep
+consistent across the code and documentation.
+
+# Range
+
+A range is an area of memory with a definite start address and size. On PS, it
+is represented as two elements, starting with the address, and then the size.
+
+Words like "move" operate on ranges.
+
+In word signatures, a range will often look like ( a u -- ), but sometimes,
+letters are added to "a" to indicate the type of data in the range. For example,
+an "unpacked" string (a string from which we're reading the first length byte)
+will be shown as ( sa sl -- ), for "string address" and "string length". This is
+a range too.
+
+In words, ranges are represented as the characters "[]".
+
+# String
+
+Strings in Dusk OS are ranges where the first byte of the range contains its
+length. On PS, they are passed around as a single element, the address of the
+length byte. It will often look like ( str -- ) or ( s -- ).
+
+# Word
+# Entry
+# Execution Token
+
+See [doc/usage/word]

@@ -1,0 +1,123 @@
+# Duskberon Files module
+
+While the original Oberon Files module implements a whole filesystem, this
+module thinly wraps [fs/core] while trying to retain as much of the original
+semantics as possible. Refer to [fs/core] for concepts.
+
+An additional mechanism that this module has over [fs/core] is one of Riders.
+Riders are independent cursors over an opened file. They remember position and
+update it independently when accessing the file. Under the hood, a "seek" call
+is made whenever a file access through a rider is done. This means "multiple
+riders" are going to be slow compared to Oberon design.
+
+Oberon has this concept of creating new named files without registering them.
+This doesn't map cleanly to fs/core. What we do is that New() maps to [mem/pool]
+and thus yields a new pool stream. Old() does a lookup+open. Register() does not
+exist. Instead, we have Ensure(name) which does ensurefile+open.
+
+While the Close() routine maps to [io/stream]'s "close", it's not enough because
+Oberon doesn't free file resources like Dusk does. It relies on its GC.
+
+Therefore, what we need to do is to have Files.File hold onto a StreamRef (see
+[comp/oberon/gc]). This way, when the GC collects it, it also closes the file.
+
+The original Oberon uses its peculiar FS design to effectively read and write
+from the same file without overwriting contents we're about to read. We can't do
+that here. Instead, we have another mechanism, which is more memory hungry, but
+has the same effect: we write to a mem/pool file (with New()), then use
+Copy(src, dst: File) to an Ensure()d file to commit the contents. Copy() is a
+proxy for "spit" from [io/stream].
+
+## bootfs only
+
+In its current implementation, the Files module only does lookup in bootfs.
+It can't access mapped FSes. It will probably change eventually.
+
+## Structure
+
+FileDesc = RECORD
+  handle: DUSK.StreamRef;
+  name: ARRAY 32 OF CHAR
+END;
+File* = POINTER TO FileDesc;
+Rider* = RECORD
+  eof: BOOLEAN;
+  pos: INTEGER;
+  file: File
+END;
+
+FileDesc.handle
+  Pointer to the StreamRef [comp/oberon/gc] corresponding to the opened file.
+  Can be either a real file or a [mem/pool] stream.
+
+FileDesc.name
+  Name that the file was opened with, either through Old() or New().
+
+Rider.eof
+  Whether the rider has reached the end of its target file when reading. On
+  writing, this flag isn't used. When writing can't be done, we abort.
+
+Rider.pos
+  An offset, in bytes, indicating where the rider "is" in the file.
+
+Rider.file
+  Target file of the rider.
+
+## Procedures
+
+Old (name: ARRAY OF CHAR): File;
+
+  Run a [fs/core] lookup on "name". If found, open the file then yield the
+  resulting File struct. Otherwise, yield NIL.
+
+Ensure (name: ARRAY OF CHAR): File;
+  Same as Old(), but run "ensurefile" first. Always succeeds.
+
+New (name: ARRAY OF CHAR): File;
+  Create a new [mem/pool] stream with the specified name and yield its
+  corresponding file.
+
+Copy (src, dst: File);
+  Copy the whole contents of src into dst.
+
+Delete (name: ARRAY OF CHAR; VAR res: INTEGER);
+  Try to delete file with specified name. Yield res=0 on success, nonzero
+  otherwise.
+
+Close (f: File);
+  Close the stream held by the specified file.
+
+Truncate (f: File);
+  Truncate [fs/core] the target file.
+
+Length (f: File): INTEGER;
+  Yields the size in bytes of the contents of the specified file.
+
+Set (VAR r: Rider; f: File; pos: INTEGER);
+  Set specified rider to specified file/pos pair.
+
+ReadBytes (VAR r: Rider; x: DUSK.AnyPtr; n: INTEGER);
+  Proxy to a combination of "seek" [fs/core] and "read" [io/stream]. Advances
+  rider position by the number of bytes actually read.
+
+ReadByte (VAR r: Rider; VAR x: BYTE);
+Read (VAR r: Rider; VAR ch: CHAR);
+ReadInt (VAR r: Rider; VAR x: INTEGER);
+ReadSet (VAR r: Rider; VAR x: SET);
+ReadString (VAR r: Rider; x: ARRAY OF CHAR);
+  Proxies to ReadBytes().
+
+WriteBytes (VAR r: Rider; x: DUSK.AnyPtr; n: INTEGER);
+  Proxy to a combination of "seek" [fs/core] and "write" [io/stream]. Advances
+  rider position by the number of bytes actually written.
+
+WriteByte (VAR r: Rider; x: BYTE);
+Write (VAR r: Rider; ch: CHAR);
+WriteInt (VAR r: Rider; x: INTEGER);
+WriteSet (VAR r: Rider; x: SET);
+WriteString (VAR r: Rider; x: ARRAY OF CHAR);
+  Proxies to WriteBytes().
+
+DebugFile (file: File; len, off: INTEGER);
+  Prints the contents, in hexadecimal, of the specified range of the specified
+  file.

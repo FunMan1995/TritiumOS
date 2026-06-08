@@ -1,0 +1,16 @@
+# sunxi
+
+The sunxi name refers, no idea why, to the ARM SoC family from Allwinner. This
+SoC is notably used in the Pine 64.
+
+At the moment, Dusk needs u-boot's SPL (but only the SPL) to boot this machine,
+which can't be built from Dusk. See the root "/deploy/sunxi" directory for
+details.
+
+It has a uart that can be driven by [drv/sunxi/uart].
+
+It has a SD/eMMC device that can be driven through [drv/sunxi/smhc].
+
+## See also
+
+* Allwinner A64 User Manual, Version 1.0

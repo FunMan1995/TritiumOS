@@ -1,0 +1,405 @@
+needs tests/harness tests/grh gr/buf gr/varvara
+testbegin
+
+8 4 vscreen resize
+
+\test setvpalette
+6 7 8 9 setvpalette
+
+create expected map< , 6 7 8 9 7 7 8 9 8 7 8 9 9 7 8 9
+vscreen Pixbuf.palette expected 16 []= #true
+
+\test drawpixel (background)
+1 to X 2 to Y 3 drawpixel
+8 4 vscreen expectpixflip
+00000000
+00000000
+0c000000
+00000000
+
+\test drawpixel left of other
+0 to X 2 drawpixel
+8 4 vscreen expectpixflip
+00000000
+00000000
+8c000000
+00000000
+
+\test draw foreground pixel
+1 to X 1 fg) drawpixel
+8 4 vscreen expectpixflip
+00000000
+00000000
+8d000000
+00000000
+
+\test draw foreground pixel left of other
+0 to X 2 fg) drawpixel
+8 4 vscreen expectpixflip
+00000000
+00000000
+ad000000
+00000000
+
+\test drawpixel out of bounds has no effect
+8 to X 3 drawpixel
+8 4 vscreen expectpixflip
+00000000
+00000000
+ad000000
+00000000
+
+\test drawpixel with X+) and Y+)
+0 to X 0 to Y 1 fg) X+) drawpixel
+X 1 #eq
+2 fg) Y+) drawpixel
+Y 1 #eq
+3 fg) X+) flipX) drawpixel
+X 0 #eq
+3 Y+) flipY) drawpixel
+Y 0 #eq
+8 4 vscreen expectpixflip
+12000000
+c3000000
+ad000000
+00000000
+
+\test drawpixel fill bottom-right quadrant
+3 to X 2 to Y 1 fg) fill) drawpixel
+8 4 vscreen expectpixflip
+12000000
+c3000000
+ad011111
+00011111
+
+\test drawpixel fill top-right quadrant
+2 fg) flipY) fill) drawpixel
+8 4 vscreen expectpixflip
+12022222
+c3022222
+ad022222
+00011111
+
+\test drawpixel fill top-left quadrant
+3 fg) flipY) flipX) fill) drawpixel
+8 4 vscreen expectpixflip
+33332222
+f3332222
+bf332222
+00011111
+
+\test drawpixel fill bottom-left quadrant
+1 bg) flipX) fill) drawpixel
+8 4 vscreen expectpixflip
+33332222
+f3332222
+77772222
+44451111
+
+\test drawpixel fill full fg
+0 to X 0 to Y 1 fg) fill) drawpixel
+8 4 vscreen expectpixflip
+11111111
+d1111111
+55551111
+55551111
+
+\test drawpixel fill full bg
+0 to X 0 to Y 2 bg) fill) drawpixel
+8 4 vscreen expectpixflip
+99999999
+99999999
+99999999
+99999999
+
+\test drawsprite fg)
+\ We need more space!
+16 10 vscreen resize
+create heart map< be, $0066ffff $ff7e3c18 $00000018 $18000000 \
+                      $00000018 $18000000 $0066ffff $ff7e3c18
+create diag map< be,  $0103070f $1f3f7fff
+
+0 to X 0 to Y heart to sprite 2 fg) drawsprite
+16 10 vscreen expectpixflip
+0000000000000000
+0220022000000000
+2222222200000000
+2222222200000000
+2222222200000000
+0222222000000000
+0022220000000000
+0002200000000000
+0000000000000000
+0000000000000000
+
+\test drawsprite bg)
+4 to X 2 to Y 7 bg) drawsprite \ 0=1 1=3
+16 10 vscreen expectpixflip
+0000000000000000
+0220022000000000
+2222666644440000
+22226ee64cc40000
+2222eeeecccc0000
+0222eeeccccc0000
+0022eecccccc0000
+00026cccccc40000
+000044cccc440000
+0000444cc4440000
+
+\test drawsprite fg) transparency
+2 to X 1 to Y 0 fg) drawsprite \ 0=16 1=0
+16 10 vscreen expectpixflip
+0000000000000000
+0220022000000000
+2220466444440000
+22004cc44cc40000
+2200cccccccc0000
+0200cccccccc0000
+0020cccccccc0000
+00024cccccc40000
+000044cccc440000
+0000444cc4440000
+
+\test drawsprite bg) transparency
+2 to X 1 to Y 0 bg) drawsprite \ 0=16 1=0
+16 10 vscreen expectpixflip
+0000000000000000
+0220022000000000
+2220066004440000
+2200000000c40000
+2200000000cc0000
+0200000000cc0000
+002000000ccc0000
+00020000ccc40000
+0000400ccc440000
+0000444cc4440000
+
+\test drawsprite diagonal
+vscreen clear
+0 to X 0 to Y diag to sprite
+1 fg) drawsprite
+16 10 vscreen expectpixflip
+0000000100000000
+0000001100000000
+0000011100000000
+0000111100000000
+0001111100000000
+0011111100000000
+0111111100000000
+1111111100000000
+0000000000000000
+0000000000000000
+
+\test drawsprite flipX)
+vscreen clear
+1 fg) flipX) drawsprite
+16 10 vscreen expectpixflip
+1000000000000000
+1100000000000000
+1110000000000000
+1111000000000000
+1111100000000000
+1111110000000000
+1111111000000000
+1111111100000000
+0000000000000000
+0000000000000000
+
+\test drawsprite flipY)
+vscreen clear
+1 fg) flipY) drawsprite
+16 10 vscreen expectpixflip
+1111111100000000
+0111111100000000
+0011111100000000
+0001111100000000
+0000111100000000
+0000011100000000
+0000001100000000
+0000000100000000
+0000000000000000
+0000000000000000
+
+\test drawsprite both flipX) and flipY)
+vscreen clear
+1 fg) flipX) flipY) drawsprite
+16 10 vscreen expectpixflip
+1111111100000000
+1111111000000000
+1111110000000000
+1111100000000000
+1111000000000000
+1110000000000000
+1100000000000000
+1000000000000000
+0000000000000000
+0000000000000000
+
+\test drawsprite 2bpp)
+vscreen clear
+0 to X 0 to Y heart to sprite
+2 fg) 2bpp) drawsprite
+16 10 vscreen expectpixflip
+0000000000000000
+0220022000000000
+2222222200000000
+2221122200000000
+2221122200000000
+0222222000000000
+0022220000000000
+0002200000000000
+0000000000000000
+0000000000000000
+
+\test drawsprite 2bpp) addr+) and Y+)
+vscreen clear
+0 to X 0 to Y heart to sprite
+2 fg) 2bpp) 2 times) addr+) Y+) drawsprite
+16 10 vscreen expectpixflip
+0000000000000000
+0220022003300330
+2222222233333333
+2221122233311333
+2221122233311333
+0222222003333330
+0022220000333300
+0002200000033000
+0000000000000000
+0000000000000000
+
+\test drawsprite out of bounds (top)
+vscreen clear
+0 to X -2 to Y heart to sprite
+2 fg) drawsprite
+16 10 vscreen expectpixflip
+2222222200000000
+2222222200000000
+2222222200000000
+0222222000000000
+0022220000000000
+0002200000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+
+\test drawsprite out of bounds (bottom)
+vscreen clear
+0 to X 4 to Y
+2 fg) drawsprite
+16 10 vscreen expectpixflip
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0220022000000000
+2222222200000000
+2222222200000000
+2222222200000000
+0222222000000000
+
+\test drawsprite flipY) and out of bounds (bottom)
+vscreen clear
+0 to X 4 to Y
+2 fg) flipY) drawsprite
+16 10 vscreen expectpixflip
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0002200000000000
+0022220000000000
+0222222000000000
+2222222200000000
+2222222200000000
+2222222200000000
+
+\test drawsprite flipY) out of bounds (top)
+vscreen clear
+0 to X -2 to Y
+2 fg) flipY) drawsprite
+16 10 vscreen expectpixflip
+0222222000000000
+2222222200000000
+2222222200000000
+2222222200000000
+0220022000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+
+\test drawsprite out of bounds (left)
+vscreen clear
+-2 to X 0 to Y
+2 fg) drawsprite
+16 10 vscreen expectpixflip
+0000000000000000
+2002200000000000
+2222220000000000
+2222220000000000
+2222220000000000
+2222200000000000
+2222000000000000
+0220000000000000
+0000000000000000
+0000000000000000
+
+\test drawsprite out of bounds (right)
+vscreen clear
+10 to X 0 to Y
+2 fg) drawsprite
+16 10 vscreen expectpixflip
+0000000000000000
+0000000000022002
+0000000000222222
+0000000000222222
+0000000000222222
+0000000000022222
+0000000000002222
+0000000000000220
+0000000000000000
+0000000000000000
+
+\test drawsprite times) and X+)
+\ 3 times is to ensure that complete OOB isn't drawn at all
+create hearts map< be, $0066ffff $ff7e3c18 \
+                       $0026ffff $ff7e3c18 \
+                       $ffffffff $ffffffff
+
+vscreen clear
+0 to X 0 to Y hearts to sprite
+2 fg) 3 times) X+) drawsprite
+X 8 #eq Y 0 #eq
+16 10 vscreen expectpixflip
+0000000000000000
+0220022000000000
+2222222200000000
+2222222200000000
+2222222200000000
+0222222000000000
+0022220000000000
+0002200000000000
+0000000000000000
+0220022000000000
+
+\test drawsprite times) and Y+) and addr+)
+\ 3 times is to ensure that complete OOB isn't drawn at all
+vscreen clear
+0 to X 0 to Y hearts to sprite
+2 fg) 3 times) Y+) addr+) drawsprite
+X 0 #eq Y 8 #eq
+16 10 vscreen expectpixflip
+0000000000000000
+0220022000200220
+2222222222222222
+2222222222222222
+2222222222222222
+0222222002222220
+0022220000222200
+0002200000022000
+0000000000000000
+0000000000000000
+testend

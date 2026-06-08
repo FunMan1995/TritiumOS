@@ -1,0 +1,6 @@
+# PC PCI driver
+
+This is an implementation of [drv/pci] for the PC. It is initialized thus:
+
+  needs drv/pc/pci
+  pcpci$

@@ -1,0 +1,76 @@
+# Assembler label management
+
+This unit implements the CPU-agnostic "flow words" described in the "Labels and
+flow" section of [doc/asm].
+
+## Address vs Program Counter
+
+In this unit, we make the distinction between the host, the Dusk system
+that currently compiles a binary using this unit, with the target machine we're
+compiling this binary for.
+
+For the host, we speak of addresses, for target, well, it's addresses too! but
+we need another name to avoid confusion. We choose "pc", Program Counter.
+
+When we refer to a "pc" below, we refer to an address as it will be seen in the
+target when it's going to run the binary. We say PC, because when the target CPU
+will run the code where "pc" refers to, that's what its Program Counter register
+will be.
+
+The target can be the host, in which case we say where on a "live" system, with
+"org" and "binstart" are 0.
+
+## API
+
+### Values
+
+org      The address, in the host, where the binary we're compiling begins.
+         On a "live" system, this is 0.
+binstart The address, on the target, where the binary we're compiling begins.
+         On a "live" system, this is 0.
+
+L1
+L2
+L3
+L4       Anonymous labels to use for whatever temporary purpose you have.
+
+### Words
+
+resetasm ( -- )
+  Set "org" and "binstart" to zero, putting assemblers in "live system" mode.
+
+addr>pc ( a -- pc )
+  Assuming that "a" is contained in the binary being compiled, yields the
+  address it corresponds to in the target binary.
+
+  On a live system, this is a noop.
+
+pc ( -- pc )
+  Shortcut for "here addr>pc".
+
+pc>addr ( pc -- a )
+  The opposite of addr>pc.
+
+abs>rel ( pc -- rel32 )
+  Given an absolute target address, yield a relative one compared to here.
+
+  In other words, if you're about to assemble use an assembler word that expect
+  a relative offset, but that the reference you want to pass to it is absolute,
+  use this word first.
+
+forward8
+forward16
+forward ( -- a fakerel )
+  For a forward jump, encode a fake relative offset for a jump word as well as
+  "here". This allows you to call a jump word, which will consume "fakerel" and
+  leave you with "a" on the stack.
+
+  Then, when you're at the point where you know where your forward jump leads
+  to, you use your "a" to call forward! (see [doc/asm]), which will replace the
+  fake relative value in the jump.
+
+  The 16-bit and 8-bit variants of this word differ only in the "fakerel" being
+  passed in case the jump encoding word does auto-width detection. If you know,
+  for example, that your forward jump will not exceed 8-bit in width and that
+  you'd like to encode the smaller type of jump, you'd use "forward8" instead
+  of "forward".

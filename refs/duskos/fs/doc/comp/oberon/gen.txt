@@ -1,0 +1,6 @@
+# Oberon code generator
+
+The unit at [comp/oberon/gen.fs] brings everything together in order to generate
+code. It exposes "obparse ( -- )" which parses a single top level element of
+Oberon source code and generates the binary code as well as the wrapping around
+it that corresponds to that code.

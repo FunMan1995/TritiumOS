@@ -1,0 +1,73 @@
+# User Datagram Chat
+
+As my work on the TCP/IP stack advances at a good pace, I want to stress test
+UDP before implementing TCP. I want to do so, of course, with a chat
+application. I mean, who ever thought of implementing a chat application with
+UDP? Everyone of course.
+
+See https://git.sr.ht/~vdupras/udc for a companion implementation.
+
+## The UDC protocol
+
+There isn't much of it. A message is a 8-bit type character followed by a
+payload. The possible message types are:
+
+* `M` (message). The payload is the textual message to print.
+* `N` (newcomer). The payload is a 4b IP4 address and a 2b UDP port, big endian.
+
+Any other message type is ignored. When a node receives a message from a ip/port
+pair for the first time, it broadcasts a `N` message to everyone on the list,
+then adds the newcomer to the list.
+
+When receiving a `N` message, we add this ip/pair to the list.
+
+The recommended printing rules are:
+
+1. Prefix the message with the source IP/port pair.
+2. ASCII control characters are ignored. One message per line.
+3. 100 characters maximum.
+
+## Result
+
+The result of this protocol is a funnily lossy chat system where a list is
+built up gradually and in a distributed manner, but not in a fully synchronized
+manner.
+
+The newcomer doesn't have its list synced on joining, it only builds it up as
+others in the network broadcast messages.
+
+This means that the list won't end up being a big bowl of inactive ip/port
+pairs. As nodes drop, they should all eventually drop from all active lists.
+
+Also, because it's UDP, not all messages are guaranteed to reach their
+destination. So yeah, just a cute fun toy.
+
+## Usage
+
+For this unit to work, you need a proper [com/net] incoming setup. Then, you
+launch the app thus:
+
+UDCApp newcontext launchcontext
+
+This application is an interactive one. All typed messages are sent to active
+connections. Type "quit" to quit.
+
+You can use "addtolist" to add a connection, ".list" to see the list.
+
+## API
+
+### Applications
+
+UDCApp  The UDC application.
+
+### Constants
+
+LISTENPORT   1234. UDP port to listen to for incoming messages.
+
+### Words
+
+addtolist ( addr port -- )
+  Add the specified IP4 address and UDP port pair to the list of connections.
+
+.list ( -- )
+  Print the list of connections.

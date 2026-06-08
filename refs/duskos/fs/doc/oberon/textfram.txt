@@ -1,0 +1,171 @@
+# Duskberon's TextFrames module
+
+All things being considered, the TextFrames [oberon/TextFram.mod] is the real
+center of Oberon. It puts together Texts [oberon/texts] and Viewers
+[oberon/viewers], implementing most of the text-related features making Oberon
+what it is: selection, copy, scrolling, caret management, text entry from
+keyboard, wrapping up Call arguments.
+
+## Selection behavior
+
+Selecting text in a Frame also sets the global selection in [oberon/texts].
+Moreover, there's a special behavior that is worth mentioning: When you select
+a piece of text in a frame, then select another piece of text in another frame,
+but a frame that targets the *same* underlying text, then the global selection
+isn't replaced, but "augmented", that is, its range is either expanded upwards
+or downwards up to the latest selection point.
+
+This wonky behavior allows you to conveniently select a long range of text (that
+is, larger than a screen) in a document.
+
+## Structures
+
+Line = POINTER TO LineDesc;
+LineDesc = RECORD
+  len: INTEGER;
+  wid: INTEGER;
+  eot: BOOLEAN;
+  lsp: BYTE;
+  next: Line
+END;
+
+Represents a line "on screen". It's part of a linked list help in Frame.trailer.
+It doesn't contain actual text, only "statistics" about the line.
+
+len    number of characters in the line
+wid    width of the line, in pixel, as drawn
+eot    whether this line is the last of the text
+lsp    line spacing. height of the line in pixels
+next   next line in linked list
+
+Location = RECORD
+  org, pos: INTEGER;
+  dx, x, y: INTEGER;
+  lin: Line
+END;
+
+Represents a location within the text in the frame.
+
+TODO What happens if a Location is "scrolled away"? Is it representable at all?
+
+org   Character offset of the beginning of the line where the location is
+pos   Character offset, from "org", where the location is
+dx    TODO ?? distance from x and the beginning of its word?
+x/y   Coordinates on screen of the location
+lin   Line in which the location lives
+
+Frame = POINTER TO FrameDesc;
+FrameDesc = RECORD (Viewers.FrameDesc)
+  text: Texts.Text;
+  org: INTEGER;
+  col: INTEGER;
+  lsp: INTEGER;
+  left, right, top, bot: INTEGER;
+  markH: INTEGER;
+  hasSel, hasMark: BOOLEAN;
+  selbeg, selend: Location;
+  trailer: Line
+END;
+
+text     Text that the frame draws
+org      Character offset within the text of the top left character
+col      Color of the background of the frame
+lsp      Line spacing TODO what is this used for?
+left
+right
+top
+bot      Margins, relative to Viewer rectangle, of the text area
+markH    Height of the mark in the scroll bar
+hasSel   Whether this frame has an active selection
+hasMark  TODO apparently, a text frame doesn't always have a scroll mark?
+selbeg   Location of the selection lower bound
+selend   Location of the selection upper bound
+trailer  First Line of the linked list
+
+UpdateMsg = RECORD (Viewers.FrameMsg)
+  id: INTEGER;
+  text: Texts.Text;
+  beg, end: INTEGER
+END;
+
+Sent when a frame has received a Text.notify() call [oberon/texts] for a Text
+structure that is the same as the frame's "text" field.
+
+Fields have the same meaning as notify() parameters.
+
+## Global variables
+
+menuH    Height of the menu bar [oberon/menuview]
+barW     Width of the scroll bar
+left
+right
+top
+bot      Margins, relative to Viewer rectangle, of the text area
+lsp      Line spacing
+caretF   Frame that current holds the caret. NIL if no caret.
+carloc   Location of the caret within caretF
+
+## Commands
+
+## Procedures
+
+Mark (F: Frame; on: BOOLEAN);
+  Display or erase the scroll mark line.
+
+Restore (F: Frame);
+  Redraw the whole frame.
+
+Suspend (F: Frame);
+  TODO how does suspend work?
+
+Extend (F: Frame; newY: INTEGER);
+  Grow the frame down so that Y becomes newY.
+
+Reduce (F: Frame; newY: INTEGER);
+  Shrink the frame up so that Y becomes newY.
+
+Show (F: Frame; pos: INTEGER);
+  Show frame text beginning at "pos", the character offset, in F.text, of the
+  top left character of the frame.
+
+  TODO why don't Show() and Restore() share more code?
+
+Pos (F: Frame; X, Y: INTEGER): INTEGER;
+  Yield the character offset of F.text drawn at X/Y.
+
+  TODO what happens when X/Y is out of bounds?
+
+SetCaret (F: Frame; pos: INTEGER);
+  Move caret to F at character offset "pos".
+
+RemoveCaret (F: Frame);
+  If F = caretF, erase it and set caretF to NIL.
+
+SetSelection (F: Frame; beg, end: INTEGER);
+  Set selection of the frame to specified range.
+
+RemoveSelection (F: Frame);
+  If F has a selection, clear it.
+
+Recall (VAR B: Texts.Buffer);
+  Yield a buffer with the contents of the last delete operation.
+
+Call (F: Frame; pos: INTEGER; new: BOOLEAN);
+  Wrap Oberon.Call [oberon/oberon] by first calling Oberon.SetPar so that
+  call parameter variables are set up.
+
+  Also, print error messages when the result indicates an error.
+
+GetSelection (VAR text: Texts.Text; VAR beg, end: INTEGER);
+  Front for the Sel, SelBegin and SelEnd global variables in [oberon/texts].
+
+Text (): Texts.Text;
+  Creates a Text while also hooking its "notify" procedure to this module's
+  handler. You're expected to call Texts.Open() on it yourself.
+
+NewMenu (name, commands: ARRAY OF CHAR): Frame;
+  Create and initialize a new text frame meant to be a menu.
+
+NewText (text: Texts.Text; pos: INTEGER): Frame;
+  Create and initialize a new text frame meant to be the contents, with its top
+  left contents beginning at "pos".

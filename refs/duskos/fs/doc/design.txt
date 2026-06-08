@@ -1,0 +1,13 @@
+# Design notes
+
+The directory doc/design/ contains notes about Dusk's design decisions and
+ideas.
+
+design/purpose Dusk OS' purpose
+design/simple  Dusk OS is simple
+design/async   Asynchronous processing
+design/limits  Computing within limits
+design/port    Porting UNIX code to Dusk
+design/shell   Dusk's shell
+design/speed   Dusk OS approach to speed
+design/test    Testing Dusk OS

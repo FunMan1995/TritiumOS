@@ -1,0 +1,389 @@
+# Dusk OS C compiler
+
+The C compiler is a central piece of Dusk OS. It's written in Forth and is
+loaded very early in the boot process so that it can compile the drivers it's
+about to use.
+
+This compiler needs to meet two primary design goals:
+
+1. Be as elegant and expressive as possible in the context of a Forth, that is,
+   be an elegant fallback to Forth's shortcomings.
+2. Minimize the work needed to port existing C applications.
+
+It is *not* a design goal of this C compiler to be able to compile POSIX
+code without changes.
+
+Because of the first goal, we have to diverge from ANSI C. The standard library
+is much closer to Dusk OS than to ANSI C. Porting anything related to I/Os
+involves rethinking.
+
+But because of the second goal, we do want to stay reasonably close to ANSI.
+The idea is that the porting effort should be mostly a mechanical effort and
+it should be as little prone as possible to subtle logic changes caused by the
+porting. Therefore, purely logical code can mostly be ported as is or with a
+purely mechanical effort. This property is important to minimize the risks that
+a porting effort introduces subtle bugs that are hard to pinpoint.
+
+## Implementation details
+
+The guts of this compiler are documented in:
+
+* [comp/c/type]
+* [comp/c/ast]
+* [comp/c/expr]
+* [comp/c/stmt]
+
+## Usage
+
+There are two ways to compile C code with this compiler: "cc<<" or ":c".
+
+The regular method is through "cc<<", which compiles the specified file. For
+example, "cc<< foo.c" Reads the file "foo.c" as a unit and compiles every
+elements in it.
+
+Another method is to compile in an "inline" manner with ":c". This word reads a
+single "unit element" (a function definition, a global variable or a typedef)
+from the input stream and compiles it. It returns to normal Forth interpretation
+after it parses the last token of the element. Example:
+
+  :c int foo() {
+    return 42;
+  } foo . \ prints 42
+
+## Differences in the core language
+
+Writing for DuskCC is mostly the same as writing for another ANSI C compiler,
+but there are a few differences:
+
+### General
+
+* the C preprocessor is different, see below.
+* no 64-bit types. "double" doesn't exist. long is the same as int.
+* Variable arguments work differently, see below.
+* No "static" keyword.
+* No "const" keyword.
+* No multi-dimensional array.
+* Type matching is strict. No automatic integer promotion. See below.
+* Elements larger than 32-bit cannot be used as return values or argument.
+* Pointers to arrays are unrepresentable. Declarations such as `int (*x)[42]`
+  (with which the CC can do nothing fancy anyways) won't work. Use `int **x`
+  instead. Array of pointers (`int *x[42]`) do work, however.
+* Name clashes are resolved exactly as in Forth: the newer identifier shadows
+  the old one.
+* Function protoypes (a function declaration without a body) are used
+  exclusively for forward declarations (see below).
+
+### Literals
+
+* In general, literals are the same as in Dusk, with special provisions for
+  C style. All in all, close to C, but not quite.
+* The "0x" prefix is supported as a "$" alternative.
+* No octal support.
+* Escapes in string literals are the same as in Dusk: \n \r \0 \"
+* Char literals, unlike Dusk, also support these escapes.
+* String literals are not null-terminated, but "counted strings". The exact same
+  format as system strings [doc/usage/lit].
+* You can create a null-terminated string literal by appending a "0" next to the
+  closing quote, for example "hello"0. This 0 shifts the address of the literal
+  by 1 (to skip the count) and adds an extra 0 at the end.
+* The list literal {..., ..., ...} is, in a way, more flexible than in regular C
+  and in another way, less flexible. It can be used in any expression, not just
+  initialization. For example, "return {42, 54, $1234}[idx];" works fine, just
+  fine. This list, however, needs to be static. You can include global symbol
+  references, but not arguments or local variables.
+
+### Structures, unions, typedefs, enums
+
+* "struct MyStruct {...};" automatically creates a "typedef" to the struct.
+* The "struct" keyword can't be used to reference structs, only to define them.
+* No bit fields. Not worth their complexity weight.
+* "enum" is not a type, is always anonymous and has no other purpose than to
+  declare the constants it contains. In other words, "enum" is a shortcut for
+  repeated Forth "const" creation.
+* "enum" can only be declared at unit top level.
+
+### Defined behavior
+
+These are not really differences with ANSI C, but rather definition of the
+"implementation defined" part of C:
+
+* char is always 8 bit, short is always 16 bit, int is always 32 bit.
+* long is the same as int.
+* Doing ">>" on signed operands does an arithmetic shift right, that is, repeat
+  bit 31 on the right instead of repeating 0 (which is what happens on unsigned
+  ">>").
+* struct fields are never padded. See below.
+* in an "enum {}" each explicit value sets the "running" counter. In "enum {
+  FOUR=4, FIVE }", FIVE is 5. That counter implicitly begins at 0.
+* Typecasting to a larger type performs explicit masking of the underlying
+  value.
+* Typecasting to a larger type when the origin type is signed performs sign
+  extension on the value.
+* The "&&", "||" and "?:" operators do shortcutting. That is, they jump over
+  code that cannot change the outcome of the expression.
+
+### Planned, but not implemented yet
+
+* float
+* Compile time string literal concatenation
+* struct initialization with "{}" literal
+
+## Calling convention
+
+This C compiler produces words that can be called from Forth like any other
+word. C code can also call upon Forth words that are annotated through
+[comp/sig].
+
+To be able to do so, it adheres to Dusk's calling convention, that is, it passes
+arguments on PS. All arguments in a function signature use 4 bytes, regardless
+of their type. In a function signature, the leftmost argument is the top of
+stack the rightmost is the deepest argument. Example:
+
+  :c int foo(int a, int b, int c) {
+      return a-c;
+  }
+  1 2 3 foo . --> prints "2"
+  8 6 4 foo . --> prints "-4"
+
+The return value is pushed to the stack. A function with a "void" return value
+doesn't push anything to the stack. Thus, "int foo(int x)" has the signature
+"( n -- n )" and "void foo(int x)" has the signature "( n -- )".
+
+All words created by compilers such as this one have a signature, but not all
+Forth words have one. Signature-less words are invisible to C. See [comp/sig]
+for details.
+
+### Arguments and return values are always 32-bit
+
+In Dusk, PS access is only done in chunks of 4 bytes. When you have a function
+like this:
+
+  :c ushort foo(ushort a, ushort b) {
+    return a+b;
+  }
+
+it is going to compile and work as an adder of two arguments, but in terms of
+code generation, all accesses are going to be 32-bit. For all intents and
+purposes, this function is equivalent to the same function with "uint" types.
+
+That being said, it might make sense to have non-32-bit arguments and return
+values for the purpose of type checking. During compilation, type checking will
+still work as expected. It's only that codegen will be 32-bit only.
+
+This is done thus because otherwise, comp/c wouldn't work on big endian systems,
+at least not without serious complications all around.
+
+## Variable arguments
+
+Function signatures can end with a "..." (example: "int foo(int a, int b, ...)")
+to indicate that they can receive a variable number of arguments. Accessing
+those variables doesn't work like in ANSI C though because those arguments live
+directly on PS.
+
+Functions with variable signatures cannot be implemented in C, only in Forth.
+But the interfacing works just as you'd expect. For example, "void printf(char
+*fmt, ...)" is implemented in Forth, but can be called as you would call it in
+ANSI C, for example with "printf("foo %d", 42)".
+
+## Struct alignment
+
+As per general Dusk alignment discipline policy [doc/usage/mem], it is the
+responsibility of the developer to align their structs. A struct resulting in
+unaligned memory accesses will generate an error during their definition.
+
+A struct can end with a field that has a size that isn't a multiple of 4.
+When that happens, the struct will automatically align its size. The "sizeof()"
+of "struct { int a; short b; }" is 8, not 6.
+
+## Strict type matching
+
+DuskCC will error out whenever it sees a binary operator where the two operands
+don't have the same type, or when returning a value that doesn't match the
+function signature. Therefore, when combining two different types, explicit
+typecasting needs to be used. This is unlike ANSI C where there are rules for
+integer promotion. We don't have that here.
+
+Some types are "weak", that is, they yield to the "other" side of the binary
+operator. A binary operator with a "weak" size has the type of its "strong"
+side. These yield weak types:
+
+* Integer literals (uint)
+* Pointer subtraction (int)
+* Boolean comparison result (0 or 1, uint)
+* Result of && or || (uint)
+* void*
+
+Automatic type matching encourages sloppy typing of variables and explicit
+typecasting helps to notice type-related bugs before they arrive. With proper
+choice of types, the noise that this explicit typecasting represents is minimal.
+
+## The #define pre-processor directive
+
+The #define directive allows you to define text expansion macros which can then
+be used directly in C code:
+
+  #define FOO bar
+
+The #define directive reads the next identifier, considers it the macro name,
+and then reads the rest of the line and associates it verbatim with that name.
+
+The tokenizer, whenever it encounters an identifier, checks if it corresponds to
+a macro name before sending it to the parser. If it does, that name is not sent
+to the parser. Instead, the content of the associated macro is processed through
+[lib/macro] and fed back into the tokenizer as if that content had textually
+replaced the macro name. Parameters to feed to the macro must follow the macro
+name exactly as described in [lib/macro]. Therefore:
+
+  #define RET return %<;
+  int foo() { RET 42 }
+
+is equivalent to:
+
+  int foo() { return 42; }
+
+For clarity, an opening parenthesis can directly (no whitespace allowed) follow
+the macro name. If it does, then it must be accompanied by a matching closing
+parenthesis. There's a caveat though: you must not forget that macro arguments
+are parsed using "wordorquote", which means it doesn't follow C tokenization
+rules. If your last macro argument is unquoted, it must be followed by a
+whitespace. For example, 'RET 42' above could also be written as 'RET(42 )' or
+'RET("42")'.
+
+## The ## pre-processor directive
+
+The ## pre-processor directive executes the following line of Forth source
+at compile time.
+
+Because this C compiler generates binary code for the C code it parses right as
+it encounters it (with statements being its granularity level), this allows you
+to insert some fancy code generation yourself. In short, if it's not in the
+middle of a statement/expression and its ";" character, it's probably alright
+to insert ## there with some assembler in there. Go crazy!
+
+You have to make sure that the stack effect of your Forth line is ( -- ) or
+you're going to break the compiling process.
+
+At the moment, the way DuskCC generates code is not formalized and documented,
+making the writing of such inline assembler a bit difficult, but such
+formalization will come soon enough, making this feature reliable.
+
+## The #if/#else/#endif directives
+
+The C compiler can skip parts of the code it feeds from, regardless of its
+syntax, based on the value of a Forth expression. You do that with the #if
+directive.
+
+When a #if is encountered, the remaining contents of the line is parsed as a
+Forth expression with the expected signature ( -- f ).
+
+If the expression yields 0, the following code will be ignored until a #else or
+a #endif is encountered.
+
+If the expression is not zero, we parse normally. If a #else is encountered, we
+skip until a #endif is encountered.
+
+Simple, right? Yeah it is, but there's a caveat. The "skipping" part completely
+ignores tokenization and parsing rules. Anything can be in there, it's going to
+be ignored. This means that if your #else and #endif live inside a
+/* */ comment, it's going to be effective!
+
+As with any # directive, however, we still make sure that it is preceded by a LF
+character, so we limit the possibilities of the "accidental" #else or #endif to
+beginnings of lines.
+
+The #if/#else/#endif directives can be nested.
+
+## Constant accesses
+
+All Forth words created with "const" as well as their proxies ("consts", "enum",
+etc.) are automatically picked up in C code as read-only symbols. Example:
+
+42 const MYCONST
+:c int foo() { return MYCONST; }
+foo . \ prints 42
+
+## Value access
+
+All Forth words created with "value", that is, entry with a "VALU" tag, are
+automatically picked up in C code as 32-bit uints, like a global variable would.
+Example:
+
+42 value myval
+:c uint foo(uint n) { uint x = myval; myval = n; return x; }
+foo . \ prints 42
+myval . \ prints 54
+
+## Forward declarations
+
+Sometimes, you need to reference a function before you can implement it. To do
+so, declare a function without a body:
+
+  int foo(int bar);
+
+When doing so, this creates an empty entry marked as "to be implemented" (don't
+try to call it). When you're ready to implement your function, just do it:
+
+  int foo(int bar) {
+    return bar+2;
+  }
+
+Before creating this new function, a lookup is made for an existing "to be
+implemented" word. If it exists, an alias is written pointing to the
+implementation we're about to compile.
+
+## The backtick escape
+
+In order to refer to any Forth word, this C compiler has special treatment for
+the backtick (`) character. When it is encountered, a word is read from the
+input stream by using regular Forth logic rather than using C's tokenizer.
+
+Because Forth word parsing logic is used, you must end your word with a
+whitespace.
+
+The backtick can be used anywhere a symbol can. Example usage:
+
+  x = `le@ (myaddr);
+
+The backtick cannot be used to declare functions. Despite that fact, we use
+the backtick to document function signatures [comp/sig] because it is clearer
+that the backtick must be used to refer to that word. Example:
+
+  ushort `wbe@ (uint addr);
+
+## Symbol lookup logic
+
+Whenever the compiler needs to lookup a symbol name, it follows the logic below:
+
+1. Look up in local symbols (local variables and arguments).
+2. Lookup in system dictionary.
+3. Otherwise, symbol not found.
+
+The local symbols dictionary is cleared at the beginning of every function
+body.
+
+System dictionary lookup works exactly like in Forth, that is, fully integrated
+into the "bubbling up" logic [doc/usage/unit].
+
+When a system dictionary lookup is made, finding an entry doesn't mean we have
+a match. The entry needs to be properly tagged [doc/uage/tag] for the C compiler
+to make sense of it.
+
+First, we check if there's an entry tag.
+
+If it's SYMB [comp/sym], then it's a fully typed global variable.
+
+If it's VALU [doc/usage/to], then it's an untyped "value". We give it a weak
+uint type and treat it like a global variable.
+
+If it's CNST, then it's an untyped "const". We give it a weak type and
+treat it like a global variable that can't be be assigned to.
+
+If there none of those entry tags, we look if a SIGT [comp/sig] is attached to
+the payload of the entry. If there is, then we have a function reference.
+
+## Type lookup logic
+
+Types, including structs, are fully integrated in [lib/type] and [lib/struct].
+A type lookup is a "findtype". "typedef" is a straight proxy to "addtype".
+"struct {}" is a frontend to [lib/struct], except a C structure doesn't
+generated field access words like a struct defined in Forth struct does.

@@ -1,0 +1,5 @@
+First-run flow (implemented in host apps):
+1. Enter license key (master-minted, max 10 devices)
+2. Name your assistant (user-chosen, stored in evolve/assistant-name.trit)
+3. Choose edition: 32 (cyan) or 64 (magenta)
+4. Bootstrap TritiumForth core from tritium.poly/core/

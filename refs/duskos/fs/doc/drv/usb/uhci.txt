@@ -1,0 +1,54 @@
+# Universal Host Controller Interface (UHCI)
+
+This unit provides a HCI struct that is compatible with the rest of the USB
+subsystem [drv/usb].
+
+UHCI controllers are USB v1 controllers, that is, for Low and Full speed
+devices. USB v1 is quite old, but those controllers are also present on more
+recent machines with EHCI [drv/usb/ehci] because of EHCI's "companion" system
+which delegates Low speed communication to UHCI hosts. Therefore, even if you
+have [drv/usb/ehci] set up, you also need this unit set up or else you will not
+see low speed devices.
+
+Although theoretically, UHCI isn't tied to PCI or to little endian or to i386
+I/O operations, this driver is. It needs reworking to make it work in other
+contexts.
+
+Also, even though UHCI specs say that all values are little endian, this unit
+deals does native read/write operations because I'm not sure that a UHCI chip
+has ever been placed on a big endian system. I'm waiting to see this before
+dealing with endianness.
+
+## Usage
+
+After loading the unit, you call "uhci$" to initialize it. This will enumerate
+the PCI bus (only bus 0 for now), looking for an addresses yielding the right
+PCI signature. A typical system will have 4 of them, with 2 ports each, covering
+a total of 8 ports. Note that on a system that also has EHCI, those are the
+*same* ports, it's just that low speed devices are invisible to EHCI.
+
+Each UHCI controller found on the PCI bus will add a root hub, which then
+behaves like a regular [drv/usb] root hub.
+
+Example initialization:
+
+  needs drv/usb/uhci
+  uhci$ usbwork lsusb
+
+## Implementation details
+
+UHCI controllers continually run over what is called "frame lists" which are
+a list of $400 4 bytes pointers. Those lists need to be aligned to $1000.
+Because there is typically 4 of them, that's sizeable memory. If allocated
+naively, alignment requirements make us waste quite a bit of memory. For this
+reason, those 4 lists are pre-allocated next to each other. Then, when UHCI
+driver structures are created, they are assigned one of those lists.
+
+Each of those list point to the same QH, each list having its own single QH.
+That QH will generally point to nothing, making the UHCI loop into noop.
+
+When we want to initiate a transfer on a UHCI, we populate a global TD structure
+with the proper information, then make the QH of that particular UHCI point to
+that TD. The other UHCI still run into noops because their QH still point to
+nothing. Therefore, there's no problem of the wrong UHCI processing a TD not
+being meant for it.

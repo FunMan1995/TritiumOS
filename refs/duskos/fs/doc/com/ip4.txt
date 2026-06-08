@@ -1,0 +1,104 @@
+# Internet Protocol v4
+
+This unit implements the "IP" (v4) part of "TCP/IP". It can either be used to
+build datagrams to be sent to the link layer or parse datagrams received from
+the link layer.
+
+This unit communicates through [com/link]'s active "link" value.
+
+## Handling incoming packets
+
+The initiative of handling an incoming packet is usually the responsibility of
+the [com/link]'s "incoming" word. What it's going to do, when it realizes that
+it has a IPv4 datagram under its nose, is that it will call "handledgram",
+implemented here.
+
+This word looks at the datagram, check that it's well formed, then look at its
+Protocol field. Then, it checks in its protocol table to see if a protocol, like
+[com/udp] or [com/tcp], has registered itself under this Protocol ID. If it has,
+it calls this handler. Otherwise, it ignores the datagram.
+
+## API
+
+### ivalmap of a datagram
+
+This ivalmap points to [com/link]'s active frame's payload.
+
+addrof payloadptr ivalmap {
+  uchar VersionIHL TOS ;
+  beshort TL Identification Fragmentation ;
+  uchar TTL Protocol ;
+  beshort Checksum ;
+  beint SourceAddr DestAddr ;
+}
+
+### Values
+
+selfaddr
+  The address corresponding to this host. During the handling of incoming
+  datagrams, only those with a destination corresponding to selfaddr are
+  handled.
+
+subnetmask
+  The mask that separates the network portion of this subnetwork's IP address
+  and the host portion. Often $ffffff00 which means that the high 24-bit are the
+  network ID and the lower 8-bit are the host ID within this subnetwork.
+
+routeraddr
+  The IP address of the router of this subnetwork. Datagrams with destination
+  addresses outside of the subnet mask are sent to this address.
+
+### Words
+
+Version ( -- n )
+  High nibble of VersionIHL
+
+HdrLength ( -- n )
+  Size in bytes of this datagram's header
+
+Data ( -- a )
+  Pointer to the beginning of this datagram's payload
+
+.ip4 ( -- )
+  Print general IP4 global variables, that is, self's IP address, subnet mask
+  gateway, etc.
+
+.dgram ( -- )
+  Print the header of the current target datagram.
+
+>dgram ( -- f )
+  Check that the active frame's payload is a well-formed IP4 datagram.
+
+  Yield f=1 if it is well formed, that is, if its Version field is 4 and has a
+  correct checksum. Otherwise, yield f=0.
+
+>dgram# ( -- )
+  Call ">dgram" and abort with error if it yields f=0.
+
+resetdgram ( -- )
+  Assuming that the Active frame contains a IP4 datagram, reset its TTL field so
+  that it could be resent as is.
+
+newdgram ( -- )
+  Begin a new outbound frame and initialize its IP4 header.
+
+tome? ( -- f )
+  Yields whether active datagram targets selfaddr.
+
+reply ( -- )
+  Call "curlink replyframe", then swap SourceAddr and DestAddr.
+
+wrap ( -- )
+  Wrap the header, that is, compute its checksum and write it, in preparation
+  for the datagram to be sent out. After having called this, you can send the
+  datagram to the link layer.
+
+registerproto ( id xt -- )
+  Register the Protocol handler "id" to handler XT "xt".
+
+## See also
+
+* [com/udp]
+* [com/ether]
+* RFC 791
+* The TCP/IP Guide, Charles Kozierok, No Starch Press

@@ -1,0 +1,105 @@
+# Allocator tooling
+
+The CURALLOC system described at [usage/mem] doesn't need any kind of tooling
+to work. You create a struct, set CURALLOC to it, then you're done.
+
+However, to make allocators convenient to use, a small layer of words can be
+useful. This unit is that layer. All allocators such as [mem/scratch] and
+[mem/arena] use this layer.
+
+This layer also serves to set some patterns that are used throughout Dusk. For
+example, that activator binds end with "[", run1 binds end with "1" and run1
+fetchers end with "1@". Nothing forces us to these patterns, but to adhere to
+them helps code clarity.
+
+## Allocator creation and activation
+
+We can say that everything in mem/alloc revolves around "newallocator",
+"alloc[" and "]alloc".
+
+"newallocator" is a simple wrapper word around the HERE/HEREMAX/NEWHERE triple
+which write that structure down in a CURALLOC-compatible way.
+
+"alloc[ ( alloc -- )" pushes current CURALLOC to a static stack [mem/stack] and
+then sets it to specified "alloc". It also calls "alignhere" afterwards. That
+is an important pattern in Dusk: whenever allocators are activated, they're
+automatically aligned. This can simplify their usage a lot.
+
+"alloc[" is seldom used directly because most allocator usages is done through
+bindings (see below).
+
+"]alloc ( -- )" pops the previously selected allocator from its static stack
+and set CURALLOC to it.
+
+Unless you create a new allocator type, you will not need to use "newallocator".
+
+## Bindings
+
+Allocators bindings is how you'll interact with allocators. There are several
+types of bindings.
+
+"bindalloc[" binds an allocator to the "alloc[" word. Example:
+
+  $100 newscratchpad bindalloc[ mypad[
+  mypad[ 4 allot@ ]alloc
+  \ PS contains 4b alloc from pad, back on system memory
+
+"bindrun1" binds a single word runner that automatically calls "]alloc"
+afterwards:
+
+  $100 newscratchpad bindrun1 mypad1
+  4 mypad1 allot@ \ same effect as example above
+
+"bindrun1@" is the same as "bindrun1", except that it uses the PREVRESERVE
+[doc/dict] variable to yield the address of the allocated memory:
+
+  $100 newscratchpad bindrun1@ mypad1@
+  4 mypad1@ allot \ same effect as example above
+
+This last binding allows us to avoid creating tons of speciality allocation
+words. Sure, we have allot@ as a "yielding" alternative to "allot", but do we
+have a "s,@" or a "cmoveallot@"? No we don't. In these cases, "bindrun1@" is
+really useful.
+
+It's important to remember, however, that because it uses PREVRESERVE, this can
+only work if the word we're calling performs a *single* allocation call. Calling
+a word that does, for example "here 42 , 54 ," would *not* work because it would
+yield the address of 54, not 42.
+
+All those bindings work in both interpret and compile mode.
+
+## API
+
+newallocator ( newhere a u -- alloc )
+  Create a new HERE/HEREMAX/NEWHERE allocator with specified range. "newhere"
+  must be a pointer to a word with a "( -- a u )" signature.
+
+  This allocator is suitable make CURALLOC point to it.
+
+alloc[ ( alloc -- )
+  Push current CURALLOC to static stack, then set CURALLOC to "alloc" and then
+  call "alignhere". Aborts on static stack overflow.
+
+]alloc ( -- )
+  Pop from static stack and set CURALLOC to this. Aborts on static stack
+  underflow.
+
+]sysmem ( -- )
+  Empties static stack and set CURALLOC to SYSALLOC.
+
+bindalloc[ ( alloc "name" -- )
+bindrun1 ( alloc "name" -- )
+bindrun1@ ( alloc "name" -- )
+  See description above.
+
+sys[ ( -- )
+  A bindalloc of SYSALLOC. Useful when you want to make sure you're allocating
+  memory from the system. Usually used in allocators themselves.
+
+entry+ ( payloadsz 'dict str -- payload )
+  Create a new dictionary entry with expected payload size of "payloadsz" bytes.
+  We do so by reserving the appropriate amount of bytes before creating the
+  entry. This guarantees contiguous memory.
+
+  The yielded "payload" is the address of the "payload" part of the newly
+  created entry, which has already been allocated (don't allocate it again!).

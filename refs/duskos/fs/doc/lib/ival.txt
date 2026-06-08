@@ -1,0 +1,102 @@
+# Indirect value
+
+This unit provides indirect value, it's simplest offering being "ivalue", the
+indirect version of "value" [usage/to] with a type [lib/type] attached to it:
+
+  create data 12 , 42 , 54 ,
+  create ptr data ,
+  ptr uint ivalue myval
+  myval . \ prints 12
+  15 to myval \ replaces "12" in data with "15"
+  4 ptr +!
+  myval . \ prints 42
+
+## ivalmap
+
+ivalue, alright, but that's not why you're here. Double indirection becomes
+interesting when we transform it into maps, that is, a list of offset relative
+to the indirect base. If this makes you think about [lib/struct], you're not
+crazy. These are very similar, but also different:
+
+1. Their base doesn't come from PS, but from a pointer in memory, inherent to
+   the mapped words.
+2. A "ivalmap" doesn't create a structure word to be used as types in other
+   languages.
+
+ivalmap is ideally suited for device register maps. You begin defining one with
+a "ivalmap" call followed by the exact same syntax used for declaring a
+structure. Example:
+
+  variable ptr
+  ptr ivalmap {
+    uint mydword ;
+    leshort mywle ;
+    beshort mywbe ;
+  }
+
+This creates 3 "ivalue-like" words called "mydword", "mywle" and "mywbe". Here
+are their equivalents:
+
+  mydword    --> ptr @ @
+  to mydword --> ptr @ !
+  mywle      --> ptr @ 4+ wle@
+  to mywle   --> ptr @ 4+ wle!
+  mywbe      --> ptr @ 6 + wbe@
+  to mywbe   --> ptr @ 6 + wbe!
+
+## addrof
+
+This word reads a word from the input stream and looks in up in scrying mode
+[usage/word], expecting it to be tagged [usage/tag]. If it's tagged with one
+of the supported tags, it yields the address where the data of that word lives.
+
+It works with those tags:
+
+  * IVAL: indirect values, from this very unit
+  * VALU: regular "value"
+  * LVAR: V1, V2, V3, V4
+
+This means, for example, that "addrof mywle" from the example above will be the
+equivalent of "ptr @ 4+".
+
+This doesn't work on fields [lib/struct]. Use "offsetof" instead.
+
+This word is an immediate that works both in compile and interpret mode. In
+interpret mode, it will yield the address directly. In compile mode, it will
+compile the indirection fetching and apply the offset on it.
+
+## The IVAL structure
+
+This unit defines the IVAL tag [usage/tag]. IVAL tags an entry that
+is either a "ivalue" or a member of an "ivalmap". It has those fields:
+
+  +0  Address of pointer
+  +4  Offset to apply
+
+## API
+
+ivalue ( ptr type "name" -- )
+  Create a new indirect value as per above.
+
+ivalmap ( ptr -- )
+  Create indirect mappings as per above
+
+ivalmapfrom ( ptr off -- )
+  Same as "ivalmap", but begins the running offset from "off". In addition from
+  this, this "off" value is added to all explicit offset specifications in
+  declarations. For example, in:
+
+  foo 42 ivalmapfrom {
+    uint bar ;
+    +54 uint baz ;
+  }
+
+  "bar" has a offset of 42 and "baz" has a offset of 96.
+
+absvalmap ( a -- )
+  A shortcut for creating a variable with "a" in it, which never changes, and
+  then calling "ivalmap" with that variable.
+
+addrof ( "name" -- a ) *I*
+  Yield the address on which the getter/setter of specified IVAL/VALU/LVAR would
+  act if the word was called directly or with "to".

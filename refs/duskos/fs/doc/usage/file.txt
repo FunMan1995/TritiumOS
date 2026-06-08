@@ -1,0 +1,24 @@
+# Files
+
+## Loading files
+
+Dusk's interpreter can be fed with the contents of files through various words
+such as f<< and needs. Refer to [doc/fs/core] and [doc/usage/unit].
+
+If you want to compile C source files, you'll want to look at [doc/comp/c].
+
+## Where is this word defined?
+
+So, you're reading some code and you're wondering where a particular word is
+defined. As a general rule, you should be aware of your "import context", that
+is, the units imported (with "needs") at the top of the file you're reading.
+Most of the time, we try to avoid transitive imports for words we use directly
+in a unit (for example, if unit A imports B which imports C, if A directly uses
+a word from C, it will "document" that usage by explicitly importing C even if
+it's not needed because we import B), so those imports can be relied upon.
+
+Therefore, your first step would be to review the documentation of those units
+and see your word is defined there.
+
+Then, look in [doc/dict]. If it's in there, then it's either defined in the
+native kernel code or in xcomp/boot.fs.

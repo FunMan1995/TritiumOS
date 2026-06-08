@@ -1,0 +1,267 @@
+# uxntal assembler
+
+Uxntal is an assembler syntax for [emul/uxn]. It has been designed by Devine Lu
+Linvega and an original implementation of it lives at [asm/uxntal.fs].
+
+## Invocation
+
+The regular way of assembling a binary it through "uxntal<< ( dst -- )":
+
+  needs emul/varvara asm/uxntal
+  varvara#
+  rstvec uxntal<< foo.tal
+
+In the example above, "uxntal<<" will open foo.tal and assemble it, writing the
+resulting bytecode to address "rstvec", which yields "uxn $100 +".
+
+You can also assemble adhoc uxntal code with uxntal":
+
+  rstvec uxntal"#2a INC BRK"
+
+which will write 80 2a 81 00 to rstvec.
+
+## Assembling logic
+
+Tokens are read one after the other and have an immediate effect. In general,
+tokens are separated by whitespace, except when encountering a "rune", which is
+a character with a special signification, for example "@". As soon as such a
+character is encountered, its action is executed, before reading the input
+stream further. A list of runes is documented further below.
+
+A raw hexadecimal number is written verbatim:
+
+  uxntal"0142" \ writes 01 42
+  uxntal"01 42" \ also writes 01 42
+
+If it's not a raw number, it can be a an opcode mnemonic:
+
+  uxntal"INC POPr" \ also writes 01 42
+
+If it's not an opcode mnemonic, it can be either a macro call, a label JMI or a
+rune. If it's neither, the token is invalid.
+
+## The zero page and the magic $100 threshold
+
+One has to keep in mind that binary code written by this assembler begins at the
+$100 offset. Whenever you specify a writing destination, it's with a $100
+offset. For example, if you assemble with a uxn memory [emul/uxn] as a
+destination, you'll very probably want to write to its "rstvec", *not* at the
+beginning of the memory.
+
+The assembler never writes to the zero page. If your uxntal code contains code
+that results in the assembler writing to the zero page, it will abort with an
+error.
+
+## Runes
+
+-- ( -- Comment
+  Read the input stream until a ")" is met, ignoring everything.
+
+-- [ ] -- Noop
+  The "[" and "]" characters are noops that can be used for code clarity.
+
+-- # -- Literal
+  Followed by a 8-bit or 16-bit hex, encodes a LIT or LIT2 opcode.
+
+    uxntal"#2a" \ writes 80 2a
+    uxntal"#2a2b" \ writes a0 2a 2b
+
+-- " -- Characters literal
+  Read the input stream until the next whitespace and write all those characters
+  as is.
+
+  uxntal"\"foo" \ writes 'f' 'o' 'o'
+
+-- | -- Absolute here change
+  Followed by a hex number, moves where assembling takes places, relative to
+  the starting point, minus $100. An assembling session begins with an implicit
+  "|100".
+
+  For example, $1000 uxntal"|12a 42" would write 42 at address $102a.
+
+-- $ -- Relative here change
+  Followed by a hex, advance "here" by that many bytes.
+
+  For example, $1000 uxntal"12 $2a 42" would write 12 at $1000 and 42 at $102a.
+
+-- @ -- New global label
+  Create a new global label at current here. See "Labels" below.
+
+-- & -- New sub-label
+  Create a new sub-label at current here. See "Labels" below.
+
+-- ! -- JMI
+  Encodes a JMI opcode. A reference such as a label or lambda is expected to
+  follow. See "Labels" below.
+
+-- ? -- JCI
+  Encodes a JCI opcode. Same logic as with "!".
+
+-- ; -- Absolute literal
+  Expects a label to follow, then encodes a LIT2 with its absolute value.
+
+-- = -- Raw absolute
+  Same as ";" but without the LIT2.
+
+-- , -- Relative literal
+  Same as ";", but encodes a LIT with the number of bytes between current here
+  and the target label. This byte is signed (positive for forward, negative for
+  backward).
+
+-- _ -- Raw relative
+  Same as "," but without the LIT.
+
+-- . -- Zero Page literal
+  Same as ";", but encodes a LIT with only the LSB of the address.
+
+-- - -- Raw Zero Page
+  Same as "." but without the LIT.
+
+-- % -- Create macro
+  Create a new macro. See "Macros" below.
+
+-- ~ -- Include
+  Followed by a filename, opens that filename immediately and parse the contents
+  as if it was inlined directly in the place of the "~" rune.
+
+  Optionally, and this is Dusk-specific, can be followed by "bin", which
+  triggers the binary include mode, described below.
+
+-- { } -- Lambda
+  See "Lambdas" below.
+
+## Opcodes
+
+An opcode begins with the 3 letter mnemonic of the instruction followed by 0 to
+3 mode letters. The mode letters can be in any order, but they're generally in
+the order "2kr".
+
+For example "INC" encodes $01, LDA2kr encodes $f4, etc.
+
+JMI JCI JSI are encoded through runes, not mnemonics.
+
+LIT can only be encoded with the exact strings: LIT LIT2 LITr LIT2r
+
+## Labels
+
+Labels are named tied to an address in uxn's memory. Uxntal can reference labels
+before declaring them. At the end of the assembling process it links forward
+references and errors out for any reference to a label that has never been
+created.
+
+The regular way to create a label is with "@":
+
+  #00 @loop INC #2a OVR NEQ ?loop BRK ( loops 42 times )
+
+The example above shows a backward reference to a label. The "loop" label is
+declared at offset $102, and then the "?" rune will encode a JCI opcode followed
+by $fff8 (minus 8).
+
+Referencing a label all alone, naked, encodes a JSI. For example:
+
+  #2a myjump BRK @myjump INC JMP2r
+
+will encode a program where 42 is placed on the stack, "myjump" is called, which
+does a INC and then returns from the routine, then breaks, thus yielding 43.
+
+"@" creates what we call a "global" label, which is also a namespace for what we
+call "sub-labels". Under that namespace, we can create a sub-label with "&".
+Within a given namespace, other sub-labels can be referenced directly, but
+outside of it, they can also be referenced, through the "/" separator:
+
+  @myns &sub1 &sub2 sub1 ( within-namespace referencing )
+  @otherns sub1 ( oops, not gonna work )
+  myns/sub1 ( ahh, better )
+
+## Lambdas
+
+Anonymous labels can be created through "{" and "}". "{" replaces a reference to
+a label and "}" replaces a label declaration. These are called lambdas. They're
+equivalent to named labels, except for the need to name them. Lambdas can be
+nested.
+
+  !{ ;{ } }
+
+is the equivalent to:
+
+  !anon1 ;anon2 @anon2 @anon1
+
+## Macros
+
+Macros allow to textually inline repetitive code. You create a macro with "%",
+followed by the name of the macro, followed by "{", followed by the body of the
+macro, followed by "}".
+
+  %foo { INC POP } foo foo
+
+is the equivalent to:
+
+  INC POP INC POP
+
+## Varvara definitions
+
+It is a frequent pattern in uxntal to define varvara devices through labels. For
+example:
+
+  |10 @Console &vector $2 &read $1 &pad $4 &type $1 &write $1 &error $1
+
+This allows for clearer code:
+
+  #54 .Console/write DEO
+
+which is the equivalent to:
+
+  #54 #18 DEO
+
+## Binary Include
+
+In Dusk only, the "~" directive can be followed by "bin". When this happens,
+we include the specified file as binary contents instead of parsing it as a
+uxntal file.
+
+In binary mode, the target filename must be accompanied by a start offset and
+a byte length. These numbers are specified before the filename in hexadecimal
+literals. For example:
+
+  ~ bin 0080 0100 data/foo.bin
+
+will include the $100 bytes from "foo.bin" starting at offset $80.
+
+## API
+
+?op ( str -- ?opcode f )
+  If str represents a uxn opcode (ADD, MUL2kr, etc.) f=1 and opcode is present.
+  Otherwise, f=0 and opcode is absent.
+
+findLabel ( name -- ?off f )
+  Look for "name" in the labels dictionary. If found, f=1 and "off" is the
+  offset of the found label. Otherwise, f=0 and "off" is absent.
+
+  Labels are still present after assembling is complete. As long as you don't
+  assemble another source file, you can poke around labels after assembling.
+
+  Don't forget that those offsets are relative to uxn memory, not the beginning
+  of the ROM, which lives at mem+$100.
+
+findLabel# ( name -- off )
+  Like findLabel, but aborts if not found.
+
+findunused ( -- )
+  Go through the labels created during the previous assembly operation and list
+  those that aren't used at least once.
+
+uxntal ( dst -- )
+  Read the input stream and assemble to "dst". Parse that stream until EOF is
+  reached.
+
+  We proceed as if "|0100" was a prelude to the code.
+
+uxntal<< ( dst "name" -- )
+  Open file "name" then call "uxntal" with the contents of that file being the
+  input stream.
+
+uxntal" ( dst "code" -- )
+  Call "uxntal" with the content of the quoted string being the input stream.
+
+uxntallen ( -- n )
+  Length in bytes of the binary data written in the last assembly operation.

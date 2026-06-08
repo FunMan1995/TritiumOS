@@ -1,0 +1,14 @@
+# Loopback interface
+
+This unit implements a [com/link] that holds a single frame buffer. "beginframe"
+yields it, "sendframe" and then marks it for reception and then "readframe"
+yields it in a beautiful self-referential dance.
+
+## Usage
+
+This unit provides a "loopback" word which is a [com/link] structure that can be
+used as described above. Example:
+
+  needs drv/nic/loop com/net lib/coop
+  loopback makeactive
+  NetIncoming newcontext launchcontext

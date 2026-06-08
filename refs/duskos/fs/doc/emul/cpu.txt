@@ -1,0 +1,41 @@
+# CPU emulation common API
+
+Most CPU emulators in Dusk OS follow a common API exposed by the CPU struct at
+[emul/cpu.fs].
+
+## Memory management
+
+The CPU struct doesn't handle memory management itself, it simply receives a
+pre-allocated memory address. The base CPU struct doesn't handle bounds either.
+
+Thefore, one must be aware of the code it emulated to decide the proper size to
+allocate for the emulated memory. Not allocating enough might result in emulated
+code to corrupt host memory.
+
+## API
+
+### Struct
+
+struct CPU {
+  uint mem( ;
+  xt step halted? ;
+}
+
+mem(   Pointer to the memory area associated with this CPU
+
+step ( cpu -- )
+  Unset the "halted" flag if needed, then run one instruction.
+
+halted? ( cpu -- f )
+  Yields whether the CPU is halted.
+
+### Words
+
+stepN ( n cpu -- )
+  Unhalts the CPU then run "n" instructions or until the CPU is halted.
+
+run ( cpu -- )
+  Unhalts the CPU and then run until the CPU is halted.
+
+newcpu ( 'halted? 'step mem( -- cpu )
+  Allocates a new CPU struct with initial values.

@@ -1,0 +1,24 @@
+needs io/kbd io/mouse
+
+: WaitKey key drop ;
+annotatelast ( -- )
+
+
+: PeekKbd ( -- nkc ) keyboard ?nkc not if 0 then ;
+annotatelast ( -- INTEGER )
+
+: NKCtoCHAR ( nkc -- char ) keyboard nkc>char ;
+annotatelast ( INTEGER -- CHAR )
+: SetMouseLimits ( h w -- )
+  mouse not if 2drop exit then
+  swap 1 mouse configuremouse ;
+annotatelast ( INTEGER INTEGER -- )
+\ in oberon, b0=right b1=middle b2=left
+: fixedmouse ( -- y x keys )
+  mouse update
+  mouse xy obscreen Pixbuf.height 1- swap- swap ( y x )
+  mouse buttons bi 1 rshift | 1 and 2 lshift or ;
+: Mouse ( *y *x *keys -- )
+  >r fixedmouse r> ! ( *y *x y x )
+  rot ! swap ! ;
+annotatelast ( *INTEGER *INTEGER *SET -- )

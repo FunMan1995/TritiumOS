@@ -1,0 +1,193 @@
+( Source: https://git.sr.ht/~rabbits/uxn
+  File: projects/examples/demos/bunnymark.tal
+  License: /licenses/uxn.txt )
+
+|00 @System &vector $2 &pad $6 &r $2 &g $2 &b $2 &debug $1 &halt $1
+|20 @Screen &vector $2 &width $2 &height $2 &auto $1 &pad $1 &x $2 &y $2 &addr
+            $2 &pixel $1 &sprite $1
+|80 @Controller &vector $2 &button $1 &key $1
+|90 @Mouse &vector $2 &x $2 &y $2 &state $1 &wheel $1
+|c0 @DateTime &year $2 &month $1 &day $1 &hour $1 &minute $1 &second $1 &dotw
+              $1 &doty $2 &isdst $1
+
+|0000
+
+  @frames $2
+  @last $1
+
+|0100
+
+@on-reset ( -> )
+  ( | theme )
+  #2ce9 .System/r DEO2
+  #01c0 .System/g DEO2
+  #2ce5 .System/b DEO2
+  ( | interrupts )
+  ;on-frame .Screen/vector DEO2
+  ( | fps label )
+  .Screen/width DEI2 #0046 SUB2 .Screen/x DEO2
+  #0008 .Screen/y DEO2
+  ;text/fps #42 <draw-str>
+  ( | bunnies label )
+  #0004 .Screen/x DEO2
+  ;text/bunnies #42 <draw-str>
+  ( | instructions label )
+  .Screen/width DEI2 #01 SFT2 #0050 SUB2 .Screen/x DEO2
+  ;text/instructions #43 <draw-str>
+  #0028 #0008 #0000 <draw-dec>
+  ( | seed prng )
+  prng-init BRK
+
+@on-frame ( -> )
+  .frames LDZ2k INC2 ROT STZ2
+  .DateTime/second DEI .last LDZ EQU ?{
+    .DateTime/second DEI .last STZ
+    .Screen/width DEI2 #002b SUB2 #0008 .frames LDZ2 <draw-dec>
+    #0000 .frames STZ2 }
+  ( | mouse handling )
+  .Mouse/state DEI
+  ( ) DUP #01 NEQ ?{ add-bunny }
+  ( ) #02 LTH ?{ remove-bunny }
+  ( | controller handling )
+  .Controller/button DEI
+  ( ) DUP #01 NEQ ?{ add-bunny }
+  ( ) #02 LTH ?{ remove-bunny }
+  ( | clear )
+  #0000 DUP2 .Screen/x DEO2
+  .Screen/y DEO2
+  [ LIT2 80 -Screen/pixel ] DEO
+  ;sprite/length LDA2 #0000
+  &loop ( -- )
+    EQU2k ?&bail
+    DUP2 <draw-bunny>
+    INC2 !&loop
+  &bail ( -- )
+    POP2 POP2 BRK
+
+@add-bunny ( -- )
+  ;sprite/length LDA2
+  ( | cap bunny count at 65535 )
+  DUP2 #ffff EQU2 ?&bail
+  ( | compute the offset to the beginning of this new bunny's data )
+  DUP2 #30 SFT2 ;sprite/array ADD2
+  ( | populate the new bunny's x/y/xvel/yvel with random values )
+  #00 rand OVR2 STA2
+  rand #1f AND rand OVR2 INC2 INC2 STA2
+  #00 rand #7f AND OVR2 #0004 ADD2 STA2
+  #00 rand #7f AND OVR2 #0006 ADD2 STA2
+  ( | pop ptr to bunny data )
+  POP2
+  ( | write new increased array length )
+  INC2 DUP2 ;sprite/length STA2
+  ( | update label )
+  STH2k #0028 #0008 STH2r <draw-dec>
+  &bail ( pop sprite/length )
+    POP2 JMP2r
+
+@remove-bunny ( -- )
+  ;sprite/length LDA2
+  ( don't let length go below 0 ) ORAk #00 EQU ?&bail
+  #0001 SUB2 DUP2 ;sprite/length STA2
+  ( update label ) STH2k #0028 #0008 STH2r <draw-dec>
+  &bail POP2 JMP2r
+
+(
+@|drawing )
+
+@<draw-bunny> ( idx -- )
+  ( | compute the offset to the beginning of this bunny's data )
+  #30 SFT2 ;sprite/array ADD2
+  ( | move the sprite by its velocity )
+  LDA2k OVR2 #0004 ADD2 LDA2 ADD2 OVR2 STA2
+  INC2k INC2 LDA2 OVR2 #0006 ADD2 LDA2 ADD2 OVR2 INC2 INC2 STA2
+  ( | check for right wall collision + bounce x )
+  DUP2 #0004 ADD2 LDA2 #0f SFT2 #0001 EQU2 ?&skip-max-x
+  LDA2k #05 SFT2 #0008 ADD2 .Screen/width DEI2 LTH2 ?&skip-max-x
+  DUP2 #0004 ADD2 LDA2 #ffff MUL2 OVR2 #0004 ADD2 STA2
+  &skip-max-x ( check for left wall collision + bounce x )
+    LDA2k #0f SFT2 #0000 EQU2 ?&skip-min-x
+    DUP2 #0004 ADD2 LDA2 #ffff MUL2 OVR2 #0004 ADD2 STA2
+  &skip-min-x ( check for bottom wall collision + bounce y )
+    DUP2 #0006 ADD2 LDA2 #0f SFT2 #0001 EQU2 ?&skip-max-y
+    INC2k INC2 LDA2 #05 SFT2 #0010 ADD2 .Screen/height DEI2 LTH2 ?&skip-max-y
+    DUP2 #0006 ADD2 LDA2 #ffff MUL2 OVR2 #0006 ADD2 STA2
+    !&skip-gravity
+  &skip-max-y ( check for top wall collision + bounce x )
+    INC2k INC2 LDA2 #0f SFT2 #0000 EQU2 ?&skip-min-y
+    DUP2 #0006 ADD2 LDA2 #ffff MUL2 OVR2 #0006 ADD2 STA2
+    !&skip-gravity
+  &skip-min-y ( apply gravity )
+    DUP2 #0006 ADD2 LDA2 #0004 ADD2 OVR2 #0006 ADD2 STA2
+  &skip-gravity ( draw the sprite )
+    ( top ) LDA2k #05 SFT2 .Screen/x DEO2
+    INC2 INC2 LDA2 #05 SFT2 .Screen/y DEO2
+    ( draw ) [ LIT2 15 -Screen/auto ] DEO
+    ;bunny-chr .Screen/addr DEO2
+    [ LIT2 85 -Screen/sprite ] DEO
+    [ LIT2 00 -Screen/auto ] DEO
+    JMP2r
+
+@<draw-str> ( x* y* text* color -- )
+  ,&t STR
+  [ LIT2 01 -Screen/auto ] DEO
+  &loop ( -- )
+    LDAk #20 SUB #00 SWP #30 SFT2 ;font ADD2 .Screen/addr DEO2
+    [ LIT2 &t $1 -Screen/sprite ] DEO
+    INC2 LDAk ?&loop
+  POP2 JMP2r
+
+@<draw-dec> ( x* y* num* -- )
+  [ LIT2 01 -Screen/auto ] DEO
+  SWP2 .Screen/y DEO2
+  SWP2 .Screen/x DEO2
+  #2710 DIV2k DUP <draw-digit>
+  MUL2 SUB2 #03e8 DIV2k DUP <draw-digit>
+  MUL2 SUB2 #0064 DIV2k DUP <draw-digit>
+  MUL2 SUB2 NIP #0a DIVk DUP <draw-digit>
+  MUL SUB <draw-digit>
+  [ LIT2 00 -Screen/auto ] DEO
+  JMP2r
+
+@<draw-digit> ( num -- )
+  #30 SFT #00 SWP ;font/num ADD2 .Screen/addr DEO2
+  [ LIT2 41 -Screen/sprite ] DEO
+  JMP2r
+
+(
+@|random )
+
+@prng-init ( -- )
+  [ LIT2 00 -DateTime/second ] DEI [ LIT2 00 -DateTime/minute ] DEI #60 SFT2 EOR2 [ LIT2 00 -DateTime/hour ] DEI #c0 SFT2 EOR2 ,prng/x STR2
+  [ LIT2 00 -DateTime/hour ] DEI #04 SFT2 [ LIT2 00 -DateTime/day ] DEI #10 SFT2 EOR2 [ LIT2 00 -DateTime/month ] DEI #60 SFT2 EOR2 .DateTime/year DEI2 #a0 SFT2 EOR2 ,prng/y STR2
+  JMP2r
+
+@prng ( -- number* )
+  [ LIT2 &x $2 ] DUP2 #50 SFT2 EOR2 DUP2 #03 SFT2 EOR2 [ LIT2 &y $2 ] DUP2 ,&x STR2
+  DUP2 #01 SFT2 EOR2 EOR2 ,&y STR2k POP JMP2r
+
+@rand ( -- number )
+  prng ADD JMP2r
+  ( static string data )
+
+(
+@|assets )
+
+@text &fps "FPS: $1
+  &bunnies "BUNS: $1
+  &instructions "CLICK 20 "TO 20 "ADD 20 "BUNNIES! $1
+
+@font ~ bin 0200 0080 data/font/atari8.uf1
+&num  ~ bin 0280 0160 data/font/atari8.uf1
+
+@fill-icn [ ffff ffff ffff ffff ]
+
+@bunny-chr [
+  2466 6600 2424 003c 4200 007e 7e7e 7e7e
+  1818 3c3c 1800 0000 ff66 4242 667e 4242 ]
+
+(
+@|memory )
+
+@sprite &length $2
+  &array &x 0600 &y 0500 &xvel 0060 &yvel 0010
+

@@ -1,0 +1,35 @@
+# Graphical Grid
+
+The unit at [gr/grid.fs] implements [io/grid] on a [gr/buf] by drawing cells
+as [gr/font] glyphs.
+
+Its color palette follows the VGA default palette.
+
+This unit basically have one relevant word, "grgrid$ ( font -- )". This
+initializes the grid and sets it as the active Grid. Example initialization:
+
+  needs gr/font/uf2 io/grid lib/coop io/kbd gr/grid
+  "data/font/term12.uf2" loaduf2 grgrid$
+  :> grid write# ; console!
+  ' refreshcaret ' promptforkey realias
+  createapplication RefreshGrid
+  ' refreshgrid IDLE RefreshGrid sethandler
+  RefreshGrid newcontext launchcontext
+
+## API
+
+### Values
+
+caretcolor  [io/grid] color of the caret
+mousecolor  [io/grid] color of the mouse pointer
+bothcolor   [io/grid] color when both caret and mouse are there
+
+### Words
+
+grgrid$ ( font -- )
+  Initialize the graphical grid with the specified font [gr/font].
+
+refreshgrid ( -- )
+refreshcaret ( -- )
+  As per [io/grid] convention.
+

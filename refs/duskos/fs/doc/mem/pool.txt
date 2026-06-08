@@ -1,0 +1,86 @@
+# Memory pools
+
+A memory pool is a fixed amount of memory within which auto-growable Streams
+[io/stream] are allocated and deallocated. Streams need to be freed with the
+"close" word for the pool to function properly.
+
+Pools of streams, poetic right?
+
+There are two levels to the API of the unit at [mem/pool.fs]: Chunks and
+Streams.
+
+At its core, a pool is like an in-memory FAT [fs/fat], but smaller. There's
+a maximum of 254 chunks. The pool has a chunk tables of bytes that indicate
+which chunk follows this one. $fe indicates that this is the last chunk of the
+chain. $ff indicates that this chunk is free to use.
+
+We can allocate new chunks, grow chains, release chains. When we're out of free
+chunks, there's an error. And that's pretty much all there is to this level of
+the API.
+
+On top of that, there's a global linked list of PoolStream structures that link
+to a particular chunk in a pool. When "close" is called on it, it releases its
+chunk and unsets its "used?" flag so that the structure can be reused, possibly
+on another pool. That linked list grows as needed.
+
+And that's pretty much all there is to it.
+
+## API
+
+### Structures
+
+struct Pool { uint poolbuf chunktbl chunksz chunkcnt ; }
+
+poolbuf     Address of the whole pool buffer
+chunktbl    Address of the Chunk Table, a FAT-like array with byte-sized values
+chunksz     Size in bytes of a single chunk
+chunkcnt    Number of chunks in this pool
+
+extends Stream struct PoolStream { uint pool chunkidx ; }
+
+pool        Parent pool. pool=0 means the stream is unused
+chunkidx    Index of the first chunk in the stream. Can be an empty stream. In
+            that case, the index is -1.
+
+### Words
+
+newmempool ( chunksz chunkcnt -- pool )
+  Allocate a new pool with "chunkcnt" chunks each of "chunksz" in size.
+  Aborts if "chunkcnt" >= 254.
+
+allocchunk ( pool -- ?idx f )
+  Allocate a new chunk. If the operation was successful, f=1 and "idx" is the
+  index of the allocated chunk. Otherwise, the pool is full, f=0, "idx" is
+  absent.
+
+growchain ( idx pool -- f )
+  Allocate a new chunk and have "idx" point to it. f=1 if the operation was
+  successful, f=0 if the pool is full.
+
+  Aborts if idx=$ff is a free chunk. They're not supposed to be referenced.
+
+accomodatesize ( sz idx pool -- f )
+  Ensures that chain idx can accomodate sz bytes and grow chain if needed until
+  it does. f=1 if we can accomodate, f=0 if we couldn't grow the chain enough.
+
+?nextchunk ( idx pool -- ?idx f )
+  Yields chunk following "idx" in the chain. If there's one, f=1 and idx is that
+  chunk. Otherwise, f=0 and idx is absent.
+
+  Aborts if idx=$ff, a free chunk. They're not supposed to be referenced.
+
+chaincnt ( idx pool -- n )
+  Yields the number of chunks in the chain.
+
+releasechain ( idx pool -- )
+  Release the chain of chunks starting with chunk idx, marking them as free.
+
+  Aborts if idx=$ff, a free chunk.
+
+chunk' ( idx pool -- a )
+  Get address of contents associated with a chunk. Works regardless of chunk
+  status in chunktbl.
+
+getpoolstream ( pool -- stream )
+  Look for unused stream [io/stream] in LL and yield one, or create a new one
+  and yield it. It starts with chunkidx = $fe (end of chain).

@@ -1,0 +1,10 @@
+# BCM2835 eMMC
+
+The unit at [drv/rpi/emmc.fs] wraps BCM2835 into a Drive struct thus allowing
+block access to the inserted SD card.
+
+This driver requires a timer [drv/timer].
+
+The struct is called "EMMCDrive" and there's a global struct bind to it named
+"emmc". Before the SD card can be accessed, one has to initialize the hardware
+with "emmcinit ( -- )".

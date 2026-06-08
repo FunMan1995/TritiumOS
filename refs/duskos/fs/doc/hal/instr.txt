@@ -1,0 +1,44 @@
+# Extra instructions
+
+Kernel HAL is enough to boot up, but with the help of full fledged assemblers,
+we can do better! Here's a collection of extra HAL instructions.
+
+## API
+
+&nf, ( n op -- ) *Z flag*
+  Compile a "and" instruction on source with mask "n", without modifying source,
+  keeping only the Z flag.
+
+d*, ( op -- )
+  32bit x 32bit -> 64bit wide multiplication.
+  Multiply dest by source and put the 32 high bits in S register.
+  A signed) operand will change multiplication from a signed one to an unsigned
+  one. Both operands are either considered signed or unsigned.
+  Can't be used with S>) or dir).
+
+## Multibyte operations
+
+Words below are the only one guaranteed to set the value of the carry flag used
+for multibyte additions and substractions. These operations should only be mixed
+with @, and !,. For examples see [num/double.fs] and [tests/hal/instr.fs].
+
++c$, ( op -- )
+  First operation on multibyte additions. Produces a carry accordingly.
+  dest + source
+
+-c$, ( op -- )
+  First operation on multibyte substractions. Produces a borrow accordingly.
+  dest - source
+
++c, ( op -- )
+  dest + source + carry
+  Can't use with 8b)/16b) dir)
+
+-c, ( op -- )
+  dest - source - carry
+  Can't use with 8b)/16b) dir)
+
+carry?, ( op -- )
+  Set source to the value of the carry flag. Destination is ignored.
+  This should be followed by "+c$," or "-c$," before continuing multibyte
+  operations. Can't use with i) or dir)

@@ -1,0 +1,24 @@
+# EFI Device Path
+
+The unit at [drv/efi/devpath.fs] wraps Device Path protocols.
+
+## API
+
+### GUIDs
+
+devpathguid
+devpathtotextguid
+
+### Words
+
+ConvertDevicePathToText ( allowshortcut displayonly devpath64 -- str64 )
+  Formats "devpath64" as a EFI string.
+
+.str64 ( str64 -- )
+  Prints out the 16-bit null-terminated string at "str64" using emit.
+  We don't use OutputString directly because it interfers with the grid.
+
+.devpath ( allowshortcut displayonly a64 -- )
+  Given a a64 handle, check that we have a devathtotextguid protocol
+  attached to it. If we do, print its device path.
+  Otherwise, print "(unprintable)".

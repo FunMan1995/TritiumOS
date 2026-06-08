@@ -1,0 +1,289 @@
+# uxn CPU
+
+Uxn is a virtual CPU specification designed by Devine Lu Linvega. The unit at
+emul/uxn.fs is an original implementation of it. Most of the time, this CPU is
+used with [emul/varvara].
+
+This CPU is 8-bit with 16-bit operation capabilities and has two stacks, W
+(Work) and R (return). It also has 64kb of memory, with the first 256 bytes
+being called the Zero Page (ZP).
+
+When running, it maintains a Program Counter (PC) that points to an address in
+its memory. It reads the byte -- called an opcode -- at the address, increases
+PC by 1, then execute the operation corresponding to the opcode. It does so
+until the opcode encountered is 0, which corresponds to the BRK instruction.
+
+The uxntal assembler [asm/uxntal] will generally be used to assemble uxn
+opcodes.
+
+The reset vector of a uxn computer is usually $100.
+
+## Endianness
+
+Uxn could be qualified as big endian memory-wise and little endian stack-wise.
+When accessing a 16-bit number in memory, address+0 contains the Most
+Significant Byte (MSB) and address+1 contains the Least Significant Byte (LSB).
+
+When a 16-bit number is on top of a stack, MSB is "under" LSB. Doing a 8-bit pop
+yields the LSB.
+
+## Opcodes
+
+An opcode is an 8-bit value with these fields:
+
+b7   keep mode
+b6   return mode
+b5   short mode
+b4:0 instruction
+
+This gives us 32 instructions which have 3 letters mnemonic associated to them:
+
+  BRK INC POP NIP SWP ROT DUP OVR EQU NEQ GTH LTH JMP JCN JSR STH
+  LDZ STZ LDR STR LDA STA DEI DEO ADD SUB MUL DIV AND ORA EOR SFT
+
+Each instruction can have any combination of modes. Those modes have associated
+mnemonic letters, "k" (keep) "r" (return) "2" (short). Opcode mnemonics are a
+combination of instruction and mode mnemonics. For example, $c1 is INCkr.
+
+Instruction 0 is an exception. It has no mode and the mode bits are used to
+expand to 8 instructions:
+
+  BRK JCI JMI JSI LIT LIT2 LITr LIT2r
+
+## Stack effect and modes
+
+The instructions described below document a stack effect in a Forth-like manner.
+For example, ( foo -- bar ) means "foo" argument popped, "bar" result pushed.
+
+The width of those elements in the stack signature depend on the width of the
+opcode. With the "short" mode off, it's 1 byte. With the "short" mode on, it's
+2 bytes.
+
+But there are exceptions. Sometimes, an argument will be of a specific size
+regardless of the "short" mode. For example, both LDA and LDA2 read a 16-bit
+address. In those cases, the argument in the signature will be suffixed with
+"8" or "16" to indicate that this width is constant.
+
+In general, the stack being worked upon is the W stack. When the "return" mode
+is activated, this becomes the R stack.
+
+Some instructions such as STH and JSR specifically work on the R stack. When the
+"return" mode is activated, this becomes the W stack.
+
+The "keep" mode changes stack effect rules so that no element is popped by the
+instruction, only peeked. An instruction with a signature ( foo bar -- baz )
+becomes ( foo bar -- foo bar baz ).
+
+## Input/Output
+
+Input/Output is done through what we call "devices", through instructions DEI
+and DEO. There are $100 device addresses and they work a bit like memory, except
+that accessing them map to specific behavior.
+
+There is a $100 bytes area of memory placed right after the main memory. The DEI
+and DEO family of opcodes generally work like LDZ and STZ, but in that zone
+instead.
+
+However, the DEO operations optionally trigger an arbitrary word after it has
+written its data. The uxn struct has a "deohandlers" fields which points to an
+array of $100 cells where each cell can either be 0 or point to a word with the
+signature ( -- ). When the cell corresponding to the written port is nonzero,
+that word is called.
+
+In the case of DEO2, only the second cell is checked for a handler. For example,
+calling "#2a DEO2" can only possibly call the handler for port $2b.
+
+## Instructions without modes
+
+BRK Break ( -- )
+  Stop running the CPU.
+
+JCI Jump Conditional Instant ( cond8 -- )
+  If cond8 is zero, increase PC by 2. Otherwise, do the equivalent of JMI.
+
+JMI Jump Instant ( -- )
+  Read 16-bit signed number at PC, increase PC by 2, then add the read number
+  to PC.
+
+JSI Jump Stash Return Instant ( -- )
+  Push PC+2 to R stack then do the equivalent of JMI.
+
+LIT Literal ( -- )
+  Read 8-bit number from PC, push to W stack, then increase PC by 1.
+
+LITr ( -- )
+  Read 8-bit number from PC, push to R stack, then increase PC by 1.
+
+LIT2 ( -- )
+  Read 16-bit number from PC, push to W stack, then increase PC by 2.
+
+LIT2r ( -- )
+  Read 16-bit number from PC, push to R stack, then increase PC by 2.
+
+## Instructions with modes
+
+INC Increase ( n -- n )
+  Increase n by 1.
+
+POP ( a -- )
+  Drop top of stack.
+
+NIP ( a b -- b )
+  Drop second top of stack.
+
+SWP Swap ( a b -- b a )
+  Swap top of stack with second top of stack.
+
+ROT Rotate ( a b c -- b c a )
+  Rotate the 3 elements at the top of the stack to the "left".
+
+DUP Duplicate ( a -- a a )
+  Push top of stack.
+
+OVR Over ( a b -- a b a )
+  Push second top of stack.
+
+EQU Equal ( a b -- f8 )
+  f8=1 if a and b are equal, f8=0 otherwise.
+
+NEQ Not Equal ( a b -- f8 )
+  f8=0 if a and b are equal, f8=1 otherwise.
+
+GTH Greater Than ( a b -- f8 )
+  f8=1 if a is greater than b, f8=0 otherwise.
+
+LTH Lesser Than ( a b -- f8 )
+  f8=1 if a is lesser than b, f8=0 otherwise.
+
+JMP Jump ( addr -- )
+  In "byte mode", add signed addr to PC. In short mode, set PC to addr.
+
+JCN Jump Conditional ( cond8 addr -- )
+  If cond8 is nonzero, do the equivalent of JMP.
+
+JSR Jump Stash Return ( addr -- )
+  Push PC to return stash then do the equivalent of JMP.
+
+STH Stash ( a -- )
+  Push a to R stack.
+
+LDZ Load Zero Page ( addr8 -- n )
+  Read value at address "addr8" of the Zero Page.
+
+STZ Store Zero Page ( n addr8 -- )
+  Store value at address "addr8" of the Zero Page.
+
+LDR Load Relative ( rel8 -- n )
+  Read value at address PC+rel8, rel8 being signed.
+
+STR Store Relative ( n rel8 -- )
+  Store value at address PC+rel8, rel8 being signed.
+
+LDA Load Absolute ( addr16 -- n )
+  Read value at address "addr16".
+
+STA Store Absolute ( n addr16 -- )
+  Store value at address "addr16".
+
+DEI Device Input ( port8 -- n )
+  Read value from port8.
+
+DEO Device Output ( n port8 -- )
+  Write value to port8.
+
+ADD Addition ( a b -- n )
+  Add a and b.
+
+SUB Subtract ( a b -- n )
+  Subtract b from a into n.
+
+MUL Multiply ( a b -- n )
+  Multiply a and b.
+
+DIV Divide ( a b -- n )
+  Divide a by b. If b=0, n=0.
+
+AND ( a b -- n )
+  Do a bitwise and of a and b.
+
+ORA ( a b -- n )
+  Do a bitwise or of a and b.
+
+EOR Exclusive Or ( a b -- n )
+  Do a bitwise exclusive or of a and b.
+
+SFT Shift ( a shift8 -- n )
+  Shift a by "shift8", which has this structure:
+
+    b7:4 shift left by that many bits
+    b3:0 shift right by that many bits
+
+  The right shift is done first.
+
+## The "uxn" struct
+
+This unit supplies a "uxn" value which points to a struct that represents the
+"current uxn CPU". You can of course have more than one uxn CPU in memory, but
+only one is active at once, and "uxn" points to it. All words of the unit use
+this pointer.
+
+Stacks in the uxn struct grow downward.
+
+## API
+
+### Fields
+
+There is no field pointing to memory because a uxn struct starts with its $10000
+bytes memory area. Therefore, referring to "uxn" is the same as referring to its
+memory.
+
+rstvec      Pointer to the reset vector, that is uxn+$100
+wst         Address of the top of the W stack
+rst         Address of the top of the R stack
+wptr        Pointer to the W top of stack in *host* (32-bit) memory.
+rptr        Pointer to the R top of stack in *host* (32-bit) memory.
+deohandlers Points to a DEO handlers array. See "Input/Output".
+
+### Values
+
+uxn     Pointer to currently active uxn struct
+
+### Words
+
+uxn$ ( -- )
+  Reset rst and wst pointers, fill Zero Page and Device memory with zeroes.
+
+newuxn ( deohandlers -- )
+  Create a new uxn VM with the specified deohandlers pointer and make the "uxn"
+  value point to it.
+
+runat ( pc -- pc )
+  Run the CPU, starting at PC "pc" until BRK is met. Yields the PC when the
+  machine was stopped, that is, the address of the BRK, plus 1.
+
+poweron ( -- )
+  Same as "rstvec runat drop".
+
+.uxn ( -- )
+  Prints the contents of the W and R stacks of current uxn CPU.
+
+[dev@] [dev2@] ( "portnum" -- ) *I*
+  Compile a byte or short fetch of specified device to W. For example,
+
+  : foo [dev2@] 42 ;
+
+  is the HAL equivalent of:
+
+  : foo uxn devices 42 + wbe@ ;
+
+[dev!] [dev2!] ( "portnum" -- ) *I*
+  Same as [dev@] but for writing. For example:
+
+  : foo [dev!] 42 ;
+
+  is the HAL equivalent of:
+
+  : foo uxn devices 42 + c! ;
+
+[devk!] [dev2k!] ( "portnum" -- ) *I*
+  Equivalent to "dup [dev!]" but faster.

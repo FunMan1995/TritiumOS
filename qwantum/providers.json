@@ -1,0 +1,93 @@
+{
+  "status": "2026-06-02",
+  "qd_config": "qd/compute.json",
+  "qd_set": "tools/compute-config.ps1 -Action set -Backend <id>",
+  "qd_run": "tools/run-compute.ps1",
+  "ibm_quantum_open": "blocked_ghost_instance_see_docs_IBM-INSTANCE.md",
+  "primary_compute": "aer_local",
+  "fallback_compute": "braket_local",
+  "alternatives_ranked": [
+    {
+      "rank": 1,
+      "id": "aer_local",
+      "provider": "Qiskit Aer",
+      "cost": "free",
+      "real_qpu": false,
+      "signup": null,
+      "test": "tools/test-ibm-quantum.ps1 -Mode aer",
+      "notes": "Use now for all TritiumOS dev"
+    },
+    {
+      "rank": 2,
+      "id": "braket_local",
+      "provider": "Amazon Braket LocalSimulator",
+      "cost": "free",
+      "real_qpu": false,
+      "signup": "https://aws.amazon.com/braket/getting-started/",
+      "test": "tools/test-braket.ps1",
+      "install": "pip install amazon-braket-sdk"
+    },
+    {
+      "rank": 3,
+      "id": "braket_sv1",
+      "provider": "Amazon Braket SV1 cloud sim",
+      "cost": "1hr/month free year 1 then ~0.075 USD/min",
+      "real_qpu": false,
+      "signup": "https://console.aws.amazon.com/braket/",
+      "test": "tools/test-braket.ps1 -Cloud",
+      "notes": "Requires AWS account"
+    },
+    {
+      "rank": 4,
+      "id": "braket_rigetti",
+      "provider": "Amazon Braket Rigetti QPU",
+      "cost": "~0.30 USD/task + ~0.000425 USD/shot",
+      "real_qpu": true,
+      "signup": "https://console.aws.amazon.com/braket/",
+      "test": "TRITIUM_BRAKET_CLOUD=1 tools/test-braket.py",
+      "notes": "Cheapest Braket hardware path"
+    },
+    {
+      "rank": 5,
+      "id": "google_cirq",
+      "provider": "Google Quantum AI / Cirq",
+      "cost": "sim free; hardware by application",
+      "real_qpu": "limited",
+      "signup": "https://quantumai.google/",
+      "install": "pip install cirq"
+    },
+    {
+      "rank": 6,
+      "id": "azure_quantum",
+      "provider": "Azure Quantum",
+      "cost": "per-shot",
+      "real_qpu": true,
+      "signup": "https://azure.microsoft.com/products/quantum/",
+      "notes": "Only if Azure credits exist"
+    },
+    {
+      "rank": 7,
+      "id": "quantum_inspire",
+      "provider": "Quantum Inspire",
+      "cost": "varies",
+      "real_qpu": true,
+      "signup": "https://www.quantum-inspire.com/"
+    },
+    {
+      "rank": 8,
+      "id": "ibm_quantum_open",
+      "provider": "IBM Quantum Open Plan",
+      "cost": "free when working",
+      "real_qpu": true,
+      "status": "blocked",
+      "signup": "https://quantum.cloud.ibm.com/registration",
+      "test": "tools/test-ibm-quantum.ps1 -Mode ibm"
+    }
+  ],
+  "tritium_poly_backends": {
+    "sim_default": "aer_local",
+    "sim_cloud": "braket_local",
+    "qpu_budget": "braket:rigetti",
+    "ibm_quantum": "disabled_until_support_resolves"
+  }
+}

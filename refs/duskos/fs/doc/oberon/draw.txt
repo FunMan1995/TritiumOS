@@ -1,0 +1,85 @@
+# Duskberon's port of Oberon Draw
+
+The modules Graphics, GraphicFrames, Rectangles, Curves, Bezier, MacroTool and
+Draw implement the Oberon Draw system, as documented in Chapter 13 of the
+[Project Oberon book][po2013].
+
+As the Splines module required floating point, it has been replaced by the
+Bezier module, which can be used to draw Bezier splines instead and requires
+only integer arithmetic.
+
+[po2013]: https://www.inf.ethz.ch/personal/wirth/ProjectOberon/PO.Applications.pdf
+
+# Commands
+
+Draw.Open
+  Open a drawing from the file name argument.
+
+Draw.Delete
+  Delete the selected elements from the drawing.
+
+Draw.SetWidth
+  Set the line width for new elements from the argument (mostly used for
+  straight lines).
+
+Draw.SetColor
+  Set the color for new elements from the argument.
+
+Draw.SetFont
+  Set the font for new captions from the argument.
+
+Draw.ChangeWidth
+Draw.ChangeColor
+Draw.ChangeFont
+  Like the commands above, but affect selected elements instead.
+
+Draw.Ticks
+  Toggle usage of a dot pattern for better positioning
+
+Draw.Restore
+  Redraw the whole drawing.
+
+Draw.Store
+  Store the drawing to disk.
+
+Draw.Macro
+  Draw a macro. Two arguments are needed (library name and macro name).
+
+
+Graphics.RemoveLibraries
+  Unload all macro libraries.
+
+
+Rectangles.Make
+  Create a rectangle from two selected corners.
+
+
+Curves.MakeLines
+  Create a diagonal line from two selected endpoints.
+
+Curves.MakeCircle
+  Create a circle from selected center and a point whose x distance
+  specifies the radius.
+
+Curves.MakeEllipse
+  Create an ellipse from selected center point and two point whose distances
+  specify the axes.
+
+
+Bezier.Make
+  Create a Bezier curve from three or four selected points.
+
+
+MacroTool.Open
+  Convert the selected macro to its parts, expanded at caret position.
+
+MacroTool.MakeMacro
+  Create a macro from the selected parts. Two arguments are needed (library
+  name and macro name).
+
+MacroTool.LoadLibrary
+  Given a library name, load the complete library into memory
+
+MacroTool.StoreLibrary
+  Store the loaded/created macros from the library to disk. This will
+  discard any macros that have not been loaded!

@@ -1,0 +1,18 @@
+Draw.Open XX.Graph  Draw.Store 
+Rectangles.Make  Bezier.Make
+Curves.MakeCircle  Curves.MakeLine  Curves.MakeEllipse 
+
+Draw.SetFont ob10.Fnt
+Draw.SetColor 15
+Draw.SetWidth 2
+
+Draw.ChangeFont ob10.fnt
+Draw.ChangeFont ob10b.fnt
+Draw.ChangeColor 10
+Draw.ChangeWidth 2
+
+Draw.Macro TTL0 N02
+MacroTool.OpenMacro
+MacroTool.LoadLibrary Lib
+MacroTool.MakeMacro Lib Macro
+MacroTool.StoreLibrary Lib

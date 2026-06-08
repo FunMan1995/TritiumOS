@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "active": "aer_local",
+  "allow_qpu": false,
+  "max_shots": 500,
+  "ibm_enabled": false,
+  "backends": {
+    "aer_local": {
+      "label": "Qiskit Aer (local)",
+      "provider": "qiskit_aer",
+      "test_provider": "aer",
+      "cost": "free",
+      "qpu": false
+    },
+    "braket_local": {
+      "label": "Amazon Braket local simulator",
+      "provider": "amazon_braket",
+      "test_provider": "braket",
+      "cost": "free",
+      "qpu": false
+    },
+    "braket_cloud": {
+      "label": "Amazon Braket cloud (AWS)",
+      "provider": "amazon_braket",
+      "test_provider": "braket-cloud",
+      "cost": "paid",
+      "qpu": false,
+      "requires_aws": true
+    },
+    "ibm_open": {
+      "label": "IBM Quantum Open",
+      "provider": "ibm_quantum",
+      "test_provider": "ibm",
+      "cost": "free_when_working",
+      "qpu": true,
+      "enabled": false,
+      "note": "Set ibm_enabled true after IBM exposes instance CRN"
+    }
+  },
+  "fallback_order": ["aer_local", "braket_local", "braket_cloud", "ibm_open"]
+}

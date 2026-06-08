@@ -1,0 +1,160 @@
+# Literals and strings
+
+## Number literals
+
+Unlike traditional forths, Dusk has no DEC/HEX mode. Number literals are parsed
+using a prefix system.
+
+* "naked" numbers are parsed as decimal: 1234 -1234
+* "$" is the prefix for hexadecimal notation: $12fe
+* "'" is the prefix for a character literal and must be closed: 'A'
+  Whitespace characters cannot be represented this way. You can use constants
+  such as SPC instead.
+
+## Strings
+
+A string is an address to an area in memory starting with a length byte
+followed by that many bytes (also known as a "counted string"). When we refer
+to a "string", we refer to that address. For example, this code will yield a
+"hello" string to PS (Parameter Stack):
+
+  here 5 c, 'h' c, 'e' c, 'l' c, 'l' c, 'o' c,
+
+The code above is the equivalent of:
+
+  "hello"
+
+Strings in Dusk are not limited to textual data and can refer to binary data.
+It only refers to the "first byte length followed by that much data" structure.
+
+### Frequent string patterns
+
+Except in C code, you won't see any reference to a "strlen" word, because
+getting a length for a string is as simple as c@, so c@ is used.
+
+Another frequent pattern is using c@+ on a string. This yields the range of a
+given string.
+
+## String literals
+
+In most Forths, string literals are awkward because the word to construct them
+needs to be followed by a whitespace because of Forth's tokenization rules.
+
+Not in Dusk. In Dusk, string literal are created by enclosing the contents of
+the string in double quotes, without any requirement for a whitespace prefix.
+This is an example of a string literal:
+
+  "hello"
+
+You can read more about how this works in [doc/usage/io]. For now, what you need
+to know is that this exception that Dusk has with regards to double quotes
+applies to all words ending with '"'. For example, to print a string, you do:
+
+  ."hello"
+
+When a string handling word such as " ," or ." is used the following content
+is parsed in an almost verbatim manner until the closing " is reached. We say
+almost verbatim because we can write special characters with the '\' escape
+character:
+
+\n: newline ($0a)
+\r: carriage return ($0d)
+\0: null byte (0)
+\\: '\' character
+\": '"' character
+
+A '\' followed by a "real" LF character discards the character, allowing string
+literals to span multiple lines. For example:
+
+"foo\
+bar"
+
+is the same as:
+
+"foobar"
+
+Any other character following the '\' results in that character being parsed as-
+is, the preceding '\' being ignored.
+
+## The string pool
+
+String literals in compiled words are interweaved in the code being compiled
+directly. For example, in:
+
+  : foo "hello" ;
+
+you don't have to worry about the lifetime of the string, it's in permanent
+storage.
+
+However, when string literals are used in an interpret context, for example in:
+
+  "hello" stype
+
+the string literal being parsed is placed in what we call the string pool. It is
+a rolling buffer very much like a scratchpad [mem/scratch], which goes back to
+its beginning when it reaches its end, thus overwriting previous string
+literals.
+
+Its default size is big enough to give you ample wiggle room to juggle many
+strings at once, but you must not forget that those strings are still in
+temporary storage. For example:
+
+  "hello" const mystr
+
+is usually a bad idea unless "mystr" is used only for a short time. At some
+point, something is going to overwrite where mystr points to and you'll have a
+corrupt string.
+
+Even semi-permanent uses should avoid the pool. For example, if you write a word
+that needs to hold onto a string while it calls an arbitrary word, then it can't
+be a string from the pool because that arbitrary word could be compiling a big C
+source file that will eat through that pool like butter. In that case, you'll
+want to use str>r [doc/usage/mem].
+
+### Using the string pool directly
+
+The string pool is also useful as a generic scratchpad to place strings into and
+has an API for such usages, which is used in [lib/str] and [io/stream].
+
+"strallot ( n -- a )" is exactly like "allot@" but for the string pool.
+
+"newstr ( -- a )" and "endstr ( a -- str )" offer a convenient API for string
+building. Calling "newstr" first ensures that we have at least STR_MAXSZ bytes
+in front of us in the pool, then allocates one byte for the string length and
+yields the following address.
+
+Then, it's your job to populate that memory with whatever contents you want.
+When you're finished, you call "endstr" with the address following the last byte
+of your contents. This will "finalize" (write the length byte and allocate that
+number of bytes in the pool) the string and yield it.
+
+For example, you build the string "foo", you'd do:
+
+  : buildfoo newstr 'f' swap c!+ 'o' dup rot c!+ c!+ endstr ;
+
+Don't use those words in interpret mode, input stream processing will mess with
+your string.
+
+## Ranges
+
+In Dusk, the word "range" refers to a pair of numbers (very often "a u")
+representing contiguous elements at a specific address. The first number is the
+starting address of the range, the second number is the length in units, which
+can be 1, 2 or 4 bytes. When a "range" word is binary modulable (that it has a
+"w" or "c" prefixed version) the word width determines the unit size. When it's
+not, the size is implicitly 1 byte.
+
+Examples:
+
+"rtype ( a u -- )" emits "u" characters (1 byte) starting at address "a".
+"c@+" applied to a string will yield a range for that string.
+"widx ( n a u -- )" search 16-bit number "n" in u*2 bytes range at "a".
+
+The symbol associated with ranges is "[]". For example, "[]= ( a1 a2 u -- f )"
+means "compare two ranges for equality". Many "range words" don't use this
+symbol though, for example "move" and "idx".
+
+A range with "u=0" is a null range and words dealing with ranges will generally
+deal gracefully with null ones. For example, "move" with a null range will be a
+noop, "cidx" will always yield "f=0", and so on. If a "range word" doesn't
+handle null ranges gracefully, it has to mention it in its description.

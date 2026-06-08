@@ -1,0 +1,64 @@
+# Graphical damage
+
+When drawing, we often want to keep track of the area we've drawn to for the
+purpose of invalidating another buffer later. The idea is that we compound
+multiple draw operations into a rectangle that encompass all of those
+operations. We want this rectangle to be as small as possible, but we also want
+damage calculation to be fast and simple.
+
+We also want the damage to be easy to carry around through PS, and to atomically
+change in memory.
+
+Given those constraints, what we call a Damage field is a 32-bit integer with
+these fields:
+
+b31:28 scale
+b27:21 minx
+b20:14 miny
+b13:7  maxx
+b6:0   maxy
+
+The scale field is a multiplier to apply to all other fields, it's a power of 2.
+That is, 0=x1 1=x2 and so on, until 15=x32768
+
+When you resolve damage, you should ignore out of bounds damage.
+
+## Null damage
+
+The value 0, as per the specs, mean no damage and should be used as an
+initialization value. "damage" will yield 0 if input width or height are 0.
+Some damage value result in null or negative damage area, but words in this unit
+never generate them, so there's no special handling code for them. 0 is
+considered the only null damage value.
+
+## Speed first
+
+The implementation of this unit favors calculation speed over precision. In some
+cases, some damage fields will have a scale value that is higher than what it
+could have been. For example, doing "max" is slower than ORing values together
+and that's what we do. When dividing upper bounds, we systematically add 1
+without checking if the remaining of the divide is nonzero. That's ok, that's
+for speed.
+
+## Scaling and divide with remainder
+
+When scaling a damage, we do integer division and discard the remainder. For
+minx and miny, this is correct. It enlarges the damage, which is what we want.
+For maxx and maxy, this is incorrect because we shrink the damage. Therefore,
+whenever a scaled damage is "inflated" back, that is, in "damagerect", we yield
+maxx and maxy with the maximum possible remainder added back to them.
+
+## API
+
+damage ( x y w h -- damage )
+  Create a damage describing the specified rectangle.
+
+damage+ ( d1 d2 -- damage )
+  Merge two damages into a single damage that encompass them both.
+  If scale differ, the largest scale is used.
+
+damagerect ( damage -- x y w h )
+  Unpack damage into a rectangle.
+
+.damage ( damage -- )
+  Print damage fields in human-readable form.

@@ -1,0 +1,303 @@
+# Oberon compiler
+
+The unit at [comp/oberon.fs] is an Oberon Compiler. It's very close to
+specifications and is able to compile source from the Oberon Project almost
+unchanged.
+
+On top of that, it also follows the design philosophy of other compilers in
+Dusk: good interoperability with the Dusk system.
+
+## Usage
+
+You compile a Oberon unit with "oberon<<":
+
+  oberon<< path/to/source.mod
+
+Then, you can call procedures as Forth words by referring to their fully
+qualified name, for example "MyModule.MyProc".
+
+See "Calling Oberon code from Forth" below.
+
+## Specification compliance
+
+As mentioned above, this compiler pretty much works exactly as specified, with
+minor exceptions:
+
+* Single quotes ' must be used for character literals instead of double quotes.
+* There are no inline PROCEDUREs. See "Forward PROCEDURE references" below.
+* There is no such thing as procedure-local constants and types. Types and
+  constants declared at the procedure level have the same effect as when they
+  are declared outside a producedure.
+* There is no such thing as a private record field. All fields are public, "*"
+  in records are ignored.
+* The SYSTEM module doesn't exist. All procedures specified as being part of
+  SYSTEM in the specs are in fact builtin.
+  SYSTEM.VAL becomes "VAL", SYSTEM.GET becomes "GET" etc.
+* IMPORT only maps the first 8 characters of the name to a filename. All files
+  in Dusk must fit FAT's 8.3 filename scheme. Therefore, the first 8 chars of
+  module names must be unique for auto-loading to work.
+* Specifications mention that SET width is type dependent. Ours is 32-bit.
+
+... and a few additions:
+
+* There is a DUSK module and a "`" operator, the gateways to system words.
+  See below.
+* As specified, type checking is strict except for BYTE and INTEGER which are
+  compatible. However, to simplify interfacing with the system, uint, ushort and
+  uchar [lib/type] are also compatible.
+* String literals allow escapes the same as Dusk's string literals.
+* String literals comparisons are underspecified in Oberon. We thus specify
+  ourselves. See below.
+* Has a OPAQUE type. See below.
+* Has a LOADFORTH top-level directive.
+* Has MIN(a, b) and MAX(a, b) which yield one of "a" or "b" depending of which
+  is bigger. Example: c := MIN(a, b);
+* Has LSR(x, n), which is the unsigned version of ASR(x, n)
+
+## Implementation details
+
+* [comp/oberon/type]
+* [comp/oberon/tok]
+* [comp/oberon/ast]
+* [comp/oberon/gen]
+* [comp/oberon/mem]
+* [comp/oberon/gc]
+* [comp/oberon/module]
+* [comp/oberon/builtin]
+
+## Call convention
+
+As with other compilers in Dusk, code compiled by this compiler follows the
+regular Dusk calling convention, that is, it passes arguments through PS.
+
+The first argument is the shallowest of the stack. Return value, when there is
+one, is returned on the stack. For example:
+
+  PROCEDURE foo(x,y:INTEGER): INTEGER;
+
+has the Forth signature "( y x -- res )" and:
+
+  PROCEDURE foo(x,y:INTEGER);
+
+has the Forth signature "( y x -- )".
+
+### Open arrays are tricky
+
+So far, so good? Yeah, there's a hitch. Open arrays, that is, "ARRAY OF
+Something", need to have their length passed around at runtime and the most
+straightforward way is to use an extra PS slot, right "under" the array.
+Therefore:
+
+  PROCEDURE foo(x:INTEGER; array: ARRAY OF CHAR);
+
+has the Forth signature "( arraylen array x -- )". For this reason, it's
+generally a bad idea to expose Oberon code to Forth through a procedure that has
+an open array in its arguments. It's a good way to create confusing bugs.
+
+### VAR parameters with structs are tricky too
+
+When a straight RECORD (not a POINTER) is passed as a VAR argument, things are
+tricky in a similar way as open arrays: we need to pass the type around. Unlike
+the POINTER TO RECORD, which points to a GCed struct, which contains its type,
+here, we have nothing.
+
+Therefore, when passing such pointers around, we do like with open arrays: we
+push an extra argument with the struct type on PS. This way, such arguments can
+be used with "IS" and typeguards.
+
+This is important with regards to Forth interoperability. First, if you call a
+Oberon word that has a VAR struct in its argument, you need to push the type of
+that struct along with it.
+
+Second, the only way to call a Forth word with a struct pointer in its signature
+is by passing it an OPAQUE variable. Passing a real struct will make it compile
+an extra PS push.
+
+### The OPAQUE type
+
+This compiler has an OPAQUE type for values coming from Forth that are passed
+around without being worked on in Oberon code and thus, not worth creating
+proper types for.
+
+In procedure call, OPAQUE arguments will always match the signature, but they
+can't be used in arithmetics.
+
+Type leniency works both ways. If you have a OPAQUE variable, it can be passed
+to any procedure call, regardless of the type. Beware: because the type is
+opaque, there is no "PS fiddling" going on for open array size or struct type.
+Therefore, passing an OPAQUE variable as a parameter to an open ARRAY or a VAR
+RECORD will always result in a call that breaks the system horribly.
+
+Moveover, an OPAQUE type will never auto-dereference.
+
+Underneath, it's a Integer(4).
+
+## Forward PROCEDURE declaration
+
+This Oberon compiler doesn't have inline procedures. They are silly and seldom
+used in actual code. Moreover, their implementation is needlessly complex. For
+this implementation to work, one has to have the ability to save and restore
+local symbol declarations, something we're not willing to do.
+
+They are silly because the private/public system already takes care of reducing
+namespace pollution. The only legitimate use of inline procedures is forward
+references when complex recursion is needed. In these cases, a PROCEDURE needs
+the ability to call another PROCEDURE that has yet to be defined.
+
+For this, we have forward declarations. That is: PROCEDURE statements can stand
+there alone, without an accompanying VAR and BEGIN. It's then possible to call
+that procedure. Then, later, you can copy the same PROCEDURE declaration and
+implement it.
+
+Forward referenced calls have an extra layer of indirection. Instead of
+branching to a "i)", they branch to a "m)".
+
+## String literals, comparisons and null-termination
+
+Oberon specifications mention that comparison operators, including ordering
+ones, can be used on strings (array of chars). This means that strings aren't
+considered as pointers by the relation operators, their contents is compared.
+
+Specs don't mention exactly how it should be done. For example, if we compare
+arrays of different length, what happens? We compare using the smallest length?
+Would "foo" = "foobar" yield true? No, it shouldn't.
+
+In Dusk's Oberon, we consider all array of chars to be null-terminated. String
+literals null-terminate their data. Therefore, string comparisons ignore array
+length entirely. They just compare until a zero is met in either string.
+
+## Calling Forth code from Oberon
+
+See "The DUSK module and ` operator" below.
+
+## Calling Oberon code from Forth
+
+In addition to maintaining its own module dictionary, the Oberon compiler also
+generate a Forth word for each procedure it compiles. This includes private
+procedures. Oberon might like making the private/public distinction, so we keep
+it in the Oberon world, but in Forth, we like to play with innards.
+
+The word that is created is the fully qualified name for the procedure. For
+example, if you have this:
+
+  MODULE MyModule;
+  PROCEDURE MyAdd(a, b: INTEGER): INTEGER;
+  BEGIN RETURN a + b END MyAdd;
+  END MyModule.
+
+Then you can call this thus in Forth:
+
+  3 7 MyModule.MyAdd . \ prints 10
+
+Such word has a signature attached, so it's also available to other compilers
+like [comp/c].
+
+## Sharing types between Oberon and Forth
+
+Type lookup generally works as specified, that is, types belong to modules and
+have to be fully qualified to be referred to.
+
+But there's more. Unqualified type lookups first look into the current module,
+as expected, but if that lookup fails, we look in the whole sysdict through
+"findtype" [lib/type].
+
+This allows you, for example, to share structures [lib/struct] between Forth and
+Oberon without the need for duplicating the declaration.
+
+Sharing also works in the other direction. Any type created in Oberon adds an
+entry in the system dictionary under its fully qualified name. For example:
+
+  MODULE Foo;
+  TYPE Bar = ...
+
+will create an entry Foo.Bar that yield the defined type.
+
+## IMPORT autoloading
+
+The IMPORT line goes through the specified list of module names, checking
+whether each module is loaded in memory (exists in the "modules" dictionary).
+If it doesn't, run the equivalent of "oberon<< oberon/<modulename>.mod".
+
+The name "DUSK" is ignored and has no effect.
+
+## The DUSK module and ` operator
+
+This Oberon compiler has a builtin fake module called DUSK. References to
+identifiers inside that module, that is, types, variables, procedures, result
+in lookups in the system dictionary.
+
+This means that Forth words can be called through the DUSK module. Lookups for
+the DUSK module are made in the sysdict through "findannotated" [comp/sig]. If
+found, we compile a call to it. Example:
+
+  DUSK.stype(DUSK.DuskStr("Hello World!\n"));
+
+This also works for types. Oberon types are regular Dusk types [lib/type].
+Whenever you refer to a type, it can be a DUSK one.
+
+Oberon tokenization rules differ from Dusks. Some Dusk words can't be reached
+with "DUSK.something" semantics because, for example, their name include a
+symbol. In those cases, the "`" operator. It can be used instead of "DUSK." and
+the following identifier will be parsed with Dusk tokenization rules instead.
+This means that a "`" identifier must be followed by a whitespace. Example:
+
+  `. (42);
+## The LOADFORTH directive
+
+LOADFORTH is a top-level directive that does exactly the same thing as "f<<"
+[fs/core]. Its argument is not terminated by a ";" character.
+
+This directive is used in Oberon modules needing hooks into the system. For
+example, the Files module has "LOADFORTH oberon/Files.pre" which loads a Forth
+source file that creates hooks like DUSK.Lookup, which the module needs.
+
+This is generally called at the top of a module, but it can be anywhere, as long
+as it's top-level and inside MODULE.
+
+## API
+
+oberon<< ( "path" -- )
+  Compile the Oberon module at "path".
+
+?obimport ( name -- )
+  If module "name" isn't loaded yet, load it like an IMPORT would do.
+
+obvar' ( "qualident" -- a )
+  Look for variable "qualident" (modulename.name) in the Oberon world and yield
+  its address.
+
+obcode ( "name" "sig" -- )
+  Create procedure within the current module, but with a Forth implementation.
+  You supply it a name surrounded by whitespaces (Forth semantics), followed by
+  an Oberon signature, followed by ";". Then you're ready to compile your code.
+  Example:
+
+  obcode MyAdd (a, b:INTEGER): INTEGER;
+    PSP) +, nip, exit,
+
+  This code is mostly used within ".pre" files loaded through LOADFORTH.
+
+:ob ( "name" "sig" -- )
+  Like "obcode", but enters compile mode afterwards, like ":".
+
+## DUSK.* API
+
+List of words implemented specifically for use in Oberon.
+
+DUSK.DebugStr(str: ARRAY OF CHAR);
+  Proxy for "rtype".
+
+DUSK.DebugVal(n: OPAQUE);
+  Proxy for ".x".
+
+DUSK.Emit(ch: CHAR);
+  Proxy for "emit"
+
+DUSK.DuskStr(str: ARRAY OF CHAR): OPAQUE;
+  Copy "str" to system string pool as a regular Dusk string and yield a pointer
+  to it.
+
+DUSK.ObStr(str: OPAQUE, dst: ARRAY OF CHAR);
+  Copy Dusk string's "str" into Oberon string "dst" and null terminate it. If
+  "dst" is not big enough, make a partial copy, always leaving enough space for
+  the null termination.

@@ -1,0 +1,8 @@
+{
+    "version":  1,
+    "max_shots":  500,
+    "doc":  "See qd/compute.json",
+    "active":  "braket_local",
+    "allow_qpu":  false,
+    "ibm_enabled":  false
+}

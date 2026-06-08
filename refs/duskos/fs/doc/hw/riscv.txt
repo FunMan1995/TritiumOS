@@ -1,0 +1,45 @@
+# RISCV architecture
+
+## Register map
+
+x0 Hardwired Zero
+x1 Link Register
+x2 RSP
+x3 PSP
+x4 W
+x5 A
+x6 S
+x7 SYSVARS
+x8-x9 Unused
+x10-x12 Tmp registers within HAL ops
+x13-x23 Unused
+x24 R0 [hal/vreg]
+x25 R1 [hal/vreg]
+x26 R2 [hal/vreg]
+x27 R3 [hal/vreg]
+x28-29 Unused
+x30-x31 Can't use (TODO: why?)
+
+## Z flag handling
+
+While most instruction set architectures have this concept of flags, one or more
+special bits which are set on specific conditions, RISC-V does not. This makes
+it a unique architecture to implement HAL's Z flag on.
+
+Z flag on RISC-V is actually handled at compile time, avoiding the use of
+dedicated registers entirely. Operations that branch on Z flag check the last
+written instruction. Depending on the type, the following register is checked:
+- rd for arithmetic operations
+- rd for load
+- rs1 for store
+
+For example the following code:
+begin 1 i) A>) -, ?brnz,
+will roughly compile to:
+addi) xA rdrs1) -1 imm)
+beq) xA rs1) xZERO rs2) -4 imm)
+
+Sometimes the register to be checked will not be present in the last intruction
+of the HAL word. In those cases a noop consisting of "mv) rd rdrs1)" is appended
+so that branching words still work correctly. This is the only added overhead
+with this new method.

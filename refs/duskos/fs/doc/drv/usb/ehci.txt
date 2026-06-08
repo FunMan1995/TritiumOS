@@ -1,0 +1,79 @@
+# Enhanced Host Controller Interface (EHCI) driver
+
+This unit provides a HCI struct that is compatible with the rest of the USB
+subsystem [drv/usb].
+
+## Initialization and usage
+
+After you've initialized [drv/pci], you can load this unit and call "ehcipci$".
+The driver is now ready to enumerate through "usbwork" [drv/usb].
+
+## Implementation details
+
+### General structure
+
+Each Ep has its own Queue Head, and one TD.
+
+There's one global QH with the H bit set to mark the head of the QH, but it
+never has any transaction. It's just there as a head marker. Let's call it HQH.
+
+Whenever we add a new Ep, this means adding a new QH. We do so my making that
+new QH point to whatever the HQH was pointing (initially itself) and make HQH
+point to that new QH.
+
+### Initialization
+
+Initialization does:
+
+* Find a EHCI controller on the PCI bus or abort
+* Set its base mapping addresses in "capaddr" and "opaddr"
+* Ensure that the controller is running its Async queue
+* Create a root hub and add it to the [drv/usb] list
+
+### Theory of operation
+
+In the same spirit as the general simplicity drive of USB drivers, we set up a
+quite simplistic Queue Head (QH) for the Async loop of EHCI (periodic is not
+enabled). We link ASYNCLISTADDR to that HQH described above.
+
+Whenever to want to initiate a transfer, we fill the Ep's TD, then make its QH
+point to it through its "qhnext" field. Then we wait for the transfer to be
+completed with "waitQH". When idle, its overlay link (qhnext) to nothing (T=1).
+
+And that's pretty much it. Yes, it's slow to proceed that way. But it works and
+it's simple.
+
+## waitQH timeout
+
+You might notice the unusually high timeout in waitQH: 10 seconds. Of course, it
+never takes 10 seconds for a EHCI to send a frame, there's supposed to be one
+frame per ms, at least!
+
+However, this QH is set up to automatically handle NAKs and I've set it to do so
+without limit. Initially, I thought my 500ms timeout would cover all cases, but
+it turns out that a USB key being written on can NAK for quite a while,
+supposedly when it flushes its input buffer on its flash.
+
+I'm not exactly sure what to do with this. For now, this timeout works, but
+maybe that a fancier system will be needed at some point. But I think that this
+fancier system will be full async semantics for disk access, so that's quite
+fancy...
+
+## API
+
+ehci$ ( regsaddr -- )
+  Initialize a EHCI where its base capability registers start at "regsaddr".
+
+ehcipci$ ( -- )
+  Find a EHCI on the PCI bus and initialize it. Aborts when not found.
+
+resetehci ( -- )
+  Initiate the Host Controller reset procedure and wait until it is completed,
+  possibly timing out with an abort.
+
+.ehci ( -- )
+  Print a whole lot of register values for the currently initialized EHCI.
+
+## See also
+
+* Enhanced Host Controller Interface Specification for Universal Serial Bus

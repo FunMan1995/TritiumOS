@@ -1,0 +1,27 @@
+# Intel Macs (32-bit)
+
+## Early 32-bit iMacs
+
+In their debut in 2006, Intel iMacs ran a 32-bit EFI. It's not UEFI, It's EFI,
+but a bastardized version. It has some elements from UEFI, but not all. For
+example, it doesn't implement GOP [drv/efi/gop], but UGA [drv/efi/uga].
+
+Models I've tried are A1173 (early 2006) and A1208 (late 2006).
+
+On the model A1208, booting from the regular EFI deployment works just fine, but
+the "u" (for UGA) variant must be used. You hold the Option key at boot, select
+the USB key, then poof, you have a Dusk prompt.
+
+On the model A1173, I strangely can't get the USB key to show up in the boot
+menu. I have yet to discover why. Is it the model itself that doesn't support
+booting from USB? Is it Boot Camp (installed on that computer, but not on my
+A1208) that messed up something? To be discovered...
+
+EFI on the A1208 works as expected, but [drv/efi/kbdex] isn't available, only
+[drv/efi/kbd]. This is unfortunate because on the latter, we can't have
+CTRL+Enter, which makes [io/gcon] a lot less useful.
+
+One interesting thing about those iMacs is that it seems that [drv/pc/pci] works
+like on a PC! I could enumerate the main bus and all. There seems to be a EHCI
+[drv/usb/ehci] controller there, but it doesn't initialize with the current
+code. To be discovered...

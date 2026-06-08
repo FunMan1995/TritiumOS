@@ -1,0 +1,15 @@
+# PC bootloader (for partitions)
+
+The unit at xcomp/i386/pc/pbr.fs compiles a PBR (partition boot record) which
+is the second-stage bootloader after the MBR (master boot record). It is very
+similar to [doc/xcomp/i386/pc/mbr.txt] except it 1) must use LBA mode, and 2)
+expects DS:SI to point to a 16-byte partition table entry in the relocated MBR.
+It copies that to $7d60 and then builds the disk address packet structure for
+LBA mode disk operations at $7d70 based on the LBA parts of the partition table
+entry.
+
+Note that Dusk booting expects the 32-bit unsigned number at $7d68 to be the
+0-based first sector of the FAT filesystem (containing FAT parameters), and the
+32-bit unsigned number at $7d6c to be either zero (indicating a whole disk Dusk
+deployment) or a nonzero partition size (indicating a partition Dusk
+deployment). See [xcomp/i386/pc/glue.fs].

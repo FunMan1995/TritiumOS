@@ -1,0 +1,28 @@
+needs drv/timer
+
+
+\ the weird string handling here is because ?obimport wipes out strpool
+create callname STR_MAXSZ allot
+:ob Call (name: ARRAY OF CHAR; VAR res: INTEGER); ( 'res u a -- )
+  callname rot cmove ( 'res )
+  callname dup zstrlen ( 'res a u )
+  2dup '.' rot> cidx not if 2drop 1 else ( 'res a u idx )
+    >r over r@ ( 'res a u moda modu ) \ V1=idx
+    2dup []>str ?obimport []>str ( 'res a u modname )
+    rot> r@ - 1- swap r> + 1+ swap []>str ( 'res modname procname )
+    findprocinmodule if ( 'res sig xt )
+      swap sigcounts + if drop 2 else execute 0 then
+      else 5 then then ( 'res res )
+  swap ! ;
+
+create callmod STR_MAXSZ allot
+:ob GetCommand (module, name: ARRAY OF CHAR) : Oberon.Command;
+  callmod rot cmove callname rot cmove
+  callmod dup zstrlen []>str ?obimport
+  callmod dup zstrlen []>str callname dup zstrlen []>str
+  findprocinmodule if ( sig xt )
+    swap sigcounts + if drop 0 then
+  else 0 then ;
+
+: Time ( -- milli ) ticks uspertick * 1000 / ;
+annotatelast ( -- INTEGER )

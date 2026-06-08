@@ -1,0 +1,122 @@
+# Porting UNIX code to Dusk
+
+Some of Dusk's goals, such as being able to visualize PDFs, imply a big chunk
+of code has to be written for them. The Forth ecosystem have a few chunks of
+logic here and there, but Forth being Forth, nothing is standardized and, more
+importantly, it's nowhere near the UNIX ecosystem in terms of completeness.
+
+We don't want, however, to embark on an endless journey of reimplementing this
+logic. We want, instead, to be able to piggy-back on the existing code as much
+as possible.
+
+Therein lies a problem: that code is written on top of a UNIX platform, a
+platform which we reject because of its complexity (see doc/design/limits). How
+to reconcile these conflicting goals?
+
+First, by counting on the fact that most of the tricky logic we want to
+piggy-back on is "pure" logic and doesn't actually depend on the UNIX platform.
+
+Second, by counting on the fact that the most important pieces of logic out
+there are written in C.
+
+Third, by creating an "almost C" compiler that tries to strike a good balance
+between two conflicting goals: on the one side, stay true to Dusk OS design
+goals and on the other hand, minimize the amount of work that has to be poured
+into a particular piece of UNIX C code before it can be compiled and run by
+Dusk.
+
+Dusk' big bet is that with that compiler, it will be possible, with a minimal
+effort, to piggy-back on existing UNIX code to provide the same logic in a much
+simpler environment.
+
+## Porting drivers
+
+Initially, the idea was that drivers from other operating systems such as NetBSD
+or Plan 9 would be ported to Dusk. I tried it and it did work, but with
+mitigated success.
+
+For example, I've ported NetBSD's ATA drivers. It worked and it was a very good
+test for the C compiler, but ultimately, NetBSD has so many abstractions that
+are useless to Dusk that the resulting code is way too complex for its own good.
+
+When contemplating the tradeoffs, I though "yeah, sure, it's more complex, but
+NetBSD's code has all those tricky edge cases figured out". On face value, it's
+true, but in fact you have no idea how this complex code, when ported, will
+react in the face of those untested edge cases. All this complexity does is make
+debugging harder and the edge case handling code that has never been tested
+gives the false idea that it has *ever* worked, when in fact it never did.
+That's bad. So I've reverted back to my Forth based ATA driver. I'll let this
+simple driver meet its edge cases by itself, like a grown up.
+
+So is it as simple as "we don't port drivers from other OSes"? no. Let me tell
+you about the RaspberryPi DWC USB controller.
+
+This is a crappy controller with no publicly available datasheets. Yes,
+DesignWare developed a GPL driver for Linux, but that's it. To know how that
+crappy controller works, you have to second guess from driver code or some
+obscur indirect references from people mistakenly leaking the IP. That's not
+cool.
+
+In that case, I preferred porting Plan 9's DWC driver, which is much much
+simpler than Linux's or NetBSD's. It works. I don't like the code, I know it
+would be simpler in Forth, but I really don't want to write drivers without
+datasheets, that's just not fun.
+
+So, do we have a datasheet? Drivers from scratch, it's easier this way. We
+don't? let's hope Plan 9's good people did the degreasing work for us.
+Otherwise, we might want to consider scavenging for some other non-crappy
+hardware.
+
+## Making drivers async
+
+All modern OSes having a wide support for hardware (and thus being a good source
+of code to leverage) support pre-emptive multitasking, including Plan 9.
+
+This means that driver logic is littered locking logic, which we can get rid of,
+but also with "sleep for a bit, waiting for some condition to happen on the
+hardware side" bits and pieces of code. This can be ported to Dusk just fine...
+but will make the system jittery!
+
+Once that porting is done, an extra challenge will be to transform that driver
+into "async style" code where instead of waiting (except for very small waits.
+sometimes, it's just "security wait to make sure the hardware had the time to
+acknowledge that register write"), we return. This means we'll have to keep
+track of "execution status" to know where we need to return to once the Dusk's
+idle loop is ready to give its attention to that particular driver again.
+
+So, that's a lot of work, beggin the question of whether it's worth porting
+driver code at all. The answer there is, as always, "it depends". Some drivers,
+such as a USB stack, have a really big list of "business logic" that you don't
+want to re-implement yourself, so it's worth pouring the "asynching" work.
+
+Sometimes, hardware documentation is not publicly available, so the only actual
+source of information about that piece of shit hardware is in the form of code.
+Guessing hardware specs from code is not fun, one might as well reuse the code
+entirely, even if that means "asynching" work.
+
+In other cases, I guess it will make more sense to write the driver from
+scratch. When the specs are clear, that there is little "business logic" on top
+of it, why bother?
+
+## Applications
+
+The main use case for porting stuff to Dusk using the C compiler is for
+applications and libraries. This effort has yet to begin seriously. So far, the
+only example is ar/puff.c. It was a rather straightforward port. I expect other
+ports to be equally straightforward. We'll see.
+
+## uxn code
+
+Dusk is also home to uxn/varvara code which has been ported from the UNIX world.
+
+Varvara being a virtual machine which is rather faithfully implemented in
+[emul/varvara], porting such code is mostly a copy and paste operation.
+
+... but not 100%. Uxn roms are mostly used in UNIX environments and some small
+UNIX-isms sometimes transpire into uxntal code itself. These have to be
+adjusted.
+
+There's also this habit of including binary contents as uxntal code. It's
+wasteful and we don't want that. Instead, our [asm/uxntal] has an extra "~ bin"
+directive and we replace such binary contents with that directive, which points
+to a path somewhere in the "data/" directory.

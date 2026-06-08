@@ -1,0 +1,49 @@
+# Duskberon's MenuViewers module
+
+The MenuViewers module [oberon/MenuView.mod] implements a viewer
+[oberon/viewers] split in two horizontally, thus always containing exactly two
+sub views.
+
+The top one, its "dsc" view, is the "menu" view. It has a fixed height. The
+bottom one, its "dsc.next" view, is the "main" view, which occupies whatever
+space the menu view doesn't occupy.
+
+It's also though this view that the viewer resize logic is implemented, you
+know, when you click and drag the menu bar of a viewer. Well, it happens here.
+
+## Constants
+
+ModifyMsg ID values:
+
+extend  0
+reduce  1
+
+## Structures
+
+Viewer* = POINTER TO ViewerDesc;
+ViewerDesc* = RECORD (Viewers.ViewerDesc) menuH: INTEGER END;
+
+menuH   Height of the "menu" (top) subview
+
+ModifyMsg* = RECORD (Viewers.FrameMsg)
+  id: INTEGER;
+  dY, Y, H: INTEGER
+END;
+
+Sent when a viewer is resized through the click+drag mechanism. It is sent to
+all affected viewers. The resize is on the Y axis only.
+
+TODO: I see in the code that the receiver of the message is somehow expected
+to modify Y and H, but I'm unusre of the exact semantics. Figure it out.
+
+id     extend when the viewer grows, reduce when it shrinks
+dY     By how much we've expanded or shrank
+Y      New Y position
+H      New height
+
+## Procedures
+
+New (Menu, Main: Viewers.Frame; menuH, X, Y: INTEGER): Viewer;
+  Opens a new menu viewer with the specified sub viewers and menu height, at the
+  specified position. Viewers.Open is used to place the resulting viewer on
+  screen.

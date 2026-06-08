@@ -1,0 +1,9 @@
+# BCM2835 timer
+
+The driver at [drv/rpi/timer.fs] implements the Timer protocol [drv/timer] using
+the timer peripheral included in the BCM2835.
+
+It uses its free-running 64-bit register which increases at a rate of 1MHz,
+which means we simple have to divide it by 1000 to get one tick per ms.
+
+You can hook snooze to a WFI ($0e320f003) when you have interrupts set up.

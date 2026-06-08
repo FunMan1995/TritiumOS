@@ -1,0 +1,32 @@
+Detailed description
+
+1. Describe in detail the issue you're having.
+
+IBM Quantum Platform Open Plan account is stuck. The Instances page (region us-east) shows zero instances. Creating an Open plan instance fails with HTTP 422 from the Qiskit Runtime broker: only one open plan instance is allowed per account. Trace IDs: 626c-1114ce38fcbbb253 and 626c-ec1ce2f9a4678e1a. The same API key from the platform dashboard returns zero instances via qiskit_ibm_runtime Account.list_instances() on channel ibm_quantum_platform. QiskitRuntimeService with region us-east and plans_preference open fails with no matching instances. Cannot run hardware jobs without a visible instance CRN.
+
+2. What did you expect to happen? What happened instead? What would you like to see changed?
+
+Expected one visible Open instance or successful create once. Instead UI is empty, create returns 422, API returns empty list. Request IBM delete the orphaned Open instance or expose the existing one with a usable CRN on the Instances page and API.
+
+3. What browser are you working in?
+
+Microsoft Edge on Windows. Issue also reproduces via Python qiskit-ibm-runtime without browser.
+
+Steps to reproduce the issue
+
+1. Sign in to quantum.cloud.ibm.com.
+2. Set region us-east.
+3. Open Instances page. Observe no instances on Open tab or Archive.
+4. Create instance, select Open plan, submit.
+5. Observe 422 only one open plan instance allowed. Note trace id.
+6. Run Account.create_account(channel=ibm_quantum_platform, token=API_KEY).list_instances() returns empty list.
+
+Additional information
+
+Code:
+from qiskit_ibm_runtime.accounts import Account
+acc = Account.create_account(channel="ibm_quantum_platform", token=API_KEY)
+print(acc.list_instances())
+
+Notes:
+API key created from platform dashboard same day as registration. No second instance created after first 422. API key not included in this ticket. Local Qiskit Aer simulator works; only IBM instance path blocked. Please confirm Cloud account binding if instance exists under different account scope.

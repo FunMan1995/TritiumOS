@@ -1,0 +1,17 @@
+hal.fs can't have comments and can't use asm/x86, which means that there are
+numerical opcode literals around. This means brutally under-commented code.
+This is where the comments are.
+
+Well, in fact, not here, because this HAL shares a lot of code with amd64. Most
+of the docs are at [doc/xcomp/x86/hal]. This file is for i386-specific stuff.
+
+dropf,
+  A simple "lods," does the trick...
+
+@+, ( operand -- )
+  If we target RSP, we generate a "pop" instruction. If we target PSP, we
+  generate a "lods".
+
+-@, ( operand -- )
+  If we target RSP, we generate a "push" instruction. Unlike "+@,", we can't
+  have a STOS shortcut here.

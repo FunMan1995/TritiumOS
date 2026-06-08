@@ -1,0 +1,35 @@
+# Realtek 8169 and friends
+
+This unit drives the Realtek Gigabit Ethernet Media Access Controller RTL8169
+as well as the models it's compatible with.
+
+In fact, initially, this driver is written to drive a RTL8101 on my HP Mini
+[doc/hw/i386/hpmini] but I couldn't find satisfactory documentation on it. If
+one takes a hint from Linux drivers, RTL8169 and RTL8101 programming logic seem
+compatible, so here we go.
+
+## MTU setting
+
+While this card supports frame, apparently, up to 7422 bytes, the mtu is set to
+the standard 1500 bytes to avoid packet fragmentation down the line.
+
+## Specifications
+
+Realtek has a weird way of documenting their chips. Whatever they call
+"datasheet" doesn't describe the registers, whatever is called "Programming
+Guide" doesn't either. Looking around, you might end up finding documents where
+the title is only the name of the hardware, with no descriptive attached. These
+are where the real meat is, that is, register descriptions.
+
+I could find such documents for rtl8139 and rtl8169, but not rtl8101.
+
+## Usage
+
+This unit is a singleton, that is, it can only handle a single NIC. Upon
+loading, it creates a "rtl8169" [com/ether] link. It still needs to be
+initialized. Example:
+
+needs drv/nic/rtl8169 com/net lib/coop
+rtl8169pci$
+rtl8169 makeactive
+NetIncoming newcontext launchcontext

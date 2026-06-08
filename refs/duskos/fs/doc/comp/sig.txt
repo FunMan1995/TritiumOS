@@ -1,0 +1,67 @@
+# Compiler signatures
+
+This unit implements routines to attach [lib/type] signatures to Forth words,
+the goal being to allow compilers to interface with those words.
+
+Once a word has been annotated with a signature, it can be called from any
+language that support all the types used in that signature.
+
+## Example usage
+
+Most of the time, you'll simply want to annotate a word. Here's how you could,
+for example, annotate the word "max ( a b -- n )":
+
+  annotate ( uint uint -- uint ) max
+
+## Signature documentation
+
+Many words in Dusk are annotated through this unit. When they are, the
+documentation of such word will specify the types of each argument with ":" in
+this fashion:
+
+  foobar ( a:uint b:uint -- c:uint )
+    Do something foobar-like.
+
+The presence of those types in the documentation indicate that this word is
+annotated and thus can be called from a typed language.
+
+## Common signatures
+
+In addition to supplying the mechanism to tag words with signatures, it also
+tags some core words:
+
+( -- ) abort quit noop snooze
+( uchar -- ) emit
+( *uchar uint -- ) rtype
+( *uchar -- ) stype
+( uint -- ) . .x .x2 .x1 allot
+( uint -- *void ) allot@
+( *void uint uint -- ) cfill fill
+( *void *void uint -- ) cmove move
+( *void -- uint ) le@ wle@ be@ wbe@
+( uint *void -- ) le! wle! be! wbe!
+
+Additionally, some units that are used during Dusk bootstrapping are annotated
+in the comp/sig unit rather than in those units in order to avoid having to pull
+comp/sig in the bootstrap stream. Those units are:
+
+* [lib/str]
+* [io/stream]
+* [fs/core]
+* [drv/timer]
+
+## API
+
+### Words
+
+annotate ( "sig" "name" "..." -- )
+  Parse a signature as described in [lib/type] and the apply that signature to
+  the word of the specified name. If more than one names are specified, apply
+  that same signature to all those words until EOL is reached.
+
+annotatelast ( "sig" -- )
+  Parse signature and apply it to the latest word in sysdict.
+
+findannotated ( name -- ?sig xt-or-0 )
+  Find name in sysdict and, if the entry is tagged with "SIGT", yield the found
+  xt along with the annotated signature. Otherwise, xt=0 and sig is absent.

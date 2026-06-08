@@ -1,0 +1,28 @@
+# HP Mini netbook
+
+## Model 210-3070
+
+Regular PC deployment works fine on it. Write it to a USB key, then you can boot
+from it without problem.
+
+The trackpad is a regular ps/2 mouse. Default PC initialization works. I haven't
+yet figured how to configure the trackpad to, for example, disable the "click on
+tap" feature, which is really annoying.
+
+Video also works like on any PC. Both [drv/pc/vga] and [drv/pc/vesa] work.
+
+But now you're running on INT13H [drv/pc/int13h]. If you want to do fun stuff
+with EHCI [drv/usb/ehci], you'll likely fight the BIOS over it because it wants
+to access the USB key.
+
+You're better off installing Dusk on the internal hard drive, which is
+accessible through [drv/pc/ahci]. Nothing special, it works as documented.
+
+When you get EHCI working, you'll notice two internal USB devices. One of them
+is the camera over the screen, the other one, named CRW, is the internal card
+reader. It's a mass storage device, so it can be accessed with [drv/usb/blk].
+
+Some PCI listings:
+
+01:00.00 10ec/8136 Realtek RTL810xE PCI Express Fast Ethernet controller
+02:00.00 1814/5390 Ralink  RT5390 Wireless 802.11n 1T/1R PCIe

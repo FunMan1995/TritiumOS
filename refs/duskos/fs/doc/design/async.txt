@@ -1,0 +1,67 @@
+# Asynchronous processing
+
+A recurring problem to solve when developing drivers is to wait for a certain
+condition to occur while permitting the "ongoing work", which is not related to
+the driver, to take place.
+
+When looking at drivers of other more conventional kernels, the standard
+approach is to have threads and locks. When you reach point where waiting is
+necessary, you make the thread sleep, generally to be woken up by an interrupt,
+at which point you resume your driver processing.
+
+What is generally very complex with this approach is managing locks. Such code
+is generally littered with locking and unlocking which has to be very carefully
+placed.
+
+In Dusk, there is no pre-emptive multi-tasking. No need for all these locks.
+However, when we wait for a condition, we block the whole machine. That's not
+good either.
+
+Instead, what needs to be done in Dusk is to reorganize the code so it is non-
+blocking. A given piece of code with "wait" blocks placed inside it will have to
+be split in separate functions and a "state" concept has to be introduced.
+
+Then, when we execute the first piece, set the "state" to step 2. Then the idle
+loop is programmed to check if there's a "next step to perform" for each of its
+active drivers. If there is, it executes that step and updates the "state", and
+so on.
+
+That's asynchronous processing and it allows the system to avoid locking up on
+driver processing.
+
+## Interrupts
+
+In a thread-based system, interrupts are vital to ensuring that waits are not
+blind arbitrary time intervals. They allow the thread to wake up precisely at
+the moment when the hardware signals a particular condition.
+
+Interrupts are smart and they minimize polling time.
+
+But the fact of the matter is, interactive systems spend a lot of time idling
+anyways, whether they use pre-emptive multi-tasking or not.
+
+In Dusk, responsiveness is ensured by regularly calling the idle loop, which
+means that we're polling anyways. In this context, interrupts are less vital.
+
+They are still used in cases where its important that the system respond to
+certain events in a timely manner, but if answering within the next millisecond
+is good enough for the driver, then we're ok with polling.
+
+For example, USB controllers don't really need interrupts. Except for Super
+Speed stuff, the time frame for a device to answer a request from the host is
+in the order of the millisecond. And when Dusk is going to use bulk transfer
+via Super Speed, it means it's reading or writing a mass storage sector, so it's
+going to be actively polling, so polling is going to be way faster than Super
+Speed.
+
+PS/2 events, however, benefit from interrupts because if we don't acknowledge
+each event coming from the hardware in a timely manner, we might end up with a
+buffer overrun and miss some keystrokes.
+
+So, in short, Dusk uses interrupts, but significantly less than other systems.
+
+What about non-interactive systems? Good question. They might not spend as much
+time idling as a interactive system, but that doesn't necessarily make Dusk a
+bad fit for them, on the contrary. On such a system, you know the kind of load
+you have and the kind of processing your drivers will make. You can then
+precisely place your "idle" loops at strategic places for optimal performance.

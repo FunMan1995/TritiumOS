@@ -1,0 +1,179 @@
+# String utilities
+
+This unit lives at [lib/str.fs] and provides a few strings related words.
+
+Most strings in Dusk are regular strings as [doc/usage] describes. However, we
+sometimes have to deal with null-terminated strings and this unit also has words
+to deal with them. We refer to null-terminated strings as "zstr" (z for zero).
+
+This unit also defines the concept of "string lists". Those are simply strings
+following each other in memory, ending with a null string (a pointer to a byte
+containing a 0). To iterate a string list, all we need to do is "skip" the
+string using its size byte.
+
+## String pool usage
+
+Some words need to copy string contents to memory. For this they use the string
+pool [doc/usage/lit]. Words needing to work on copies of string will yield
+references from buffer within that pool as a result. Words with a *P* mention
+use the pool.
+
+## API
+
+### Constants
+
+NULLSTR  An empty string
+32SPCS   ( -- a u ) Just a range with 32 spaces
+
+### Words
+
+string ( "name" -- )
+  Shortcut for "create STR_MAXSZ allot0"
+
+str< ( -- ?c f )
+  Read from in< and apply string literal escapes. Yield char as c and f=1. If
+  we've reached the end of string with an unescaped double quote, f=0 and c is
+  absent.
+
+" ( -- str ) *IP*
+  Repeatedly call str< and accumulate it into a string in the pool. Then yield
+  that string.
+
+," ( -- )
+  Repeatedly call str< and write contents to here.
+
+n" ( -- n ) *I*
+  Repeatedly call str< and accumulate characters into a 32-bit number, pushing
+  accumulation left by 8 bits each time. Examples:
+
+  n"DUSK"  --> $4455534b
+  n"USK"   --> $0055534b
+  n"XDUSK" --> $4455534b
+
+newstr ( -- a ) *P*
+  Begin building a new string. See [doc/usage/lit].
+
+endstr ( a -- str )
+  Finalize string. See [doc/usage/lit].
+
+strallot ( n -- a ) *P*
+  Allocate n bytes in the string pool and yield it.
+
+[]>pool ( a u -- a u ) *P*
+  Copy range "a u" to the pool and yield its pool reference.
+
+str>pool ( str -- str ) *P*
+  Copy "str" to the pool and yield its pool reference.
+
+[]>str ( a u -- str ) *P*
+  Copy range "a u" in the pool and return the corresponding string.
+
+str>zstr ( str -- zstr ) *P*
+  Copy "str" to pool, add a null terminator and yield zstr.
+
+strcat ( s1 s2 -- str ) *P*
+char* strcat(char *s2, char *s1);
+  Concatenates s1 and s2 in the pool and return the corresponding string.
+
+s[]= ( str a u -- f )
+  Compares a string to a range.
+
+strmove ( str dst -- )
+  Copy "str"'s content (including length byte) to "dst", which must have enough
+  place to accomodate it.
+
+[]strmove ( a u dst -- )
+  Copy range "a u" to "dst as a string.
+
+cmove+ ( src dst u -- dst+ )
+  Like "cmove", but also yields "dst+u".
+
+cmove" ( dst "x" -- a u )
+  Copy bytes "x" within quotes to address "dst" and yield range "a u" of the
+  copied contents.
+
+s, ( str -- )
+  Write "str" to here.
+
+zstrlen ( ztr -- len )
+  Returns the length of "zstr".
+
+z[] ( zstr -- a u )
+  Yields range for zstr.
+
+c[] ( c -- a u )
+  Write char in 1b static buffer and yield its range.
+
+zmove ( zsrc dst -- dst+ )
+  Copies "u" bytes from zsrc where u is zstr's length, including the null byte.
+  Yields "dst+u".
+
+consume[] ( a u n -- a u )
+  Add "n" to "a" and subtract "n" to "u". If "n" is greater than u, resulting u
+  will be negative, which means a broken range.
+
+  Note that this word ideally belongs to [mem/range] but lives here, for now,
+  for bootstrapping purposes.
+
+do[] ( a u -- ) *I*
+  Equivalent of "over + swap do", that is, loop over addresses of the range.
+  Example:
+
+  : foo c@+ do[] i c@ emit loop ;
+  "hello" foo \ Prints "hello"
+
+[str]? ( str a u -- idx )
+  Search for the first occurrence of "str" in range "a u" and return its index.
+  Returns -1 if not found.
+
+  If "str" is a null string, yields idx=0.
+
+ws? ( c -- f )
+  Returns whether character "c" is a whitespace.
+
+s) ( str -- a ) *A*
+  Skip "str", that is, return the address following its last char.
+
+sfind ( str list -- idx? f )
+  Find "str" in "list" and return its index and f=1 if found, f=0 otherwise.
+
+slistiter ( idx list -- str )
+  Given a string list "list", iterate to its "idx" element and return the str.
+
+slistlen ( list -- len )
+  Yields the number of elements in a string list.
+
+stringlist ( "name" "..." -- )
+  Create a list of strings (same format as sfind above) from reading the rest of
+  line of the input stream. See [doc/usage/io].
+
+  Example: stringlist mylist foo bar "hello world!"
+
+strings< ( "..." -- ... n )
+  Read rest of line with "wordorquote" and keep resulting strings on PS, with
+  "n" being the number of strings following this number. Example:
+
+  strings< foo bar baz
+  . spc> stype spc> stype spc> stype \ prints "3 baz bar foo"
+
+startswith? ( substr str -- f )
+  Yields f=1 if "str" begins with "substr".
+
+  Yields f=1 when substr is a null string.
+
+endswith? ( substr str -- f )
+  Yields f=1 if "str" ends with "substr".
+
+  Yields f=1 when substr is a null string.
+
+upcase ( c -- c )
+  If c is between "a" and "z", yield their upcase version. Otherwise, yield c.
+
+lowcase ( c -- c )
+  Opposite of "upcase".
+
+upstr ( str -- str ) *P*
+  Copy str to pool, then make all its characters upper case.
+
+lowstr ( str -- str ) *P*
+  Opposite of "upstr".

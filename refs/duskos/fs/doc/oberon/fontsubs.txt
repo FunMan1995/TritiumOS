@@ -1,0 +1,33 @@
+# Duskberon's FontSubsetBuilder module
+
+The FontSubsetBuilder module [oberon/fontsubs.mod] takes an existing .Fnt file
+(Covering some Unicode subset) and extracts a part of its glyphs into a new,
+smaller .Fnt file.
+
+## Glyph Ranges
+
+A simple glyph range is either a single codepoint, given in decimal, or as a
+hexadecimal number suffixed with H (if it starts with a letter, an extra 0
+prefix is required just like in the Oberon language) or a pair of such ranges
+separated by an asterisk.
+
+A glyph range is a list of one ore more simple glyph ranges separated by
+whitespace. These ranges may not overlap and have to be in ascending order.
+
+For clarity, a glyph range can be terminated by a ~ symbol.
+
+For example,
+
+  0009H 0020H*007EH 00A0H*0113H 0116H*012BH 012EH*014DH 0150H*017EH
+  02C7H 02D8H*02DBH 02DDH 2015H 2018H*2019H 201CH*201DH 20ACH 2122H
+  2126H 215BH*215EH 2190H*2193H 266AH ~
+
+is a glyph range representing the Multilingual European Subset 1.
+
+## Commands
+
+Extract
+  Given an input filename, an output filename, and a glyph ranges as
+  arguments, extract the glyphs specified by the range from input .Fnt
+  file into a new output .Fnt file. As both files are opened concurrently,
+  they may not point to the same name.

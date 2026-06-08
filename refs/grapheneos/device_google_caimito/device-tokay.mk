@@ -1,0 +1,202 @@
+#
+# Copyright (C) 2021 The Android Open-Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+SHIPPING_API_LEVEL := 34
+
+ifdef RELEASE_GOOGLE_TOKAY_RADIO_DIR
+RELEASE_GOOGLE_PRODUCT_RADIO_DIR ?= $(RELEASE_GOOGLE_TOKAY_RADIO_DIR)
+endif
+ifdef RELEASE_GOOGLE_TOKAY_RADIOCFG_DIR
+RELEASE_GOOGLE_PRODUCT_RADIOCFG_DIR ?= $(RELEASE_GOOGLE_TOKAY_RADIOCFG_DIR)
+endif
+RELEASE_GOOGLE_BOOTLOADER_TOKAY_DIR ?= 24D1# Keep this for pdk TODO: b/327119000
+RELEASE_GOOGLE_PRODUCT_BOOTLOADER_DIR := bootloader/$(RELEASE_GOOGLE_BOOTLOADER_TOKAY_DIR)
+$(call soong_config_set,caimito_bootloader,prebuilt_dir,$(RELEASE_GOOGLE_BOOTLOADER_TOKAY_DIR))
+
+ifdef RELEASE_KERNEL_TOKAY_VERSION
+TARGET_LINUX_KERNEL_VERSION := $(RELEASE_KERNEL_TOKAY_VERSION)
+else
+TARGET_LINUX_KERNEL_VERSION ?= 6.1
+endif
+
+ifdef RELEASE_KERNEL_TOKAY_DIR
+TARGET_KERNEL_DIR ?= $(RELEASE_KERNEL_TOKAY_DIR)
+TARGET_BOARD_KERNEL_HEADERS ?= $(RELEASE_KERNEL_TOKAY_DIR)/kernel-headers
+
+ifneq ($(TARGET_BOOTS_16K),true)
+PRODUCT_16K_DEVELOPER_OPTION := $(RELEASE_GOOGLE_TOKAY_16K_DEVELOPER_OPTION)
+endif
+
+include device/google/caimito/device-caimito-16k-common.mk
+
+else
+TARGET_KERNEL_DIR ?= device/google/caimito-kernels/6.1/24D1
+TARGET_BOARD_KERNEL_HEADERS ?= device/google/caimito-kernels/6.1/24D1/kernel-headers
+endif
+
+$(call inherit-product-if-exists, vendor/google_devices/caimito/prebuilts/device-vendor-tokay.mk)
+$(call inherit-product-if-exists, vendor/google_devices/zumapro/prebuilts/device-vendor.mk)
+$(call inherit-product-if-exists, vendor/google_devices/zumapro/proprietary/device-vendor.mk)
+$(call inherit-product-if-exists, vendor/google_devices/tokay/proprietary/device-vendor.mk)
+$(call inherit-product-if-exists, vendor/google_devices/caimito/proprietary/tokay/device-vendor-tokay.mk)
+
+ifeq ($(filter factory_tokay, $(TARGET_PRODUCT)),)
+    $(call inherit-product-if-exists, vendor/google_devices/caimito/proprietary/WallpapersTokay.mk)
+endif
+
+# display
+
+ifeq ($(RELEASE_PIXEL_AIDL_AUDIO_HAL),true)
+USE_AUDIO_HAL_AIDL := true
+endif
+
+include device/google/caimito/audio/tokay/audio-tables.mk
+include device/google/zumapro/device-shipping-common.mk
+include device/google/gs-common/bcmbt/bluetooth.mk
+include device/google/gs-common/touch/gti/predump_gti.mk
+include device/google/caimito/fingerprint/ultrasonic_udfps.mk
+include device/google/gs-common/modem/radio_ext/radio_ext.mk
+include device/google/gs-common/pixelsupport/pixelsupport.mk
+include device/google/gs-common/gril/hidl/1.7/gril_hidl.mk
+
+# Set device family property for SMR
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.build.device_family=CM4KM4TK4TG4
+
+# Set build properties for SMR builds
+ifeq ($(RELEASE_IS_SMR), true)
+    ifneq (,$(RELEASE_BASE_OS_TOKAY))
+        PRODUCT_BASE_OS := $(RELEASE_BASE_OS_TOKAY)
+    endif
+endif
+
+# Set build properties for EMR builds
+ifeq ($(RELEASE_IS_EMR), true)
+    ifneq (,$(RELEASE_BASE_OS_TOKAY))
+        PRODUCT_PROPERTY_OVERRIDES += \
+        ro.build.version.emergency_base_os=$(RELEASE_BASE_OS_TOKAY)
+    endif
+endif
+
+# go/lyric-soong-variables
+$(call soong_config_set,lyric,camera_hardware,tokay)
+$(call soong_config_set,lyric,tuning_product,tokay)
+$(call soong_config_set,google3a_config,target_device,tokay)
+
+# Recovery files
+PRODUCT_COPY_FILES += \
+        device/google/caimito/conf/init.recovery.device.rc:$(TARGET_COPY_OUT_RECOVERY)/root/init.recovery.tokay.rc
+
+# NFC
+PRODUCT_COPY_FILES += \
+	frameworks/native/data/etc/android.hardware.nfc.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.nfc.xml \
+	frameworks/native/data/etc/android.hardware.nfc.hce.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.nfc.hce.xml \
+	frameworks/native/data/etc/android.hardware.nfc.hcef.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.nfc.hcef.xml \
+	frameworks/native/data/etc/com.nxp.mifare.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/com.nxp.mifare.xml \
+	frameworks/native/data/etc/android.hardware.nfc.ese.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.nfc.ese.xml \
+
+PRODUCT_PACKAGES += \
+	$(RELEASE_PACKAGE_NFC_STACK) \
+	Tag \
+	android.hardware.nfc-service.st
+
+# SecureElement
+PRODUCT_PACKAGES += \
+	android.hardware.secure_element-service.thales
+
+PRODUCT_COPY_FILES += \
+	frameworks/native/data/etc/android.hardware.se.omapi.ese.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.se.omapi.ese.xml \
+	frameworks/native/data/etc/android.hardware.se.omapi.uicc.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.se.omapi.uicc.xml \
+
+PRODUCT_PACKAGES += \
+    camera_front_dbr_coex_table \
+    camera_front_mipi_coex_table \
+    camera_rear_main_mipi_coex_table \
+    camera_rear_wide_mipi_coex_table \
+    display_primary_mipi_coex_table \
+    display_primary_ssc_coex_table
+
+# Spatial Audio
+PRODUCT_PACKAGES += \
+	libspatialaudio
+
+ifneq ($(USE_AUDIO_HAL_AIDL),true)
+# HIDL Sound Dose
+PRODUCT_PACKAGES += \
+	android.hardware.audio.sounddose-vendor-impl \
+	audio_sounddose_aoc
+endif
+
+PRODUCT_PACKAGES += \
+    libspeechenhancer
+
+# Bluetooth hci_inject test tool
+PRODUCT_PACKAGES_DEBUG += \
+    hci_inject
+
+# Bluetooth SAR test tool
+PRODUCT_PACKAGES_DEBUG += \
+    sar_test
+
+# Bluetooth EWP test tool
+PRODUCT_PACKAGES_DEBUG += \
+    ewp_tool
+
+# Spatial Audio
+PRODUCT_PACKAGES += \
+	libspatialaudio \
+	librondo
+
+# PowerStats HAL
+PRODUCT_SOONG_NAMESPACES += \
+    device/google/caimito/powerstats/tokay
+
+# Trusty liboemcrypto.so
+PRODUCT_SOONG_NAMESPACES += vendor/google_devices/caimito/prebuilts
+
+# Location
+PRODUCT_SOONG_NAMESPACES += device/google/caimito/location/tokay
+$(call soong_config_set, gpssdk, buildtype, $(TARGET_BUILD_VARIANT))
+
+#Thermal VT estimator
+PRODUCT_PACKAGES += \
+    libthermal_tflite_wrapper
+
+# Vibrator HAL
+$(call soong_config_set,haptics,kernel_ver,v$(subst .,_,$(TARGET_LINUX_KERNEL_VERSION)))
+ACTUATOR_MODEL := luxshare_ict_081545
+ADAPTIVE_HAPTICS_FEATURE := adaptive_haptics_v1
+
+# Exynos RIL and telephony
+# Support RIL Domain-selection
+SUPPORT_RIL_DOMAIN_SELECTION := true
+
+SUPPORT_VENDOR_SATELLITE_SERVICE := true
+
+# Support NTN(satellite) with dual SIM
+NTN_DUAL_SIM := true
+
+# Window Extensions
+$(call inherit-product, $(SRC_TARGET_DIR)/product/window_extensions.mk)
+
+# ETM
+ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
+$(call inherit-product-if-exists, device/google/common/etm/device-userdebug-modules.mk)
+endif
+
+#Component Override for Pixel Troubleshooting App
+PRODUCT_COPY_FILES += \
+    device/google/caimito/tokay/tokay-component-overrides.xml:$(TARGET_COPY_OUT_VENDOR)/etc/sysconfig/tokay-component-overrides.xml

@@ -1,0 +1,53 @@
+# EFI Block I/Os
+
+The unit at [drv/efi/blkio.fs] wraps the BLOCK_IO protocol to provide a
+[io/blk] interface.
+
+Referencing devices supporting the BLOCK_IO protocol is done through indexes.
+You can get a list of such devices through "lsblk". You can also get the index
+of the boot device with "bootblkidx".
+
+With that index, you can create a new blk with "newefiblk".
+
+## Intermediate buffer
+
+Some EFI implementations are picky about src/dst buffers for ReadBlocks and
+WriteBlocks. There's alignment, of course, but there's also other factors.
+
+(TODO: maybe come back to the "drivealign" approach. With the new 2 stages boot
+approach, it's very possible that blkio can target any address in HERE)
+
+To avoid these problems, we pay the tax of using an intermediate buffer which
+is always used as the src/dst of ReadBlocks/WriteBlocks, which is copied from/to
+its original/final src/dst.
+
+This buffer is aligned to 16 bytes, which should be enough for a vast majority
+of EFI implementations.
+
+## API
+
+### GUIDs
+
+blkioguid
+
+### Constants
+
+blkiocnt   Number of blkios we have
+
+### Words
+
+bootblkidx ( -- blkidx )
+  Yields the blkidx of the boot device by searching for BootDeviceHandle
+  [drv/efi/image] in "blkios". Here, we cheat a little bit by making a 32-bit
+  search (looking only for the lower 32-bit of the handle), assuming a false
+  positive to be impossible.
+
+  Aborts with error if the boot device is not found.
+
+lsblk ( -- )
+  Call ".blkio" on all blkios.
+
+newefiblk ( blkidx -- drv )
+  Create a new [io/blk] struct targeting BLOCK_IO device "blkidx". Upon
+  creation of that structure, a Reset() call is issued to the device, aborting
+  if it fails.

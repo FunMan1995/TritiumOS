@@ -1,0 +1,71 @@
+# C Abstract Syntax Tree
+
+The unit at [comp/c/ast.fs] builds expressions ASTs out of tokenized
+[comp/c/tok] C source. Expressions is the only thing we have an AST for, the
+rest of the code generation happens directly.
+
+An AST is made out of [mem/cons] representing operators in relation to operands.
+An operator is a numerical ID that is an index in the operator list. An
+operators always know how to read its operands, so we never have to second-guess
+the AST structure through "iscons?". When we pass AST pointers around, we always
+pass a pointer to a cons where "car" is an operator ID.
+
+Operators aren't just binary and unary operators. It's also special operators
+like funcall (a function call), lit (literal number) and sym (symbol). Those
+names refer to operator IDs.
+
+The value of "cdr" depends on the operator, but the general principle is that
+it's cons all the way down to lit or sym. The cdr of a lit is the literal number
+itself. The cdr of a sym is a string with the symbol name.
+
+Unary operators's cdr are a cons of another operator. Binary operators' cdr are
+a pair of operators.
+
+funcall's cdr is list with the first element is an operator (most of the time a
+sym, but can also be an expression). Then follows a list of operators until 0 is
+met, which marks the end of arguments.
+
+Examples:
+
+  a + b * c   --> (+ ((sym a) (* ((sym b) (sym c)))))
+  foo(a, b+42) --> (funcall ((sym foo), (sym a), (+ ((sym b) (lit 42)))))
+
+## Operators
+
+Operators are indexes from the small list of operators. If you look in the
+source code, you'll see a stringlist that determines its IDs. Some operators
+such as function calls aren't detected through simple exact match, so they have
+constants (in this case, funcall) associated with their ID.
+
+Some operator symbols are ambiguous. In those cases, the symbol is associated
+with one of the forms and the other form is given a constant:
+
+-   --> binop    prefix: neg
+++  --> prefix   postfix: postinc
+--  --> prefix   postfix: postdec
+*   --> binop    prefix: deref
+&   --> binop    prefix: ref
+
+## Pure AST
+
+One of the driving principles behind this unit is that the AST is oblivious to
+actual CTypes or Symbols. When we refer to symbols in the AST, they're only
+symbols in the sense that their place in the parsed syntax fits the role of
+symbol. Otherwise, they're just identifiers to be plugged later at generation
+time.
+
+## Example usage
+
+  needs comp/c/ast
+  cctok$
+  ast< a*(b+c(42)); read; .ast
+  \ prints: (* (sym a) (+ (sym b) (funcall (sym c) (lit 0000002a))))
+
+## API
+
+ast< ( -- ast )
+  Using comp/c/tok, parse one expression from the input stream, yielding the
+  result as an AST structure as described above.
+
+.ast ( ast -- )
+  Print AST in a human-readable form.

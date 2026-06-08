@@ -1,0 +1,38 @@
+: HAL8B $100 ;
+: HAL16B $20000 ;
+: HALIMM $40000 ;
+: HALDIRECT $10000 ;
+: HALINV $80000 ;
+: HALSIGNED $1000000 ;
+: <<3 $3 lshift ;
+: >>3 $3 rshift ;
+: b2:0 $7 and ;
+: reg! <<3 swap $38 invand or ;
+: single! <<3 over >>3 b2:0 or $c0 or swap $ff invand or ;
+: modrm! rot $c7 invand or swap $6 lshift or ;
+: opc $8 rshift $ff and ;
+: opc! $8 lshift swap $fe00 invand or ;
+: W) $100 ; : A) $103 ; : S) $102 ; : PSP) $106 ;
+: =) $4 ; : <>) $5 ;
+: <) $2 ; : >=) $3 ; : <=) $6 ; : >) $7 ;
+: invcond $1 xor ;
+: W>) $38 invand ;
+: A>) $18 or ;
+: S>) $10 or ;
+: bank) hbank! $14 lshift ;
+: i) bank) HALIMM or HAL8B or ;
+: m) bank) $105 or ;
+: (slot $14 rshift b3:0 ;
+: slot) $14 lshift swap $f00000 invand or ;
+
+: rel, here - $4 - , ;
+: bbr, $e9 c, rel, ;
+: bbrc, $0f c, $80 or c, rel, ;
+: ?brz, =) bbrc, ;
+: ?brnz, <>) bbrc, ;
+: ifz, here $0 ?brnz, ;
+: ifnz, here $0 ?brz, ;
+: ifW, dropz, ifnz, ;
+
+: br1! over - $6 - swap $2 + ! ;
+: br! over c@ $0f - [ ifW, ] swap $1 - swap [ here br1! ] br1! ;

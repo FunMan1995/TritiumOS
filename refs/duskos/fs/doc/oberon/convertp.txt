@@ -1,0 +1,13 @@
+# Duskberon's ConvertPCFFont module
+
+The ConvertPCFFont module [oberon/convertp.mod] converts a PCF font into
+Oberon's .Fnt format.
+
+## Commands
+
+Convert
+  Given two file names as arguments, it loads the first argument as a .PCF
+  file and convert it into a .Fnt file stored at the second file name.
+
+ConvertASCIIOnly
+  Same as above, but only converts glyphs whose codepoint is less than 128.

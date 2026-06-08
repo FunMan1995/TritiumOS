@@ -1,0 +1,246 @@
+# Structures
+
+This unit provides an API to describe structures, that is, data organized in
+terms of offsets relative to a base address. For example:
+
+  struct MyStruct {
+    uint foo bar baz ;
+    [uchar,16] somearray ; \ comments are ok
+    xt methodname ;
+    *OtherStruct structptr ;
+    +2a uint explicitoffset ;
+  }
+
+## Declaration syntax
+
+A structure is declared with "struct" followed by the name of the structure and
+an opening "{". Then, we expect an arbitrary number of field declarations until
+"}" is met.
+
+A field declaration is (square bracket means it's optional):
+
+  [+offset] type name ... ;
+
+The "offset" field is optional and, if present, sets the current offset to the
+specified value. That offset must begin with a "+" and be followed by something
+that can be parsed with "n<".
+
+When no offset is specified, the offset of a field is that of the "current
+offset", that is, a variable that starts at 0 at the beginning of a structure
+declaration then increases by the size of each new field added.
+
+The "type" part is an input string that is to be parsed by "type<" from
+[lib/type].
+
+Finally, the field name. There can be more than one name. Each name adds a new
+field of the same specified type.
+
+A field declaration ends with a ";" character.
+
+"\" comments can be placed in between field declarations, but not "( )" ones
+because they conflict with signature parsing.
+
+## Field semantics
+
+Each field defined in a structure adds a corresponding word of the same name to
+the system dictionary. This word obeys "setter semantics" [doc/usage/to] by
+consuming a data pointer on PS top and applying the correct offset before
+fetching or storing. For example, if you have a field "myfield", you use it
+thus:
+
+  data myfield . \ prints the value at data+offset-of-myfield
+  42 data to myfield \ sets data+offset-of-myfield to 42
+
+For each field, a "fully qualified" dictionary entry is also added, for example
+"MyStruct.myfield". Calling this word is the same as calling "myfield", but can
+work around tricky shadowing issues.
+
+## Structures as Types
+
+A structure fills a dual role. First, it defines field words to use within Forth
+semantics, but it also defines structures as types [lib/type] for introspection.
+That introspection is useful in compiling contexts.
+
+This unit defines a new type structure type with this structure:
+
+...
++10 Link to structure it's extending (0 if none) (works with "reftype")
++14 size in bytes (typesz yields this)
++18 dictionary of fields
+
+The dictionary of fields is a dictionary of non-executable entries that directly
+contain the field as a payload. A field is *not* a type:
+
++00 Link to type of field
++04 Offset of field
+
+A field always lives within an entry, which means that we can get a field name
+with "xt>e entryname[]".
+
+Last field to be added is on top of the dict.
+
+The dictionary of fields of structure extending other structures link into their
+parent's dictionary. There is nothing special to do to access all the fields.
+
+The link to the extended structure is placed so that "reftype" works.
+
+"typesz" on a struct yields the value of its size field.
+
+## Alignment discipline
+
+Dusk's alignment discipline [doc/usage/mem] dictates that structures aren't
+automatically aligned, but enforces it through errors. This way, alignment is
+explicit, but alignment mistakes are caught.
+
+When using the Forth API of this unit to create structures, this is what
+happens.
+
+Programming languages will use "addfield" rather than "frontend" words like
+"field". "addfield" doesn't do alignment checks, which means that they need to
+enforce alignment separately
+
+## Methods
+
+We call "methods" fields of the "xt" type. While structures handle the "xt" type
+in no particular way compared to the other types, such XTs have a peculiar
+property: The base address of the structure must be on PS top for the call to
+work, and this address stays there during execution of that XT, conditioning
+its call signature.
+
+This results in semantics that are reminescent of what we call a "method" in
+object-oriented programming, hence the name. Example usage:
+
+  struct MyStruct {
+    uint foo bar ;
+    xt mymethod ;
+  }
+  : :myimpl ( mystruct -- n ) bi foo | bar + ;
+  create data 42 , 54 , ' :myimpl ,
+  data mymethod . \ prints 96
+  :> bi foo | bar - ; data to mymethod
+  data mymethod . \ prints -12
+
+### Method name conventions and overrides
+
+Method implementations are rarely called directly, so their names don't matter
+much. In many places, such implementations have the same name as the method, but
+with a "_" prefix to indicate "private-ness".
+
+However, sometimes structures build upon each other and method implementations
+need to reference each other, mainly for overriding. Such an example is ANSIGrid
+[text/ansi] which extends the grid [io/grid] and change the "writebuf" behavior,
+all the while piggy-backing on its "writebuf" implementation.
+
+Therefore, we have a convention for naming method implementations: same name as
+the method, but with a ":" prefix (example: ":mymethod" for a method named
+"mymethod"). This way, it's easier to predictably override a method.
+
+## Structure placeholders
+
+Sometimes, structures need to reference each other and that presents us with
+a chicken-and-egg problem. This problem is met with what we call a "placeholder"
+system.
+
+When declared, structures generally follow general Forth shadowing rules, that
+is, if you declare a structure with a name that already exists in the
+dictionary, you shadow that word.
+
+We make one exception however. Before "struct" creates a new dictionary entry
+for the specified name, it looks that name up. If that name is found, if it's a
+struct, and if that struct has no field, then it is considered a placeholder
+struct. In that case, instead of creating a new structure, that placeholder is
+used.
+
+Therefore, if you want to solve the chicken-and-egg problem, create an empty
+structure. Example:
+
+  struct Foo { }
+  struct Bar {
+    *Foo fooptr ;
+  }
+  struct Foo {
+    ...
+  }
+
+## Example
+
+Here's a full example with, below, the equivalent naive Forth code to each
+accessor:
+
+  struct Foo {
+    uint first ;
+    [uchar,8] second ;
+    xt third ;
+    ushort fourth ;
+    uchar fifth ;
+  }
+
+  data first  --> data @
+  data second --> data 4 +
+  data third  --> data dup 12 + @ execute
+  data fourth --> data 16 + w@
+  data fifth  --> data 18 + c@
+
+## Extending a struct
+
+You can pick up where another struct left off through "extends":
+
+  struct Struct1 {
+    uint foo bar ;
+  }
+
+  extends Struct1 struct Struct2 {
+    uint baz ;
+  }
+
+  extends Struct1 struct Struct3 {
+    uint quux
+  }
+
+Both "baz" and "quux" will have a offset +8.
+
+## API
+
+### Words
+
+newstructure ( extends -- type )
+  Create and yield a new struct type that extends "extends", which can be 0.
+
+structfields ( struct -- dict )
+  Yields the dictionary of fields for this struct.
+
+struct ( "name" -- )
+  Declare a structure.
+
+extends ( "name" -- )
+  The next structure being defined will be an extension of specified struct.
+
+containsstruct? ( struct target -- f )
+  Yields whether "target" contains "struct", that is, either whether it's the
+  same struct, or if struct extends, recursively, target.
+
+findfield ( name struct -- ?type ?offset f )
+  Look for field "name" in struct. If found, f=1 and type and offset correspond
+  to the found field. Otherwise, f=0 and type/offset are absent.
+
+addfield ( type "name" -- field )
+  Add a field in current struct's dictionary and yield the resulting field
+  struct. All "field" words below use "addfield" under the hood before they
+  create their accessor word.
+
+addalignedfield ( type "name" -- field )
+  Like "addfield", but auto-aligns the struct if needed before adding the new
+  one.
+
+genprefixedalias ( -- )
+  Create an alias for the latest word and add "<structurename>." in front of it.
+  See "Prefixed field aliases" above.
+
+offsetof ( "name" -- n ) *I*
+  Yields the offset of the specified field whose name is on the input stream.
+  When in compile mode, compile a literal with that offset.
+
+  This word can also be used on ivalues [lib/ival], in which case it yields its
+  offset field.
+
+  Aborts if name can't be found, isn't scrutable or isn't a FILD or IVAL.

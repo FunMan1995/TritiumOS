@@ -1,0 +1,321 @@
+# Implementation notes
+
+# Execution model
+
+At the end of "boot", we call "abort" which triggers our main
+loop, which is in lblmain. It's very simple: Initialize input
+buffer, then call "interpret".
+
+"interpret" itself is very simple: repeatedly call "run1" (run
+one word).
+
+"run1" implements this logic:
+
+1. Read a word from input.
+2. Is it a number literal? Put it on the stack.
+3. No? Look it up in the dictionary.
+4. Found? Execute.
+5. Not found? Error.
+
+# Dictionary entry
+
+A forth binary is, in its vast majority, a big dictionary of
+words. The dictionary is a list of entries, the address of its
+last entry being kept in CURRENT. A dictionary entry has this
+structure:
+
+- Xb name. Arbitrary long number of character (but can't be
+  bigger than input buffer, of course).
+- 2b previous entry
+- 1b name size + immediate flag (7th bit)
+- The word content (see DTC explanation below)
+
+The previous entry field is the address of the previous dict
+entry, which is used when iterating over the dict.
+
+The size + flag indicate the size of the name field, with the
+7th bit being the immediate flag.
+
+# The Direct Threaded Code model
+
+Forths come in different flavors with regards to their execution
+model and Collapse OS is a Direct Threaded Code (DTC) forth.
+
+This means that each word (except code words, which directly
+begin with native code) begins with a jump or call to a "word
+type" routine, which then does its thing, optionally using the
+words Parameter Field (PF, that is, the memory area following
+the word routine jump).
+
+At the heart of all those word types is the "next" routine,
+defined at lblnext in all ports. This is the "beating heart" of
+our system. Whenever it's called, it increases IP by 2 and then
+jumps to the word referenced at IP-2. In other words, it
+"continues" along the path of the currently active stream of
+eXecution Tokens (XT). See "Executing a XT word" below.
+
+These are the word types of Collapse OS:
+
+native: nothing is done, native code is executed directly.
+
+xt: eXecution Tokens. CALL lblxt which pushes IP to RS, pop PS
+(the PC pushed during the CALL) into IP and does "next".
+
+cell: CALL lblcell, which is the same as lblnext on "regular"
+forths. On forths having a register assigned to TOS, we have
+to pop that value and "properly" push it back to PS.
+
+does: CALL lbldoes, which pops the pushed addr, inc by 2 (this
+is the DOES data address) and push it back. Then, take the
+original addr value, dereference it (it's the address of DOES>),
+then jump to it as we would with any other word. The DOES> addr
+contains a regular word handler (generally a xt handler).
+
+value: CALL lblvalue, which pops addr from PS, dereferences it,
+then push the value back to PS, then continue to lblnext.
+
+# Executing a XT (eXecution Tokens) word
+
+At its core, executing a word is simply jumping to its wordref
+address. Then, we let the word do its things. Some words are
+special, but most of them are of the XT type, and that's their
+execution that we describe here.
+
+First of all, at all time during execution, the Interpreter
+Pointer (IP) points to the word we're executing next.
+
+When we execute a XT word, the first thing we do is push IP to
+the Return Stack (RS). Therefore, RS' top of stack will contain
+a wordref to execute next, after we exit.
+
+At the end of every XT word is an "exit" call. This pops RS,
+sets IP to it, and continues.
+
+A XT word is simply a list of word addresses, but not all those
+"tokens" are 2 bytes in length. Some tokens are special. For
+example, a reference to (n) will be followed by an extra 2 bytes
+number. It's the responsibility of the (n) word to advance IP
+by 2 extra bytes.
+
+To be clear: It's not (n)'s word type that is special, it's a
+regular "native" word. It's the compilation of the (n) type,
+done in "litn", that is special. We manually compile a number
+constant at compilation time, which is what is expected in (n)'s
+implementation. Similar special things happen in (br), (?br) and
+(next).
+
+For example, the word defined by ": foo 345 emit ;" would have
+an 8 bytes PF: a 2b ref to (n), 2b with $0159, a 2b ref to
+"emit" and then a 2b ref to "exit".
+
+When executing this word, we first set IP to PF+2, then exec
+PF+0, that is, the (n) reference. (n), when executing, reads IP,
+pushes that value to PS, then advances IP by 2. This means that
+when we return to the "next" routine, IP points to PF+4, which
+next will execute. Before executing, IP is increased by 2, but
+it's the "not-increased" value (PF+4) that is executed, that is,
+"emit". "emit" does its thing, doesn't touch IP, then returns to
+"next". We're still at PF+6, which then points to "exit". "exit"
+pops RS into IP, which is the value that IP had before "foo" was
+called. The "next" dance continues...
+
+# Stack management
+
+In all supported CPUs, The Parameter Stack and Return Stack
+tops are tracked by a register assigned to this purpose. For
+example, in z80, it's SP and IX that do that. The value in those
+registers are referred to as PS Pointer (PSP) and RS Pointer
+(RSP).
+
+The way those stacks are managed are CPU-specific and opaque.
+Our only "meta-access" to stacks are through "scnt" and "rcnt"
+which give us counts for each stacks.
+
+## Register roles
+
+In the code, many registers have special meaning, and it's
+crucial to keep this in mind when reading or writing native
+code. As written above, we reserve a register for PSP and RSP,
+but also for IP (Interpreter Pointer). You can see what register
+is reserved for what in the cpu-specific document of doc/code/.
+
+With CPUs that have very few registers, we might end up using
+memory for IP, but it greatly impacts speed.
+
+With CPUs that have a lot of registers, we can reserve some for
+stack elements. For example, on the z80, BC is reserved for PS'
+Top Of Stack. It makes all of the native code a bit weird
+because pushes and pops are no longer this clean, symmetrical
+set of operations, but gains (both in speed and binary size) are
+significant, especially with words that have a symmetrical stack
+signature (same number of stack elements before and after
+execution).
+
+# Stack underflow and overflow
+
+When words pop and push from the stack, nothing stops them. If
+the stack goes out of bounds, bad things happen.
+
+When a pop results in the stack pointer going out of bounds,
+it's a "stack underflow". We could check, in each native word,
+whether the stack is big enough to execute the word, but these
+checks are expensive.
+
+Instead, what we do is that we check for stack underflow in the
+interpret loop after each execution, through the word "stack?".
+If scnt < 0, it's a stack underflow.
+
+Would a word like ": foo drop 42 ;" trigger an underflow if
+executed on an empty PS? Well, no. That's the tradeoff. In
+exchange for simplicity and speed, we don't catch all underflow
+errors.
+
+We don't check RS for underflow because the cost of the check
+is significant and its usefulness is dubious: if RS isn't
+tightly in control, we're screwed anyways, and that, well
+before we reach underflow.
+
+Overflow condition happen when RS or PS outstep their bounds
+during a push. That condition is not checked because it's too
+expensive for what it's worth.
+
+Overflow happens much less often than underflow. However, when
+it happens, it can means that your RS gets overwritten and will
+catastrophically crash your machine.
+
+When you know you have a deep stack, or before you do fancy
+recursion, make sure you know the state of your stack well.
+You can use .S for this.
+
+# System variables
+
+There are some core variables in the core system that are
+referred to directly by their address in memory throughout the
+code. The place where they live is configurable by the SYSVARS
+constant in xcomp unit, but their relative offset is not.
+
+SYSVARS occupy $80 bytes in memory in addition to driver mem-
+ory, which typically follows SYSVARS.
+
+This system is a bit fragile because every time we change those
+offsets, we have to be careful to adjust all system variables
+offsets, but thankfully, there aren't many system variables.
+Here's a list of them:
+
+SYSVARS
++00       IOERR
++02       CURRENT
++04       HERE
++06       A register
++08       N register
++0a       NL characters
++0c       'LN<
++0e       'EMIT
++10       'KEY?
++12       NEXTWORD
++14       2b unused
++16       '(wnf)
++18       TO?
++19       COMPILING
++1c       IN(*
++1e       IN>
++20       INBUF
++60       CURWORD
++80       DRIVERS
+
+CURRENT points to the last dict entry.
+
+HERE points to current write offset.
+
+IN> and INBUF: See "Input Buffer" below.
+
+LN< is called whenever the stream needs to be fed with a new
+line in IN(. Generally points to RDLN, but is overridden during
+LOAD.
+
+NEXTWORD is a pointer to a "word" override. If nonzero, the next
+call to "word" will yield that string and reset NEXTWORD instead
+of actually reading a word from input.
+
+CURWORD is a 32 bytes buffer containing the word previously read
+by "word".
+
+IOERR: When an error happens during I/Os, drivers can set this
+to indicate an error. For example, the AT28 driver sets this
+when it detects write corruption. Has to be reset to zero man-
+ually after an error.
+
+NL is 2 bytes. NL> spits them, MSB first. If MSB is zero, it's
+ignored. For example, $0d0a spits CR and then LF.
+
+'KEY? and 'EMIT default to (key?) and (emit) but can be
+overwritten to other routines.
+
+The N register is like the A register but only accessible from
+native code. You can then be sure that by using it you will not
+break some high-level words.
+
+'(wnf): see "Word Not Found override" in doc/usage.
+
+COMPILING: has a value of 1 while we're compiling a word, 0
+otherwise. You can stop a compiling loop by setting this to 0.
+
+DRIVERS section is reserved for recipe-specific drivers.
+
+# Initialization sequence
+
+A Collapse OS binary is initialized by jumping to the first
+address of its binary. This runs the "early initialization"
+routine, written in native code. This does 2 things: initialize
+PSP and RSP and then jump to "boot".
+
+Then, "boot" does this:
+
+1. Initialize CURRENT and HERE.
+2. Initialize system aliases and values in this way:
+     EMIT -> (emit)
+     KEY? -> (key?)
+     NL -> CRLF
+3. Call "init", which is system-specific. This usually
+   initializes drivers.
+4. Print "Collapse OS"
+5. Call "abort". See Execution Model above for the rest.
+
+# The "main" routine
+
+The "main" routine is Collapse OS "soft boot" entry point. It
+simply resets the input buffer (so that an abort/quit ran during
+a load brings us back to a usable system) and runs the
+interpret loop.
+
+This routine is anonymous because it's not meant to be called
+directly. You call it through quit. It's only there because quit
+is a low level word and "main" references high level words, so
+quit needs to do a forward jump to it (see doc/bootstrap for
+gory details).
+
+# Input buffer (INBUF)
+
+As indicated above, the Input Buffer lives in SYSVARS and is
+$40 bytes in length (the value of LNSZ).
+
+This buffer contains a stream of characters that, unlike
+regular strings, is not sized. It is also not terminated by any
+kind of character.
+
+Words IN( and IN) indicate its bounds and IN> is a pointer (in
+absolute address) pointing to the current character being read.
+
+This buffer will generally be filled by RDLN and then consumed
+by IN<. These words take care of not stepping out of bounds.
+
+When you type characters in the prompt, it's RDLN that handles
+it. When you type CR (or LF), it stops reading and begins
+feeding IN<. If you type LNSZ characters without typing CR, an
+additional CR will be fed to IN< after INBUF has gone through.
+
+In rare occasions, you need to know when you've reached the end
+of INBUF, for example in ED where some words read "rest of the
+buffer". In these cases, you can use IN<? instead of IN< which,
+when the end of INBUF is reached, instead of calling RDLN, will
+simply return 0.

@@ -1,0 +1,96 @@
+# Block storage
+
+The unit at [io/blk.fs] supplies the Blk struct which is a Stream [io/stream]
+interfacing storage that is meant to be accessed as blocks of arbitrary size.
+
+To implement "readbuf" and "writebuf", it maintains in-memory buffers where
+byte contents is read/written from/to.
+
+A Blk stream is sized in terms of bytes, but that size should be a multiple of
+its block size or you're going to have a bad time.
+
+## Buffering logic
+
+There are two buffers, each one block in size: the read buffer and the write
+buffer. The reason for separate read/write buffers is to satisfy "readbuf"
+guarantee that it's possible to use the yielded buffer to use in "writebuf".
+
+The general logic of "readbuf" is:
+
+1. Does the read buffer currently holds contents of the requested pos?
+2. If not, load the appropriate block
+3. Yield read contents
+
+The general logic of "writebuf" is similar:
+
+1. Does the write buffer currently holds contents of the requested pos?
+2. If not, load the appropriate block, writing previous block if dirty
+3. Write contents to the "writebuf" to the buffer
+4. Mark write buffer as dirty
+
+However, to seize the opportunity for nice speedups, we allow ourselves 3
+exceptions to this general logic:
+
+1. On readbuf, if the write buffer holds the block we want to read, yield from
+   this block. No flushing occurs.
+2. On writebuf, if the read buffer holds the block we want to write to, flush
+   the current write buffer, then *swap* block pointers, then write.
+3. On writebuf, if the write position is a multiple of blksz and if the write
+   size is greater or equal than blksz, bypass buffers entirely and write a
+   single block directly using writeblk.
+
+## 32-bit limitations
+
+Dusk is a 32-bit systems and because Blk is a byte-addressable stream, it means
+that it can't handle more than 4GB of storage. Many mass storage devices hold
+more than 4GB of data. If you need to access data beyond that limit, you'll need
+to use [io/part].
+
+## API
+
+### Structures
+
+struct Buf {
+  uint blk no dirty ;
+  [void,0] buf( ;
+}
+
+blk    Parent Blk
+no     Block number currently in buffer
+dirty  Whether the buffer contains changed data
+buf(   Address of the buffer, blksz in size
+
+extends Stream struct Blk {
+  uint rbuf wbuf blksz ;
+  xt writeblk readblk ;
+}
+
+rbuf   Read buffer
+wbuf   Write buffer
+blksz  Size of a block, in bytes
+
+readblk ( n dst blk -- )
+  Read block "n" in memory address "dst", which needs to be a buffer at least
+  "blksz" in size.
+
+writeblk ( n src blk -- )
+  Write block "n" from memory address "src".
+
+### Words
+
+newblk ( readxt writext blksz blkcnt -- blk )
+  Create a new Blk with the specified field values.
+
+blkcnt ( blk -- n )
+  Yield the count of blocks in blk (size / blksz).
+
+window ( pos wr? blk -- ?a n-or-0 )
+  Yields what we call a window into the right blk buffer for specified position.
+  If "wr?" is true, that window is for writing, otherwise it's for reading.
+
+  Calling this is the equivalent of calling readbuf or writebuf, but without
+  changing the stream position.
+
+  When "wr?" is true and yielded n is not 0, the write buffer is flagged as
+  dirty, which means that changes written to the yielded window will be properly
+  flushed.

@@ -1,0 +1,73 @@
+# Color encodings
+
+The library at [gr/color.fs] defines color encoding as well as encoding/decoding
+words for them.
+
+## Colors, width and endianness
+
+Color values have a width because each of its components have a defined bit
+range, but they don't have endian-ness. A color is a number of a certain width,
+how you store it in memory is your own business. The bit indexes for the
+different components of the color are defined in terms of bits of a whole
+number, which is above endianness.
+
+Routines in this unit expect input values to have bits that aren't used by their
+encoding to be zeroed out.
+
+## Color constants
+
+Name     Width     Contents
+PALETTE  Variable  Index in a color list.
+RGB565   16-bit    Red=b15:11 Green=b10:5 Blue=b4:0
+RGB555   16-bit    Red=b14:10 Green=b9:5 Blue=b4:0
+RGB24    24-bit    Red=b23:16 Green=b15:8 Blue=b7:0
+GRAY8    8-bit     Gray=b7:0
+GRAY4    4-bit     Gray=b3:0
+GRAY2    2-bit     Gray=b1:0
+BW1      1-bit     Black (or whatever color)=b0
+
+## RGB24 is the lingua franca of colors
+
+Buffers such as [gr/buf] specify an encoding, fine. But when we want to express
+a color outside of an encoding, in a pure combination of RGB components, what to
+we do?
+
+Use RGB24. This is what Dusk's code do. For example, if we want to refer to the
+bright red color, it's $ff0000. Then, when comes the time to paint that pixel,
+we convert it to the target's encoding using one of the words from this unit.
+
+### Grayscale conversion
+
+According to vision scholars, the correct weight for converting RGB to
+grayscale is R*.299 G*.587 B*.114.
+
+We approximate this by saying that there's twice as much G as there is R and
+that there's twice as much R as there is B. We use this logic to get an 8-bit
+grayscale value from a 24-bit RGB. That is, we do G+R/2+B/4. The the value is
+larger than $ff, we say it's $ff. Then, to convert to GRAY4 or GRAY2, we simply
+divide that value.
+
+## API
+
+rgbwhite
+rgbblack
+rgbred
+rgbgreen
+rgbblue
+rgbyellow
+rgbcyan
+rgbmagenta ( -- rgb24 )
+  Yield the R/G/B components at "maximum intensity" (either 0 or $ff) of each
+  possible mix of R/G/B primary colors.
+
+The words below convert RGB24 into a specific encoding, all ( rgb24 -- n ):
+
+>rgb565
+>rgb555
+>gray8
+>gray4
+>gray2
+
+>color ( rgb24 id -- n )
+  Dynamically selects one of the encoders above depending on "id". Aborts if
+  PALETTE or invalid.

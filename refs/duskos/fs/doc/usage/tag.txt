@@ -1,0 +1,90 @@
+# Tagged addresses
+
+Most of the time, when we point to an address, we know what's there. So far,
+so good.
+
+Sometimes, we're not so sure. For example, "addrof foo" [lib/ival] will look up
+"foo" in the dictionary, then scry [doc/usage/word] it. For this to work, "foo"
+must be a value-like word. But the thing is, it's rather easy to make mistakes
+on that front. Maybe you've created "foo" with "variable foo" and you don't
+remember.
+
+If that happens, then catastrophic crash will ensue because "foo" is expected
+to be a value.
+
+Tagged addresses are for these cases, cases where there's a need for detecting
+the type of a pointer at run time.
+
+A tag is a 32-bit number that prefixes the data structure, followed by the
+actual structure. The number can be anything, but most of the time, it will be a
+n"" number so that tagged structures are easy to spot in binary dumps. Example:
+
+  create taggeddata n"CAFE" , $cafebabe ,
+
+We could say that "taggeddata" is a "CAFE"-tagged structure. We can access it
+like this:
+
+  taggeddata n"CAFE" tagged# @ .x \ prints "cafebabe"
+
+In the code above, "tagged#" asserted that the tagged data was indeed properly
+tagged and then yielded address+4. Further example:
+
+  create otherdata $deadbeef ,
+  otherdata n"CAFE" tagged# @ .x \ aborts with "wrong tag" error
+
+Note that we don't care about endianness in tags. We write tags in native
+endianness. Therefore, on a little endian system, a n"CAFE" tag will show as
+"EFAC" in a binary dump.
+
+Sometimes, putting a tag as a prefix isn't what we want. Sometimes, we have a
+dictionary entry and we want to know if it has a particular tag before we call
+the associated execution token. In that case, we can put the tag before the
+entry. When we do that, we can use "entrytag ( entry -- n )" and
+"findtagged ( tag name 'dict -- entry-or-0 )" from [mem/dict] to do what we
+want:
+
+  n"CAFE" tag, : foo ."foo!\n" ;
+  'e foo entrytag .x \ prints 42414645
+  : exec# ( e -- ? ) dup not ?abort"not found!" e>xt execute ;
+  n"CAFE" "foo" sysdict findtagged exec# \ prints "foo!"
+  n"DEAD" "foo" sysdict findtagged exec# \ prints "not found!"
+
+To be clear: tags are only needed where there's uncertainty. For example,
+[lib/type] has "addtype" which is a "const" prefixed by the "TYPE" tag. Does
+this mean that all types must be tagged? no, only places where we need to
+dynamically discriminate. Whenever we refer to "types", it's still a reference
+to a straight untagged type structure.
+
+## Naming convention
+
+An address is said to be tagged when it is directly preceded by a 32-bit tag,
+that is, when address-4 contains the tag.
+
+An entry is said to be tagged when it is preceded by a 32-bit tag, that is, an
+aligned address preceding the first character of the entry name [doc/data].
+
+An address is said to have a tagged value when an entry for this address has
+been added in the tag lookup [lib/tagl].
+
+## Tags used in Dusk
+
+Below is the list of tags used throughout Dusk. There are 3 types of tagging.
+
+entry: The tag is right before an entry and identifies its nature. You can get
+       it with "entrytag".
+
+lookup: The address, which might be an entry, but also often a xt, or anything
+        really, has a tag/value pair associated to it through [lib/tagl]. You
+        look for it through "findtag".
+
+data: A tag preceeds a piece of data. You validate it with "tagged#".
+
+CNST entry  A 32-bit "const"
+FILD entry  Field [lib/struct]
+IVAL entry  Indirect value [lib/ival]
+LISP lookup Lisp signature [comp/lisp/sig]
+LVAR entry  Local variable [doc/usage/to]
+SIGT lookup Type of the Signature category [comp/sig]
+SYMB entry  Symbol [comp/sym]
+TYPE entry  Type [lib/type]
+VALU entry  A 32-bit "value" [doc/usage/to]

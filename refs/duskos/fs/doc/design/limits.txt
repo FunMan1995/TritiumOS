@@ -1,0 +1,130 @@
+# Computing within limits
+
+Dusk OS' authors believe that an important factor in software complexification
+is the inability to accept limits. We are so used to some of modern conveniences
+that we became blind to the complexities that they inherently bring and we
+forget to consider the weight of that complexity in the tradeoff balance.
+
+Dusk OS prioritizes simplicity in an aggressive way at the cost of many modern
+conveniences.
+
+## Concurrency
+
+Concurrency has been with us for so long that, as software developers, we've
+internalized its primary constraint: global variables and states should be
+avoided.
+
+To some of us, avoiding these became a second nature, so much that we don't even
+see the complexity associated with these habits anymore.
+
+However, it's surprising how much simpler problems become once you can assume
+linear computation and thus have global variables and states. When there's less
+indirection, the mechanisms to manage them can be simpler, which itself weights
+less and needs less indirection to manage, and so on.
+
+Naively, we underestimate that weight being lifted off because we forget that
+compounding effects are exponential. With practice, I can tell you: it's much
+more than you might think.
+
+The gain in simplicity is too good to pass, which prompts the question: what do
+we need concurrency for?
+
+In a modern UNIX system, we sure use many processes at once and switch between
+them. But do we really need to? When your text editor is active, your shell
+doesn't need to run. The only reason we keep those two process around is because
+the memory associated with one would be lost if you killed it. But that's UNIX'
+own fault for managing memory in the way it does. Because Dusk's memory is
+globally shared, it doesn't need this crutch.
+
+Sometimes, we have background processes crunching numbers and we'd like to
+interact with the computer from some other task that is not CPU intensive. It
+doesn't happen as often as we think (or at least, not for real reasons; that is,
+reasons that aren't caused by the mis-designs of our OS or workflow), but it
+does happen. Those cases can easily be solved by cooperative multi-tasking,
+that is, a simple system-wide idle loop where pieces of code can be hooked to
+perform a background process. Sure, this might lead to annoying pauses in
+interactivity, but really, these situations don't happen as often as we think
+they do.
+
+Another usage of concurrency is to maximally use hardware with multiple CPUs
+or CPU cores. Because modern hardware is massively overpowered for Dusk's
+design, we choose to ignore those spurious CPUs. One could imagine using them
+in Dusk for some specific number crunching purposes, but they will have to
+build isolation mechanisms for those computations themselves. This use case is
+not important enough to sacrifice simplicity.
+
+Interaction with hardware requires concurrency because they often need to happen
+in real time, but interrupts are enough for this use case. No need for fancier
+concurrency mechanisms.
+
+## Memory
+
+Dusk's memory is globally shared and there is no virtual memory mechanism. When
+you access a memory address in the system, it's a direct address. As an OS that
+wants to be maximally useful to the bare metal hacker, we want to have as few
+layers of indirection as possible leading to that hardware. Also, simplicity.
+
+In programs, memory is generally statically allocated in sizes sufficient to
+handle reasonable workloads of that program. The statically allocated sizes
+are configurable system-wide when it makes sense and the effect of changing
+those sizes is documented as well as possible.
+
+While the "malloc" style of memory management is possible in Dusk, it's an
+exception because it makes the code that uses this memory more complex than it
+has to be. Semi-temporary data is rather managed through "scratchpads" or
+"arenas".
+
+Scratchpads are statically allocated "rolling" buffers. They're used like a
+dynamic allocation except you don't ever free them. Instead, you hold them for
+as short a time as possible, before the scratch pad has the time to overwrite
+your data.
+
+As with other static buffers, scratchpads have a size that is designed to handle
+reasonable workloads before overwriting data that's in use and when that makes
+sense, this size is configurable system-wide to allow an operator with irregular
+workloads (or exceptional memory constraints) to adjust it.
+
+This means that applications will need to be accompanied by resource usage
+analysis. It's a bit less convenient than a simple malloc(), but in a macro
+perspective, this helps simplicity a lot. It's surprising how the need to call
+free() on dynamically allocated memory shapes code in ways that make it a
+lot more complex. When you remove that thorn, things become much simpler.
+
+Arenas are similar to "malloc", but they're freed in block. The idea is that
+temporary memory is often linked to a particular piece of code and that once
+that piece of code is done doing its thing, you need *none* of those little
+pieces of memory. Rather than complicating your life, tracking each little
+piece of memory individually, you free the block in one fell swoop, without
+caring about holding a reference to all temporary pieces of memory.
+
+This only work when the proper conditions are right, but in practice, those
+conditions arise very often. This also generally leads to increased memory usage
+compared to surgical precision in memory management, but modern machines have
+ample memory and Dusk OS already consumes much, much less memory than systems
+using malloc, so this issue turns out not to be one.
+
+See [doc/mem/alloc] for details about scratchpads and arenas.
+
+There's also the memory limit tied to Dusk OS being a 32-bit OS: 4GB ought to be
+enough for anybody, which is why the OS doesn't support any 64-bit type. Some
+specialized applications might need 64-bit numbers and addressing, but they'll
+have to make their own abstractions.
+
+## Speed
+
+Dusk OS isn't designed to be fast, but it doesn't squander CPU cycles either.
+The idea is that simplicity trumps speed, but speed trumps sloppiness. See
+[doc/design/speed].
+
+## Text interface
+
+While Dusk OS has the ability to display graphics, interaction with the system
+is text-based. We don't fancy ourselves with complex graphical interaction
+tools.
+
+## Assume grid display
+
+UNIX consoles, being based around a serial interface, are more complex than they
+should be (curses etc.). Dusk OS is able to be accessed serially, but with
+greatly reduced powers. The "full featured" console as well as most interesting
+applications will assume a grid display (see [doc/io/grid]).

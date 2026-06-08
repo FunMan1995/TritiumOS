@@ -1,0 +1,70 @@
+# Macintosh 68k deployment
+
+The unit at [xcomp/m68k/mac/deploy.fs] provides tools to produce a floppy disk
+that will boot on a m68k Macintosh. So far, this deployment has been tested on:
+
+* Powerbook 520
+
+Theoretically, it should work on any m68k Mac, but adjustments might be needed.
+
+## Usage
+
+First, format your floppy using "mkfloppyfat".
+
+Then, select the target cpu using selectM680XX from [xcomp/m68k/cpusel]. If your
+target is the M68040, the default, you don't have anything to do.
+
+Then, install the bootloader with "install"
+
+Then, copy Dusk files using "copyall1440" from [xcomp/deploy].
+
+Then, write down your init.fs file. The one from the example mac68k deployment
+can be an inspiration.
+
+Your floppy is now ready to boot.
+
+## Platform oddities
+
+### A5 and SYSVARS
+
+As [hw/m68k] states, A5 holds the SYSVARS pointer. On the Mac, SYSVARS actually
+lives at A5+$100. This is because QuickDraw has a weird relation with register
+A5. I writes stuff there and we need a cleareance zone to avoid Quickdraw
+corrupting our SYSVARS.
+
+### Payload location
+
+Unlike most other platforms, memory is tight on most Mac models. We might be
+running on a Macintosh 128K, so every byte counts.
+
+The simplest way to boot a kernel is to have its payload follow it directly in
+memory, but that also means that we waste that memory. It's awkward to reclaim
+it after boot is over because it's a small piece of memory.
+
+In here, to avoid wasting boot payload memory, we have it load higher in memory,
+allowing it to later be overwritten as HERE memory. This requires careful
+threading and a good knowledge of how big everything is.
+
+We need to know both how big the kernel is, in sectors and how much HERE memory
+its payload needs to run. With these information, we can know at what sector on
+the disk the payload begins and at what offset in memory we need to put it.
+
+These tweaking constants live in [xcomp/m68k/mac/boot.fs].
+
+## API
+
+mkfloppyfat ( blk -- )
+  Create a new FAT partition on "blk" with the correct parameters for a mac68k
+  floppy installation.
+
+install ( blk -- )
+  With blk being a [io/blk] struct, make it into a an image that, as a floppy,
+  will boot to Dusk OS on a m68k mac.
+
+installdbg ( blk -- )
+  Install the [xcomp/m68k/mac/bootdbg] bootloader on "blk".
+
+## See also
+
+* [hw/m68k]
+* [hw/m68k/mac]

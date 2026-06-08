@@ -1,0 +1,18 @@
+Fonts come in different encodings. Actually, there's only one. But later, there
+will be several.
+
+# uxn fonts
+
+Those fonts are of the UF1 [gr/font/uf1] and UF2 [gr/font/uf2] formats and come
+from https://sr.ht/~rabbits/uxn/ or https://sr.ht/~rabbits/turye and are covered
+under "licenses/uxn.txt" (MIT).
+
+  atari8.uf1
+  sans12.uf2
+  term12.uf2
+  chicag12.uf2
+
+# Oberon fonts
+
+Fonts beginning with "ob" are used in [oberon] and licensed under
+"licenses/oberon.txt"

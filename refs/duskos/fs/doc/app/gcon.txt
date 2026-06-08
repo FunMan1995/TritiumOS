@@ -1,0 +1,124 @@
+# Grid console
+
+This unit implements a console based on the Grid [io/grid] which is fancier than
+the regular console you get by using [app/prompt].
+
+This console's modus operandi is similar to Plan 9's console, where you're in
+front of a text document that can also run commands.
+
+Implementation-wise, the console is a thin front for [app/ed] where all
+commands being ran spit their output to a special editor buffer, the output
+buffer.
+
+In a grid console, you press CTRL+Return to run either a line or, if there's a
+selection, that selection. The active buffer will switch to the output buffer
+and you'll see the output of what you've just ran.
+
+That output is marked for selection without turning visual mode on. Therefore,
+if you want to copy it to the clipboard, or delete it, or whatever, you can do
+so through SHIFT+V from [app/ed]. You can use CTRL+[ to quickly return to your
+previous buffer.
+
+Because this console is, at its core, a regular text editor, nothing stops you
+from selecting other buffers, opening other files from it. However, if you do,
+you won't be able to go back to your console because that special buffer lives
+outside that list.
+
+To that end, this console supplies an extra binding, CTRL+A, which selects the
+console buffer.
+
+Typical grid console setups will typically load a "welcome" file on boot, often
+named init.txt, giving a special meaning to the first editor buffer. Because of
+that, there's the CTRL+Z binding that selects Buffer Zero (your init.txt file).
+
+## The console, RTYPE and grid applications
+
+This console works as it does by overwriting RTYPE [doc/usage/io] and having it
+write in the console buffer, a [text/ed] buffer.
+
+This is all well and good... until we begin running commands that play with the
+grid. As long as only grid commands are used ("grid puts", "grid write", etc.),
+things actually work fine, but when you begin mixing regular emit words (rtype,
+stype, . , .x, etc..) with grid positioning, something that is well within
+accepted grid semantics, then the naive approach doesn't work because contents
+are emitted in the gconbuf, and thus not at their intended position on the grid.
+
+So we're in a bit of a conundrum here.
+
+To solve this, we enhance our in-command RTYPE handler with grid positioning
+detection. As soon as we see that the grid has moved since the beginning of the
+running command, we abort the regular "con mode" and enter into "direct grid
+mode", where RTYPE isn't sent to the gconbuf anymore, but directly to the grid.
+
+Good, problem solved! but isn't the grid's output going to be overwritten when
+the console refreshes itself? Yes. To avoid this, what the console does is that,
+right after the command, right before it refreshes itself, is to add all
+non-empty lines of the grid to the console buffer.
+
+## This console is a "single dispatcher"
+
+With regards to [lib/coop], this application is more than a regular app. It's
+what we could call a "single dispatcher". That is, it can run at most a single
+sub-application.
+
+Therefore, if you launch [app/ed] or [app/bed] from a console command, this
+new application temporarily takes over the runloop until it quits.
+
+## Using as a sub-application
+
+The grid console can be used "casually", without messing with your system, by
+simply calling "con". It will run the console as it would run [app/ed], but
+with extra key bindings.
+
+When it runs commands, it temporarily overrides RTYPE so that the output is sent
+to the console, but set it back to its old value afterwards. No harm done.
+
+## Installing as a system prompt
+
+You might want to use this console as a [app/prompt] replacement, the "root"
+console of the system. In this case, you need to:
+
+1. Set "console!" so that it spits to your console
+2. have the console be ran on abort
+
+Because this is a [lib/coop] app, you don't install the gcon directly. What you
+do is to call "coop$" so that it's the cooperative runloop that is installed.
+Then, aborting will do the right thing, that is, returning to the console if
+it's the root application.
+
+A typical setup will look like:
+
+needs lib/coop app/gcon
+coop$ initgcon
+edload<< init.txt
+...
+
+followed by the rest of initialization. When the final "quit" is called, then
+the coop runloop will bring the console up.
+
+## Additional keybindings
+
+CTRL+Return   Set RTYPE to the console buffer, then execute line or selection
+CTRL+A        Select the console output buffer
+CTRL+R        Similar to CTRL+E [app/ed] but runs utag>.fs [fs/utag] and then
+              runs the resulting path, if it exists. Otherwise, lookup for that
+              string in sysdict. If found, execute it.
+CTRL+S        Runs "listdir" [fs/sh] on the word under the cursor and yield
+              the result in the output buffer. 'S' is for "sub-elements".
+
+## API
+
+### Values
+
+gconbuf      The [text/ed] buffer holding the console
+
+### Words
+
+con ( -- )
+  Launch a grid console.
+
+initcon ( -- )
+  Set the gcon as the root lib/coop app and set RTYPE as "gconbuf write#".
+
+  This is used during system initialization when you want a gcon to be your
+  root console.

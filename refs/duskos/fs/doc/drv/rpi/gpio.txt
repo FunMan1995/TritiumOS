@@ -1,0 +1,65 @@
+# Raspberri Pi GPIOs
+
+When you look at the RPi model 1 with the ethernet ports facing down, you see
+the GPIO pin row with its pin 1 being on the upper left. The pin numbers of
+those two rows don't correspond to BCM2835 GPIO pin numbers! The pinout you get
+is this:
+
+3V3  || 5V
+GP2  || 5V
+GP3  || GND
+GP4  || GP14
+GND  || GP15
+GP17 || GP18
+GP27 || GND
+GP22 || GP23
+3V3  || GP24
+GP10 || GND
+GP9  || GP25
+GP11 || GP8
+GND  || GP7
+GP0  || GP1
+GP5  || GND
+GP6  || GP12
+GP13 || GND
+GP19 || GP16
+GP26 || GP20
+GND  || GP21
+
+Each GPIO pin can act as input or output with little options and other whatnots,
+but some pin also carry special functions related to BCM2835 peripherals. That
+table is in the BCM2835 docs.
+
+The unit at [drv/rpi/gpio.fs] wrap registers controlling those pins around a
+"GPIO" struct with a "gpio" bind{} to it. The fields of the struct correspond to
+names in the datasheet:
+
+fsel0/1/2/3/4/5 set0/1 clr0/1 lev0/1 eds0/1 ren0/1 fen0/1 hen0/1 len0/1
+aren0/1 afen0/1 pud pudclk0/1
+
+For most of the configuration, direct register access is the most
+straightforward thing to do, so the API provided by this unit doesn't go much
+beyond the bind{}.
+
+There is one exception however: the logic for applying a pull-up or pull-down
+to a pin, which requires specific steps to be executed in a specific order.
+
+## API
+
+gpiopull0 ( type mask -- )
+  Set pull up/down resistor for pins in "mask" in GPIO bank 0 (pins 0-31).
+  "type" should be one of the constants below:
+
+  GPIOPullNone GPIOPullUp GPIOPullDown
+
+gpiopull1 ( type mask -- )
+  Same as gpiopull0, but for bank 1 (pins 32-53).
+
+gpiopulloff ( n -- )
+  Disable pull-up/pull-down on GPIO pin "n".
+
+gpiopullup ( n -- )
+  Enable pull-up on GPIO pin "n".
+
+gpiopulldown ( n -- )
+  Enable pull-down on GPIO pin "n".

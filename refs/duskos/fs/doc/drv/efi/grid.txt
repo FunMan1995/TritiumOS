@@ -1,0 +1,49 @@
+# EFI Grid
+
+The unit at [drv/efi/grid.fs] implements [io/grid] through EFI's ConOut. You
+initialize it through "efigrid$" and then plug its "refreshgrid" and
+"refreshcaret" words in the right places.
+
+Colors are supported, but background is only 3-bit, bit $80 can't be used and
+will be AND-ed away before setting attributes.
+
+## Example initialization
+
+  needs io/kbd io/grid lib/coop drv/efi/grid
+  efigrid$
+  :> grid write# ; console!
+  ' refreshcaret ' promptforkey realias
+  createapplication RefreshGrid
+  ' refreshgrid IDLE RefreshGrid sethandler
+  RefreshGrid newcontext launchcontext
+
+## Limitations
+
+We can't write to the lower right corner of the grid because doing so triggers
+a scrolling operation in the (some?) EFI console that messes out our grid
+buffer.
+
+Under EFI, the lower right corner is essentially a "dead pixel".
+
+## API
+
+.conmodes ( -- )
+  Display all available console modes along with their size
+
+SetMode ( modenum -- )
+  Set mode of the EFI console.
+
+conmode! ( modenum -- )
+  Set current mode to "modenum" and reinitializes grid. This reallocates a grid
+  buffer, so ressource wise, it's better to set the wanted mode before
+  initializing the grid the first time.
+
+efigrid$ ( -- )
+  Initializes the grid to a EFI-based one using currently active mode.
+
+refreshgrid ( -- )
+  Loop over "grid" [io/grid]'s "getnextchange" and propagate those changes to
+  the console.
+
+refreshcaret ( -- )
+  Move the EFI text console cursor to current grid pos.

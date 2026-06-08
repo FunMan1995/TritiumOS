@@ -1,0 +1,28 @@
+# m68k architecture
+
+## Register map
+
+A7 = RSP
+A6 = PSP
+A5 = pointer to SYSVARS
+A4:A2 = unassigned
+A1:A0 = Temporary Address registers used by the HAL all the time
+
+D7 = W
+D6 = A
+D5 = S
+D4 = R0 [hal/vreg]
+D3 = R1 [hal/vreg]
+D2 = R2 [hal/vreg]
+D1 = R3 [hal/vreg]
+D0 = Temporary Data register used by the HAL all the time
+
+Choosing between An or Dn for the W/A/S registers is a tough choice because we
+often need to dereference W/A/S. But at the same time, all arithmetics require
+a Dn as a destination...
+
+Because "A" is called the "Address Register", it would kind of make sense to
+assign it to a An register, but it would make the HAL more complex than it
+needs.
+
+Hence, this register map.

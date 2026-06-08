@@ -1,0 +1,211 @@
+# Expression code generation
+
+The code at [comp/c/expr.fs] could be called "where the real deal is". It takes
+an AST [comp/c/ast], which describes an expression, and recursively generates
+code for it.
+
+This unit is at the top of the pyramid and heavily rests on these underlying
+concepts:
+
+* [hal]
+* [lib/type]
+* [lib/struct]
+* [comp/sig]
+* [comp/sym]
+* [comp/w]
+
+An understanding on this unit requires an understanding of those above.
+
+The main word of this unit, "expr, ( ast -- type halop )" takes an AST,
+recursively generates code for it, then yields a type [lib/type] and HAL operand
+[hal] pair. It's turtles all the way down, "expr," recursively calls itself
+until it meets a simple node such as "lit" or "sym".
+
+## Symbols
+
+Symbols, being a "bottom" node, are pretty straightforward. They transform a
+name into a type/halop pair. This is done in "getsym".
+
+First, we look into the local namespace (arguments and local variables) through
+[comp/sym].
+
+If there's no match, we look for a sysdict entry, then check for an entry tag.
+If found, and if it's a CNST or VALU [doc/usage/tag], we have a regular uint
+immediate or memory reference.
+
+Otherwise, we check if the execution token associated with the entry has a SIGT
+[comp/sig] associated to it [lib/tagl]. If it does, then our entry is a callable
+function. Otherwise, symbol not found.
+
+## 2expr,
+
+AST nodes that only contain a single other AST node, such as ++ or !, are pretty
+straightforward, we won't cover them.
+
+However, most of the "meat", complexity-wise, is around codegen for binary
+operators such as + << -= etc.
+
+Those binary operators are arbitrarily complex and require us to possibly store
+intermediate values somewhere. We choose PS, which is slower in some cases than
+fancy register management, but has the advantage of being much simpler, and
+Forth-ish.
+
+The logic for doing so rests on [comp/w], which is all about that. [comp/w] is
+language independent. We could say that 2expr, is the extension of [comp/w],
+with a C flavor.
+
+In our general logic, we always resolve the righthand of a binop before its
+lefthand. We could do the opposite, but we have to choose a consistent order on
+which we can rely to simplify the code. Because of the way much of the C code
+looks like (for example "a = b + c"), the righthand often is "heavier" and
+codegen is more efficient if we being with it, so we do.
+
+This is what 2expr, is about, this consistency. Moreover, it does little things
+such as ensuring that, if needed, the righthand value being pushed to PS is a
+"straight" value so that it's simpler to deal with it when we pop it back. It
+also handles the special case where we store a value to PS when the lefthand
+value also lives of PS: we have to add 4 to its offset.
+
+This brings us to another general principle in expression codegen: we general
+HAL operand as late as possible in the process. Because of PS pushing, these
+operands don't stay valid for a long time. This is the reason for code ordering
+in expression routines that might look counter intuitive sometimes.
+
+## Type equality and merging
+
+Determining whether two types are equal depends on the point of view, which is
+why type equality is not universal (and thus not part of [lib/type]).
+
+In comp/c, "type= ( other type -- f )" is implemented in expr.fs, along with
+many supporting helper words.
+
+Type checking happens a lot during expression resolution and keeping types on
+PS makes PS juggling a bit intense, and code a bit messier than it should.
+Therefore, the 2expr, word puts them in the "lefttype" and "rightyype" global
+values.
+
+Because of the recursive nature of expression resolution, one must be aware of
+the limitations of these global variables: as soon as you call "expr,", they're
+destroyed.
+
+The logic for merging two types together goes as follow:
+
+1. Is one of the types a flexible type? If yes, result is the "other" one.
+2. Are the two types considered equal? If no, abort with error.
+3. Result is the left type.
+
+## Pointer arithmetics
+
+Additions and subtractions can be on a mix of pointers and integers, and
+subtraction can also be on two pointers. This is called pointer arithmetics.
+
+When mixing pointers and integers, we need to multiply the integer part by the
+size of the type that pointer points to. When subtracting two pointers, we need
+to divide the result by the size of the type the pointers point to.
+
+This business is inherently messy and we get by however we can. This is what the
+"ari*" words are about, and why we have the "do+," "do+-=," and "do-," special
+handlers. It's a significant part of the complexity of this unit.
+
+## boolexpr,
+
+Naively resolving boolean expression ( == != <= etc.) by yielding a 0 or 1 to
+the W register works, but its very inefficient. Example:
+
+  if (a == b) { ... }
+
+If you naively generate "a == b", which *needs* to be able to yield a 0 or 1 in
+case it's used in "return a == b", then you end up with a HAL equivalent that
+might look like:
+
+  RSP) @,
+  RSP) 4 +) =) bool, \ generated by the "=="
+  0 i) <>) if, \ generated by the "if"
+
+It's correct, but it could have been:
+
+  RSP) @,
+  RSP) 4 +) =) if,
+
+And this is why we have "boolexpr, ( ast -- halop cond 0 OR f 1 )". This word
+can be called instead of "expr," in cases where we branch on the result of the
+expression, that is, under "if", "while" and "for".
+
+All in all, what boolexpr, does is that it omits the very last part of the
+expression resolving and yields a result that can easily be plugged into "bool,"
+or "if,".
+
+To see it, you can look at "boolop", the "regular" handler for boolean
+operators, and see that it's basically only "boolexpr, bool,", with special
+handling for the case where we have a constant expression.
+
+## Function calls
+
+Calling a function is:
+
+1. Resolve the function to call.
+2. Is the result living in W? Save it to the A register. Note that this rests on
+   the fact that expression resolution codegen never uses the A register except
+   in this case.
+3. Keep the HAL operand for the function call around. This require "freezing"
+   its banked number so that it's not overwritten by the coming expression
+   resolution.
+4. Using the yielded type, which is expected to be a function signature
+   [comp/sig], we're about to push a series of arguments. We'll need to keep
+   that funcsig handy.
+5. We'll need to push our arguments in reverse order. The most straightforward
+   way to do so is to iterate the AST node and push argument AST nodes to PS.
+6. Ensure that the argument count from the funcsig and from the
+   AST node are compatible (including the possibility of varargs).
+7. Begin resolving arguments from AST nodes on PS one at a time, beginning with
+   varargs, which aren't type checked. Whenever we call "?>W", this ensures that
+   we push whatever was previously in W to PS, giving us a predictable PS state.
+8. Resolve non-varargs argument nodes. For this, we need to be in sync with the
+   argument type list from the funcsig. This allows us to type check every
+   argument.
+9. Call "brr," on the HAL operand from step 3.
+10. Restore PSdisp because our call has resulted in the consumption of the
+    arguments we've just pushed.
+11. If the function had a void return, we need to do like we do in every
+    prelude, that is, generate a "dup," to give us wiggle room for W.
+12. If the function has a non-void result, but had no argument, we need to
+    generate a nip, because our call resulted in a push to PS without consuming
+    anything, balance needs to be restored.
+
+## Typecasts
+
+Typecasts are straightforward: resolve a single expression, then forcefully
+replace the yielded type with whatever was specified as the type to cast.
+
+There are caveats. Because all arithmetics generated by the HAL are 32-bit, when
+we shrink a type (for example going from int to char), we also need to mask the
+value, otherwise our typecast will be ineffective.
+
+Also, when enlarging a type to a signed type (regardless of whether the previous
+type was signed), we need to sign-extend th value.
+
+Regardless of whether we mask or sign-extend, when size has changed, we also
+need to forcefully bring the value to W. If we keep it as a memory reference,
+we might over-read our final value or, under big endian, read an entirely wrong
+value.
+
+So that's most of the fiddling in the typecast handler.
+
+## API
+
+expr, ( ast -- type halop )
+  Recursively resolve the AST node [comp/c/ast], generate the appropriate code
+  corresponding to it using the HAL [doc/hal], then yields the resulting type
+  [lib/type] as well as the HAL operand describing where the resulting value
+  lives after the generated code has run.
+
+boolexpr, ( ast -- halop cond 0 OR f 1 )
+  Assume "ast" is one of the boolean expressions, generate code for it like
+  "expr," would, but omit the final "bool," HAL call which would yield a 0 or 1
+  in the W register. Instead, yield the arguments you would pass to "bool,".
+  Those arguments can be passed to "if," instead.
+
+  When expression resolution yields a constant, yield f=boolvalue instead.
+  Example from "boolop":
+
+  boolexpr, if i) else bool, W) &) then

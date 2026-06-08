@@ -1,0 +1,38 @@
+# Math routines
+
+abs ( n -- n )
+  If n is negative, yield -n.
+
+isqrt ( n -- n )
+  Return the integer square root of n. Example: 27 isqrt --> 5
+
+log2mod ( n -- mod n )
+  Return the logarithm of n to the base 2 as well as the modulo of that
+  operation. Example: $103 log2 yields n=8 mod=3
+
+log2 ( n -- n )
+  Same as log2mod, but without the modulo.
+
+log2# ( n -- n )
+  Same as log2, but yields an error if modulo is not zero.
+
+pow2 ( n -- n )
+  Return 2 to the power of n.
+
+roundup ( n divisor -- n )
+  Round "n" up to the nearest "divisor" step. Examples:
+  7 4 roundup --> 8
+  15 5 roundup --> 15
+
+rounddown ( n divisor -- n )
+  Round "n" down to the nearest "divisor" step. Examples:
+  7 4 rounddown --> 4
+  15 5 rounddown --> 15
+
+## C API
+
+int abs(int n);
+uint isqrt(uint n);
+uint log2(uint n);
+uint roundup(uint div, uint n);
+uint rounddown(uint div, uint n);

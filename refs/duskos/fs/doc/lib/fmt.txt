@@ -1,0 +1,50 @@
+# String formatting
+
+The unit at /lib/fmt.fs contains a few string formatting words.
+
+One of the important formatting words of this unit is "printf". It takes a
+format string, for example "hello %d" which contains placeholder elements
+identified by the character '%' followed by a letter.
+
+That formatting string must be preceded by a number of arguments equal to the
+number of placeholders in the string, in reverse order. Example:
+
+    3 2 1 "hello %d %d %d" printf --> prints "hello 1 2 3"
+
+The letter following the '%' chars determines how the argument is formatted and
+these letters are supported (others produce an error):
+
+    d - decimal
+    x - 4b hexadecimal
+    w - 2b hexadecimal
+    b - 1b hexadecimal
+    s - string
+    z - null-terminated string
+    c - char
+
+There's also the .f" shortcut, which behaves like ." with formatting
+capabilities:
+
+    : foo .f"foo %d bar" ;
+    42 foo --> prints "foo 42 bar"
+
+## API
+
+printf ( ... fmt -- )
+void printf(uchar* fmt, ...);
+  Interpolate "fmt" with the following elements of PS using the rules described
+  above.
+
+streamprintf ( ... fmt stream -- )
+  Same as "printf", but with "stream" [doc/io/stream] as a destination.
+
+sprintf ( ... fmt -- str )
+  Interpolate "fmt" with the following elements into a static buffer and yield
+  the result as a string. Because this buffer is static, the string will be
+  overwritten on the next "sprintf" call.
+
+.f" ( "fmt" -- ) *I*
+  Shortcut for '" ..." printf'. Can be compiled.
+
+.x? ( n -- )
+  Print "n" in hexadecimal with a width that depends on the value.

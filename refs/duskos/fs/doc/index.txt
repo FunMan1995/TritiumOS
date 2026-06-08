@@ -1,0 +1,71 @@
+# Dusk OS documentation
+
+## Where to start
+
+If you don't have Dusk running yet, refer to the instructions in the README file
+at the root of the Dusk package.
+
+Once you have it running, begin with [doc/operator], then [doc/usage].
+
+Learning about operating Dusk is involving and if you want to have a quick tour
+of its abilities before you commit to learning it, you can, instead of
+[doc/usage], begin with [doc/tour].
+
+## Contents of this documentation
+
+Documentation about specific units have the same path in the documentation as
+they have in the system and are not listed below. For example, for documentation
+about [io/stream], you'll want to open [doc/io/stream.txt].
+
+Some documentation pages are tied to a topic rather than a unit. The list below
+is in rough suggested reading order.
+
+tour      A tour of Dusk's capabilities
+operator  Hello Operator!
+usage     General usage reference
+dict      Dictionary of system word
+hal       Harmonized Assembly Layer
+terms     Terminology
+data      Fundamental data structures
+dirs      Directory structure
+deploy    Deploy Dusk to another machine
+kernel    Anatomy of a kernel
+boot      Boot Sequence
+code      Understanding Dusk's code
+tips      Tips and tricks
+qa        Questions and answers
+design    Description and justification of design decisions
+howto     Guided explanations of particular topics
+hw        Hardware notes and CPU port implementation details. For example,
+          [hw/i386] lists the specificities of the i386 port.
+          It's not the same thing as driver documentation, which lives at
+          doc/drv. The notes in doc/hw are more about "what is needed to manage
+          to run the kernel on that platform".
+
+## Unit documentation format
+
+Unit documentation all roughly follow the same format, that is a first half that
+describes its theory of operation and a second half describing its API. Very
+simple units might omit the second part. The API part is divided by word types
+such as "Structs", "Constants", "Values", "Words".
+
+The "Words" part will describe each word with its full signature, but the other
+parts will omit the signatures because it's always the same and/or modal.
+
+* Structs: created with "struct" from [lib/struct]. The clearest thing to do is
+  to copy thoe whole struct definition in the docs, then underneath add a
+  detailed description for each field/method.
+* Values: created with "value".
+* Constants: created with "const" from [doc/dict].
+
+Not all words of a unit appear in the "API" part of the unit's documentation.
+When they don't, it means that their semantics are subject to change and
+shouldn't be relied upon if you want your code to stay compatible with further
+Dusk releases. If collapse happened, you can of course not care about this
+notice and take comfort in the knowledge that nobody's ever going to break an
+API you use ever again.
+
+Some units have a "Private API" section with the goal of documenting words that
+are not meant to be used outside the unit. If you consume the unit externally,
+you can ignore this documentation, but if you work on the unit itself, this part
+will help you understand the inner working of the unit.

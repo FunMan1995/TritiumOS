@@ -1,0 +1,124 @@
+# Duskberon Display module
+
+The Display module exposes basic raster operations on the screen.
+
+The display is a [gr/buf] using the PAL4 color encoding [gr/color]. We use
+[gr/damage] track pixel writes to it and then routinely copy pixels from this
+buffer to the main screen using [gr/blt].
+
+## Patterns
+
+What we call a pattern is a variable size structure starting with 2 bytes, width
+and height. What follows is a bitmap where each bit represents a pixel in a
+mask, from left to right, little endian. For example, the byte $01 represents a
+chunk of up to 8 pixels where the leftmost pixel is set, the rest is unset.
+
+The bytes in the pattern are organized as a series of rows, from bottom to top.
+The number of bytes each row takes is width divided by 8. For example, a 15 by
+15 pattern will use 2 bytes per row for a total of 30 bytes.
+
+That pixel mask can then be used in conjunction with color values to Replace,
+Paint or Invert.
+
+## Replace, Paint, Invert
+
+You hold a pattern, a screen, a position and a color. What are you gonna do with
+that? Most likely, Replace, Paint or Invert.
+
+That pattern is 1-bit per pixel, your screen is 4-bit per pixel. The color
+allows us to multiply each bit of the pattern to get a 4-bit pattern. Unset bits
+yields the color 0.
+
+If you Replace, you overwrite the pixels as they are, including the background
+pixels. If you Paint, you only write foreground pixels. Unset bits in the
+pattern are left as they previously were in the destination. Invert runs a XOR
+operation on all affected pixels.
+
+In Oberon, Invert is used a lot because it's a covenient way to undo a previous
+drawing. Let's say that you want to draw a cursor over some contents. If you
+Paint, this means that you have to remember was was underneath so that you can
+restore it when you move the cursor. If you Invert, there is no need to remember
+that because all you need to do to erase your cursor is to Invert again.
+
+## Oberon compatibility
+
+This module is a port of the original Oberon project, with modifications.
+
+### Frame lives in Viewers
+
+This structure is not used at all in the Display procedures, why was this ever
+defined here? I don't know, but it has been moved to Viewers [oberon/viewers],
+which makes a whole lot more sense.
+
+### Mode removal
+
+It might have been a good idea in the beginning, but this "mode" parameter,
+which is supposed to generalize raster operations, doesn't generalize at all,
+it's just useless fluff. Most raster procedures support only a subset of the
+modes (mostly, a subset of one) and the paint/replace differenciation breaks
+down in most cases. So:
+
+* CopyPattern is split into InvertPattern and PaintPattern.
+* ReplConst is split into InvertBlock and FillBlock.
+* Dot loses mode. The "invert" mode wasn't used anywhere in Oberon.
+* CopyBlock and ReplPattern lose their unused mode argument.
+
+### Paint is more useful
+
+The Paint operation of the original Oberon is simple, yes, but quite limited.
+It performs a simple OR of the colorized pattern onto the screen. That means
+that to conceptually paint your foreground color "over" what was previously
+there, you need that forground color to be 15 ($0f) or the destination surface
+to be empty (0), or else, you'll get some weird foreground blends there.
+
+In Duskberon, we say that this kind of paint, with the kind of palette that
+Oberon has, is useless for colors other than 15. Instead, what we do is to do a
+proper mask paint, that is, we AND out the pattern mask from the screen pixels
+and then apply the OR of the color in it. This means that Paint can be used with
+any foreground color, with any destination surface, and will to the naively
+expected thing.
+
+## Procedures
+
+PaintPattern (col, patadr, x, y: INTEGER);
+
+  Overlay, in paint mode, pattern patadr over a rectangle of the same size at
+  position x and y on the screen, using col as the paint color.
+
+InvertPattern (col, patadr, x, y: INTEGER);
+
+  Overlay, in invert mode, pattern patadr over a rectangle of the same size at
+  position x and y on the screen, using col as the paint color.
+
+Dot(col, x, y: INTEGER);
+
+  Set pixel at x/y to color col.
+
+FillBlock(col, x, y, w, h, mode: INTEGER);
+
+  Fill rectangle x/y/w/h to color col.
+
+InvertBlock(col, x, y, w, h, mode: INTEGER);
+
+  Invert rectangle x/y/w/h with color col.
+
+CopyBlock(sx, sy, w, h, dx, dy: INTEGER);
+
+  Copy source block sx/sy/w/h on the screen to destination dx/dy, again on the
+  screen.
+
+  TODO: How does it behave on overlap?
+
+ReplPattern(col, patadr, x, y, w, h: INTEGER);
+
+  TODO: hum, I'm not sure  how it behaves exactly.
+
+GetPalette(col: INTEGER; VAR val: INTEGER): BOOLEAN;
+
+  Get the RGB24 value, in val, associated with color index col.
+
+  Yields FALSE is index is out of range or palette not set, otherwise TRUE.
+
+SetPalette(col, val: INTEGER);
+
+  Set RGB24 value associated with color index col to val. x/y to color col.

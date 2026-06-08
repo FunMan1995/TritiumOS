@@ -1,0 +1,25 @@
+## Duskberon's Input module
+
+Duskberon's Input module maps rather straight to [io/kbd] and [io/mouse]. We
+diverge from original with Input.Available(), in which case we yield a NKC
+rather than a PS/2 key code. No code in the Oberon system uses Input.Available()
+for its code anyways, only for its nonzero state.
+
+## Procedures
+
+Read (VAR ch: CHAR);
+  If a keystroke has been made since the last Read() call, yield the character
+  corresponding to the key stroke. Otherwise, block until such a keystroke
+  happens and yield it.
+
+Available (): BOOLEAN;
+  Yields whether a Read() call will yield something immediately.
+
+Mouse (VAR keys: SET; VAR x, y: INTEGER);
+  Poll the mouse driver for a current position/button status.
+
+  For keys, b0=right b1=middle b2=left
+
+SetMouseLimits (w, h: INTEGER);
+  Set maximum coordinates over for mouse movement. Mouse() will never yield a
+  x/y value that equals or exceeds it.

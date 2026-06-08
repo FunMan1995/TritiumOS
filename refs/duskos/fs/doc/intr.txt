@@ -1,0 +1,116 @@
+# Interrupts
+
+A peculiar design decision has been taken for Dusk OS: it foregoes concurrency
+in exchange for simplicity and this, even though it runs on hardware perfectly
+capable of preemptive multitasking.
+
+Because every modern system we have out there has preemptive multitasking, we
+tend to forget the weight it places on the code. Dusk OS shows just how simpler
+things can be.
+
+Whatever is running on the machine, it's the only thing to run, at all! At any
+given moment, the current Program Counter has full control over the destiny of
+the machine and can trivially change its course.
+
+But, huh, well, there's interrupts...
+
+Hardware event very often need to be handled in a timely manner. Timely as is
+"within X microseconds". This can't handled in a cooperative manner, otherwise
+the code you write for Dusk would have to be riddled with polling checks for
+hardware.
+
+Interrupts are a very good way to ensure that hardware events are handled
+correctly while keeping the "regular code" free of polling burdens. However,
+interrupts happen at upredictable times, concurrently to the regular code.
+
+Does this mean that all those simplicity gains we got from rejecting preemptive
+multitasking vanish overnight? With the help of some discipline, no. If
+interrupt handlers follow those rules, regular code shouldn't have to care about
+whether interrupts can come and mess their process:
+
+* As with any interrupts, all registers we use must be saved.
+* RSP can be used, but not PSP. The Parameter Stack is off limit to interrupts.
+* Interrupts should only interact with memory they explicitly "own". For
+example, a buffer that exists in memory only for the interrupt handler, with
+convenience word wrapping that memory safely for the "regular code" to access.
+
+## Writing interrupt handlers
+
+We frequently see interrupt vectors being shared by a bunch of events. The
+handler must then check on a bunch of registers to see who triggered the event
+so we can then execute the appropriate code.
+
+Because that logic is often tied to a specific driver, the best place to put
+that interrupt handling logic is in the driver unit. However, this means that
+handling code from different drivers have to coexist in the same handler.
+
+In a traditional context, there isn't much of a choice: you bite the bullet and
+you add a bunch of function calls, probably coupled with some convention among
+them to know when to stop the "check chain". Or maybe that you set up a whole
+array of indirect calls to perform on each sub-IRQ-handler.
+
+Blunt solutions for blunt OSes.
+
+Sure, the overhead of such system, in the grand scheme of things, isn't
+horrible and will work most of the time, but it does prevent the use of the
+hardware to its fullest. A hardware that comes close to its speed limit and
+could otherwise, if barely, answer to a particular IRQ in a timely manner, won't
+be able to with that blunt IRQ handling scheme. "You need beefier hardware for
+that task". No way!
+
+Dusk OS has all the tools it needs to generate code on the fly, we can certainly
+take advantage of it to generate better interrupt handlers, right? Right!
+
+Under Dusk OS, complex interrupt handlers will generally be composed in the
+"init.fs" file, which means that drivers will generally not supply interrupt
+handlers, but interrupt handler *compilers*. A word ending with "isr,"
+(for "Interrupt Service Routine") is such a compiler and adheres to a
+convention:
+
+1. It has the compile time signature ( -- handled-jmp )
+2. It compiles a check for whether the current interrupt is for itself.
+3. If it's not, it jumps out of its code so the chain can continue.
+4. If it is, it takes care of saving the registers it needs, do its thing and
+   then write a forward jump, which yields "handled-jmp".
+
+A complete interrupt handler might look like this:
+
+code mybigisr
+  driver1isr,
+  driver2isr,
+  driver3isr,
+  then then then
+  reti,
+
+One might wonder why we don't simply have the sub "isr," words write a "reti"
+themselves: because our "big isr" might need global setup teardown code, for
+example for global register save/restore.
+
+On some systems, the "check" part doesn't use any register, which means that we
+don't need to save/restore any register globally. Individual handlers can take
+care of themselves.
+
+But on some of them, we need to free up registers before we can perform those
+checks. The "global" interrupt handler thus has the responsibility of saving
+those registers beforehand, but also restore them afterwards. For example, on
+ARM, we can't check a bit on a memory address without changing a register. We
+need a bit of leeway.
+
+Because ARM HAL uses up r0, r1 and r2, we decide, for ARM ISR, to always save
+those, to give us this leeway. Same principle applies for other CPUs.
+
+Therefore, it is expected of any "interrupt providing unit", that is, whatever
+driver supplies a system with its basic interrupt capabilities (intializing
+vectors and other whatnots), also supply the words "isrsave," and "isrrestore,",
+along with documentation that clearly specifies what registers it saves and
+where.
+
+Therefore, a more correct and complete ISR implementation will look like this:
+
+code mybigisr
+  isrsave,
+  driver1isr,
+  driver2isr,
+  driver3isr,
+  then then then
+  isrrestore, reti,

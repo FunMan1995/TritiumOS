@@ -1,0 +1,31 @@
+# Word tables
+
+Word tables are arrays of pointer to words. B5 provide words
+allowing to conveniently create and use these tables. These
+words are:
+
+wordtbl x   n -- a  Initialize a word table named x witn n
+                    elements.
+:w ... ;    a -- a? Add a new anonymous word to the active tbl.
+'w x        a -- a? Find x in dict and add it to active tbl.
+wexec       t n --  Execute word index "n" from table "t".
+
+The idea is that when you call wordtbl, it becomes the active
+table by pushing its first address to PS. Then, for each new
+element you add, current address is increased and when all
+elements are added, that address is dropped from PS. Example
+usage:
+
+5 load
+: foo 42 . ;
+: bar 43 . ;
+3 wordtbl tbl 'w foo 'w bar :w 44 . ;
+tbl 0 wexec \ prints 42
+tbl 1 wexec \ prints 43
+tbl 2 wexec \ prints 44
+
+When the count (3 in the example) is reached, table's address
+is dropped from PS. For this reason, when you create a wordtbl,
+you have to create this exact number of words afterward. If you
+create less, you have a PS leak, if you create more, a PS
+underflow.

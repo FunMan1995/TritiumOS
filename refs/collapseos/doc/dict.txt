@@ -1,0 +1,389 @@
+# Dictionary
+
+List of words defined in arch-specific boot code and core words.
+
+# Glossary
+
+Stack notation: "<stack before> -- <stack after>". Rightmost is
+top of stack (TOS). For example, in "a b -- c d", b is TOS
+before, d is TOS after. "R:" means that the Return Stack is
+modified.
+
+Some words have a variable stack signature, most often in pair
+with a flag. These are indicated with "?" to tell that the argu-
+ment might not be there. For example, "-- n? f" means that "n"
+might or might not be there.
+
+Some words consume contents from input and this is indicated by
+"x", "y" and "..." elements next to the word itself, not in the
+stack signature. For example, ": x ... ;" means that the word
+":" will consume an element "x" (which is usually explained in
+the description), followed by an arbitrary length of contents,
+which is ended by ";".
+
+Word references (wordref): When we say we have a "word
+reference", it's a pointer to a word's entry point. That is,
+making native jump to the address contained in the wordref will
+execute the word.
+
+For example, the address that "' dup" puts on the stack is a
+word reference to "dup".
+
+"*I*" in description indicates an immediate word.
+"*A*" in description indicates A register usage.
+
+# Symbols
+
+Across words, different symbols are used in different contexts,
+but we try to be consistent in their use. Here's their defini-
+tions:
+
+! - Store
+@ - Fetch
+$ - Initialize
+^ - Arguments in their opposite order
+< - Input
+> - 1. Pointer in a buffer 2. Opposite of "<".
+( - Lower boundary
+) - Upper boundary
+' - Address of
+* - Word indirection (pointer to word)
+? - "Is it ...?" or "do ... if flag"
+[...] - Indicates immediateness
+
+Placement of those symbols is often important. In I/O-related
+words for example, symbold to the left of the words refer to
+input and to the right, output. For "?", placement at the right
+refer to the first form, placement at the left refer to the
+second form.
+
+# System variables
+
+See doc/usage for details. These ones have a *value pair.
+
+BLK>     Currently selected Block.
+CURRENT  Address of the last word of the dictionary.
+HERE     Addr of next available space in dict
+IN(      Beginning of the input buffer.
+IN>      Current pos in input buffer.
+
+These ones don't have a *value pair.
+
+IOERR    Nonzero when an IO error occurred in some drivers.
+NL       1 or 2 chars to spit during NL>, MSB first. If MSB is
+         0, it's ignored.
+LN<      Routine that feeds lines to the interpreter. Generally
+         RDLN.
+BLKDTY   Whether current block is dirty
+
+# Entry management
+
+'? x ( -- w-or-0 )
+  Find x it in dict. If found, w is its address. Otherwise, w=0.
+' x ( -- w )
+  Push addr of word x to w. If not found, aborts.
+['] x ( -- ) *I*
+  Like "'", but spits the addr as a number literal. If not
+  found, aborts.
+find ( s -- w-or-0 )
+  Find "s" in dict. If found, w=wordref. Otherwise, w=0.
+forget x ( -- )
+  Rewind the dictionary (both CURRENT and HERE) up to x's
+  previous entry.
+
+# Defining words
+
+: x ... ;   --     Define a new word.
+alias x y   --     Define an alias y with a starting value of x
+create x    --     Create cell named x. Doesn't allocate.
+code x      --     Define a new native word.
+[compile] x --     *I* Compile word x and write it to HERE.
+                   immediate words are *not* executed.
+compile x   --     *I* Meta compiles: write wordrefs that will
+                   compile x when executed.
+consts ...  n --   Creates n new constants. See usage.txt.
+value x     n --   Creates cell x that when called pushes its
+                   value.
+values ...  n --   Create a serie of n values. See usage.txt
+doer        --     See doc/usage
+does>       --     See doc/usage
+immediate   --     Flag the latest defined word as immediate.
+litn        n --   Write number n as a literal.
+
+# Code generation
+
+jmpi!  n a -- len  Write a native jump to n at address a
+calli! n a -- len  Write a native call to n at address a
+
+"len" is the length in bytes of the written binary contents.
+
+# Flow
+
+Note that flow words can only be used in definitions. In the
+interpret loop, they don't have the desired effect because each
+word from the input stream is executed immediately. In this
+context, branching doesn't work.
+
+f if A else B then: if f is true, execute A, if false, execute
+B. else is optional.
+[if] .. [then]: Meta-IF. Works outside definitions. No [else].
+begin .. f until: if f is false, branch to begin.
+begin .. again: Always branch to begin.
+n for .. next: Loop n times.
+
+(           --   *I* Comment. Ignore input until ")" is read.
+\           --   *I* Line comment. Ignore input until EOL.
+[           --   *I* Stops compilation and drop to interpret.
+;           --   *I* Writes an "exit" and stop compiling.
+]           --   Begin compiling words.
+abort       --   Resets PS and RS and returns to interpreter.
+abort" ..." --   *I* Compiles a ." followed by a abort.
+execute     a -- Execute wordref at addr a
+interpret   --   Main interpret loop.
+leave       --   In a for..next, exit at the next next call.
+quit        --   Reset RS, return to interpreter prompt.
+
+# Parameter Stack
+
+drop        a --
+dup         a -- a a
+?dup        dup if a is nonzero
+nip         a b -- b
+over        a b -- a b a
+rot         a b c -- b c a
+rot>        a b c -- c a b
+swap        a b -- b a
+tuck        a b -- b a b
+2drop       a a --
+2dup        a b -- a b a b
+
+# Return Stack
+
+>r          n -- R:n        Pops PS and push to RS
+r>          R:n -- n        Pops RS and push to PS
+r@          -- n            Copy RS TOS to PS
+r~          R:n --          Drop RS TOS
+
+# Stacks meta
+
+.S   --   *A* Prints stack information as well as the contents
+          of PS.
+scnt -- n Size of PS in bytes
+rcnt -- n Size of RS in bytes
+
+# Memory
+
+@        a -- n        Set n to value at address a
+!        n a --        Store n in address a
+,        n --          Write n in HERE and advance it.
++!       n a --        Increase number at addr a by n.
+[]=      a1 a2 u -- f  Compare u bytes between a1 and a2.
+                       Returns true if equal.
+c@       a -- c        Set c to byte at address a
+c@+      a -- a+1 c    Fetch c from a and inc a.
+c!       c a --        Store byte c in address a
+c!+      c a -- a+1    Store byte c in a and inc a.
+c,       b --          Write byte b in HERE and advance it.
+cidx     c a u -- ?i f Search for char c in range [a, a+u] and
+                       yield its index. f=1 if found. Otherwise,
+                       f=0 and i is absent.
+nc,      n --          Parse next n words and write them as
+                       bytes.
+allot    n --          Move HERE by n bytes.
+allot0   n --          *A* allot and fill with zero.
+cell     -- 2          Return native memory width.
+cells    n -- n*2      Multiply by native memory width (2).
+fill     a n b --      *A* Fill n bytes at addr a with val b.
+l,       n --          Write n in little-endian regardless of
+                       native endianess (L=LSB first)
+m,       n --          Write n in big-endian regardless of
+                       native endianess (M=MSB first)
+move     a1 a2 u --    *A* Copy u bytes from a1 to a2, starting
+                       with a1, going up.
+move,    a u --        *A* Copy u bytes from a to HERE.
+to       --            Next value call will be in write mode.
+                       See doc/usage.
+
+# A register
+
+>A       n -- A:n
+A>       A:n -- n A:n
+r>A      R:n -- A:n
+A>r      A:n -- R:n A:n
+A+       A:n -- A:n+1
+A-       A:n -- A:n-1
+Ac@      A:a -- c A:a
+Ac!      c A:a -- A:a
+Ac@+     A:a -- c A:a+1
+Ac!+     c A:a -- A:a+1
+
+# Arithmetic / Bits
+
++           a b -- a+b
+-           a b -- a-b
+-^          a b -- b-a
+*           a b -- a*b
+/           a b -- a/b
+<<          n -- n       Shift n left by one bit
+<<8         n -- n       Shift n left by 8 bits
+>>          n -- n       Shift n right by one bit
+>>8         n -- n       Shift n right by 8 bit
+?swap       a b -- l h   Sort a and b, highest number on TOS.
+l|m         n -- lsb msb Split n word in 2 bytes, MSB on TOS
+1+          n -- n+1
+1-          n -- n-1
+max         n1 n2 -- hi
+min         n1 n2 -- lo
+mod         a b -- a%b
+/mod        a b -- r q   r:remainder q:quotient
+and         a b -- a&b
+or          a b -- a|b
+xor         a b -- a^b
+lshift      n u -- n     Shift n left by u bits
+rshift      n u -- n     Shift n right by u bits
+
+# Logic
+
+=    n1 n2 -- f Push true if n1 == n2
+<    n1 n2 -- f Push true if n1 < n2
+>    n1 n2 -- f Push true if n1 > n2
+>=   n1 n2 -- f Push true if n1 >= n2
+<=   n1 n2 -- f Push true if n1 <= n2
+0<   n -- f     Push true if n-as-signed is negative
+0>=  n -- f     Push true if n-as-signed is positive
+not  f -- f     Push the logical opposite of f. Always 0 or 1.
+
+# Strings and lines
+
+See doc/usage for the concepts of strings and lines.
+
+S" ..."   --     Read following characters and write to HERE as
+                 a string literal.
+lnlen     a -- n Return length of line at a, the line ending at
+                 the last visible char of it.
+s=        s1 s2 -- f
+          Returns whether string s1 == s2.
+
+# Number formatting
+
+.        n --         Print n in its decimal form
+.x       n --         Print n's LSB in hex form. Always 2
+                      characters.
+.X       n --         Print n in hex form. Always 4 characters.
+                      Numbers are never considered negative.
+                      "-1 .X" --> ffff
+fmtd     n a -- sa sl Formats n as decimal in memory and return
+                      its string as "sa sl".
+fmtx     n a -- sa sl Formats n's LSB in hex form.
+fmtX     n a -- sa sl Formats n in hex form.
+
+# I/O
+
+," ..." --        Write ... to HERE
+." ..." --        *I* Compiles string literal ... followed by a
+                  call to stype.
+curword -- sa sl  Yield the last read word (see WORD).
+emit    c --      Spit char c to output stream
+emitln  a --      *A* emit line at addr a
+in<     -- c      Read one char from buffered input, if end of
+                  input is reached, read new line.
+in<?    -- c-or-0 Read from buffered input if its end hasn't
+                  been reached, 0 otherwise.
+in(     -- a      Beginning of input buffer.
+in)     -- a      End of the input buffer, exclusive.
+in$     --        Flush input buffer
+key?    -- c? f   Polls the keyboard for a key. If a key is
+                  pressed, f is true and c is the char. Other-
+                  wise, f is false and c is *not* on the stack.
+key     -- c      Get char c from direct input.
+nl>     --        Emit newline
+parse   sa sl -- n? f *A*
+        Parses string s as a number and push the result in n if
+        it can be parsed, with f=1. Otherwise, push f=0.
+pc!     c a --    Spit c to port a
+pc@     a -- c    Fetch c from port a
+rtype   a u --    *A* emit characters from range "a u".
+spc>    --        Emit space character
+stype   s --      *A* emit all chars of string.
+waitw   s --      Call word until we get the same string as s.
+word    -- s      Read one word from buffered input and push it.
+                  That word is a string (begins with a length
+                  byte).
+word!   s --      The next word call will not read from input
+                  and yield this string instead.
+
+These ASCII consts are defined:
+EOT BS CR LF SPC
+
+key? and emit are aliases to (key?) and (emit) (see doc/drivers)
+key is a loop over key?.
+
+nl> spits CRLF by default, but can be configured to spit an
+alternate newline char. See impl.txt.
+
+# blk subsystem (see doc/blk)
+
+\s     --        Interrupts load of current block.
+blk(   -- a      Beginning addr of blk buf.
+blk)   -- a      Ending addr of blk buf.
+blk@   n --      *A* Read block n into buffer and make n active.
+blk!   --        *A* Write currently active block, if dirty.
+copy   s d --    *A* Copy contents of s block to d block.
+flush  --        Write current block to disk if dirty and inval-
+                 idates current block cache.
+list   n --      *A* Prints the contents of the block n on
+                 screen in the form of 16 lines of 64 columns.
+load   n --      *A* Interprets Forth code from block n
+loadr  n1 n2 --  *A* Load block range between n1 and n2,
+                 inclusive.
+wipe   --        *A* Empties current block
+
+Note: Most blk words don't actually use the A register them-
+selves, but we want to allow BLK drivers to make usage of it,
+so you *should* guard yourself again A changes when using those.
+
+# RX/TX subsystem (see doc/rxtx)
+
+rx<?   -- c? f   If a char is available on RX, return it in c
+                 with f=1. Otherwise, f=0.
+rx<    -- c      Block until a char is available in RX.
+rx<<   --        Consume rx<? and drop result until there's
+                 nothing to be received.
+rx[    --        Replace key? with rx<?.
+]rx    --        Put back the old key? handler.
+tx>    c --      Spit c to TX, blocking until it can do it.
+tx[    --        Replace emit with tx>.
+]tx    --        Put back the old emit handler.
+
+# Other
+
+boot    --       Boot back to a fresh system.
+crc16   c b -- c Computes byte b into c, a 16-bit CRC with a
+                 $1021 polynomial (XMODEM CRC).
+dump    n a --   *A* Prints n bytes at addr a in a hexdump
+                 format. Prints in chunks of 8 bytes. Doesn't do
+                 partial lines. Output is designed to fit in 32
+                 columns.
+noop    --       Do nothing.
+
+# Loaders
+
+These words load the related application from blocks:
+
+ed     Block Editor
+ve     Visual Editor
+me     Memory Editor
+xcomp  Cross-compilation tools
+z80a   Z80 Assembler
+8086a  8086 Assembler
+6502a  6502 Assembler
+6809a  6809 Assembler
+
+# Kernel internals
+
+Some words from the kernel are designed to be internal but
+ended up being used in "userland". Let's document them:
+
+_bchk   n -- n     Checks whether n is a valid 8-bit signed
+                   branching offset, that is, in the range -128
+                   to 127. If not, abort with "br ovfl".

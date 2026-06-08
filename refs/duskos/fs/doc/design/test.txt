@@ -1,0 +1,16 @@
+# Testing Dusk OS
+
+Dusk OS has a pretty good test suite in /tests. Initially, because Dusk was
+developed from within a UNIX environment, tests were actually the quickest
+method of running a piece of code being developed. That lead to this kind of
+pretty good coverage.
+
+Now that Dusk OS is being developed from within itself, the nature of the
+interaction with the code being developed changes and writing new tests no
+longer is the quickest method of running that code. It actually becomes a burden
+to write.
+
+Testing policy is thus that new code being written isn't accompanied by tests
+unless a regression is observed. Regressions are often indicators that a piece
+of code benefits particularly from automated testing and is thus worth the extra
+work of writing a test for it.

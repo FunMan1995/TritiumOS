@@ -1,0 +1,37 @@
+# Deploying to a Raspberry Pi
+
+See [doc/deploy] first.
+
+A Dusk media that boots on a Raspberry Pi is a FAT with at its root either a
+file named "kernel.img" for the Model 1 or "kernel7.img" for the Models 2 and
+3 (other models are not supported). These kernels are built respectively through
+xcomp/arm/rpi/kernel1.fs and xcomp/arm/rpi/kernel2.fs.
+
+Those binary kernels must be followed immediately, within the file, with the
+boot payload.
+
+Additionally, it also requires at its root the firmware files "bootcode.bin" and
+"start.elf", which are not part of the Dusk OS package, but are fetched in the
+"deploy/rpi" scripts.
+
+Then, it's a matter of adding Dusk units to the FAT.
+
+The unit at xcomp/arm/rpi/deploy.fs supplies convenience words to build the
+kernel images. How it works is that you'll first call either "makekernel1" or
+"makekernel2" and then call "spitkernel" to spit that built kernel and
+appropriate payload to a specified stream.
+
+## API
+
+makekernel1 ( -- )
+  Build the kernel for Model 1.
+
+makekernel2 ( -- )
+  Build the kernel for Model 2 or 3.
+
+spitkernel ( stream -- )
+  Spit kernel and associated payload to "stream".
+
+rebootinto ( -- )
+  Copy kernel and payload to boot memory area and jump to it.
+  To ensure a successful boot, this disables caches [drv/arm/cache].

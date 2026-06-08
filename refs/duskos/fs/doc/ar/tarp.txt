@@ -1,0 +1,40 @@
+# Tar packer and unpacker
+
+This unit implements words that either unpack a tar [ar/tar] stream [io/stream]
+onto a filesystem [fs/core] or packs a FS directory into a tar stream.
+
+The tar stream is consumed sequentially, with no seek back (so any stream works,
+not just seekable streams), and every time a record with a nonzero filesize is
+encountered, we ensure that the corresponding path exists in currently walked
+directory, then dump the file's contents there. Empty records in the tar are
+ignored.
+
+If the record name begins with "./", those first two characters are ignored.
+
+## Example usage
+
+  \ mystream is a stream pointing to the first byte of a tar archive
+  pd"my/dst" mystream untar
+  \ path "my/dst" contains all files from the tar
+
+## API
+
+tarls ( stream -- )
+  List the "normalized" name (remove "./" if present") of all records in the tar
+  stream, along with their size in bytes.
+
+untar ( stream -- )
+  Unpack the contents of tar archive in "stream" into current walking target
+  which must be a directory.
+
+  Once the "end of stream" record is met, we consume the rest of "stream" until
+  EOF and then close it.
+
+tar ( ... n stream -- )
+  Recursively pack n string paths from PS into stream. Only files are included.
+  Names are lowercased. Stream is closed afterwards.
+
+tar< ( stream "..." -- )
+  Shortcut for calling "strings<" [lib/str] and then "tar". Example:
+
+  xmodem tar< my/path.fs other/path.fs

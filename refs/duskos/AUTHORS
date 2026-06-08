@@ -1,0 +1,71 @@
+Dusk OS was created by Virgil Dupras.
+
+I was not entirely alone in creating it though. Some people wrote significant
+parts of it:
+
+Michael Schierl
+  - Graphical grid [gr/grid]
+  - Usermode Dusk
+  - POSIX/SDL port
+  - Oberon emulator [emul/oberon]
+  - [app/ed] improvements
+  - System Clipboard [text/clip]
+  - Many Duskberon modules:
+    - [oberon/clipboar]
+    - [oberon/convertp]
+    - [oberon/dumpfont]
+    - [oberon/fontsubs]
+    - [oberon/growfont]
+    - [oberon/optimize]
+    - [oberon/draw]
+  - The posix/kbdconv utility
+
+Arcade Wise
+  - PC driver for CMOS real time clock [drv/pc/rtc]
+
+Lucas Chaloyard
+  - RISC-V assembler [asm/riscv]
+  - RISC-V kernel [xcomp/riscv/kernel]
+
+Bruno Franco
+  - 11 rings of Dis(assembly) [doc/howto/asmrings]
+
+Aaron Miller
+  - Improvements to x86 assembler [asm/x86]
+  - Improvements to PC bootloader [xcomp/i386/pc/mbr]
+  - PBR bootloader [xcomp/i386/pc/pbr]
+  - Allowing the PC kernel and [drv/pc/int13h] to do LBA accesses
+  - MBR partition manager [io/part/mbr]
+
+Ruben Lysens
+  - RISC-V disassembler [asm/riscvd]
+  - [asm/riscv] improvements
+
+Drache
+  - HAL improvements and optimizations across the board
+  - [num/double] unit
+  - Improve [lib/bit]
+  - [num/xxhash] unit
+  - Improve [hal/opq]
+  - [num/chacha] unit
+  - [gr/rdwr] improvements
+  - Improve [lib/coop]
+  - posix/time.c
+  - Improve [hal/instr]
+
+Other people have made smaller contributions and are listed below in order
+of "appearance". To know the nature of those contributions, look
+in the history of the git repository.
+
+binarycat from flounder.online
+Kartik K. Agaram
+Gary V. Vaughan
+Alex Wennerberg
+Alice West
+Henk van de Kamer
+Andy Caird
+Tyler Quiring
+Cyril Elkaim
+Rett Berg
+Gunnar Ahlberg
+Katie Keller

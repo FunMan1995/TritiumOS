@@ -1,0 +1,108 @@
+# Boot sequence
+
+One of Dusk OS' defining qualities is the fact that it boots from a tiny kernel
+and then builds the entirety of the system from source, at boot time. This page
+describes the boot process.
+
+## Arch-specific bootloader
+
+When the machine powers up, what it does depends on that machine. Arch-specific
+provisions have to be made to ensure that:
+
+1. The binary kernel is loaded in memory.
+2. The "boot payload" (see below) is loaded in memory and that the kernel knows
+   where to find it.
+3. We jump to the kernel's first address in memory.
+
+After the kernel has done its own initialization, it begins parsing its boot
+payload. At that point, it really doesn't have much. See [doc/kernel] to have
+an idea.
+
+## Boot payload
+
+The "boot payload" is a stream of source code that the kernel interprets at
+boot time to become whatever it's destined to become. It's placed in memory by
+the bootloader and is read from there.
+
+In the near-totality of the time, it will begin with this:
+
+* xcomp/lo.fs
+* xcomp/<arch>/hallo.fs
+* xcomp/hallo.fs
+* xcomp/<arch>/hal.fs
+* xcomp/boot.fs
+* Rest of the payload
+
+The purpose of the "xcomp/lo" unit is to provide helper words to HAL [doc/hal]
+implementation, such as the "HAL bank" mechanism and other useful-but-lowtech
+(at that point in time, we really can't afford anything fancy) little words such
+as "immediate", "code>", ":>" etc. See [doc/xcomp/lo] for details.
+
+Then somes the two "hallo" units, first the arch-specific ones and then the
+generic one. The purpose of these units is to have a space for sharing HAL
+implementation logic across architectures. See [doc/xcomp/hallo] for details.
+
+Then comes the HAL implementation. This unit is CPU-specific and deals with the
+gory details of CPU instruction encoding. At that point in time, we can't have
+comments yet! This means that this part of the code is brutally difficult to
+read. You will absolutely want to read this with its corresponding "companion"
+doc page. For example, the one for the ARM HAL is at [doc/xcomp/arm/hal].
+
+Then comes "xcomp/boot", which builds a comfy Forth using all the powers of the
+HAL in a CPU-agnostic manner. The first part of that code can't be commented
+either, but having them is our first order of business and code leading to them
+is rather straightforward.
+
+Once xcomp/boot is loaded, we have a comfy Forth, but no prompt yet.
+
+In the vast majority of cases, we'll want I/O and files, which means that
+[io/stream] and [fs/core] will follow in the payload.
+
+Then, what follows is usually the drivers and filesystems that will allow us to
+call "bootfs!".
+
+For example, the boot payload for the PC is a concatenation drv/pc/int13h.fs
+and fs/fat.fs (along with their respective dependencies).
+
+All of this is then followed by the "glue code".
+
+## Glue code
+
+When we created Dusk's boot media, we didn't only concatenate a few units to the
+payload, we also appended to it what we call the "glue code".
+
+That code is system-specific code that wraps things together to provide it with
+either it's final destination or a way to load "init.fs".
+
+If we have a system with a very specific purpose and don't really need the
+configurability of "/init.fs", then we can just call whatever loop we want to
+call and be done with it.
+
+For the majority of interactive systems, we'll be interested in the flexibility
+that "init.fs" allows so the role of the glue code will be to:
+
+1. Initialize fs/core through "bootfs!".
+2. Load init.fs
+3. Call "quit"
+
+Then, the boot payload ends because it is expected that whatever the "init" word
+does will set up a new input stream.
+
+## init.fs
+
+What the init.fs file contains is up to the operator and is meant to be easy to
+change. At that point, we have the base dictionary, I/O, files, we're pretty
+well set up.
+
+The init.fs file can do whatever it wants, but if the goal is to boot to an
+interactive system, it will have the responsibility of setting up that
+interactive input. This usually involves "quit hooks" [doc/usage/flow] and
+setting ABORTPTR to its "regular behavior" be making it point to (abort).
+
+This is what [app/prompt] and [lib/coop] do.
+
+After having loaded init.fs, the boot payload does one last thing: call "quit".
+This will trigger the quit hook installed by the interactive system, so that the
+input stream no longer comes from the boot payload.
+
+And that's it, you're booted up!

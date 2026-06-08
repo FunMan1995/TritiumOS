@@ -1,0 +1,21 @@
+# USB Mouse
+
+The unit at [drv/usb/mouse.fs] supplies a [io/mouse] structure tied to a USB
+[drv/usb] mouse.
+
+For now, only the Boot Protocol is supported by this driver.
+
+After USB enumeration, you can use "findmouse# ( -- dev )" to search in
+enumerated devices for an interface of the "mouse CSP", that is class=3
+sub=1 proto=2.
+
+With that "dev", you can then call "newusbmouse ( dev -- mouse )" which
+initializes the mouse by setting it in "boot protocol" mode as well as figuring
+out the proper polling endpoint. The yielded "mouse" is a structure that is
+compatible with the [io/mouse] API. Example initialization:
+
+  \ Initialize USB HCI first
+  usbwork \ enumerate USB
+  needs drv/usb/mouse
+  findmouse# newusbmouse to mouse
+  \ general io/mouse configuration ...

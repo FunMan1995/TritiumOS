@@ -1,0 +1,128 @@
+# Floppy driver
+
+The unit at [drv/pc/fdc.fs] is a driver for PC floppy disk controllers and
+implements [io/blk].
+
+It is hardcoded for a single drive (master) with the FDC chip registers
+accessible at base address $3f0. It is also hardcoded for 1.44M floppies.
+
+It's written following the datasheet of the 82077AA, but written with a lowest
+common denominator logic. For example, while most machines with a FDC chip have
+a 82077AA wired to the Model 30 mode, the machine this driver was written on
+seem to be wired to PC/AT mode because SRA and SRB always yield $ff. This means
+we can't use them to wait for interrupt.
+
+## Motor control
+
+At this moment, there is no automated motor control. It's all manual. At
+initialization, the motor is turned on and kept on. If you want to turn it off,
+you call "motoroff", but you have to remember to call "motoron" again before
+you access your disk.
+
+## Error recovery
+
+FDC initialization is done implicitly through "?init" by "seek" and "rwsec".
+
+When a FDC error occurs, the "initialized" variable is reset to 0 so that the
+FDC is reinitialized before attempting another operation.
+
+When you get an error, most of the time the error codes will be available in
+the "result" variable. For example, in the case of a READ DATA or WRITE DATA
+command, the first 3 bytes of "result" will be the ST0/ST1/ST2 registers.
+
+### The "End Of Cylinder" exception
+
+Many commands assert that no error took place during the operation, and abort
+if that's the case. However, we make an exception of the "End of Cylinder"
+error, bit 7 of ST1. In the experiments I've made on a system with my FDC in
+PC/AT mode, it seems that it's impossible, in NON-DMA mode, to have the FDC
+not try to assert the TC line. At least I couldn't, for the life of me, find
+that method without biting the bullet and implement DMA, which I don't want.
+Therefore, that bit isn't considered an error and, by extension, having b7:6 on
+ST0 being nonzero don't indicate an error either.
+
+## Example usage
+
+  needs drv/pc/fdc fs/sh
+  fdc$
+  floppy newfatfs const myfat
+  0 myfat src! listdir
+
+## API
+
+### Constants
+
+floppy      A [io/blk] struct wired to the master drive at port $3f0.
+SECSZ       $200. Size in bytes of a sector
+FDHEADS     2. Number of heads on a FDC
+FDCYLCNT    80. Number of cylinders on a floppy
+FDSECPERTRK 18. Number of sectors per track
+
+### Variables
+
+initialized  Boolean indicating whether "init" needs to be called before usage
+params       8 bytes buffer with the parameters passed to last command
+result       8 bytes buffer with the result from the last command
+
+### Values
+
+cyl   Last seeked cylinder
+head  Last seeked head
+
+### Words
+
+fdc$ ( -- )
+  Initialize this unit. You call this once.
+
+init ( -- )
+  Initialize the controller for disk reading. It is implicitly called by "seek"
+  and "rwsec" through "?init". This means you generally don't have to call it
+  yourself, but if you change the floppy, you should.
+
+?init ( -- )
+  Call "init" if "initialized" is 0.
+
+fdc? ( -- f )
+  Does this system have a FDC?
+
+specify ( -- )
+  Issue the SPECIFY command with HUT=0 SRT=8 HLT=5 NON-DMA=1
+
+seek ( cyl head -- f )
+  Have the FDC seek the specified cylinder using the specified head.
+  Yield f=1 on success, f=0 otherwise.
+
+seek# ( cyl head -- )
+  seek and abort with error on f=0. Then, run "specify" because pretty much all
+  seeks must be followed by specify.
+
+rwcmd ( cmd sec -- )
+  Set parameters for either a READ DATA or a WRITE DATA command, then send the
+  command. "cmd" is the command byte. For example, it's $46 for MFM+READ and
+  $45 for MFM+WRITE.
+
+readfifo ( a u -- )
+  Read "u" bytes from the FDC fifo and write them to "a".
+
+  After the expected number of bytes have been read, read the result bytes into
+  "result". If that result indicates an error, abort.
+
+writefifo ( a u -- )
+  Write range "a u" to the FDC fifo.
+
+  After the expected number of bytes have been written, read the result bytes
+  into "result". If that result indicate an error, abort.
+
+readtrack ( a -- )
+  Run the READ TRACK command on currenty seeked track and write contents to
+  "a".
+
+formattrack ( -- )
+  Run the FORMAT TRACK command on currently seeked track and with 18 sectors and
+  recommended gap3 values.
+
+motoron ( -- )
+  Turn drive motor on.
+
+motoroff ( -- )
+  Turn drive motor off.

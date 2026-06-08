@@ -1,0 +1,6 @@
+# mac68k timer
+
+The unit at [drv/mac68k/timer.fs] implements [drv/timer] on the mac68k platform
+by using the Ticks system variable which increments 60 times per second.
+
+No initialization is necessary, "?timer$" is called upon unit loading.

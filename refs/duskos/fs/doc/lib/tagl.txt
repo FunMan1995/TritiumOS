@@ -1,0 +1,53 @@
+# Tag lookup
+
+The unit at [lib/tagl.fs] is a global lookup table allowing to attach metadata
+to any address (well, any number in fact). It's a bit like tagged addresses
+[doc/usage/tag], but instead of creating an address that is meant to be tagged,
+you tag a particular address after the fact.
+
+Then, you can lookup a pair of tag/address in the table and, if found, the
+search will yield a pointer to associated data.
+
+For example, let's say you want to attach a [comp/c] function signature to the
+word "move". That word is not written with any concern for C signatures. But if
+you add the address of "move" along with the tag n"CSIG", then you can later
+perform a lookup and say "oh, alright, I have a signature for the word 'move'"
+
+One could of course keep such signatures in a separate dictionary, but if you
+do, then you can't take advantage of "unit bubbling" [doc/usage/unit] to
+overcome word shadowing issues. Hence this lookup table.
+
+Lookup tables are organized as a linked list of buffers of a fixed size
+organized in a way that allows fast iterations. It's unsorted data, so it's
+algorithmically slow, but implemented in HAL, so it's not dog slow.
+
+Those buffers never shrink and tags can't be removed. A call to "addtag" can
+result in memory allocation.
+
+## Example usage
+
+  needs lib/tagl
+  $1234 n"CAFE" $cafebabe addtag
+  $1234 n"DEAD" $deadbeef addtag
+  $1234 n"DEAD" findtag . spc> .x \ prints "1 $deadbeef"
+  $1238 n"CAFE" findtag . \ prints 0
+
+## API
+
+addtag ( addr tag value -- )
+  Add association of "value" to the pair "addr/tag" to the lookup table.
+
+  Can result in a write to here. This means that this shouldn't be called in
+  the middle of a compilation operation because it might insert non-code data
+  into code. In those cases, use "createtag" and "settag" instead.
+
+createtag ( -- a )
+  Reserve a spot in the tag list for a new tag, but don't write anything to it.
+
+settag ( addr tag value a -- )
+  With "a" being the address yielded by a previous "createtag" application, set
+  its values like a "addtag" call would.
+
+findtag ( addr tag -- ?value f )
+  Look for pair "addr/tag" in lookup table. If found, f=1 and "value" is
+  present. Otherwise, f=0.

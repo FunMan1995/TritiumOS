@@ -1,0 +1,32 @@
+# Bitmap font
+
+A bitmap font is a font [gr/font] where each glyph is described as a
+rectangular bit map. This bitmap is stored in a pixbuf [gr/buf] where each glyph
+is drawn, aligned vertically.
+
+This means that this pixbuf has the width of the font and a height of the font
+multiplied by the number of glyphs in the font.
+
+## Loading a font
+
+Loading a bitmap font in memory is done through specialized units such as
+[gr/font/uf1] or [gr/font/uf2].
+
+## Limitations
+
+In the current implementation, bitmap fonts can't be more than 32 pixels wide.
+
+## API
+
+### Struct
+
+extends Font struct BitFont { uint pixbuf ; }
+
+pixbuf  Buffer [gr/buf] containing bitmap font data
+
+### Words
+
+drawbitglyph ( c font -- )
+  Implementation of gr/font's "(drawglyph)".
+
+newbitfont ( width height numglyphs -- font )

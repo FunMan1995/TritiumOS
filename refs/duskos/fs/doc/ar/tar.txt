@@ -1,0 +1,35 @@
+# Tape archive (tar) tools
+
+The unit at [ar/tar.fs] contains tool to parse the 512 bytes records contained
+in archives of the "tar" format originating from UNIX.
+
+## API
+
+### Constants
+
+RECORDSZ $200
+
+### Fields
+
+zname
+omode
+ouid
+ogid
+ofilesz
+omtime
+checksum
+type
+zlinkname
+signature
+
+### Words
+
+empty? ( record -- f )
+  Whether the record is empty (starts with null characters).
+
+dir? ( record -- f )
+  Whether the record is a directory (type = '5')
+
+recordsize ( rec -- sz )
+  Parsed version of "ofilesz". This is the file size in bytes that follow the
+  record.

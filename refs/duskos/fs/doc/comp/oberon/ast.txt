@@ -1,0 +1,65 @@
+# Oberon Abstract Syntax Tree
+
+The unit at [comp/oberon/ast.fs] builds expressions ASTs out of tokenized
+[comp/oberon/tok] source. This unit works a lot like [comp/c/ast] and we don't
+repeat everything its documentation already states, we focus on the differences.
+
+The core principle stays true: ASTs are created with no knowledge of what
+identifiers we encounter refer to. This parsing is purely syntactical.
+
+This leads to some funny situations such as the parens situation. When a "(" is
+encountered in the beginning of an expression, no problem, it's always a
+subexpression.
+
+When it's encountered as a postfix operator, it can be two things: a function
+call or a typeguard. In the AST, we don't make a difference. The operator is in
+both cases "()" and contains, first, the target identifier, then a sublist of
+expressions optionally separated by ",". At generation time, we do the proper
+assertions to ensure that the AST makes sense with the identifiers we have.
+
+## Ambiguous operators
+
+Some operator symbols are ambiguous. In those cases, the symbol is associated
+with one of the forms and the other form is given a constant:
+
+-   --> binop    prefix: neg
+
+## AST structure
+
+An AST is a cons [mem/cons] with "car" being an operator ID and "cdr" being its
+argument. This describes the cons structure of each operator's argument.
+
+lit     number
+ident   string
+`       string
+unary   expr
+  neg ^
+binary  (expr expr)
+  ~ * / DIV MOD & + - = # < <= > >= IN
+IS      (modulename-or-0 typename expr)
+[]      (designator expr)
+.       (string designator)
+()      ((designator (expr (expr (...)))))
+  in other words, a list of ASTs
+{}      ((expr (expr (expr (...)))))
+  in other words, a list of ASTs, but can also contain ".." elements
+..      (expr expr)
+
+## Example usage
+
+  needs comp/oberon/ast
+  obtok$
+  expr< a*(b+c(42)); read; .ast
+  \ prints: (* (ident a) (+ (ident b) (() (ident c) (lit 0000002a))))
+
+## API
+
+expr< ( -- ast )
+  Using comp/oberon/tok, parse one expression from the input stream, yielding
+  the result as an AST structure as described above.
+
+designator< ( -- ast )
+  Same as expr<, but for a designator only.
+
+.ast ( ast -- )
+  Print AST in a human-readable form.

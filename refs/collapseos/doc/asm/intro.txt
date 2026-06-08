@@ -1,0 +1,145 @@
+# Assembling binaries
+
+Collapse OS features many assemblers. Each of them have their
+specificities, but they are very similar in the way they work.
+
+This page describes common behavior. Some assemblers stray from
+it. Refer to arch-specific documentation for details.
+
+# Initial setup
+
+Each assembler has its own loader word. For example, to load the
+Z80 assembler, you run "z80a". After that, you're ready to ass-
+emble.
+
+Loaded alone, an assembler will spit opcodes for a "live" tar-
+get, that is, the computer it's running on.
+
+As long as you don't relocate the code, you will be able to run
+it just fine, but if you need to relocate it, you will need to
+load "xcomp" *before* you load your assembler so that you have
+the necessary tooling to craft relocatable binaries.
+
+See doc/cross for details.
+
+# Wrapping native code
+
+You will often want to wrap your native code in such a way that
+it can be used from within forth. You do that with "code".
+
+"code" allows you to create a new word, but instead of compiling
+references to other words, you write native code directly.
+Example:
+
+code 1+ BC inc, ;code
+
+This word can then be used like any other (and is of course
+very fast).
+
+Unlike the regular compiling process, you don't go in "compile
+mode" when you use "code". You stay in regular interpret mode.
+All "code" does is spit the proper word header.
+
+Be sure to read about your target platform in doc/code. These
+documents specify which registers are assigned to what role.
+
+# Usage
+
+To spit binary code, use opcode words, such as "ld,", preceded
+by proper arguments. For example, "A B ld," in the z80 assembler
+spits the "LD" opcode in it's "rr" (8b register transfer) form.
+
+Each assembler has its own little specificities as to how to
+spit ops in their different forms. See arch-specific asm docs.
+
+In all assemblers, arguments precede the opcode word ("A B ld,"
+instead of "ld A B").
+
+Some assemblers do basic argument checking and will let you know
+if you're trying to spit something that doesn't make sense, but
+none of them has complete error checking, so they will let you
+spit nonsensical opcodes.
+
+# Why insist on prefix notation?
+
+Compared to regular assemblers, which place their arguments
+after the opcode mnemonic, Collapse OS assemblers are a bit mind
+bending. Why do we adopt this notation?
+
+First and foremost, simplicity. By using a notation that is the
+same as forth's, we get the parsing part for free.
+
+However, one can think of many simple ways of achieving regular
+notation and these ways, compared the the overall system
+complexity, wouldn't be such a complexity burden. Why insist
+in prefix?
+
+Macros. By sticking to regular forth, we have macro-ability for
+free. If you add a postfix parsing mechanism in there, you need
+to add special provisions for macros, and then things get icky.
+
+So, that's why.
+
+# Labels and flow
+
+Assemblers, of course, implement their "flow" ops (jumps) but
+these are often awkward to use directly. To help with that,
+Collapse OS has a unified "flow" interface:
+
+ifz, .. else, .. then, \ part 1 if Z is set, part 2 otherwise
+ifnz, .. then, \ execute if Z is unset
+ifc, .. then, \ execute if C is set
+ifnc, .. THEN, \ execute if C is unset
+begin, .. br jr, \ loop forever
+begin, .. br jrz, \ loop if Z is set
+fjr jri, .. then, \ unconditional forward jump
+
+This unified flow layer lives at B007 and is loaded with
+assemblers. This layer requires the assembler to supply these
+words (which are ofter simple aliases):
+
+jr!     off a --  change offset for jr instruction at a
+jr,     off --    relative unconditional jump
+jrz,    off --    relative conditional jump if Z is set
+jrnz,   off --    relative conditional jump if Z is unset
+jrc,    off --    relative conditional jump if C is set
+jrnc,   off --    relative conditional jump if C is unset
+
+Those words take a relative offset as an argument and encode
+that offset. Different CPUs have different semantics with
+regards to relative jumps and These words above have a
+harmonized meaning: the relative offset if from the beginning
+of the instruction. This means that on all CPUs, "0 jr," is an
+infinite loop.
+
+Each assembler has to adjust their input to conform to these
+semantics. Each assembler also has the responsibility of making
+branch overflow checks.
+
+This is not related to flow, but for xcomp, these words are
+also defined by every assembler:
+
+jmp,   addr --   unconditional absolute jump
+@jmp,  addr --   unconditional indirect jump
+call,  addr --   unconditional absolute call
+i>,    n --      push n to Parameter stack
+i@>,   addr --   push value at addr to Parameter Stack
+
+These words generate the appropriate native code to perform the
+described actions.
+
+These structured flow are elegant, but limited because they need
+to be symmetric. There is no way, for example, to jump out of
+an infinite loop using only those words.
+
+Labels can also be used with those flow words for more
+flexibility:
+
+pc to L1 .. L1 br jr, .. L1 jmp, \ backward jumps
+fjr jr, to L1 .. L1 fjr! \ forward jump
+begin, fjr jr, to L1 .. br jr, .. L1 fjr! \ exiting loop
+
+Labels are simple values. For example, you can create a label
+with "0 value lblmylabel". If in an xcomp context, make sure you
+declare your labels before "xstart". xcomp pre-declares L1 L2 L3
+and L4 which can be used in local contexts.

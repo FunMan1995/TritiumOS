@@ -1,0 +1,47 @@
+# User Datagram Protocol
+
+This unit wraps the UDP logic described in RFC 768. It heavily depends on
+[com/ip4] because a UDP message is assumed to live within a IP datagram.
+
+It contains an ivalmap [lib/ival] of a UDP datagram pointing to [com/ip4]'s
+active frame payload.
+
+## UDP handler
+
+This unit registers a handler with [com/ip4]. That handler simply redirects
+that event to [lib/coop] under the event ID constant IP4UDPRECV. The event has
+no argument, the packet already being available in the Active Frame [com/link].
+
+An application that listens to this event can do whatever it wants with it.
+
+## API
+
+### Constants
+
+UDPPROTO    17. The protocol ID for UDP
+IP4UDPRECV  [lib/coop] event upon receiving a UDP packet.
+
+### ivalmap
+
+ip4payload ivalmap {
+  beshort SourcePort DestPort Length Checksum ;
+  [void,0] Data ;
+}
+
+### Words
+
+.udp ( -- )
+  Print target UDP message's header fields and check whether that UDP message
+  is valid (length, protocol, checksum). If it doesn't, abort with error.
+  If it's valid spit its payload in hexadecimal form, one byte at a time.
+
+udp! ( a u -- )
+  Set UDP's payload to specified range, setting Length and [com/ip4]'s Protocol.
+
+  Aborts if "u" exceeds the capacity of the active frame.
+
+udp[] ( -- a u )
+  Yield UDP packet's payload as a range.
+
+reply ( -- )
+  Call [com/ip4]'s "reply", then swap SourcePort and DestPort.

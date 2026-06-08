@@ -1,0 +1,31 @@
+# EFI Universal Graphics Adapter protocol
+
+UGA is the older version of GOP [drv/efi/gop]. It's present only in EFI 1.x.
+Even some EFI 1.x implementation have GOP instead of UGA. If you have to take a
+bet, a EFI machine is much more likely to have GOP than UGA.
+
+Dusk's UGA driver follows the same principle as GOP: it initializes the
+[gr/buf] screen during "uga$". And that's pretty much all there is to it.
+
+## API
+
+### Constants
+
+ugacnt  Number of available UGAs
+ugas    Array of 64-bit handles to UGAs
+
+### Words
+
+uga$ ( -- )
+  Query the current active mode for size and pixel format information, then
+  allocate a gr/buf of the correct size/format. Then, initialize the "screen"
+  variable with it.
+
+uga ( -- a64 )
+  Yield the "current" UGA handle.
+
+uga! ( idx -- )
+  Set current UGA to "idx".
+
+GetMode ( -- resx resy depth refreshrate )
+  Yields current mode information.

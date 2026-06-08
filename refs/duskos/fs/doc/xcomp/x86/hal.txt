@@ -1,0 +1,176 @@
+# x86 HAL implementation
+
+i386 and amd64 HAL code is so close, yet so far apart...
+
+The HAL code for the i386 and amd64 kernels are a fabric of 5 interwoven files,
+2 common, 3 specific, which are the equivalent of a regular "hal.fs" file on
+another architecture. On i386, the HAL is a concatenation of:
+
+1. xcomp/i386/hal1.fs
+2. xcomp/x86/hal2.fs
+3. xcomp/i386/hal3.fs
+4. xcomp/x86/hal4.fs
+5. xcomp/i386/hal5.fs
+
+and on amd64, it's:
+
+1. xcomp/amd64/hal1.fs
+2. xcomp/x86/hal2.fs
+3. xcomp/amd64/hal3.fs
+4. xcomp/x86/hal4.fs
+5. xcomp/amd64/hal5.fs
+
+## API
+
+The words defined in both the common and CPU-specific parts of the HAL have
+very similar semantics, so they are mostly documented here. Docs at
+[doc/xcomp/i386/hal] and [doc/xcomp/amd64/hal] have some CPU-specific
+documentation, but it's mostly to document hardcoded binary codes.
+
+HAL operand structure (basically same as asm/x86)
+b2:0   src regid
+b5:3   dst regid
+b7:6   mod ( displacement in bank if present )
+b8     0=8b 1=32/16b
+b15:9  opcode's lower byte  (b8 is also part of it)
+b16    &) flag
+b17    16b?
+b18    immediate? ( value in bank )
+b19    dir) flag
+b23:20 Number bank index
+b24    signed) flag
+b27:25 zeroes
+b31:28 REX flags (if 0, no REX prefix) (amd64 only)
+
+reg! ( op reg -- op )
+  Set the "reg" modrm field, that is b5:3, to the value of "reg".
+
+single! ( op reg -- op )
+  Transform modrm in "op" into a "single operand" op targeting HAL dst. We
+  therefore move the "reg" field to "rm", change "mod" to 3 and set b5:3 to
+  "reg".
+
+opc ( op -- opcode )
+  Yield the "opcode" field of the operand.
+
+opc! ( op opcode -- )
+  Set the "opcode" field of the operand. If HAL8B is set, it stays set
+  regardless of "opcode".
+
+modrm! ( op mod r/m -- op )
+  Set the "mod" and "r/m" fields of "op" to the specified values.
+
+deref! ( op -- op )
+  If HALDIRECT flag is set operate the necessary changes in opmod to dereference
+  it. If a LEA is necessary, write it to DI, then mangle operand to reference
+  it.
+
+  TODO: HAL error on mod=3
+
+rel, ( tgt -- )
+  Write an offset, which is supposed to go after a 4b jump or a call, which
+  targets address "tgt".
+
+?dispupg ( operand n -- operand )
+  If operand's mod is 1 (disp8) and that n >= $100, upgrade mod to 2 (disp32)
+
+?, ( n operand -- ) Calls c, w, or , depending on HAL16B/HAL8B.
+(sz ( operand -- n ) Yields 4 2 or 1 depending on HAL16B/HAL8B.
+
+modrm, ( operand -- )
+  Write the modrm field described by the operand, with disp8/disp32/SIB fields
+  if appropriate.
+
+  When mod<>0 (or modrm=mem), add disp8 or disp32
+  When targeting ESP, mangle operand appropriately to ensure SIB byte.
+
+opc, ( operand -- )
+  Write the "opc" field of the specified operand. If HALINV is set, set bit b1
+  of the opc field before writing it.
+
+?66, ( operand -- operand )
+  If HAL16B is set, write a $66 byte.
+
+op, ( operand -- )
+  Write a "regular" operation, that is, an operation that follows the regular
+  pattern of a static opcode followed by a modrm field, and additionally
+  following the pattern where b0 of its opcode indicates a 8b operation and b1
+  of its opcode indicates direction. For example, ADD, SUB, AND are such regular
+  operations. 8b SUB is $2a, not-8b SUB is $2b, reversed SUB is $28/$29.
+
+  The "opcode" par of the operand, that is, b15:8 is expected to be set to the
+  correct opcode, without its direction bit set. This word takes care of
+  transferring HALINV to b1 of the opcode.
+
+  This word adds the 16b prefix when 16b flag is set.
+
+op0f, ( operand -- )
+  Exactly the same as "op,", but writes a 0f byte in front of the opcode (after
+  possible 66H or REX prefixes).
+
+brc,
+  A non-immediate brc, is tricky because there are no conditional jumps for
+  modrm. We need to wrap a regular br, inside an inverted brc jump.
+
+xchgLH, ( reg -- )
+  Compile a 8-bit XCHG of the LO and HI parts of a register, which must be
+  between 0 and 3.
+
+rol16, ( reg -- )
+  Compile a rotate left by 16 of register.
+
+@+, ( operand -- )
+  Essentially @, with +n,.
+
+-@, ( operand -- )
+  Essentially +n, with @,.
+
+ari, ( operand reg -- )
+  Write arithmetic operand with specified modrm "reg", handling the imm/register
+  complexity. opcodes are supplied as 2 bytes: b15:8 is the "not imm" opcode
+  and b5:3 is the "/reg" argument to supply to the $81 immediate operation.
+
+  When the operation is 16-bit or 8-bit *and* that it's not inverted (if it's
+  inverted, we can perform the 16-bit/8-bit operation directly), we want to load
+  operand's src in a register so that the operation is upscaled to 32-bit.
+
+swap-, ( operand -- )
+  In i386, we do swap- as a "neg" of dst followed by a "add".
+  $f6/3 is "neg" opcode.
+
+  When op is inverted, we negate HAL src, which is a straightforward halop
+  transformation for neg.
+
+  When it's not inverted, its the dest that we negate. The halop transformation
+  for neg is a bit more involved.
+
+shift, ( operand reg -- )
+  Compile a "shift" operation, which all have the same encoding, for HAL operand
+  and a "reg" field corresponding to the type of shift instruction to execute.
+
+?immDI! ( op -- op )
+  Before writing the operand MUL/DIV operation, we check if the operand is
+  immediate. If it is, we load that immediate in DI and mangle the operand so
+  that the source becomes DI.
+
+?swapAX, ( op -- op )
+  If dst is not EAX, write a xchg of EAX with dst.
+
+?src>CX, ( op -- op )
+  If src is indirect, write a MOV to ECX and mangle "op" so that it has ECX
+  as a source.
+
+normalize! ( op -- op )
+  If the operand is both HALDIRECT and HALINV, inverts the src and dst regs
+  and remove the HALINV flag.
+
+/mod, ( op -- )
+  What's happening in here? a lot.
+
+  The DIV op is hardcoded with a AX (W) and DX (S) dest. Unless dst is W or S,
+  we need to save those registers, but we don't have a whole lot of options.
+  We have CX and DI, but we need one of them for possibly storing i). We choose
+  DI for this, leaving us with CX, which we assign for saving DX (S).
+
+  If operand is inverted, we're toast, we don't have enough registers. This is
+  why we need to wrap it inside @!, calls. Inefficient, but it works.

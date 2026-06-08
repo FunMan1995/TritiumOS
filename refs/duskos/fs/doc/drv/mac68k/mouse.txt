@@ -1,0 +1,21 @@
+# mac68k mouse
+
+The unit at [drv/mac68k/mouse.fs] wraps system traps to provide a [io/mouse]
+structure. The traps that it uses depend on QuickDraw being initialized, so
+before you use this, you must have called "qd$" from [drv/mac68k/qd]. No need
+for it to be your grid, just to have it initialized.
+
+## Example initialization
+
+needs drv/mac68k/screen drv/mac68k/qd drv/mac68k/mouse io/mouse
+qd$
+newmacmouse to mouse
+screen Pixbuf.width screen Pixbuf.height 1 mouse configuremouse
+
+## API
+
+GetMouse ( -- x y )
+  Wraps A972, yields current mouse coordinates.
+
+newmacmouse ( -- mouse )
+  Create a new mouse hooked to GetMouse and MBState and yields it.

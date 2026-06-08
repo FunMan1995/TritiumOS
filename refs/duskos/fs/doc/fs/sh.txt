@@ -1,0 +1,214 @@
+# Filesystem "shell" utilities
+
+Words in this unit are a diverse collection of useful FS-related tools that
+are generally used directly by the operator (rather than as a library). In
+other words, it's a collection of tools too fancy for [fs/core].
+
+## Path literals
+
+There are two words for path/file shortcuts: p" and f". These literals work both
+in runtime and compile time mode. In compile time mode, it's not the FS ID that
+is compiled, but the path string. In other words, path finding isn't done at
+compile time but at runtime.
+
+p"foo" is a shortcut for:
+
+  "foo" lookup#
+
+f"foo" is a shortcut for:
+
+  p"foo" open
+
+then, on top of that is pf"..." and pd"..." which are like p"..." except that
+they "ensure" their path (create it if it doesn't exist).
+
+## Managing multiple walk contexts
+
+In a naked [fs/core], there can only be one walking context at once, ever. It's
+ok for finding and opening files as well as creating and removing them, but for
+copying and moving around, it's insufficient: we need to have two concurrent
+walking contexts.
+
+This unit provides them. We call them "source" and "destination" walking
+contexts. They are opaque buffers big enough to store everything one needs to
+remember where we were walking at, that is:
+
+* curfs
+* walkcontext
+* walkpath
+* walkname
+* walksize
+* walkmtime
+* walkdir?
+
+What happens is that you copy from/to those context using "walksrc" and
+"walkdst". What this does is that it saves the current walking context in the
+"other" buffer and then restores the specified buffer in the walk context.
+
+For instance, "walksrc" saves current context in the "dst" buffer and then
+restores the "src" buffer.
+
+If a restored buffer is empty (used for the first time), the initial "restore"
+is a noop.
+
+Additionally, there is also "walk>r" and "r>walk", which store current context
+in RS. This is useful for recursion.
+
+## Words operating on source and destination
+
+The "big" words in this unit operate on both a source and destination. Words
+like "copyfile", "copydir" etc. These word don't take paths as parameters, they
+expect the "src" and "dst" contexts to be set. For example, this is how you
+call "copyfile":
+
+  walksrc p"foo/bar.fs"
+  walkdst p"foo/baz.fs"
+  copyfile
+
+Same thing for directories. When we say "copyall", we mean to copy children of
+the source walking context to the destination walking context, both of which
+must exist. If you want to create destinations on the fly, use pf" and pd":
+
+  walksrc p"path/to/srcdir"
+  walkdst pd"a:maybenew"
+  copyall
+
+## walkdo
+
+"walkdo" and "walkdoboth" allow pretty much any kind of combination of walking
+the FS and doing stuff on files matching some criteria. "listdir" and "copyall"
+are fronts for these words. Let's see some examples.
+
+List all files with .fs extension:
+
+  needs lib/str fs/sh
+  bootfs walk
+  ' ONE :> ".fs" walkname lowstr endswith? if .walk then ; walkdo
+
+Copy all files changed in the last two hours to A:
+
+  needs lib/time fs/sh
+  walksrc p"" walkdst p"a:"
+  ' ONE :> walkmtime 2 hours ago > if ensurecopyfile. then ; walkdoboth
+
+## API
+
+### Words
+
+walksrc ( -- )
+  Save current walking context to "dst" buffer and restore "src" context.
+
+  When the "src" buffer is uninitialized, the "restore" part is a noop.
+
+walkdst ( -- )
+  Save current walking context to "src" buffer and restore "dst" context.
+
+  When the "dst" buffer is uninitialized, the "restore" part is a noop.
+
+p"..." ( -- ) *I*
+  Lookup string using "lookup#".
+
+f"..." ( -- file ) *I*
+  Shortcut for p"..." open.
+
+pf"..." ( -- id fs ) *I*
+  Like p"...", but with "ensurefile".
+
+pd"..." ( -- id fs ) *I*
+  Like pf"...", but with "ensuredir".
+
+.walkpath ( -- )
+  Print the absolute path, including FS mapped letter, corresponding to the
+  target of the current walk context.
+
+  If the FS of the walk context is not mapped nor the bootfs, print a "?:"
+  prefix.
+
+ensurepath ( dir? str -- )
+  Tries to look up "str" relatively (like "lookuprel"). If not found, ensure
+  that directories leading to the final element of that path are created, then
+  create the last element as a file or directory depending on the "dir?" flag.
+
+  If "path" already exists and is of a different file/dir kind as the one
+  requested, abort with error.
+
+ensurefile ( str -- )
+  Shortcut for ensurepath with dir?=0, but *not* for a relative path. The lookup
+  being done here, unlike in "ensurepath", is absolute.
+
+ensuredir ( str -- )
+  Like "ensurefile", for with dir?=1.
+
+ensuredst ( -- )
+  Providing that the source context points to a directory or file we want to
+  mirror in the destination context *and* that the destination context has
+  entered the directory in which we'd like to mirror that element, ensure that
+  this elements exists in the destination context using "ensurepath".
+
+  This word always selects the source context before returning.
+
+walkdo ( ?enterxt doxt -- )
+  Enter walked directory and recursively apply "doxt ( -- )" to all walked
+  files.
+
+  For each walk element, if it's a directory, call "?enterxt ( -- f )". If it
+  yields nonzero, recurse into it. Otherwise, skip directory.
+
+  This only works for a single walking context. For both src and dst contexts,
+  see "walkdoboth" below.
+
+.walk ( -- )
+  Print current walking context on a single line in a human readable form.
+
+  First, print its full path. Then, either the size of the file or "[DIR]" is
+  printed text to it, followed by a formatted [lib/time] string representing
+  "walkmtime".
+
+listdir ( -- )
+  If walking a directory, enter it and call ".walk" for each element. Does not
+  recurse. If it's a file, only call ".walk" once.
+
+listtree ( -- )
+  Like "listdir" but recursive.
+
+walkdoboth ( ?enterxt doxt -- )
+  Like "walkdo", but enter both the src and dst context. Then, whenever
+  recursion occurs, ensure that the entered directory in src exists in dst
+  before doing the recursion.
+
+  Walking happens from the perspective of the source context. When "?enterxt"
+  or "doxt" are called, dst context *doesn't* point to the mirror of that
+  walked element. However, it is guaranteed to be "entered into" a directory
+  that mirrors the entered directory of the source context. If you want to
+  mirror the source into dst, call "ensuredst" first.
+
+  When "?enterxt" yields nonzero, "ensuredst" is called before doing recursion.
+
+copyfile ( -- )
+  Copy source file to destination file.
+
+  Abort if source or dest is not a file.
+
+copyfile. ( -- )
+  Like "copyfile", but also, prints a line describing the copying operation
+  taking place before doing it.
+
+ensurecopyfile. ( -- )
+  Alias for "ensuredst copyfile."
+
+copyall ( -- )
+  Recursively copy all elements in source to destination.
+
+  While running recursion, it ensures that the destination path exists before
+  copying.
+
+  Before copying a file, print the copy operation that is about to occur.
+
+  Abort if source or dest is not a directory.
+
+copylist ( stringlist -- )
+  Lookup each path in "stringlist" and copy them to [fs/sh] destination,
+  recreating the same paths there.
+
+  When the path in the stringlist is a directory, use "copydir". Otherwise,
+  "copyfile".

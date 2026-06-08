@@ -1,0 +1,197 @@
+# PCI driver
+
+Interaction with devices through the PCI bus is mainly done through the
+configuration registers of each device. The method through which we access those
+registers is machine-specific, but the adressing scheme is not. A "PCI address"
+has this structure:
+
+  b31     Enable bit
+  b30:24  Reserved
+  b23:16  Bus number
+  b15:11  Device (Slot) number
+  b10:8   Function number
+  b7:0    Register offset, b1:0 is always 0
+
+With that address, you can read and write to PCI registers, usually to set up
+some memory mapping through which the real interaction will occur.
+
+PCI addresses only ever refer to aligned 32-bit values.
+
+## Lower and upper layers
+
+This PCI driver is machine-independent, but rests on a small machine-dependent
+layer (for example [drv/pc/pci.fs]) to provide implementation for those words:
+
+pci@ ( addr -- n )
+  Fetch a 32-bit number from PCI address "addr".
+
+pci! ( n addr -- )
+  Store a 32-bit number to PCI address "addr".
+
+Those are aliases and must be initialized through "pci$ ( xt@ xt! -- )".
+
+The upper layer provides a few conveniences:
+
+* PCI address constructors
+* PCI field accessors
+* Slot/Function enumeration capabilities
+* Prints out informations about a Slot/Function
+
+## Example initialization
+
+needs drv/pci drv/mypciimpl
+' mypci@ ' mypci! pci$
+
+## Construct a PCI address
+
+To construct a PCI address in a way that conforms to the bit structure described
+above, you can "or" bits in, but you can also use the constructor words:
+
+pcibus) ( busno -- addr )
+pcislot) ( addr slotno -- addr )
+pcifunc) ( addr funcno -- addr )
+pcireg) ( addr offset -- addr )
+
+For example, printing the bus 42 is done this way:
+
+  42 pcibus) .pcibus
+
+Printing the details of the function 1 on slot 2 on bus 3, it's
+
+  3 pcibus) 2 pcislot) 1 pcifunc) .pci
+
+## PCI field accessors
+
+The PCI field accessor allows one to read common PCI fields. When 16-bit or
+8-bit mangling is necessary, it does it. For example:
+
+  0 pcibus) pci.vendor .x
+
+will print the 16-bit "Vendor ID" field of address 00:00.00 (bus 0, slot 0,
+function 0). The available fields are as follow:
+
+Off Width Name            Desc
+00  2     pci.vendor      Vendor ID
+02  2     pci.device      Device ID
+04  2     pci.command     Command
+06  2     pci.status      Status
+08  1     pci.revision    Revision ID
+09  1     pci.progIF      progIF
+0a  1     pci.subclass    Subclass
+0b  1     pci.class       Class
+0a  2     pci.cs          Combined Class/Subclass
+0c  1     pci.cachelinesz Cache Line Size
+0d  1     pci.lattimer    Latency Timer
+0e  1     pci.hdrtype     Type
+0f  1     pci.bist        BIST
+
+10  4     pci0.bar0            BAR0
+14  4     pci0.bar1            BAR1
+18  4     pci0.bar2            BAR2
+1c  4     pci0.bar3            BAR3
+20  4     pci0.bar4            BAR4
+24  4     pci0.bar5            BAR5
+28  4     pci0.cisptr          Cardbus CIS ptr
+2c  2     pci0.subsystemvendor Subsystem Vendor
+2e  2     pci0.subsystem       Subsystem ID
+30  4     pci0.expansionaddr   Expansion Addr
+34  1     pci0.capabiliesptr   Capabilities ptr
+3c  1     pci0.interruptline   Interrupt Line
+3d  1     pci0.interruptpin    Interrupt PIN
+3e  1     pci0.mingrant        Min grant
+3f  1     pci0.maxlatency      Max latency
+
+10  4     pci1.bar0            BAR0
+14  4     pci1.bar1            BAR1
+18  1     pci1.pribus          Primary Bus
+19  1     pci1.secbus          Secondary Bus
+1a  1     pci1.subbus          Subordinate Bus
+1b  1     pci1.seclattimer     Sec Latency timer
+1c  1     pci1.iobase          I/O base
+1d  1     pci1.iolimit         I/O limit
+1e  2     pci1.secstatus       Secondary status
+20  2     pci1.membase         Memory base
+22  2     pci1.memlimit        Memory limit
+24  2     pci1.prefmembase     Prefetch mbase
+26  2     pci1.prefmemlimit    Prefetch mlimit
+28  4     pci1.prefhmem        Prefetch high mem
+2c  4     pci1.preflmem        Prefetch low mem
+30  2     pci1.iobaseh         I/O base (high)
+32  2     pci1.iolimith        I/O limit (high)
+34  1     pci1.capabiliesptr   Capabilities ptr
+38  4     pci1.expansionbase   Exp ROM base
+3c  1     pci1.interruptline   Interrupt Line
+3d  1     pci1.interruptpin    Interrupt PIN
+3e  2     pci1.bridgectl       Bridge Control
+
+Fields used to be read/write, but this functionality was stripped with the
+removal of "to" semantics. It will come back at some point, but for now all
+that's ever needed in drivers is to read PCI fields.
+
+## PCI enumeration
+
+slotchildren ( addr -- ... n )
+  For a given slot address "addr", yield the the addresses of the associated
+  devices. That is, if slot type is $80, yield all valid children. Otherwise,
+  yield self if valid.
+
+buschildren ( addr -- ... n )
+  For a given bus address "addr", yield the the addresses of the associated
+  devices.
+
+  Example usage:
+
+    : foo 0 pcibus) buschildren 0 do pci.vendor .x2 loop ;
+
+  Calling "foo" will print the value of the "Vendor ID" field for every valid
+  function of every valid slot of bus 0.
+
+busdescendants ( addr -- ... n )
+  Like buschildren, but recurse into any PCI bridge found in the results.
+
+## Filtering
+
+pcifilter ( ... n class subclass progif -- ... n )
+  Go through the specified address list and keep only those that have the
+  specified class/subclass/progIF.
+
+  A value of -1 for "progif" means "any".
+
+pcifilter1 ( ... n class subclass progif -- addr-or-0 )
+  Call "pcifilter", keeping only the top result if here is one, or yield 0 if
+  there is none.
+
+pcifiltervendor ( ... n vendor -- ... n )
+  Go through the specified address list and keep only those that have the
+  specified vendor.
+
+pcifilterdevices ( ... n ... n -- ... n )
+  The top PS list represent a list of device ids, the bottom PS list represent
+  a list of PCI addresses.
+
+  Go through the specified address list and keep only those that have a device
+  is contained within the specified device IDs.
+
+## Printing information
+
+The driver provides the following convenience printers:
+
+.pciaddr ( addr -- )
+  Prints addr in its 00:00.00 format.
+
+.pciln ( addr -- )
+  Prints summary information of function at addr on one line.
+
+.pcibus ( addr -- )
+  Iterate over all valid slots/functions of the bus and call .pciln
+
+.pci ( addr -- )
+  For the function at addr, print values of all fields of the "common" PCI
+  block, one line per field, with descriptions.
+
+.pciall ( -- )
+  Enumerate bus 0 recursively, that is, following bridges to other buses when
+  it encounters them.
+
+.pci0 ( addr -- )
+  Like ".pci", but for the "Type 0" block.

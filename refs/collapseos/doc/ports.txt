@@ -1,0 +1,16 @@
+# Collapse OS ports
+
+To facilitate the development of the Collapse OS project, code
+related to specific machines all live in separate codebases.
+The core set of blocks has assemblers for all supported CPUs and
+MCUs, core boot code for all CPUs Collapse OS runs on, but no
+driver for specific hardware.
+
+The idea is that this separate codebase add a second layer of
+blocks on top of the 400 core blocks (and thus start their block
+numbering scheme at 400). These codebase also take care of all
+build and deployment mechanism for a particular machine.
+
+Some ports define mechanisms that can be useful somewhere else.
+In those cases, ports can use each other. The "used" port go
+in blocks 400-499 and the "user" port go in blocks 500-599.

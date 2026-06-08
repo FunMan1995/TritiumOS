@@ -1,0 +1,11 @@
+*.o
+*.img
+*.core
+/dusk
+/dusk-grid
+/dusk-sdl
+/kbdconv
+memdump
+/*.bin
+/*.rom
+/*.exe

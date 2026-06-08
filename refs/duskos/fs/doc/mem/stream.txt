@@ -1,0 +1,40 @@
+# In-memory stream
+
+The unit at [mem/stream.fs] provides a MemStream structure that extends Stream
+[io/stream] and provides read/write capability to a memory area. When it
+reaches the end of its buffer, reads will yield EOF and writes will fail.
+
+## Memory reuse
+
+This unit plays nice with [mem/reuse]. When allocated with "newmemstreambuf",
+the allocated buffer is a reusable buffer.
+
+Also, the stream's buffer is freed on "close" using [mem/reuse]'s "free".
+
+## API
+
+### Structure
+
+extends Stream struct MemStream { uint bufptr ; }
+
+bufptr  Pointer to the memory where this buffer lives at
+
+### Words
+
+newmemstream ( a u -- st )
+  Allocate a new MemStream pointing to address range "a u".
+
+newmemstreambuf ( sz -- st )
+  Allocate a new buffer of "sz" bytes and then call newmemfile with it.
+
+range ( st -- a u )
+  Return the range represented by the whole buffer.
+
+writtenrange ( st -- a u )
+  Yields range of buffer up until current position.
+
+eof? ( st -- f )
+  Whether ptr = )buf.
+
+rewind ( st -- )
+  Set "pos" to 0.

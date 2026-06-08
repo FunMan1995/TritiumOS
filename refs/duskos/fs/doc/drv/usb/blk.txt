@@ -1,0 +1,55 @@
+# USB Mass Storage Driver
+
+This unit implements a [io/blk] from a [drv/usb] of the Mass Storage class. It
+supports the SCSI Transparent set ($06) subclass with the $50 protocol (bulk
+only), that is, what your run-of-the mill USB mass storage device likely has.
+
+Because a USB mass storage device can contain more than one logical units, this
+unit has two layer of structures. First, the UMS (USB Mass Storage) targets a
+specific USB device with the correct CSP, but UMS isn't a Blk by itself. All it
+does it reset the device and get a number of LUNs (logical units). It's most
+likely 1, but it can be more.
+
+Then, from that UMS, you spawn a USBBlk. That's the blk unit you'll play with.
+
+## Example initialization
+
+  needs drv/usb/blk
+  findums# newums const myums
+  myums nlun . \ that's how many LUNs you have on the drive
+  0 ums newusbblk const myblk \ first LUN of the drive
+  \ myblk is ready to use!
+
+## API
+
+### Structures
+
+struct UMS { uint epin epout nlun ; }
+
+epin   Bulk endpoint (Ep) to use for input
+epout  Bulk endpoint (Ep) to use for output
+nlun   Number of logical units available on this device
+
+extends Blk struct USBBlk { uint ums lun ; }
+
+ums    Link to parent UMS
+lun    Logical unit being targeted by this blk
+
+### Words
+
+findums# ( -- ep0 )
+  Look through enumerated device and yield the first one that is a suitable UMS
+  or abort if not found.
+
+  NOTE: Yes, I know, this scheme breaks down when we want to have more than one
+  device. A [drv/usb] refactoring is coming, things will be better soon.
+
+newums ( dev -- ums )
+  Create a new UMS structure targeting dev. This word resets the device and
+  queries for "nlun". Then, it figures out its "epin" and "epout" endpoint.
+
+  Aborts if any of this goes awry.
+
+newusbblk ( lun ums -- blk )
+  Create a new USBBlk target targeting specified LUN on specified UMS. This
+  queries for blksz/blkcnt through READ CAPACITY (10), aborting if it fails.

@@ -1,0 +1,311 @@
+# USB subsystem
+
+This unit is the core of Dusk's support for the Universal Serial Bus. It glues
+the "host" and "device" drivers together. Examples of host drivers are
+[drv/usb/ehci] or [drv/rpi/dwc] and examples of device drivers are [drv/usb/kbd]
+or [drv/usb/blk].
+
+Hosts provide root hubs on which there are ports that we can monitor for device
+presence. When a new device is detected, we enumerate it (this logic lives in
+this very unit), then the device becomes available for a driver to "take" it.
+
+How it will usually happen is that the device driver will supply a way to filter
+active devices, often through CSP (Class/Subclass/Protocol) values for suitable
+devices. Once a device is selected, you can instantiate a new device driver
+targeting that USB device. Then you can use it and go on your merry way.
+
+## Example usage
+
+Let's say that you're on a system with a EHCI placed on the PCI bus. First,
+you'll initalize [drv/usb/ehci]:
+
+  needs drv/usb/ehci
+  ehci$
+
+Then, let's have a look around:
+
+  usbwork lsusb
+
+This will give you a list of all available USB ports and, if a device is
+connected, the details of that device, first and foremost its address, a number
+between 1 and 127.
+
+Let's imagine that you have a mass storage device plugged in and that this
+device has a FAT [fs/fat]. Let's say that lsusb shows it as device 2. Here's
+what you'll want to do:
+
+  2 device@ newums const myums
+  myums nlun . \ that's how many LUNs you have on the drive
+  0 ums newusbblk const myblk \ first LUN of the drive
+  needs fs/core fs/fat fs/sh
+  myblk newfatfs 'A' mapfs
+  p"a:" src! listdir \ listing of the FAT on the USB drive
+
+## Underpowered but simple
+
+Because Dusk has no concurrency, it kind of makes inoperant the idea, central to
+USB, of multiple devices sharing frames in an efficient manner.
+
+Because there are no concurrent threads, there can pretty much only every be one
+device being acted upon at once. At least until some kind of async mechanism
+is put in place in Dusk.
+
+This means that USB frames will pretty much always contain at most a single USB
+transfer, and the system is going to wait for the frame to be finished before
+acting upon it.
+
+But on the other hand, we can enjoy access to USB devices through a very simple
+code base.
+
+## usbwork
+
+The word "usbwork ( -- )" is the beating heart of USB enumeration It goes
+through all ports of all root hubs and check for device attachment changes. When
+a device it detached, we mark it as detached. When it's attached, we fetch its
+descriptors through its control endpoint.
+
+This can take a little while to complete, so if you have a new device, "usbwork"
+can take up to a few seconds to complete. Nevertheless, it's the kind of word
+you'll probably want to add to your idle loop [lib/coop].
+
+## lsusb
+
+If you want to see USB status, you can call "lsusb". This command prints all
+known USB root hubs in the system. For each port of the hub, it prints the port
+status and, if a device is attached and initialized (through usbwork), the info
+for that device. If that device is a hub, we recursively print status.
+
+Right next to the port number is a 16-bit hex number in [] brackets. It's the
+port status. Different USB controllers have different bits for port status. This
+number is a "unified" number where bits are independent of the controller.
+Here's the list:
+
+b10 High speed
+b9  Slow
+b8  Power
+b4  Reset
+b3  Overcurrent
+b2  Suspend
+b1  Enabled
+b0  Present
+
+## Structures
+
+The USB subsystem revolves around a handful of structures, defined in
+[drv/usb/struct.fs]. We could say that the most "useful" among them is Ep,
+which represents an endpoint. Most words of the USB API need a reference to this
+structure.
+
+There's not really a useful "handle" the the device itself. There's the Dev
+struct, but it's only a "info repository", not really a handle to actions upon
+the device. When we want to act on the device, we will usually do so through
+its "ep0", the control endpoint, which is a Ep struct.
+
+IEp and IDev are a information repository directly coming from descriptors fed
+to us by the device.
+
+Hub and Port manage, well, hubs and ports! All hubs live in the "hubs" linked
+list, in which all links have a single element: a pointer to a Hub struct.
+
+Lastly, there's Hci, the Host Controller Interface, with pointers to method
+implemented by individual device drivers (for example [drv/usb/uhci] and
+[drv/rpi/dwc]).
+
+How you'll typically create those structs is by first creating and initializing
+a Hci. The initialization of the Hci will include the creation of a root Hub,
+added to "hubs". When a device is attached, it will be picked up by "usbwork",
+which will call "newdev" to yield a Ep and then configure it. With a device
+attached to a Hub's Port, you can access it.
+
+## API
+
+### Structures
+
+struct Hci {
+  uint nports highspeed epread epwrite ;
+  xt roothubfeature ;
+}
+
+nports    Number of ports in root hub
+highspeed Is it a high speed root hub?
+
+epread epwrite
+  These are indirections over the words of the same name and signature
+  documented in the "Words" section below.
+
+  Normally, they'd be methods, but because the hosting struct is a Hci and the
+  target struct of the word is a Ep, it doesn't really work. So, they are xt
+  pointers, but not methods.
+
+  Additionally, the "epread" wrapper implements the extra "maxpkt" logic before
+  calling Hci.epread. Therefore, Hci.epread *doesn't* have to implement that
+  logic and can assume "n" is a multiple of maxpkt. See "epread" below.
+
+roothubfeature ( on feature port hci -- res )
+  Calling this is the equivalent of sending a control request to a regular hub,
+  that is, "feature" is one of the feature constants, "on" is a boolean.
+
+  Realistically, a root hub only has to support those features:
+
+  Fportenable Fportreset Rgetstatus
+
+struct Dev {
+  uint nb state speed ;
+  *Hub parenthub ;
+  uint portnb info ep0 ;
+}
+
+nb        USB device number
+state     State of the device
+          Dconfig   configuration in progress
+          Denabled  address assigned
+          Ddetach   device is detached
+          Dreset    its port is being reset
+speed     Fullspeed Lowspeed or Highspeed
+parenthub The Hub to which this device is directly connected
+portnb    port number in the parent hub
+info      IDev struct associated with this device
+ep0       The control endpoint (Ep) of that device
+
+struct Ep {
+  uint nb ;
+  *Hci hci ;
+  *Dev dev ;
+  uint info clrhalt maxpkt ttype toggle ;
+  [void,0] extra ;
+}
+
+nb       endpoint number in device
+hci      Hci it belongs to
+dev      Dev it belongs to
+info     IEp associated with this ep
+clrhalt  true if halt was cleared on ep
+maxpkt   Max packet size of this ep
+ttype    Tctl Tiso Tbulk Tintr
+toggle   Save DATA toggle
+
+extra
+  Many host drivers extend the Ep structure with extra fields. For simplicity,
+  all allocated Eps have the same size. We add EXTRAEPSZ bytes next to each Ep
+  to give space for those extra fields. "extra" is the address of those fields.
+  Structures that extend Ep must not define more than EXTRAEPSZ worth of fields.
+
+struct IEp {
+  uint addr dir ieptype isotype iepid iepmaxpkt ntds ifaceid ifacecsp ;
+}
+
+These are fields that come directly from the descriptors in their parsed form.
+
+addr      endpt address, 0-15 ($80 orred if Ein)
+dir       direction, Ein/Eout
+ieptype   Tctl, Tiso, Tbulk, Tintr
+isotype   Eunknown, Easync, Eadapt, Esync
+iepid     same as addr without the $80
+iepmaxpkt Max packet size
+ntds      nb. of Tds per microframe
+ifaceid   Interface ID under which this endpoint was listed
+ifacecsp  The CSP of the interface under which this endpoint was listed
+
+struct IDev {
+  uint csp vid did dno vendor product serial vsid psid ssid class nconf ;
+  [uint,Ndeveps] ieps* ;
+}
+
+csp       USB class/subclass/proto
+vid       vendor id
+did       product (device) id
+dno       device release number
+vendor    String fetched from vsid
+product   String fetched from psid
+serial    String fetched from ssid
+vsid      String ID for vendor
+psid      String ID for product
+ssid      String ID for serial
+class     Class ID of the device
+nconf     Number of configurations for this device
+ieps*     Array of 16 pointers to IEp structs. 0 for none.
+
+struct Port {
+  uint portstate sts portdev porthub ;
+}
+
+portstate  state of the port (Pdisabled, Pattached, Pconfiged)
+sts        Last result of "portstatus"
+portdev    Device attached to the port (0 if none)
+porthub    If device is a Hub, the Hub in question. Otherwise 0.
+
+struct Hub {
+  uint hubnext hci pwrmode compound pwrms maxcurrent leds nport hubports ;
+  uint failed ;
+  *Dev hubdev ; \ NULL when root hub
+}
+
+hubnext    Hubs are organized as a LL, this is the next element of LL.
+hci        Hci that spawned the Hub
+pwrmode
+compound
+maxcurrent Parsed from descriptors but aren't used yet
+pwrms      Milliseconds to wait after powering up a port
+leds       Do port have leds to turn on or off?
+nport      Number of ports in this hub
+hubports   Pointer to an array of Port (not pointers), "nport" in length
+failed     True if the hub has failed and must be ignored
+hubdev     Pointer to Dev associated with this Hub. 0 if this is a root hub.
+
+### Words
+
+epopen ( ep -- )
+  Tell the Hci to prepare whatever it has to prepare to for "ep" to be
+  functional. Aborts on error.
+
+epread ( n a ep -- n )
+  Read n bytes from ep in buffer a. Aborts on non-recoverable errors (some Hci
+  yield -1, but that's going away). Yielded n is the number of bytes actually
+  read. On NAK, n=0.
+
+  USB specs require reads on TBulk and Tintr to be a multiple of maxpkt in
+  length. This word doesn't require it because it implements the required
+  workaround logic around it. That is, if "n" is not a multiple of maxpkt, we
+  first read to a separate buffer, then copy the requested amount of bytes to
+  that buffer.
+
+  Because of that workaround, it's possible that output "n" is greater than
+  input "n". It likely indicates an error, but that's for the caller to decide.
+  However, even if result "n" is greater than input "n", only the smallest
+  amount is copied to destination "a" as to not cause a buffer overflow.
+
+epwrite ( n a ep -- n )
+  Write n bytes from buffer a to endpoint ep. If ep is the control endpoint,
+  the "a" buffer contains the REQSZ-wide request followed directly by the
+  associated data (which can be absent depending on the request).
+
+  Aborts on error. On success, yielded "n" will be the same as input "n".
+
+usbcmd ( n a index value req type ep -- n )
+  Given a control endpoint "ep", construct a request with the specified fields.
+  If the request has no associated data, "a" and "n" are 0. If the request has
+  to be accompanied by OUT data, the range "a n" is that data. If the request
+  involves IN data, "a" is a buffer to receive that data and "n" is the expected
+  length of that data.
+
+  Aborts on error. On success, yielded "n" is the same as input "n".
+
+usbwork ( -- )
+  Run the USB enumeration loop once. If new devices are detected by the hub
+  ports, initialize them. After a "usbwork" call, "lsusb" should show all
+  attached devices.
+
+lsusb ( -- )
+  Go through all root hubs and recursively print a textual description of
+  attached devices.
+
+finddevofclass ( subclass class -- dev-or-0 )
+  Go through all attached devices and yield the first device where the
+  class/subclass info correspond to the specified ones.
+
+  Yield 0 if no such device was found.
+
+## See also
+
+* Universal Serial Bus Specification
+* USB Complete, Jan Axelson

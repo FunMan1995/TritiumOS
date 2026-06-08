@@ -1,0 +1,39 @@
+Account setup issue - follow-up responses
+
+This is an IBM Quantum Platform Open Plan account setup / provisioning issue, not a credit card or subscription code problem.
+
+1. What type of account are you setting up?
+
+Open Plan (free access) on IBM Quantum Platform (quantum.cloud.ibm.com). This is not Academic, IBM Corporate Program, Pay-As-You-Go, Premium/Enterprise subscription, or IBM Cloud Enterprise Savings Plan. Registration was for the standard Open Plan to run Qiskit Runtime on QPUs within the free time allowance.
+
+2. Do you have an account number?
+
+No IBM Cloud billing account number is available to provide in this ticket. Account was created through IBM Quantum Platform registration (Open Plan). If an internal account or instance identifier exists for the orphaned Open instance that blocks creation, please look up the account associated with API key registration trace 626c-1114ce38fcbbb253 and 626c-ec1ce2f9a4678e1a.
+
+3. Are you attempting to use a subscription code?
+
+No. No subscription code was used. Nothing was entered at https://cloud.ibm.com/account/settings for a subscription code. This case is not related to subscription code redemption.
+
+4. Are you attempting to use a credit card that needs to be accepted?
+
+No. Open Plan does not require a credit card for the reported failure. No credit card was entered for this setup step. No credit card error message applies.
+
+5. Credit card help link
+
+Not applicable - no credit card involved in Open Plan registration path described here.
+
+Additional information (account setup issue)
+
+Symptom: Open Plan setup cannot complete. Instances UI shows zero instances. Creating the required Open instance fails with Qiskit Runtime broker 422: only one open plan instance is allowed per account. Therefore setup appears complete in backend but no instance is exposed to the user or API.
+
+Expected setup outcome: One Open Plan instance visible in us-east with a CRN for QiskitRuntimeService.
+
+Actual outcome: Empty Instances page plus 422 on create plus API list_instances returns zero.
+
+Requested resolution: Treat as incomplete/broken Open Plan provisioning. Delete ghost instance or publish existing instance to UI and API.
+
+Environment: Windows, Edge browser for UI; Python qiskit-ibm-runtime for API verification.
+
+Steps: Register Open Plan, confirm email, create API key on platform dashboard, set region us-east, Instances empty, Create instance Open plan fails 422.
+
+Not a billing, subscription code, or credit card issue. Please route to Quantum Platform / Qiskit Runtime instance provisioning support.

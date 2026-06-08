@@ -1,0 +1,23 @@
+# Duskberon's Clipboard module
+
+The module `Clipboard` at [oberon/Clipboar.mod] provides access to the Dusk
+clipboard [text/clip].
+
+If your Dusk system also provides access to a host clipboard (i.e. it
+provides "hostcopy" and "hostpaste" words; the SDL flavor of Usermode
+and POSIX Dusk does so), clipboard modifications will also be synchronized 
+with the host clipboard. If you do not want this (to only synchronize with
+Dusk's Forth clipboard) set "hostsync" variable to 0 ("0 to hostsync")
+after the Clipboard module is loaded.
+
+## Commands
+
+CopySelection
+  Copy the content of the selection to the clipboard, overwriting its
+  previous content.
+
+CopyViewer
+  Copy the whole content of the viewer that contains the star marker.
+
+Paste
+  Paste the current clipboard contents at caret position.

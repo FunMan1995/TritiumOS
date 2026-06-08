@@ -1,0 +1,103 @@
+# RISCV assembler
+
+The general *modus operandi* of this assembler is very close to [asm/arm]. This
+is an example invocation:
+
+  add) x1 rd) x1 rs1) x2 rs2) ,) \ add x2 to x1
+
+## Register constants
+
+The 32 registers of the CPU can be referred to by constants x0 to x31.
+Otherwise, there are also aliases for registers with a special role:
+
+xZERO --> x0
+xRA   --> x1
+xSP   --> x2
+xGP   --> x3
+
+xRSP     --> x2
+xPSP     --> x3
+xW       --> x4
+xA       --> x5
+xS       --> x6
+xSYSVARS --> x7
+xAcmp    --> x28
+xBcmp    --> x29
+
+## Instruction parameters
+
+Those words all have a ( op reg -- op ) signature and set the different fields
+of the RISC-V instruction: rd) rs1) rs2) funct3) funct7)
+
+Additionally, there is rdrs1) which sets both RD and RS1 to the same value.
+
+For the load and store instructions, parameters can be hard to remember and
+error prone, so we have these aliases:
+
+  base)  --> rs1)
+  src)   --> rs2)
+  dst)   --> rd)
+
+## Immediates
+
+RISC-V immediates are even trickier than with ARM, and that's something. This
+assembler has the "imm) ( op n -- op )" keyword that will set the immediate
+fields correctly depending on the instruction. Under the hood, it's all very
+complex, but this word does the right thing. If "n" is out of bounds, we abort.
+
+You will often want to load a register with an arbitrary number. This means a
+possibility of multiple instructions. For this purpose, we have a macro, "li, (
+reg n -- )". For example, "x1 42 li," will write the needed instructions so that
+register x1 contains 42.
+
+## Instructions
+
+All instruction words have a ( -- op ) signature.
+
+LOAD/STORE, byte, halfword, word, unsigned
+  lb) lh) lhu) lw) lwu) sb) sh) sw)
+
+Integer Register-Immediate
+  addi) slti) sltiu) andi) ori) xori)
+  slli) srli) srai)
+  lui) auipc)
+
+Integer Register-Register
+  add) sub) slt) sltu) and) or) xor)
+  sll) srl) sra)
+
+Jumping around
+  jal) jalr)
+  beq) bne) blt) bltu) bge) bgeu)
+
+Multiply and divide (M extension)
+  mul) mulh) mulhu) mulhsu) mulw)
+  div) divu) divw) divuw)
+  rem) remu) remw) remuw)
+
+TODO: there are other instructions defined in the unit, but some of them are
+spurious. Firgure out which is good and which isn't. Remove the bad, document
+the good.
+
+## Macros
+
+push, ( reg -- )
+  Grow xRSP by 4 and store "reg" into the new slot.
+
+pop, ( reg -- )
+  Load xRSP top to "reg" and shrink xRSP by 4.
+
+ppush, ( reg -- )
+  Like "push,", but for xPSP.
+
+ppop, ( reg -- )
+  Like "pop,", but for xPSP.
+
+absb, ( pc -- )
+  Jump to absolute address "pc".
+
+absbl, ( pc -- )
+  Call absolute address "pc".
+
+pc>reg ( reg -- )
+  Load current PC value into "reg".

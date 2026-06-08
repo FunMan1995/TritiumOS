@@ -1,0 +1,239 @@
+hal.fs can't have comments and can't use asm/m68k, which means that there are
+numerical opcode literals around. Those opcodes are documented here.
+
+## Hal opcode structure
+
+Unlike other CPUs, this HAL operand structure is *not* close to asm/m68k EAS
+structure because being close to this structure harms more than it helps.
+Because of m68k An/Dn split, m68k identifies registers with 3 bits and this
+harms us HAL-wise. It's better if we can identify source and destination
+registers in a clean 4 bits fashion. So here we go:
+
+b31:20 Zeroes
+b19:16 Offset or immediate (HAL bank)
+b15:14 Zeroes
+b13    signed)
+b12    inv)
+b11    immediate or memory?
+b10    &)
+b9     16b?
+b8     8b?
+b7:4   Destination register
+b3:0   Source register
+
+An i) is a dereferenced m)
+
+## instr format
+
+Instructions are generally 16-bit words. However, some instructions come with
+extra data that have to be written immediately after the instruction word, for
+example MULU or the "I" variants of arithmetic instructions.
+
+To simplify our logic, we define this format below:
+
+b20    extra data size. 0=16-bit 1=32-bit
+b19:16 Bank ID
+b15:0  Instruction
+
+As a general rule, you can write an instruction with "w,", but if there's a
+chance that it has extra data, use "instr," instead, which will check if the
+upper 16-bits are zero and act accordingly.
+
+## Words
+
+src@ ( op -- reg )
+dst@ ( op -- reg )
+src! ( op reg -- op )
+dst! ( op reg -- op )
+  Simple getters/setters to src and dst fields
+
+opbank@ ( op -- n )
+  Shortcut for "hslot> hbank@"
+
+mode! ( op reg mode -- op )
+  Assemble a 6-bit mode+reg field and OR it into op at b5:0. Unless mode is 0,
+  it is expected that "reg" is a An. If it's not, miscompilation will occur.
+
+bri, ( absaddr instr -- )
+  Write one of the "relative branch" instruction ($6000 etc.) in either its 8b,
+  16b or 32b form, targeting absolute address "absaddr". The form is
+  automatically selected based on the relative offset being computed.
+
+brci, ( tgt cond -- )
+  Compile a conditional jump to target address tgt.
+
+r@, ( dst src -- )
+  Compile a straight register to register move, "dst" and "src" being register
+  IDs (0-15 numbers).
+
+A? ( reg -- f )
+  Is register ID a An register?
+
+?src>A0, ( op -- op )
+  Maybe compile a copy of the src of the op to A0.
+
+  If hbank contains a number that is bigger than $ffff, compile a copy of the
+  source register to A0 (only if it isn't already A0), then compile an addition
+  of that number to A0, then clear the hbank and set source to A0.
+
+  If src is not a An register, compile a move from its base register to A0 and
+  change the "src" field of "op" to indicate A0.
+
+  d1fc A0 imm) adda,
+
+rm<>mr ( rm -- mr )
+  In a 6-bit "regmode" field, swap the fields.
+
+mkrm ( reg mode -- rm )
+  Combine reg and mode to form a 6-bit "regmode" field. If mode is 0 and reg is
+  a An register, the mode of the rm field will be 1. If mode is nonzero, we
+  assume that reg is a An and trim the highest bit from "reg".
+
+move, ( sz dstrm srcrm -- )
+  Assemble a MOVE instruction with "rm" fields being 6-bit "regmode" fields,
+  3-bit register on the low half, 3-bit mode on the high half.
+
+  sz=2 for Long, 3 for Word, 1 for Byte.
+
+  This only results in 2 bytes being written. If extension words are needed,
+  they must be written afterwards by the caller.
+
+lea, ( rm -- )
+  Compile a LEA to A0 and source regmode "rm".
+
+  This only results in 2 bytes being written. If extension words are needed,
+  they must be written afterwards by the caller.
+
+clr, ( dstrm -- )
+  Write a 32-bit CLR instruction targeting dstrm.
+
+?clrDn, ( dstrm -- )
+  Write a 32-bit CLR instruction only if dstrm is a direct Dn rm.
+
+rm@ ( mode op -- dstrm srcrm )
+  Prepare argument for a move, call.
+
+sz1 ( op -- n )
+  Yield the "size" field of "type 1", that is for the MOVE type.
+  8b=1 16b=3 32b=2
+
+sz2 ( op -- n )
+  Same as sz1, but for "type 2" (arithmetic). 8b=0 16b=1 32b=2
+
+@mode, ( op mode -- )
+  Decode "op" to write a MOVE using the specified mode for src.
+
+D0@, ( op -- op )
+  Compile a move of op's src to register D0, then yield an op preserving dst,
+  but with all other bits cleared out and HALDIRECT set (which means a clean
+  direct D0 source).
+
+imm, ( reg n -- )
+  Compile the write of immediate "n" in register "reg".
+
+instr, ( instr -- )
+  Write instruction "instr" according to "instr format" paragraph above.
+
+eaop, ( op instr -- )
+  Write down instruction "instr" which is a "regular" op devoting its low 6-bits
+  to a effective address. It choses a mode according to op flags. dst is ignored
+  and assumed to already be written in "instr".
+
+  If needed, other instructions are written in periphery.
+
+  HALDIRECT, HALIMM and hbank zeroness are considered.
+
+  HALINV, HAL8B and HAL16B are *not* considered and must be resolved into instr
+  before eaop, is called.
+
+  HALDIRECT=1
+    HALIMM=1
+      Immediate. srcrm=$3c. 32bit is assumed. 32b hbank is written after instr.
+    HALIMM=0
+      hbank=NZ
+        Addition of src+hbank is written to D0, then instr is written with
+        srcrm=0.
+      hbank=Z
+        Direct register. mode=0 for Dn, 1 for An.
+  HALDIRECT=0
+    HALIMM=1
+      Memory. Absolute Long Address. srcrm=$39. 32b hbank written after.
+    HALIMM=0
+      We are in indirect mode. If src is not An, write a move of src to A0, then
+      srcreg becomes A0.
+
+      hbank=NZ
+        mode=5, indirect with 16-bit displacement. Write 16 bank after.
+      hbank=Z
+        mode=2. Indirect An. Simple.
+
+  This does *not* work with MOVE.
+
+arii, ( n op instr -- )
+  Compile an arithmetic instruction with an immediate operand using instr as a
+  base opcode.
+
+ari, ( op iinstr instr -- )
+  Compile an arithmetic instruction with an immediate base instr "iinstr" or a
+  "regular" base instr "instr".
+
+dropf, ( -- )
+  4cde0080 W PSP [An]+) movem, (this doesn't exist in asm/m68k yet)
+
++n, ( n op -- )
+  This op is a regular ADDI, except when targeting PSP) &) and RSP) &), in
+  which case the ADDA form must be used.
+
+^, ( op -- )
+  EOR is special because it shares its opcode with CMP. It therefore lack one of
+  its "directions". This is why in one case we need to fetch EA into D0 and then
+  construct a Dn-Dn EOR.
+
+br, ( op -- )
+  4ed0 A0 [An]) jmp,
+
+C>W, ( cond -- )
+  50c7 Scc targeting D7
+  0287 0000 0001 W 1 andi,
+
+le@,
+  _swap8 ( reg -- )  e058 is a 16-bit ROL
+  _swap16 ( reg -- ) 4840 is a SWAP
+
+fill,
+  2046 A0 D6 move,
+  5385 SUBQ D5 1
+  00c7 A0 [An]+) W move, (variable sz)
+  51cd fffc D5 dbra,
+  2c08 D6 A0 move,
+
+idx,
+  2046 A0 D6 move,
+  2005 D0 D5 move,
+  7aff D5 -1 moveq,
+  5380 SUBQ D0 1
+  6506 bcs
+  5285 ADDQ D5 1
+  be18 A0 [An]+) W cmp, (variable sz)
+  66f4 bne
+
+move,
+  2047 A0 D7 move,
+  2246 A1 D6 move,
+  5385 SUBQ D5 1
+  650c bcs
+  0018 D0 A0 [An]+) move, (variable sz)
+  02c0 A1 [An]+) D0 move, (variable sz)
+  51cd fffa D5 dbra,
+  2e08 D7 A0 move,
+  2c09 D6 A1 move,
+
+[]=,
+  2047 A0 D7 move,
+  2246 A1 D6 move,
+  4a85 D5 tst,
+  670a beq
+  5385 SUBQ D5 1
+  0018 D0 A0 [An]+) move, (variable sz)
+  b019 D0 A1 [An]+) cmp, (variable sz)
+  56cd fffa D5 dbne,

@@ -1,0 +1,289 @@
+# Varvara computer
+
+The unit at emul/varvara.fs implements the varvara computer, that is the machine
+that will usually wrap the uxn CPU [emul/uxn]. It implements its DEO handlers,
+mapping them to the appropriate Dusk units. It also implements a runloop that
+will repeatedly call the appropriate varvara vectors.
+
+While this implementation is original, the design is from Devine Lu Linvega.
+
+## What is varvara?
+
+Varvara is a virtual computer specification that has these devices:
+
+* System
+* Console
+* Screen
+* Controller
+* Mouse
+* File
+* Datetime
+
+These devices allow the creation of elaborate interactive programs. This
+implementation complies closely enough to the specifications to run most
+programs written for it without modification.
+
+## Usage
+
+This unit has no structured data, only an array of DEO handlers that is created
+at compile time. This array can then be plugged in "deohandlers" [emul/uxn].
+Then, after having filled uxn's "rstvec" with code, we can call "runloop" to
+repeatedly call the appropriate vectors and thus, "run the app".
+
+This unit supplies convenience words to do all that in a single call. For
+example, to assemble a program from its uxntal source and then run it:
+
+  uxn<< path/to/myprog.tal
+
+To copy a pre-assembled ROM to the uxn CPU and then run it:
+
+  uxnrom<< path/to/myprog.rom
+
+## The loop
+
+A varvara computer powers on its uxn VM (calls "poweron") and then enters a loop
+that will end if one of those conditions are met:
+
+1. System/halt is nonzero
+2. All vectors are zero
+3. CTRL+D is pressed on the Console
+
+When there's a stream input, reaching the end of the stream sets Console/vector
+to 0, which might stop varvara.
+
+In that runloop, we repeatedly poll for events to feed nonzero vectors with.
+
+### Devices
+
+Each device "lives" in 16 bytes of memory, which is separated into 1b or 2b
+"ports", which are described below. When a port number has a "*" next to it,
+it's a 2b port. The write-time behavior described correspond to a DEO handler.
+
+## System ($00)
+
+08* red
+0a* green
+0c* blue
+0f  halt
+
+The red/green/blue ports are used in the Screen. System/halt determines if the
+machine should continue running. As long as it's zero, it runs. Otherwise,
+"runloop" stops.
+
+## Console ($10)
+
+10* vector
+12  read
+17  type
+18  write
+19  error
+
+Console/write and Console/error simply call "emit".
+
+The console vector is where arguments and keyboard input are consumed. Before
+the system is booted up, the "type" port is set to 0 if there is no argument or
+1 if there is. To know that, we call "eol?" [doc/usage/io]. Then, the reset
+vector is called.
+
+The reset vector will set a console vector, which will handle input. When there
+are arguments we push them character by character until the end of line is met.
+Then, until the system is halted, we read a character from [io/kbd] and feed it
+to the vector. When char $04 (Ctrl+D, ASCII EOF) is typed, we set the console
+vector to 0, which will end varvara emulation unless another input handler
+(mouse, controller) is present.
+
+Moreover, there is also the "uxnstream" value, which is generally 0. If it's
+nonzero, then it must point to a [io/stream]. After having read the arguments,
+we'll feed the console vector with contents from the stream until EOF is met.
+Then, we set the console vector to 0.
+
+Each time we call the vector, we set "read" and "type". "read" is the character
+and "type" is one of those:
+
+00 keyboard input
+01 input stream
+02 argument character
+03 argument spacer
+04 end of arguments
+
+In interactive mode, Console/vector and Controller/vector will fight each other
+for keypresses. Controller has priority.
+
+## Screen ($20)
+
+20* vector
+22* width
+24* height
+26  auto
+28* x
+2a* y
+2c* addr
+2e  pixel
+2f  sprite
+
+This devices plugs directly to [gr/varvara].
+
+Screen/vector is called every 16 ms (60 calls per second).
+
+When width/height change, "resizelayers" is called.
+
+When red/green/blue in System change, vpalette is updated.
+
+When pixel is written, its value combined with auto forms the options number
+that is used for "drawpixel".
+
+When sprite is written, its value combined with auto forms the options number
+that is used for "drawsprite".
+
+In both pixel and sprite cases, the values in x/y/addr ports are used to update
+the values X/Y/sprite in gr/varavara first, then after the calls, those values
+are written back from gr/varvara to the ports.
+
+## Controller ($80)
+
+80* vector
+82  button
+83  key
+
+In Dusk, the Controller is entirely mapped to the keyboard [io/kbd]. We
+differentiate between two types of keys, the "button" keys and the regular keys.
+
+The "button" keys are mapped to those button bits:
+
+b7 Right arrow
+b6 Left arrow
+b5 Down arrow
+b4 Up arrow
+b3 Right Shift (called "Start")
+b2 Left Shift (called "Select")
+b1 Alt (called "B")
+b0 Control (called "A")
+
+Controller/vector is called the the state (pressed or depressed) of any of those
+keys change and the Controller/button contains the bitmap of the current states.
+
+For regular key, Controller/vector is only called once on key press, not on
+depress, with the Controller/key containing the ASCII code corresponding to the
+key press. Right after the vector is called, Controller/key is reset to 0.
+
+## Mouse ($90)
+
+90* vector
+92* x
+94* y
+96  state
+9a* scrollx (not in Dusk yet)
+9c* scrolly (not in Dusk yet)
+
+Mouse/vector is called whenever the mouse moves or when the state (pressed or
+depressed) of one of its button changes. Mouse/x and Mouse/y contain the
+coordinates of the mouse's current position. Mouse/state contains the state of
+its buttons:
+
+b2 Right button
+b1 Middle button
+b0 Left button
+
+## File ($a0 and $b0)
+
+a0* vector
+a2* success
+a4* stat
+a6  delete
+a7  append
+a8* name
+aa* length
+ac* read
+ae* write
+
+The File device is a dual device, with the $a0 ports being duplicated in $b0.
+File/vector is unused. Each of those devices have their own "active file
+handle", which is described below.
+
+This device allow access to [fs/core]. The basic idea is that File/name is a
+pointer to a null-terminated path and File/length is the length of the read or
+write operation we want to perform. Then, we set File/read or File/write with a
+destination address to initiate the operation.
+
+When File/read is written to, we read from the opened file handle for
+File/length bytes into the destination address corresponding to the number
+written to File/read. Then, we write the number of bytes actually read to
+File/success.
+
+When File/write is written to, we write to the opened file handle for
+File/length bytes from the source address corresponding to the number written to
+File/write. Then, we write the number of bytes actually written to File/success.
+
+In both cases, the common logic is that if File/name hasn't been written to
+since the last File/read or File/write, the active cursor is still valid and we
+proceed from the previous position.
+
+If File/name has been written to, then we close the previous cursor (if any) and
+perform a path lookup on "bootfs". If found, we open the file and it is our new
+cursor.
+
+If not found and if we're in a File/read, this is an error condition and we
+simply write 0 to File/success.
+
+If not found and if we're in a File/write, we create a new file including
+directories leading to the target path.
+
+When reading a path that corresponds to a directory, we generate a listing of
+that directory that follows a specific format. Each child generates a line and
+each line has a 4 characters size, hexadecimal formatted, followed by a space,
+followed by the child name, followed by a newline. The size of a directory is
+"----" and a size larger than $ffff yields "????". Example:
+
+  002a file.txt
+  ???? big.dat
+  ---- mydir
+
+File/stat works a bit like File/read, but instead of reading the the, it
+generates a single line of the format described above and yields it.
+
+## Datetime ($c0)
+
+c0* year
+c2  month (0-based)
+c3  day (1-based)
+c4  hour
+c5  minute
+c6  second
+c7  day of the week (0=sunday)
+c8* day of the year
+
+Those fields are read-only and first initialized with the word "initdt ( -- )"
+and then updated through the word "updatedt ( -- )".
+
+Dusk has no real time clock yet, so this datetime is fake. However, the passing
+of time through "updatedt" uses [drv/timer] and is accurate. It can therefore
+be reliably used as a time measurement device.
+
+## API
+
+varvara$ ( -- )
+  Reset the uxn VM with "uxn$" as well as all devices needing initialization
+  such as the screen.
+
+newvarvara ( -- )
+  Call "newuxn" with varvara handlers as an argument.
+
+varvara# ( -- )
+  Ensure that a uxn VM exists and then call "varvara$".
+
+runonce ( -- f )
+  Run the "varvara loop" once. That is, update datetime, check if the console,
+  controller, mouse or screen need an update, call vectors when appropriate and
+  then yields whether we should continue running the machine. f=0 means the
+  machine is halted, f=1 means it's not.
+
+runloop ( -- )
+  Call "poweron" and then call "runonce" until it yields zero.
+
+uxn<< ( "path" -- )
+  Open "path" which should be a uxntal source, run [asm/uxntal] on it, with a
+  binary destination at current "rstvec", and then call "runloop".
+
+uxnrom<< ( "path" -- )
+  Open "path", which should be a uxn binary, copy its contents to "rstvec" and
+  then call "runloop".

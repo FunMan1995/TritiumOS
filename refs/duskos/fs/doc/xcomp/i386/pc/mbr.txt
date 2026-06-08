@@ -1,0 +1,29 @@
+# PC bootloader
+
+The unit at xcomp/i386/pc/mbr.fs compiles a PC bootloader when loaded. The
+resulting binary is, of course, be less than 512 bytes. It is written to "here"
+directly. Example usage:
+
+  f<< xcomp/i386/pc/mbr.fs
+  here org - value mbrlen
+  org value mbr
+
+In this example, "mbr" is a pointer to binary data and "mbrlen" is its length
+in bytes.
+
+That resulting binary isn't designed to be copied directly at offset 0 of the
+boot sector, but rather at offset $3e, that is, after the FAT header. $3e is
+where the FAT created by [fs/fatt] jumps to.
+
+At runtime, the bootloader copies 59 sectors (it's always 59, the maximum number
+of sectors that can be copied in the $500-$7c00 area before overwriting the
+bootloader itself), starting at sector 2, at destination address $500.
+
+This sectors are read using the BIOS in CHS mode. The FAT header is used to
+determine drive geometry. If that header is wrong, bootloading will be wrong.
+
+A "." is spit to screen at each sector loaded. A "H" is spit when we change
+head. A "C" is spit when we change cylinder.
+
+When we're done loading, we switch to video mode 80x25, switch to protected mode
+and jump to address $500.

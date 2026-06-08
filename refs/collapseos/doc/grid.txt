@@ -1,0 +1,92 @@
+# The Grid subsystem
+
+The grid subsystem at B340 supplies a set of words on top of
+the Grid protocol (see "Grid Protocol" below) that facilitates
+the development of programs presenting a complex text interface,
+for example, the Visual Editor.
+
+It creates the concept of a cursor, always being a some position
+on screen. That position is in the variable XYPOS, which is a
+simple integer following the same "pos" logic as in the Grid
+protocol.
+
+It implements (emit), which sets the cell under the cursor to
+the specified character, then moves the cursor right. If the
+cursor is at the last column of the screen, it overflows to the
+next line. If it's on the last line, it overflows to the first
+line.
+
+Grid's (emit) handles $d by moving the cursor to the next line
+and $8 by moving the cursor left.
+
+at-xy ( x y -- ) moves the cursor to the specified position. It
+is equivalent to setting XYPOS directly, but uses separate X
+and y numbers.
+
+When the grid's cursor enters a new line, it clears its
+contents through a repeated call to cell!. That implementation
+is in its world named newln ( ln -- ). This word can be over-
+ridden. If it exists when the grid subsystem is loaded, the ex-
+isting newln will be used.
+
+At build time, the Grid subsystem needs 3 bytes of system me-
+mory through the GRID_MEM constant. At run time, grid$ needs to
+be called to initialize the system.
+
+# Grid protocol
+
+A grid is a device that shows as a grid of ASCII characters and
+allows random access to it.
+
+COLS      -- n         Number of columns in the device
+LINES     -- n         Number of lines in the device
+cell!     c pos --     Set character at pos
+
+Optional (default implementation provided if arch doesn't):
+newln     old -- new   Go to a new line from old, into new.
+cursor!   new old --   Move cursor from old pos to new pos
+cells!    a pos u --   *A* Update u contiguous cells, starting
+                       at pos, using characters starting at
+                       address a.
+fillc!    pos n c --   Fill n cells with character b as pos.
+
+Words provided:
+xypos!    pos --   Set cursor position to pos.
+at-xy     x y --   Like xypos!, but with separate x y.
+stypec    s pos -- Like stype, but at specific position.
+                   Much faster than at-xy + stype.
+clrscr    --       Clears the screen and move cursor to 0.
+
+"pos" is a simple number (y * cols) + x. For example, if we
+have 40 columns per line, the position (x, y) (12, 10) is 412.
+
+cell! allows all possible values of "c", including ASCII control
+characters. The driver implementation isn't expected to filter
+them out. Many systems have glyphs for this ASCII range, so the
+driver should just show that glyph.
+
+newln is called when we "enter" a new line, that is, when we
+overflow from previous line or when $0d ( ASCII CR ) is emitted.
+
+When this is called, the line being entered should be cleared
+of its contents. If the video driver needs to scroll, now is the
+time. The NEWLN implementation has to return the new current
+line. Most of the time, it's old+1, but if you scroll, you might
+want to return old+0.
+
+If it's not defined, the default implementation simply wraps to
+the first line when reaching the end of the screen.
+
+cursor! is called whenever we change the cursor's position. If
+not implemented, it will be a noop. It is never called with an
+out of range "pos" (greater than COLS*LINES).
+
+It is the driver's responsibility to preserve the contents under
+the cursor. When cursor! is call, we expect "old" to be restored
+to the character it was before the cursor came on it. Before
+doing that, however, it should make sure that the contents
+hasn't been overwritten by cell!.
+
+cells! is a speed optimization. With some hardware, it's much
+faster to update in batch. If the driver implements this an the
+application uses it properly, it results in big speed gains.

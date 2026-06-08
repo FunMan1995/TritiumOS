@@ -1,0 +1,24 @@
+# uxn bench
+
+This unit wraps a "test" applications to verify that [emul/varvara] has the
+right behavior. Words in this unit are mostly about wrapping ".tal" files
+containing the corresponding test app.
+
+Most of these apps can be quit by pressing ESC.
+
+## API
+
+bunny ( -- )
+  Run a sprite benchmark app with lots of bouncing bunnies.
+
+uxncon ( "args" -- )
+  Runs "bench/uxncon.tal", which reads argument from the interpreter and then
+  prints them. Then, it listens to keyboard events and prints them. You quit
+  with CTRL+D.
+
+uxnctrl ( -- )
+  Run a controller device test app where pressed buttons are shown. Also, the
+  ASCII code of the last keypress is shown as well.
+
+uxnscr ( -- )
+  Runs a screen device test app where it shows all possible sprite arrangements.

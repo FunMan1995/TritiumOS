@@ -1,0 +1,227 @@
+# Grid Text Editor
+
+The Grid text editor sits on [text/ed] and adds a visual and interactive
+interface through the Grid [io/grid]. This is a [lib/coop] application. Its
+*modus operandi* is not unlike that of UNIX' venerable "vi" application.
+
+The basic idea is that this application wraps a Edbuf from [text/ed], showing it
+onto the grid. Its cursor maps directly to Edbuf's selection and the frame of
+text being displayed always contains it.
+
+## Status line and modes
+
+All lines of the grid except the bottom one are dedicated to text contents. The
+bottom line, called the status line, will generally show something like this:
+
+  Normal 42,54 154
+
+The first word, "Normal" in this case, indicates the current mode. The two
+following numbers indicate the position of the cursor, in this case line 42,
+column 54. The last number is the number of lines in this buffer.
+
+There are 4 possible modes:
+
+* Normal: key bindings work normally.
+* Insert: key bindings corresponding to a ASCII character insert that contents
+          at current position instead of doing their normal thing.
+* InsertLine: like Insert, but CR returns to Normal mode instead of inserting a
+              new line.
+* Replace: Like InsertLine, but overwrite contents instead of inserting. If the
+           cursor is at the end of the line, append that contents to the line.
+
+At all times, pressing ESC returns to Normal mode. When in normal mode, "i"
+triggers the InsertLine mode and "r" triggers the Replace one.
+
+The "Insert" key, when in Normal mode, goes to Insert mode, but when in Insert
+or Replace mode, it toggles between Insert and Replace.
+
+Pressing CR while in Normal mode goes in Insert mode.
+
+## Navigating inside a buffer
+
+Moving the caret inside a buffer can be done, at its lowest level, through the
+famous h/j/k/l keys:
+
+* h: move 1 character left
+* l: move 1 character right
+* k: move 1 line up
+* j: move 1 line down
+* Arrow keys do the same thing as h/j/k/l
+* H: move 1 word left
+* Ctrl+ArrowLeft does like H
+* L: move 1 word right
+* Ctrl+ArrowRight does like L
+* PageUp: move half a page up
+* PageDown: move half a page down
+* Home: move to the beginning of the line
+* End: move to the end of the line or the gutter, whichever comes first.
+* Ctrl+Home: move to the beginning of the file
+* Ctrl+End: move to the end of the file
+
+Shift+G lets you enter a number corresponding to the absolute line number to
+jump to.
+
+And finally, this editor fancy little feature, 'g'. 'g' is for quickly jumping
+on any word currently being displayed on grid. When you press 'g', a vertical
+array of single digits/letters is displayed on the left of the screen. Press the
+key of the line you want to jump to. Then, that line is split into words and
+assigned a digit/letter. Press that digit/letter to jump there.
+
+## Mark and Visual mode
+
+Each buffer has what we call a "mark", which is a saved position. You can set
+it to current position by pressing "m", and then later jump back to that mark by
+pressing "M". Doing so *swaps* position and mark, which means that repeat "M"
+presses toggles between two positions in the same buffer.
+
+There is only one mark per buffer.
+
+The concept of marking is closely related to another concept: visual selection.
+The mark and current pos can be seen as a range, where the lowest of the two is
+the beginning and the highest, the end of that range.
+
+When what we call "Visual mode" is toggled on, that range is visible on screen
+by being highlighted. Some key bindings such as "y" and "D" act on that range.
+Those binding are only effective when Visual mode is on.
+
+You can toggle Visual mode with "v". When toggling on, "v" resets the mark to
+current position so that you can begin a new range. If you prefer to use your
+previous mark, use "V", which also toggles Visual mode, but preserves the mark.
+
+Shift+J and Shift+K are a shortcut for toggling visual mode and go one line up
+or down.
+
+When in Insert or Replace mode, holding Shift while moving the cursor builds up
+a visual selection. Any movement without the Shift key will disable visual
+selection.
+
+## The Gutter
+
+Source code in Dusk doesn't exceed 80 characters per line. Screens with a grid
+larger than that need a visual clue to help stay within that limit. That's
+called the Gutter.
+
+The Gutter is a vertical line drawn at the position determined by the "gutter"
+field in EdBuf, defaulting to 80. You can change that value to move the gutter.
+
+## Navigating buffers
+
+[text/ed] has multiple buffers and this unit has key bindings to efficiently
+navigate them.
+
+First of all, there's CTRL+B. It lists all buffers along with their associated
+path and size, as well as an index prefix. When it shows them to you, it waits
+until you press a key to go back to the regular editing mode. If the key you
+press is in the 0..9 a..z A..Z range (see ".edbufs" in [text/ed]), the buffer
+corresponding to that index will be selected.
+
+CTRL+] cycles through all the buffers, one at a time.
+
+Pressing CTRL+E opens the path under the cursor, if it exists, in a new buffer.
+It does so using [fs/utag]'s "utag>path". When the path is already opened in a
+buffer, we just make that buffer active, keeping its previous position and
+state.
+
+CTRL+D does the same thing, but using "utag>.txt" logic (open help file). But it
+also has a special something: it sets the ed find buffer to "\n<term>". This
+means that if you use CTRL+D on a word name (which utag>.txt automagically links
+to the approriate doc file), then you can press "n" and, if you're lucky, jump
+directly to the reference of the word you're looking for. For example, if you
+press CTRL+D on the following word, s) , you'll be taken to doc/lib/str.txt.
+Then, if you press "n", the editor will jump to the documentation for "s)".
+
+The CTRL+[ key binding opens the previously opened buffer. This is not the
+inverse of CTRL+]. Repeatedly invoking CTRL+[ will swap between 2 buffers.
+
+CTRL+Q closes the current buffer, that is, empties it and dissociates it from
+its filename. When another file is opened, this buffer will be reused instead of
+creating a new one.
+
+## Keybindings
+
+"C+" means "hold left Control while you press the key".
+
+Descriptions below are kept short because those actions often correspond to
+words in [text/ed], which you can use as a complete reference.
+
+Navigation keybindings are omitted because they're already listed in the
+"Navigating inside a buffer" section above.
+
+q Quit
+J Activate visual mode, go to "bol", then down one line
+K Activate visual mode, go to "bol", the up one line
+g Fancy jumping mechanism. See "Navigating inside a buffer"
+G Jump to a specific line
+r go in Replace mode
+i go in InsertLine mode
+o Insert line below cursor, then go in InsertLine mode
+O Insert line above cursor, then go in InsertLine mode
+\ Join current line with the one below
+| Split current line at cursor
+f Find
+n Find next
+z zoom
+Z zoom to top. Reframe so selection is on top
+m Set mark
+M Swap current pos with mark then jump there
+v Toggle visual mode, starting a new selection
+V Toggle visual mode, preserving old selection
+y Copy visual selection to clipboard [text/clip]
+p Paste clipboard [text/clip] to current position
+W Run "edsave", that is, save active buffer to file
+: enter a single line of command that will be interpreted as forth
+
+C+b Print buffer list and maybe select one
+C+z Select the first buffer (Buffer Zero)
+C+q Close active buffer
+C+] Cycle to next buffer in list
+C+[ Open the previously active buffer
+C+e Enter tag under cursor
+C+d Enter documentation of tag under cursor
+
+ESC          Go back to Normal mode
+Insert       Toggle between the Insert and Replace mode
+Ctrl+W       Same as "W"
+Shift+Insert Same as "p"
+Ctrl+Insert  Same as "y"
+Delete       Delete visually selected text or a single character at cursor if
+             there is no selection
+Backspace    Same as Delete, but when there is no selection, deletes the
+             character preceding the cursor
+
+## Mouse interaction
+
+This application listens to MOUSECLICK [io/mouse] events.
+
+Left click: Moves the caret there.
+Right click+drag: Visually select the dragged area.
+
+## API
+
+### Constants
+
+enum Normal Insert InsertLine Replace
+  Possible values for edmode.
+
+PAGESZ  20. Number of lines by which '[' and ']' scroll
+
+### Values
+
+edmode
+  Current mode
+
+### Words
+
+ed ( -- )
+  Clear the screen and run the Grid Editor, displaying current active text/ed
+  buffer.
+
+textsel[] ( -- a u )
+  Yield a range of the current text selection. Yields a null range if there is
+  no selection.
+
+zoom ( -- )
+  Reframe the editor so that selection is in the middle of the screen.
+
+zsel ( -- )
+  Select the "Zero Buffer".

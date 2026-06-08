@@ -1,0 +1,14 @@
+# Duskberon's Arg module
+
+The module [oberon/Arg.mod] provides convenience procedures for commands to
+parse their arguments.
+
+## Procedures
+
+GetArg (VAR S: Texts.Scanner);
+
+  Open scanner S at the text directly following the command and scan it. If
+  it's a single "^" character, scan the active text selection.
+
+  This means that a command using GetArg() will have its argument either
+  coming from right after it *or*, if there's nothing, from text selection.

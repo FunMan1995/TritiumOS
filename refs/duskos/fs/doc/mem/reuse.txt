@@ -1,0 +1,80 @@
+# Reuse of memory buffers
+
+The unit at [mem/reuse.fs] is a linked list of buffers of a particular size
+that have the ability to be reused when not being held onto anymore.
+
+The semantics of this unit is similar to C's "malloc/free" semantics, except
+that its simplistic algorithm makes it unfit for "small potatoes". This unit is
+intended to be used for sizeable buffers that aren't frequently freed or
+reallocated. We specifically avoid the terms "malloc" and "realloc" as to not
+give a false sense of equivalency.
+
+The types of scenarios we have in mind here look like this:
+
+1. We have a grid of X by Y values. We have allocated enough memory for it.
+2. We want to grow the grid.
+3. We can't reuse this buffer, we have to allocate a new one
+4. Isn't that sad that the old buffer is now leaked memory?
+
+To avoid this sadness, we use this unit.
+
+## Not an allocator
+
+The unit is not part of the [mem/alloc] family. It theoretically could be one,
+but [mem/alloc] semantics are too heavy for the kind of uses we have for this
+unit.
+
+## Example usage
+
+  needs mem/reuse
+  $1000 ?reuse value mybuf
+  \ Do something with the buffer
+  \ Oh, we want to resize!
+  mybuf $2000 ?realloc to mybuf
+  \ We don't need mybuf anymore
+  mybuf free
+
+## API
+
+?reuse ( sz -- a )
+  Look in the buffer LL for the smallest buffer that is at least "sz" bytes in
+  size. If found, mark buffer as used and yield its address.
+
+  If not found, allocate a new buffer of specified size and yield its address.
+
+  When we say "yield its adress", we refer to the buffer's "payload", not the
+  structure itself, which is opaque the the API consumer.
+
+free ( a -- )
+  Check if "a" is marked as a reusable buffer. If it is, mark buffer as unused.
+  Otherwise, do nothing.
+
+free# ( a -- )
+  Like "free", but abort with error if "a" is not a reusable buffer.
+
+?realloc ( a sz -- a )
+  If "a"'s buffer is big enough to accomodate "sz" bytes, do nothing and yield
+  "a" as is.
+
+  Otherwise, call "?reuse" with "sz" as an argument, then copy the contents of
+  current buffer into the new one, then free the old buffer. Yield the new
+  buffer.
+
+reuse[ ( -- )
+]reuse ( -- )
+  Sometimes, you want to put in a buffer whatever is allocated to "here" in some
+  constructor word. You can't do it after the fact because the buffer structure
+  goes before the payload, but you can't do it before the fact either because
+  you don't necessarily know the size of your payload yet.
+
+  In these cases, use reuse[ ... ]reuse:
+
+    reuse[ $100 allot@ ]reuse
+
+  The snippet above is the functional equivalent to "$100 ?reuse" (but it
+  unconditionally allocates a new buffer), but what goes in between the brackets
+  is arbitrary code.
+
+  Those brackets can't be nested. Aborts if you do.
+
+  Memory is always aligned to 32-bit after a "reuse[" call.

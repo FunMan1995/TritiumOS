@@ -1,0 +1,43 @@
+# ARM exceptions
+
+The unit at [drv/arm/exc.fs] provides convenience words around the concept of
+Exceptions as described in the ARMv6 manual section A2.6.
+
+Vectored interrupts and High Vector address are not handled yet so the exception
+vector table is hardcoded at address 0.
+
+The unit must be initialized through "armexc$ ( -- )" to work correctly.
+
+We implement the vector table as a series of indirect jumps, with the jump
+destination table directly following it at address $20. The constant ARMEXCTBL
+points to that indirect list of exception handler addresses. It's values are
+therefore:
+
++00 Reset
++04 Undefined instruction
++08 Software Interrupt
++0c Prefetch Abort
++10 Data Abort
++14 Reserved
++18 IRQ
++1c FIQ
+
+At initialization, Reset points to abort. The following 4 exceptions point to
+abort preceded by an descriptive error message. The rest point to noops.
+
+Useful reminder: how do we return from an interrupt? by making a mov) f) with
+rPC as a destination register.
+
+## IRQ handling
+
+Because there's only a single IRQ vector, servicing multiple IRQs presents a
+challenge. See [doc/intr].
+
+## API
+
+ARMEXCTBL (constant)
+  Address of the exception handle table. This is a list of pointers to exception
+  handlers.
+
+armexc$ ( -- )
+  Initialize exception handler vectors.

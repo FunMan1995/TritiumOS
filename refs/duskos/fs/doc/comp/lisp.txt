@@ -1,0 +1,219 @@
+# Some sort of a Lisp
+
+*I don't know Lisp, but I'm going to write one anyways*
+
+The unit at comp/lisp.fs implements some sort of a Lisp with good
+interoperability with the Dusk system. It doesn't adhere to other Lisp
+standards, but was developed while mainly looking at Common Lisp.
+
+As with [comp/c], the broad idea is that Lisp functions and Forth words are
+pretty much the same, except that Lisp, like C, can only handle "single result
+signatures", that is ( ... -- res ).
+
+## Invocation
+
+You can interpret a Lisp expression with "lisp ( -- res )" followed by an
+opening "(" followed by your expression. When the closing parens is encountered,
+the result, which can be either a straight number or a cons [mem/cons]. For
+example:
+
+  needs comp/lisp
+  lisp (- 42 (+ 2 3)) .
+
+will print 37. You can also use "lisp. ( -- )" which will pretty-print the
+result instead using .cons [mem/cons].
+
+You can also interpret whole files with "lisp<<". This will repeatedly interpret
+all parens in the file until the end of file is reached, dropping the result at
+each iteration. Example: lisp<< foo.l
+
+## Language
+
+The language implemented by this unit looks like other lisps. In general, parens
+are a function invocation, with the first element being a reference to another
+lisp function or a system word. Then, arguments follow.
+
+Lisps functions and Forth words follow the same call semantics. For example,
+when "(+ 2 3)" is executed, 2 and then 3 are placed on PS and "+", the same "+"
+as in Forth, is called, yielding the result on PS.
+
+All Lisp functions yield exactly one result to PS.
+
+Parens can be nested. Nested parens are executed first, their result being
+placed on PS as arguments for the outer parens.
+
+## Quoting
+
+Parens can mean plain data if they are quoted with the "'" character. For
+example, "'(+ 2 3)" doesn't actually call "+", but creates a list (in
+[mem/cons]) with the address of "+" followed by 2 and 3 in a list and yields a
+pointer to that list.
+
+## Comments
+
+Comments use the "\" token and behaves like the system "\", that is, it drops
+input stream until the end of the line. For example:
+
+  lisp (+
+    \This is a comment
+    2 3)
+
+will yield 5.
+
+## String literals
+
+String literals can be used pretty much like in Forth. They yield pointers to
+their counted string. For example, "lisp (c@ "hello")" will yield 5.
+
+## Compiling
+
+"lambda" and "defun" execute their body in a particular manner: they compile the
+native code corresponding to it using the HAL [doc/hal]. For example:
+
+  lisp (defun foo (a b) (+ a b))
+
+is the rough equivalent to:
+
+  code foo PSP) +, nip, exit,
+
+(but less efficient because PS preservation logic forces us to put some fluff
+around that)
+
+## Calling Forth words
+
+TODO: this unit was written before [comp/sig] existed. Ideally, comp/lisp should
+be changed to use [comp/sig] like other compilers in Dusk do.
+
+As mentioned above, this lisp can freely call any Forth word from the system
+dictionary:
+
+  : foo ( a b -- res ) 2* + ;
+  lisp. (foo 42 54)
+
+the lisp invocation is the equivalent to "42 54 foo".
+
+When calling Forth words, no signature check is made. If you make a call with
+the wrong number of arguments, you will corrupt PS and hell will ensue. Maybe
+you can live with that, but there's a deeper problem: you cannot call a word
+that has no return value, for example stype ( str -- ). This automatically
+results in PS corruption.
+
+But there's a solution! You can register signatures with "addsig":
+
+  (addsig (noret 1 'stype)
+  (stype "This doesn't corrupt PS!")
+
+"sig" takes an argument count first, then a "no return" flag to indicate that
+the target word has no return value. When it happens, a dummy 0 is added to PS
+after the call, keeping PS balance.
+
+When a word has a signature, we check that the number of arguments we're passing
+corresponds to the number of arguments in the signature, aborting if it doesn't.
+
+"defun" and "lambda" automatically register signatures.
+
+## Parsers
+
+There are exceptions to the regular parsing logic that we call "parsers", for
+example "lambda". These words have a signature that is incompatible with the
+regular resolving logic. For example, in "(defun foo ...)", if we let the
+default resolver pick it up, we'll look for "foo" in the system dict and not
+find it, which is normal because it's the name of the word we want to create!
+
+So when we encounter these parser words, we circumvent the regular resolving
+mechanism and call the parser word while supplying it with the raw list
+directly. We then expect that parser to yield a result that we can feed into our
+cooking process.
+
+The list of parser words is: lambda defun let to
+
+## Forth API
+
+lisp ( -- res )
+  Parse a single expression from the input stream and execute it, yielding its
+  result.
+
+lisp. ( -- )
+  Same as "lisp", but prints the result with ".cons" [mem/cons].
+
+lisp<< ( "path" -- )
+  Opens file "path" and interprets all parens in the file, dropping all results.
+
+## Lisp API
+
+addsig ( sig w )
+  Binds signature "sig" to word address "w". "sig" is mostly an argument count,
+  but can have bits flipped with the functions described below. Example:
+
+    (addsig (noret 1) 'stype)
+
+noret ( sig )
+compiler ( sig )
+parser ( sig )
+  Sets the "no return/compiler/parser" bit on "sig".
+
+apply ( w list )
+  Unroll "list" to PS and execute "w". For example, "(apply '+ '(2 3))" yields
+  5.
+
+equal ( a b )
+  Generally yields the same as "=", but if "a" <> "b" and that both are cons,
+  recursively compare cons car and cdr. If they're equal, yield 1.
+
+eval ( list )
+  Unroll "list" to PS and execute its first element. For example,
+  "(eval '(+ 2 3))" yields 5.
+
+length ( list )
+  Return the number of elements in "list".
+
+map ( w list )
+  Execute "w", which has an expected signature of (x -- x), to every elements
+  of "list". Results yielded are used to create a new cons, which is yielded.
+
+  For example, "(map '1+ '(1 2 3))" yields (2 3 4).
+
+to ( target expr )
+  Given that "target" resolves to a setter [doc/usage/word] resolve "expr" and
+  set "target" to its value using regular "to" semantics. Yield the value of
+  "expr". For example, given that we have a value "foo", "(to foo 42)" is
+  equivalent to "42 to foo" in Forth.
+
+## Compiler API
+
+Except for "lambda" and "defun", words in this section are only valid inside
+"lambda" or "defun".
+
+lambda ( (args) (exprs) )
+  Parse a function definition from input stream and compile it. The syntax for
+  such a definition is "(args) [(body)]". Example:
+
+    (lambda (a b) (- b a))
+
+  yields word "w" (which can be called like any Forth word), which does the
+  equivalent of "swap -".
+
+defun ( name (args) (exprs) )
+  Same as "lambda", but creates a dictionary entry for the created word. Syntax
+  is "name (args) [(body)]".
+
+let ( (initexprs) (exprs) )
+  This construct creates new PS slots, binding them to name and filling them
+  with the result of their initialization expression. Then, using those
+  bindings, execute "exprs", yielding a single result. For example:
+
+    lisp. (defun foo (a) (let ((b (+ 2 42))) (- b a)))
+    3 foo . \ prints 41
+
+if ( cond true false )
+  Compile "cond", when compile a conditional branch to either "true" or "false",
+  which are also compiled in a regular manner, depending on whether "cond"
+  yielded zero (we branch to "false") or nonzero (we branch to "true").
+
+tailcall ( ... )
+  Make a jump to the beginning of the function currently being compiled,
+  allowing recursion without growing RS. This of course can only work as
+  expected when is done at the very end of the body. Example:
+
+    (defun fib (n)
+      ((lambda (n a b) (if n (tailcall (- n 1) b (+ a b)) a)) n 0 1))

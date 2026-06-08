@@ -1,0 +1,36 @@
+# Tab stop
+
+The unit at [text/ts.fs] facilitates the output of aligned contents through emit
+words. It does so by momentarily overriding RTYPE and embed a character counter
+in it, which resets upon emiting LF. It then becomes easy to know how many
+spaces we need to emit to get to a particular position.
+
+Also, by overriding RTYPE, one can use all ot the emit words directly.
+
+This unit has nothing to do with the grid and cannot do anything fancier than
+emitting the right number of spaces to align ourselves.
+
+## API
+
+ts[ ( -- oldrtype )
+  Install the rtype override and yield the original rtype xt, to be kept for
+  de-installing TS.
+
+  This also resets the char counter to 0. This means that "ts[" should be called
+  when we're at the beginning of the line.
+
+]ts ( oldemit -- )
+  De-activate the TS unit by re-installing "oldrtype" into RTYPE.
+
+ts< ( xt -- )
+  Call "xt" by wrapping it in "ts[" and "]ts".
+
+nspcs ( n -- )
+  Emit "n" spaces.
+
+tsgo ( pos -- )
+  Emit enough spaces so that the next "emit" takes place at column "pos" on the
+  screen. If that position has already been reached, nothing is emitted.
+
+tspos (value)
+  Number of characters that have been counted as emitted on this line so far.

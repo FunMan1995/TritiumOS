@@ -1,0 +1,120 @@
+# The BLK subsystem
+
+Disk blocks are Collapse OS' main access to permanent storage.
+The system is exceedingly simple: blocks are contiguous
+chunks of 1024 bytes each living on some permanent media such
+as floppy disks or SD cards. They are mostly used for text,
+either informational or source code, which is organized into
+16 lines of 64 characters each.
+
+Blocks are referred to by number, 0-indexed. They are read
+through blk@ and written through blk!. When a block is read,
+its 1024 bytes content is copied to an in-memory buffer
+starting at blk( and ending at blk). Those read/write
+operations are often implicit. For example, list calls blk@.
+
+When a word modifies the buffer, it sets the buffer as dirty
+by calling blk!!. blk@ checks, before it reads its buffer,
+whether the current buffer is dirty and implicitly calls blk!
+when it is.
+
+The index of the block currently in memory is kept in blk>.
+
+Most blocks contain code. That code can be interpreted through
+load. load operations cannot be nested, that is, you can't call
+load from a block or you can't call a word that calls LOAD from
+a block.
+
+# Using blocks
+
+You will typically interact in 2 main ways with blocks: listing
+them or loading them. You list a block with a block number
+argument. For example, "0 list" spits the master index block.
+
+load interprets the specified block as if you typed it. You also
+invoke it with a block number. "42 load" reads block 42 in the
+buffer and, for each of the 16 lines, interprets it as if it
+was typed in the input buffer.
+
+You can load a range of blocks with "loadr". For example, "42
+45 loadr" loads blocks 42, 43, 44 and 45.
+
+You can see the whole list of words supplied by the BLK sub-
+system at doc/dict.
+
+# Exploring blocks
+
+Block 0 in Collapse OS is a text block describing the whole
+contents in all blocks, organized in sections. Sections are
+typically 5, 10 or 20 blocks in size.
+
+The first line of each block is often a comment describing the
+contents of the block. To take advantage of this, we have the
+index word which prints the first line of each block in a range.
+
+So, for example, if you see in the master index that Collapse OS
+core words spans from B310 to B329 and you want to quickly find
+a word in it, you'd run "310 329 index".
+
+# Loading applications
+
+Many of the sections in Collapse OS' blocks have a convenience
+"loader word", a word that invokes "load" with the correct
+block number arguments.
+
+The BLK subsystem contains these loader words:
+
+ed     Text editor (doc/ed)
+ve     Visual text editor (doc/ed)
+me     Memory editor (doc/me)
+xcomp  Cross-compilation tools (doc/cross)
+z80a   Z80 Assembler
+8086a  8086 Assembler
+6502a  6502 Assembler
+6809a  6809 Assembler
+
+For example, it has the "ve" word which loads VE. Therefore, on
+a freshly booted system, if you want to run VE, simply type
+"ve". IF VE isn't loaded yet, it will load. If it is loaded, it
+will run.
+
+# How blocks are organized
+
+Organization of contiguous blocks is an ongoing challenge and
+Collapse OS' blocks are never as tidy as they should, but we
+try to strive towards a few goals:
+
+1. B0 is a textual master index of blocks. list it to see the
+   whole contents of the blkfs.
+2. B1-99 are for applications.
+3. B100-199 are for assemblers and disassemblers.
+4. B200-299 are for CPU-specific boot code.
+4. B300-B399 are for arch-independent cross-compiled code, inc-
+   luding xcomp tools and subsystems.
+5. B400+ is for machine-specific code.
+
+# Including the BLK subsystem in a kernel
+
+Before assembling, this requires 3 words:
+
+BLK_MEM
+  where the 1024 bytes block buffer will live as well as BLK
+  variables. The total size used is $409 bytes.
+
+(blk@) ( blkno dest -- )
+  Reads blkno into dest (almost always blk( is passed there).
+(blk!) ( blkno dest -- )
+  Write contents of buffer at dest into blkno.
+
+Then, you can call blksub in your xcomp unit.
+
+These are the variables defined in blksub:
+
+blk>    Currently active block number
+BLKDTY  Whether current block is dirty (needs to be saved on
+        FLUSH). Nonzero means dirty.
+BLKIN>  Upon LOAD, old IN> value is saved there so that when
+        LOAD is finished, we can restore it and continue
+        interpreting INBUF where we were.
+blk(    Address of the BLK buffer.
+blk)    Address where the BLK buffer ends.

@@ -1,0 +1,68 @@
+# m68k Macintosh
+
+In the history of computing, Apple has its own little timeline. Stuff it did
+was largely "in its own way" until in converged with PCs with the introduction
+of Intel Macs. As far as Dusk is concerned, we can divide its legacy in roughly
+four eras:
+
+1. Pre 32-bit
+2. m68k Macs
+3. PowerPC Macs
+4. EFI Macs
+
+Pre 32-bit is out of scope, Collapse OS being the appropriate OS for them.
+
+m68k Macs is what this documentation page is about.
+
+PowerPC Macs uses OpenFirmware, a world I have yet to discover.
+
+EFI Macs are covered by [hw/efi].
+
+So, this page is about m68k Macs, that is, the initial Macintosh, and the one
+that followed it. In other words, anything that has a m68k CPU. The notes below
+are little things that I consider important to know when working with those
+machines.
+
+## ROM and System 6/7
+
+Much of the OS functionality offered in System 6 and 7 lives, in fact, in a ROM
+included in the machine itself.
+
+Mac OS 8 came with the introduction of the PowerPC line. System 5 and before had
+fuzzy versioning.
+
+ROM routines are called through what is called "traps" and the ones used in Dusk
+are interfaced in [drv/mac68k/trap].
+
+## Floppy formats
+
+HDD connectors for m68k Macs look weird and Apple-specific. To boot an
+alternative OS, floppy is the most convenient door. But it's not a walk in the
+park, because Mac floppy formats are notoriously incompatible with PC floppy
+formats.
+
+There is broadly three types of formats being used, the 400K and 800K ones,
+using MFS (Macintosh File System). These formats are pretty much off-limit to
+non-Apple hardware because they use special timings in the floppy drive to
+achieve extra capacity (rather than 360K and 720K).
+
+Later models of the Mac line support 1.44M floppy formats and those floppies can
+be created by PCs and will boot fine on the Mac.
+
+To produce a Dusk system floppy for the m68k Mac, see [xcomp/m68k/mac/deploy].
+
+For earlier models, it's tricker. A Mac is required to produce 800K and 400K
+floppies. Therefore, to produce a floppy that will boot on those Macs, you need
+a Mac that is already running Dusk. Then, you can produce the media.
+
+TODO: actually devise such a procedure. The only m68k Mac I have is a Powerbook
+520, so I won't be able to work on this until I acquire an earlier Mac.
+
+## See Also
+
+* [hw/m68k]
+* [hw/efi]
+* Guide to Macintosh Family Hardware
+* Inside Macintosh Volume I to VI. More detailed, hardware-wise, than revamps.
+* Inside Macintosh: Files
+* Macintosh Revealed, 2nd edition

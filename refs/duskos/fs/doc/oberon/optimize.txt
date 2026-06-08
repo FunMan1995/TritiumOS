@@ -1,0 +1,12 @@
+# Duskberon's OptimizeFont module
+
+The OptimizeFont module [oberon/optimize.mod] can be used to optimize the
+file size of .Fnt files converted from other sources, by removing empty glyph
+borders.
+
+## Commands
+
+Optimize
+  Given two file names, read a font from the first file and write an optimized
+  version to the second one. As both files are opened concurrently, they may
+  not point to the same name.

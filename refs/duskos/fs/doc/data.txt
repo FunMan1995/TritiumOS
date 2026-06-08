@@ -1,0 +1,179 @@
+# Fundamental data structures
+
+## PSP and RSP
+
+The Parameter Stack and Return Stack are of course fundamental structures in
+Dusk. They are implemented as registers PSP/RSP beginning at predefined "origin"
+addresses (PSORIGIN and RSORIGIN sysvars) and going down as items are pushed to
+them. Therefore, the registers always point to the top item of the stack. When
+the register is the same as PSORIGIN/RSORIGIN, the stack is empty.
+
+The actual registers assigned to PSP/RSP depend on the CPU. See [doc/hw] for
+assignments.
+
+Those stacks are at all time 32-bit aligned. Items in them always have a 32-bit
+width. Those stacks are not opaque and their memory can be referenced. For
+example, "[]>r" copies an arbitrary range of memory into the Return Stack, while
+of course correctly aligns the data to 32-bit.
+
+The Parameter stack has a peculiarity: it has an extra register assigned for
+the top of stack. That's HAL's W register [doc/hal]. PSP still indicate stack
+size, but the first item in the stack (PSORIGIN-4) is "wasted" as it contains
+whatever the W register happened to contain before the first item was pushed to
+PS.
+
+The Return Stack is also special: on most CPUs, the RSP is also the "hardware"
+stack pointer, where native "calls" push their return address. That address is
+opaque to Forth and should only be "consumed" with HAL's "exit," or "popret,"
+(or CPU-specific assembler of course). See [doc/hal].
+
+## Linked lists
+
+Linked lists (see [mem/ll]) are a fundamental data structure in Dusk. They are
+simply addresses in memory each pointing to the next element, with the last
+element of the list pointing to 0. The first field of a LL (linked list) element
+is always the pointer field.
+
+Iterating a LL is easy, it's as simple as reading next with @.
+
+When you want to append a new element to the list, you can call "lladd", which
+makes the list's last element point to "here". You can then write your new
+element.
+
+## Dictionary structure
+
+Words in this Forth are embedded in a dictionary, which is a list of entries
+each pointing to the previous entry. We keep that last added entry in "sysdict".
+Dictionaries are a form of linked list.
+
+The structure of each entry is:
+
+Xb of zero-padding to align the structure to 4b
+Yb name
+1b name length + immediate + findselector
+4b pointer to previous entry --> this is where we link
+... payload ...
+
+The "previous entry" field in an entry refers to this same place.
+
+The "name length" field is a 6 bit length with the 8th bit reserved for the
+"immediate" flag (1=immediate) and the 7th bit reserved for the "findselector"
+flag (1=findselector).
+
+The whole structure is aligned to 4 bytes, with zero padding in front of the
+name to enforce that alignment. This means that the payload is also always
+aligned to 4b.
+
+X+Y is guaranteed to be at least 3 bytes. This guarantees a stable value of the
+4 bytes ending with the "length" field, that is, a value that isn't dependent on
+the memory contents that preceeds the entry.
+
+The "payload" part is the binary code to be executed. The address of that
+payload is called an execution token [doc/usage/word].
+
+When we refer to an "entry", we refer to the data structure. This means that an
+entry is a pointer to the "previous entry" field. To get a xt from an entry, we
+add 4 bytes. "e>xt" and "?xt>e" [mem/dict] are helper words to add and remove
+that offset from a given address.
+
+Except for words specifically made for manipulating dictionary entries, we
+rarely deal with "entry" pointers. We most often deal with execution tokens
+(xt).
+
+Entries are created with the "entry" word, which creates the structure described
+above in a way that ensures that the link field and the payload are 32-bit
+aligned.
+
+"sysdict" hold a pointer to the latest entry of the system dictionary, "current"
+yields the xt associated to that entry.
+
+The most important dictionary in Dusk is the system dictionary, but there are
+other dictionaries (for example, each struct [lib/struct] has its own
+dictionary) and they all share the same terminology.
+
+## Units
+
+Units [doc/usage/unit] structure are linked lists with that structure:
+
+4b link to next
+4b link to bottom entry
+4b link to top entry
+Xb unit name (as string)
+
+By "top entry", we mean the entry of the last word that was added to it.
+
+By "bottom entry", we mean its first word.
+
+## Allocator
+
+An allocator, the struct that SYSALLOC represents and where CURALLOC points to,
+is a 12 bytes struct:
+
+4b HERE
+4b HEREMAX
+4b NEWHERE
+
+See [doc/usage/mem] for details of how that works.
+
+## SYSVARS
+
+System variables (described in [doc/dict]) live together at a memory address
+determined by the kernel, which is exposed through the "SYSVARS" word, which
+yield this address. [xcomp/boot.fs] then creates the constants for each
+variable by applying an offset to it. These are the offsets:
+
++00 reserved for platform-specific purposes
++04 COMPILING
++08 CURALLOC
++0c SYSDICT
++10 FINDSTR
++14 [rcnt]
++18 FINDMASK
++1c SYSALLOC (size=$0c bytes)
++28 INPTR
++2c $14 bytes unused
++40 reserved for platform-specific purposes
++44 unused
++48 PSORIGIN
++4c PSSZ
++50 RSORIGIN
++54 SYSOFF
++58 unused
++5c unused
++60 beginning of dynamic sysvars
++100 end of SYSVARS
+
+You will notice that we have a PSSZ but no RSSZ. That's because there's no
+convenient place, in the system flow, to check for RS overflow or underflow. So
+we don't. Having RS go awry breaks the system in a catastrophic manner.
+
+At boot time, a kernel must have initialized these values:
+
+SYSDICT CURALLOC SYSALLOC(HERE) INPTR PSORIGIN PSSZ RSORIGIN
+
+The rest is initialized to zero.
+
+## Dynamic SYSVARS
+
+On most systems, there is a register dedicated to holding the SYSVARS address,
+which allows access to those vars through relative offset. On some systems such
+as ARM, this results in significantly faster access.
+
+SYSVARS that are speed-sensitive also define a HAL [doc/hal] operand for a
+faster access than "m)". For example, "curalloc) @," is the equivalent of
+"CURALLOC m) @,", but much faster on ARM.
+
+Sometimes, you need that kind of fast access for something that is not in the
+kernel. It's possible. There are a few slots dedicated to creating dynamic
+SYSVARS. There are two ways to create them
+
+  sysvar foo) FOO
+  sysalias foo) FOO foo
+
+The first form allocates 4 bytes in SYSVARS then creates the "foo)" HAL operand,
+then the FOO constant that yields the associated absolute address.
+
+The second form is like the first, but in addition, it creates the "foo" word
+that calls the address contained in the sysvar.
+
+If there is no more SYSVARS free slot, both these forms abort with error.

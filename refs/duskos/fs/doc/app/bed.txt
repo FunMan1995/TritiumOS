@@ -1,0 +1,100 @@
+# Grid Binary Editor
+
+This unit provides a Grid [io/grid] application facilitating the exploration and
+modification of binary contents in memory.
+
+NOTE: a mechanism to edit files is planned, but not yet implemented.
+
+## Invocation
+
+This unit provides the "gbe ( -- )" word which enters the interactive runloop
+upon being called. The address shown is stable between invocations and is
+initially set to "here" at compile time.
+
+The key binding to quit the runloop is "q".
+
+## Interface
+
+The totality of the grid is used for displaying the target binary contents
+in hexadecimal form. On the far left of each line is the address of the first
+byte being displayed on that line. This is displayed in the form of 8
+hexadecimal digits.
+
+Then comes actual contents in groups of 4 bytes. Displayed contents is always
+aligned to 4b. The number of bytes displayed on the line depends on the width of
+the grid. We fit as much as we can, but we never split a group of 4 bytes.
+
+On the far right of the grid, we have the ASCII representation of the shown
+bytes. There is one character per byte shown on the line. A "." is shown when
+the character has no visible ASCII representation.
+
+## Cursor and position
+
+The editor has the concept of position, which is an address in memory. At all
+times, the screen is framed in a way to include the position and a cursor is
+shown on the byte corresponding to current position.
+
+That cursor can be moved with the same keys as in [app/ed], that is h/j/k/l as
+well as [ and ] for going up and down by two thirds of a screen. The key "z"
+"zooms" the position to the center of the screen. The key "L" make the current
+position be at the upper left of the screen.
+
+You can jump to a specified address with "J", which will move the cursor at the
+bottom of the screen, waiting for a line of input. That line of input is
+expected to be a valid Forth expression with the signature "( -- n )". Upon
+pressing Return, current position becomes that number.
+
+## Jumping and memory areas
+
+Because this application reads memory directly and without restrictions, we have
+to be careful not to jump to memory areas that are invalid for the machine, or
+mapped to device registers that mutate on read (FIFO queue registers for
+example).
+
+To help with this, it is by design that whenever we jump, it is the top left
+corner of the screen that "receives" the target address. This way, memory
+preceding the target address is not read until you "page up" to it, or zoom.
+
+This design choice is slightly awkward for regular use because we often want to
+see memory preceding our target address, so it is frequent to press "z" after a
+jump. It's fine, it's by design.
+
+## Modifications
+
+Whenever the keys 0-9 or a-f are typed, this modifies the contents under the
+cursor in a provisional way. That is, changes are kept in a separate buffer, but
+aren't committed right away. Those changes are shown visually by highlighting
+bytes that are modified.
+
+You can also type ASCII characters through the "T" ("Type") command. You will
+then be prompted to a line to type and upon pressing Return, the types lines
+(without the Return character) will be written to buffer memory.
+
+This conflicts with the visual cues of the cursor, but one can figure out where
+the cursor is by moving it around.
+
+Changes can only be committed to actual memory through the "W" key. If any
+"reframing" action such as "[", "]", "z", "L", etc. is performed, changes are
+discarded.
+
+## Keybindings
+
+q Quit
+h One byte left
+l One byte right
+j One line down
+k One line up
+[ Two thirds of a screen up
+] Two thirds of a screen down
+z Put current position at center of screen
+L Put current position at top left of screen
+J Jump to prompted address
+T Type prompted ASCII contents
+W Commit changes to target memory
+
+0-9 a-f Type hexadecimal contents
+
+## Implementation details
+
+The atomic unit of this application is the nibble, that is, the half-byte. We
+need it thus so that we can track modification position.

@@ -1,0 +1,68 @@
+# HAL operand query
+
+The unit at [hal/opq.fs] provides words to extract information from otherwise
+opaque HAL operands.
+
+## Freezing an operand with (bank and bank)
+
+Not often, but sometimes, you need to hold onto an operand for longer than the
+HAL bank allows. When you do, its HAL number will get corrupted by another
+operand.
+
+When that situation arises, use (bank to keep around its banked number, and when
+you finally use that HAL operand, use bank) to bring is back. Example:
+
+  W) 4 +) dup (bank 2>r
+  ( ... do a lot of recursive stuff )
+  2r> bank) brr,
+
+## API
+
+### Constants
+
+REGW
+REGA
+REGS
+REGPSP
+REGRSP  Numerical constants corresponding to registers
+
+(src  ( op -- reg )
+  Yield source register. This yields an undefined result on an immediate op.
+
+(dst  ( op -- reg )
+  Yield destination register
+
+src) ( op reg -- op )
+  Set source register of operand. Everything else stays unchanged.
+
+dst) ( op reg -- op )
+  Set destination register of operand. Everything else stays unchanged.
+  Don't use this with an invalid register such as REGPSP or REGRSP.
+
+(W? ( op -- f )
+  Yield whether "op"'s base register is W, regardless of its
+  direct/displacement/invert flags. Because W is the top of stack, there's often
+  special processing to do in that case.
+
+(sz ( op -- n )
+  Yield "op" width in bytes, that is, 4, 2 or 1.
+
+(i? ( op -- ?n f )
+  Yields whether op is an immediate one. If it is, also yield the associated
+  immediate number.
+
+(bank ( op -- n )
+  Get op's associated bank number.
+
+bank) ( op n -- )
+  Set op's associated bank number.
+
+swappedcond ( cond -- cond )
+  Yield the swapped version of "cond", that is, how we must adjust cond if we
+  swap the operands and want the same result. "<)" becomes ">)", ">=") becomes
+  "<=)" etc.. Noop on =) or <>).
+
+.hal ( op -- )
+  Print a human readable representation of specified op. Destination is on the
+  left of the "<" or ">" (depending on "dir)") and the rest is the
+  source+modifiers.

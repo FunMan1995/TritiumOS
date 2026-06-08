@@ -1,0 +1,122 @@
+needs lib/type comp/sig comp/oberon/type
+
+struct PieceDesc { }
+1 PieceDesc "PieceDesc" obaddtype
+1 PieceDesc newgcpointer "Piece" obaddtype
+
+struct PieceDesc {
+  Files.File f ;
+  INTEGER off len ;
+  Fonts.Font fnt ;
+  INTEGER col voff ;
+  Texts.Piece prev next ;
+}
+
+: DebugPiece ( piece -- ) >r \ V1=piece
+  ."Piece f=" r@ f .x
+  ." off=" r@ off .
+  ." len=" r@ len .
+  ." fnt=" r@ fnt .x
+  ." col=" r@ col .
+  ." voff=" r@ voff .
+  ." prev=" r@ prev .x
+  ." next=" r@ next .x nl>
+  r@ len if ." >> " r@ off r@ len r@ f DebugFile then rdrop ;
+annotatelast ( OPAQUE -- )
+
+: DebugPieces ( piece -- ) begin ?dup while dup DebugPiece next repeat ;
+annotatelast ( OPAQUE -- )
+
+struct BufDesc {
+  INTEGER fieldt len ;
+  Texts.Piece fieldst header last ;
+}
+
+1 BufDesc "BufDesc" obaddtype
+1 BufDesc newgcpointer "Buffer" obaddtype
+
+: DebugBuffer ( buf -- ) >r \ V1=buf
+  ."Buffer len=" r@ len .
+  ." header=" r@ header .x
+  ." last=" r@ last .x nl>
+  r> header DebugPieces ;
+annotatelast ( OPAQUE -- )
+
+struct TextDesc { }
+1 TextDesc "TextDesc" obaddtype
+1 TextDesc newgcpointer "Text" obaddtype
+1 INTEGER dup dup Texts.Text 4 0 0 newsignature "Notifier" obaddtype
+
+struct TextDesc {
+  INTEGER len ;
+  Texts.Notifier notify ;
+  Texts.Piece trailer pce ;
+  INTEGER org ;
+  BOOLEAN changed ascii ;
+}
+
+: DebugText ( text -- ) >r \ V1=text
+  ."Text len=" r@ len .
+  ." changed=" r@ changed . nl>
+  r@ trailer next begin ( p )
+    dup r@ trailer <> while
+    dup DebugPiece next repeat ( trailer )
+  drop rdrop ;
+annotatelast ( OPAQUE -- )
+
+struct Writer {
+  Texts.Buffer buf ;
+  Fonts.Font fnt ;
+  INTEGER col voff ;
+  Files.Rider rider ;
+}
+
+1 Writer "Writer" obaddtype
+
+: DebugWriter ( writer -- )
+  ."Writer " r! .x \ V1=writer
+  ." fnt=" r@ fnt .x
+  ." col=" r@ col .
+  ." voff=" r@ voff .
+  ." r.eof=" r@ rider @+ .
+  ." r.pos=" @+ .
+  ." r.file=" @ dup .x nl> ( file )
+  r> buf DebugBuffer ( file )
+  ." rider>> " 0 -1 rot DebugFile ;
+annotatelast ( OPAQUE -- )
+
+struct Reader {
+  BOOLEAN eot _pad _pad _pad ;
+  Fonts.Font fnt ;
+  Texts.Piece ref ;
+  INTEGER col voff org off ;
+  Files.Rider rider ;
+}
+
+1 Reader "Reader" obaddtype
+
+extends Reader struct Scanner {
+  INTEGER line class n len ;
+  [CHAR,32] s ;
+  CHAR nextCh c ;
+}
+
+1 Scanner "Scanner" obaddtype
+
+variable curreader
+variable cnt
+variable ch
+variable textread() ( ch' R-type R -- )
+:> ( n st -- ?a read-n )
+  2drop cnt @ not if 0 exit then -1 cnt +!
+  curreader @ ?dup not if 0 exit then ( R )
+  dup eot if drop exit then ( R )
+  ch Reader rot textread() @ execute ( )
+  ch 1 ;
+
+( :>readbuf ) ' ioerr newstream const textstream
+
+:ob SetupTextStream (VAR R: Reader; cnt: INTEGER): OPAQUE;
+  ( cnt R-type R -- )
+  textread() @ not if word"Texts.Read" ' textread() ! then
+  curreader ! drop cnt ! textstream ;

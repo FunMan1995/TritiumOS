@@ -1,0 +1,30 @@
+# The very first code interpreted on boot
+
+The source file at [xcomp/lo.fs] is, in the near totality of the cases, the
+very first piece of code interpreted by the booting kernel, regardless of the
+CPU. See [doc/boot] for bootstrapping details, this page is about documenting
+the contents of this source file, which can't contain comments because we don't
+have them yet at this stage of the bootstrapping process.
+
+The purpose of this file is to implement a few mechanisms that are common to
+every HAL, before we even have a HAL. Well, we have one, but it's only partly
+implemented by the kernel (see [doc/kernel]).
+
+This is mostly about:
+
+1. The HAL bank number API
+2. halerr placeholder
+
+The rest of the code is either code that's needed to implement the above or
+words that are needed for implementing HAL.
+
+## Number bank
+
+See [doc/hal].
+
+## halerr
+
+We don't have aborts at this stage, this is a simple abort"HAL error" that will
+be implemented and realiased in xcomp/boot.
+
+The "$0 ," part is to leave space for the realias jump.

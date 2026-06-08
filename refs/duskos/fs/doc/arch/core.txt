@@ -1,0 +1,80 @@
+# ARCH probing and ARCH-specific loading
+
+Every Dusk kernel has a ARCH constant described in [doc/kernel]. This unit
+provides utility words wrapping around it.
+
+Moreover, Dusk also has the "arch/" top level directory [doc/dirs] where units
+having code that is especially written for a particular CPU live. The structure
+of that directory is "arch/<archname>/<unitname>".
+
+For example, "arch/i386/foo/bar.fs" contains code designed to be loaded by
+"archunit foo/bar" only when we're running on a i386 CPU.
+
+## The case of x86
+
+Arch-specific loading only works with exact familyname matches. For example, on
+AMD64, it's going to load from "arch/amd64". In many cases, logic is shared
+between i386 and amd64. That case is handled "manually". That is, i386 contains
+the logic and amd64 contains stud units that load a i386 unit.
+
+## Watch out for "unit" inconsistencies
+
+The "arch" directory contains code that is designed to be loaded within a unit,
+so it can't contain "unit" directives. It can't contain "needs" either.
+
+Most of those units need an assembler, so that's a problem. To solve this
+problem, you have two choices:
+
+1. Call your "arch<<" outside the unit. In this case, you can call arch-specific
+   "needs" all you want. However, your arch-specific words will not be part of
+   the unit namespace.
+
+2. Use "needsasm" provided here to ensure that an assembler for the live CPU is
+   loaded, then call "arch<<" inside the unit.
+
+## API
+
+### Constants
+
+FAMILY_none   $00
+FAMILY_i386   $10
+FAMILY_arm    $20
+FAMILY_riscv  $30
+FAMILY_amd64  $40
+
+### Words
+
+instrfamily? ( id -- f )
+  Takes a FAMILY_* constant and yields whether we're running on that.
+
+isx86? ( -- f )
+  Yields f=1 if ARCH is i386 or amd64.
+
+instrset ( -- n )
+  Yields the "Instruction set" part of ARCH.
+
+machineoptions ( -- n )
+  Yields the "Machine option" part, shifted right, of ARCH.
+
+familyname ( -- str )
+  Yields a string corresponding with ARCH's family. Possible values:
+
+    i386 arm riscv amd64 m68k
+
+archlookup ( path -- f )
+  Performs "lookuprel" [fs/core] in bootfs's "arch/<familyname>" directory.
+
+archlookup# ( path -- )
+  Same as "archlookup", but aborts when not found.
+
+arch<< ( "path" -- )
+  Like "f<<", but uses "archlookup". However, unlike with "f<<", "endunit" is
+  not implicitly called afterwards.
+
+finsert<< ( "path" -- )
+  Exactly like "f<<" without the implicit "endunit".
+
+needsasm ( -- )
+  Calls "needs" for the assembler unit corresponding to the live CPU.
+
+  This word needs to be called alone on its line of code, like "needs".

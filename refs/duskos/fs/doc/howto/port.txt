@@ -1,0 +1,262 @@
+# Porting Dusk to a new CPU
+
+Deploying Dusk to a new machine (see [doc/deploy]) is already a challenge, but
+creating a Dusk port for a new CPU is something else! This document aims to
+guide you in this process.
+
+First of all, you should be acquainted with the structure of a kernel
+[doc/kernel] and the boot sequence [doc/boot].
+
+## Emulator?
+
+A frequent reflex when taking on that kind of task is to find or build an
+emulator for the target CPU. Finding implies building your port from a system
+that isn't Dusk and building implies a lot of extra efforts.
+
+I favor an emulator-less approach, that is, to run your work in progress
+directly on the target machine. Initially, it's a lot of back and forth with the
+boot media, but the Dusk kernel it built in such a way that it's quickly
+possible to gain interactivity within the machine and thus debug much more
+effectively with much fewer back and forths of boot media.
+
+Moreover, an emulator-less approach helps detect some problems earlier, for
+example timing issues. This can save significant refactorings later on, if you
+build code on an emulator assuming certain timing constraints, only to find out
+later that those constraints were incorrect and that you have to rethink your
+whole code.
+
+## Register map
+
+The first thing to do is to define your register map. See example at [hw/arm].
+Think about it for a while. This map may have a big effect of the complexity of
+the Forth you're writing. Then, write it down and memorize it. You'll need to be
+aware of this map at all times.
+
+## Assembler first?
+
+Of course, you need an assembler to build your kernel. But do you need to build
+your whole assembler before you begin working working on the kernel? You don't
+need to. You can have your assembler coevolve with your kernel.
+
+If the target CPU is one you're unfamiliar with, coevolving allows you to become
+acquainted with its design and try a few things before deciding on an optimal
+assembler API.
+
+That's what I do. I begin with the barest assembler allowing me to build the
+barest of a kernel sprout, then evolve them both from there.
+
+## Deploy first
+
+So, where to begin? Your deploy unit, the one that creates your boot media. What
+you need is to craft the barest possible media that would confirm that you have
+power over that machine. Any kind of "led blinking". For example, when I
+developed the m68k port, with the Powerbook 520 as the first target, my "led
+blinking" moment was to craft a minimum HFS header with boot code containing
+only an infinite loop. With a zeroed out floppy, the system ignored the floppy
+and booted System 7 from its hard drive. With a bootable HFS with garbage, it
+went in "sad chime" condition. With my carefully crafted infinite loop, there
+was the "happy mac" boot icon, and then nothing.
+
+This proved that I have control over the machine. Hard part's over!
+
+So what you'll want to do is to set yourself up comfortably. You create your
+xcomp/mycpu/mytgt/deploy.fs unit which contains helper words that easily creates
+that famous boot media. Initially, there's a lot of reading to do because you
+don't know your machine. But once you have that "blinking led", things get
+easier.
+
+## Bootloader
+
+The next step is then to create a bootloader, something that has enough torque
+to get your kernel and payload, roughly 64 kilobytes, into memory and then jump
+to it.
+
+This depends on your target machine and is often a rather easy task, but it's
+not trivial either. If you're coevolving your assembler at the same time, it's
+a good thing that the task is easy because writing an assembler at the same time
+adds an extra challenge. When things don't work, you always have to double check
+that your assembler wasn't at fault.
+
+Initially, use the same "blinking led" code (an infinite loop in my case) as the
+bootloader payload. Don't get ahead of yourself by doing too many things at
+once.
+
+You can already begin structure your code neatly, with the bootloader living in
+xcomp/mycpu/mytgt/boot.fs (bootloader) and xcomp/mycpu/kernel.fs (blinking led).
+
+## Kernel sprout
+
+Now's the time to get the kernel going. Exciting! Use another kernel as a guide.
+xcomp/arm/kernel.fs is a good one.
+
+The very first thing you'll want to do is the same thing every programmer wants
+to do first: "Hello World!". This is crucial. To be able to debug your kernel
+effectively, you need to be able to extract data from it, either by printing on
+the screen or on a serial link.
+
+Those printing routines can be considered scaffolding. They will be removed once
+you get an actual Forth going because the upper Forth layer will be doing the
+printing then.
+
+Then, you want an interpret loop going. Begin with reading the boot payload.
+That means that you want your kernel to be split in two parts. First, the binary
+part that the bootloader jumps to. Second, the boot payload in textual form. It
+can be anything. Let it be "Hello World!". Your first task is to print it.
+
+The challenge there is to get the right registers pointing at the right place.
+Generally, the boot payload follows the binary kernel directly, but sometimes
+not. This depends on your machine's constraints.
+
+Once you have that, it's time to implement your very first Forth word, "word"!
+So yep, you can go right ahead with "xcode word", followed by the
+implementation. At boot, your kernel can call it and then loop forever.
+
+No crash? that's a good sign, but you'll quickly want to implement a second
+word, "stype". This word won't stay in the kernel because it's implemented in
+xcomp/boot, but you'll use this word a lot during kernel development, so it's
+worth it!
+
+Your kernel payload can then call "word", then "stype", then infinite loop.
+Seeing "Hello" on screen? Hurray! You can take a break, that was a huge step
+forward.
+
+## Interpret loop
+
+Maybe you can see where this is going. The idea is to speedrun your way to the
+interpret loop. I recommend "findentry" next. This is also a very big step. It
+requires that you setup SYSVARS so that you can have a sysdict to feed to that
+new word. Oh, don't forget to "orgify" your kernel dictionary (see
+[xcomp/tools])!
+
+But how are you going to check the result? Implement a ".x" in assembler. Like
+with "stype", this won't stay around, but being able to print numbers is a
+superpower at this stage. You won't regret it. Your payload can then be "stype"
+and your kernel can call "word", then push sysdict to PS, then call "findentry",
+then call ".x". Does this number look like what should be the address of the
+"stype" entry in memory? Hurray! You need another break, that was huge!
+
+You can feel it right? You're going to have the interpret loop soon and that's
+really exciting. Next step: run1! Well, a partial run1. For now, don't bother
+with number parsing, just find and execute. That's actually much easier than
+findentry. Once you have that, "main" is trivial: repeatedly call "run1".
+
+That's it, your payload can now be Forth code! Go ahead, try it! Something like
+"word Hello stype" should work... Oh no you need a stop gap because otherwise
+your interpret loop will go into garbage memory. Implement a "bye" with an
+infinite loop. You have a Forth!
+
+## Interactivity
+
+You could implement the rest of the kernel in the same way you've been working
+so far, but interactivity will allow you to cut back and forth with the boot
+media in a juicy way. You might as well bring it as soon as possible.
+
+First, you need "key ( -- c )". Again, it's a word that won't stay in kernel.
+Then, you need a way to tell, at some point, your "word" implementation to stop
+feeding itself from INPTR and feed itself from "key".
+
+In a full Forth, you'd do so through realiasing, but at this
+bottom-of-the-barrel level, it's impractical. You'll need to add a condition in
+"word" that will jump to an alternate "word" implementation feeding itself from
+"key". What condition? Anything. An easy choice is to use a SYSVAR slot. For
+example SYSVARS+00. Where do you buffer input keys? Anywhere. Why not INPTR
+directly? You won't use it anymore and you know it's valid memory.
+
+Oh, add an echo to your "key" calls too if you want to see what you type.
+
+Then, once this is done, you replace the final "bye" in your payload with
+something like "$1 SYSVARS !". If your "word" tweak is well written, you'll have
+an interactive prompt!
+
+It will be a severly limited prompt where mistakes can't be corrected and which
+executes words as soon as a whitespace is typed, but you'll be really glad to
+have it.
+
+From here, you can interactively debug your work in progress. The more words you
+add to your kernel, the more powerful your prompt is.
+
+## Rest of kernel
+
+By now, you understand the *modus operandi* I am proposing. You now have an
+underpowered Forth interpret loop and your goal is now to have a kernel that is
+able to interpret xcomp/lo.fs successfully. You still have a lot of work ahead!
+The implementation order I suggest is:
+
+* parse
+* here
+* c, w, ,
+* alignhere entry[] code exit,
+* litn
+* ] : ;
+
+The rest can come in no particular order. At each step, you'll want to test that
+your words work correctly, you'll be relying a lot on those.
+
+At that point, you should be able to have xcomp/lo.fs as your payload prefix,
+followed by whatever test code you need to test that everything works as it
+should.
+
+## HAL
+
+Alright! We're rollin'! We have a kernel that compiles xcomp/lo! Now let's write
+ourselves a HAL.
+
+Start small, a foot in the door. Make "W) @," work. Hardcode your way through
+it, the idea is to feel the power of code generation. Then test it in your
+interactive prompt with something like:
+
+  code foo W) @, exit, here $cafebabe , foo .x
+
+Working? good, a HAL sprout! Now let's get structured before going further.
+
+### Conditionals
+
+You won't get very far without conditionals. xcomp/lo does implement them, but
+using dummy indirect words that you have to implement in your HAL before you
+can use those conditional words. See [doc/xcomp/lo] about it.
+
+You might have to use some pretty dirty tricks. For example, if you look at x86,
+you'll see that its "br!" implementation requires conditionals! To get out of
+this chicken and egg problem, it first implements a "correct-only-for-this-case"
+temporary "br!", then with the wobbly conditional it gives it, implement the
+real "br!".
+
+### Comments!
+
+There's few other places where we long for having comment as much as in a HAL
+implementation. But we don't have them yet!
+
+But xcomp/lo also implements begin/while/repeat. As soon as you have implemented
+the core conditional words, you can also implement the "(" comment. The core
+logic is already in xcomp/lo, under "?read)", all it needs is the loop. So
+what you'll want to add this line:
+
+  : ( begin ?read) while repeat ; immediate
+
+And you have comments! The "\" comment form has to wait until xcomp/boot.
+
+### xcomp/boot
+
+At that point, you write your HAL in any order you want, but if you lack
+inspiration or structure, you might want to do as I do: let xcomp/boot decide
+the next step.
+
+What I do is that I begin copy/pasting the contents of xcomp/boot into by
+payload, line by line. Do so until you encounter a line that your HAL won't
+compile properly. Work on your HAL until it does, then continue until the whole
+of xcomp/boot compiles.
+
+xcomp/boot uses a lot of HAL surface, so once that's done, your HAL is very
+nearly complete!
+
+### Finishing touches
+
+At that point, lining up a payload that gets you to [app/prompt] shouldn't be
+very difficult. You can then clean up your kernel of all your scaffolding hacks
+and write the mass storage drivers that will give you [fs/core].
+
+Once you have that, you can run HAL tests in tests/hal/base/, iron out the few
+kinks it will find, then run [tests/all.fs], which is unlikely to reveal more
+kinks to iron out.
+
+Your port is complete, congratulations!

@@ -1,0 +1,23 @@
+# sunxi USB subsystem
+
+This driver hooks the Allwinner SoC's EHCI controller to [drv/usb/ehci], thus
+giving the system access to [drv/usb].
+
+## Limitation: one controller
+
+The sunxi SoC has 2 separate USB controllers, one for each port. This driver
+only drives one of them, the EHCI0 one (that is, the "not-OTG" one).
+
+On the Pine64 board, the EHCI0 controller is hooked on the bottom USB port, so
+only that one will work.
+
+## Initialization
+
+needs drv/sunxi/usb
+sunxiusb$
+.ehci \ You now have a EHCI root hub
+
+## See also
+
+* [doc/hw/arm/sunxi]
+* https://github.com/u-boot drivers/phy/allwinner/phy-sun4i-usb.c

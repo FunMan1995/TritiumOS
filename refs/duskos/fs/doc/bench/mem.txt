@@ -1,0 +1,4 @@
+# Memory benchmark
+
+The unit at [bench/mem.fs] runs, at unit load time, a bunch of tests measuring
+memory speed.

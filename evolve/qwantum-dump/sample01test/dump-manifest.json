@@ -1,0 +1,10 @@
+﻿{
+    "files":  [
+                  "evolve/forth/refined/qwantum-sample.fs"
+              ],
+    "search_id":  "sample01test",
+    "apply":  true,
+    "input":  "C:\\Test\\TritiumOS\\dist\\qwantum-reply-sample.txt",
+    "file_count":  1,
+    "dumped_utc":  "2026-06-02T18:40:18.2528471Z"
+}

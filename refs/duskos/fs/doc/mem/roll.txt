@@ -1,0 +1,130 @@
+# Rolling stream
+
+This unit implements a rolling stream [io/stream], that is, a static buffer with
+a read and write pointer. When a pointer reaches the end of the buffer, it rolls
+over to the beginning.
+
+When both pointers are equal, the buffer is empty, when the write pointer is one
+less than the read pointer, the buffer is full.
+
+This might sound similar to [mem/scratch], but unlike it, this buffer doesn't
+blissfully overwrite contents. When it's full, it refuses writing.
+
+This buffer is designed to be fast and accomodate the needs for shoveling bytes
+around when handling IRQs [doc/intr].
+
+## Reading buffer lifetime
+
+When reading from the buffer, you'll need a little bit of time to process that
+memory range you're given before further IRQs write over it. For this reason,
+the memory that a readbuf call frees isn't actually freed until the *next* call,
+therefore giving the caller the time to copy it elsewhere.
+
+That's why we have separate "ridx" and "wlim" fields. "ridx" is one step ahead
+of wlim.
+
+This distinction is only useful for "fastputc,". As soon as we leave the
+interrupt realm, we don't need it. For this reason, "writebuf" and "writeahead"
+also "commit" ridx to wlim.
+
+## The write window
+
+It's possible to want to write contents to a rolling buffer in an order that
+isn't sequential, for example in the case of [com/tcp].
+
+In that case, using "writebuf" doesn't work because we might receive chunks of
+data ahead of the current write position which we'll only "commit" later, once
+we can arrange all those out-of-order bytes into a nice sequence.
+
+For this, we have what we call the write window. It's a reserved buffer ahead of
+the write pointer that shrinks the limit of what is writable.
+
+When you have that, instead of writing contents through regular stream words,
+you write ahead with the "writeahead" word. This doesn't "advance" the stream,
+which you later have to advance with "advancewindow".
+
+The size of the write window is not a property of the rolling buffer, but a
+parameter passed to "advancewindow". To avoid aborts, "writeahead" should always
+be called with parameters that are consistent with "advancewindow".
+
+Note that regular stream words completely ignore the concept of writing window
+and it's probably a bad idea to mix the two writing approaches.
+
+## The wasted byte
+
+Because of the way that the read and write pointers are compared, the actual
+capacity of the buffer is one byte less than bufsz. If, for example, we have a
+buffer size of 42, we cannot let ourselves write 42 bytes to the buffer because
+that would mean that widx would be the same as ridx and we'd think we're empty
+again. Therefore, in such a buffer, we can only write 41 bytes before we're
+full, at which point we must wait for a read.
+
+## Example usage
+
+needs mem/roll
+$100 const BUFSZ
+BUFSZ newrollingbuffer const mybuf
+"hello" mybuf puts \ works like any stream
+
+## API
+
+### Structures
+
+extends Stream struct RollBuf {
+  uint widx wlim ridx bufsz ;
+  *void buffer ;
+}
+
+widx     Index of the buffer at which the next contents will be written
+wlim     Index, exclusive, beyond which writing cannot occur. When wlim = widx,
+         buffer is empty. When wlim = widx-1, buffer is full.
+ridx     Index at which the next read will occur. To give some time for read
+         buffers to be consumed, ridx is always "one step ahead" of wlim.
+bufsz    Size in bytes of the buffer.
+buffer   Pointer to the beginning of the buffer.
+
+### Words
+
+newroller ( a u -- rollbuf )
+  Creates a new rolling stream targeting specified range.
+
+newrollingbuffer ( bufsz -- rollbuf )
+  Allocates a new rolling stream of the specified size in bytes.
+
+reset ( rollbuf -- )
+  Set widx wlim ridx to 0, effectively emptying the buffer.
+
+peekbuf ( n rbuf -- ?a peek-n )
+  Like "readbuf" [io/stream] but it doesn't advance the read pointer.
+
+writeahead ( a n off rollbuf -- written-n )
+  Writes range "a u" "off" bytes ahead of the current write pointer. Does not
+  advance the write pointer. Yields the number of bytes that could effectively
+  be written.
+
+  Aborts with error if this would result in writing outside the write window.
+
+advancewindow ( n winsz rollbuf -- n )
+  Try to advance the write window by "n" bytes ensuring that there's at least
+  "winsz" bytes between "widx" and "wlim". Yields the number of bytes that
+  it was actually advanced by.
+
+fastputc, ( -- fullbr )
+  Compiles a fast equivalent to "putc". The runtime code has this signature:
+
+  IN: A=rollbuf W=c  OUT: A=rollbuf CLOBBERED: W S
+
+  The compile time word yields a branch to the case where the buffer is full.
+  Example usage:
+
+    fastputc,
+      \ code handling the regular case
+    else
+      \ code handling the "full" error
+    then
+
+## Private API
+
+wrmax ( rollbuf -- n )
+  Yields the maximum number of bytes that can be written to the buffer before
+  hitting its limit.

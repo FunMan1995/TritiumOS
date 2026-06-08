@@ -1,0 +1,27 @@
+# Deploying to a EFI-compatible system
+
+See [doc/deploy] and [doc/hw/efi] first.
+
+A Dusk media that boots on a AMD64 EFI is a FAT with a EFI/BOOT/BOOTX64.EFI
+file in it. This is what the unit at [xcomp/amd64/efi/deploy.fs] does.
+
+Dusk's boot payload directly follows the kernel binary directly in the ".EFI"
+executable. Then it uses [drv/efi/blkio] plugged into [fs/fat] to boot further,
+until `init.fs` is reached.
+
+## Usage
+
+To use this unit, you will first want to create a new FAT with [fs/fatt], then
+copy Dusk's files into that new file. Then, you'll want to create a
+EFI/BOOT/BOOTX64.EFI file with the contents generated with "spitefi".
+
+You now have a bootable disk!
+
+## API
+
+spitefi ( stream -- )
+  Generates a PE+ executable with a single RWX section named ".text". It's
+  content is the result of compiling [xcomp/amd64/efi/kernel.fs] and inlining a
+  boot payload next to it. That payload is the minimal code required to get
+  [drv/efi/blkio] and [fs/fat] going, so that we can mount the boot disk and
+  interpret "init.fs".

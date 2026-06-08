@@ -1,0 +1,58 @@
+# Oberon modules
+
+An Oberon module is an array of 4 dictionaries: types, constants, variables and
+procedures.
+
+Modules are stored in a global dictionary keyed on their respective name.
+Whenever the MODULE directive is met, we find-or-create a module of that name,
+declare it the "current" module and reset the "private module".
+
+## Current module and private module
+
+The current module is a link to the module currently being compiled upon. All
+public declarations, that is the ones with a "*", are added to one of its
+dictionaries.
+
+Parallel to it, there's the "private" module, also an array of 4 dictionaries.
+All declarations are added to it. Unqualified identifier lookups are done there.
+Whenever a new module is activated, we clear it.
+
+## API
+
+## Structs
+
+struct Module {
+  [uint,1] types constants variables procedures ;
+}
+
+Entries have these structures:
+
+types   +00 type
+consts  +00 type   +04 value
+vars    +00 type   +04 address
+procs   +00 sig    +04 address
+
+## Words
+
+activatemodule ( name -- )
+  Look for name in module list. If found, activate it. Otherwise, create it and
+  activate it.
+
+curmodule ( -- module )
+  Yields the currently activated module
+
+curproc ( -- e )
+  In the private module, look for the latest entry that still has a 0 addr.
+  Yield the dictionary entry that corresponds to it.
+
+curprocsig ( -- sig )
+  Signature of the procedure currently being implemented.
+
+addproc ( public? sig name -- )
+  Add signature to private procs dir. If "public?" is true, also add it to the
+  current module.
+
+  Entries are added with a 0 addr. That offset it set through "implementproc".
+
+implementcurproc ( -- )
+  Set the target address of the latest proc added by "addproc" to "here".

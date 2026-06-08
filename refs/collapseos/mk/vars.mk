@@ -1,0 +1,3 @@
+DUSKVER = v11
+DUSKDIR = duskos-$(DUSKVER)
+FS = $(DUSKDIR)/fs

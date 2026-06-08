@@ -1,0 +1,34 @@
+# FAT tools
+
+The unit at [fs/fatt.fs] is a collection of FAT [doc/fs/fat] tools. For now, it
+only contains tools to create a new FAT.
+
+## Creating a new FAT
+
+You create a new FAT through "newFAT ( drv -- )". This will fill the drive's
+first sector with a proper FAT header considering the drive geometry.
+
+This word takes numerous parameters, too many to pass directly through PS.
+Instead, we have a set of fixed values to play with. They are:
+
+secperclus  Sectors per cluster. Default 1.
+rsvdsec     Number of sectors of the "reserved" section of the FAT. This is
+            where Dusk typically places its kernel and boot payload. This
+            includes the first sector, so it's never going to be 0. Default 1.
+rootentcnt  Number of entries in the root entries section. There are 16 entries
+            per 512 bytes sector. Default 64, which means 4 sectors dedicated
+            to it.
+secpertrk   These 3 fields are of no consequence to the FAT, but they serve as
+numheads    an indicator to whatever is booting the machine of the kind of BIOS
+drvnum      geometry it can expect.
+            Defaults: 63 16 128, the typical "Hard disk" params.
+
+The idea is that you set those before calling "newFAT". To ensure default values
+are set, call "fatopts$" first. On a freshly loaded unit, this isn't necessary.
+
+## Example usage
+
+  needs fs/fatt
+  4 to secperclus
+  120 to rsvdsec
+  mydrv newFAT

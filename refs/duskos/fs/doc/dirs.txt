@@ -1,0 +1,193 @@
+# Directory structure
+
+UNIX platforms have a very specific directory structure, its root directories
+discriminating between fundamental roles for files in them. For example, /lib is
+for libraries, /bin is for binaries.
+
+In Forth, every word defined by a unit is potentially usable interactively,
+which makes the whole /lib vs. /bin distinction rather moot. Almost everything
+is executable.
+
+Because the breadth of applications included directly in Dusk OS is rather small
+and that "user files" will typically be on a separate volume, we give ourselves
+a wide root directory structure based on general topics of the included code.
+
+The contents of all subdirectories listed below, except "doc" and "data" is
+source code. "oberon" is mostly source code, but not entirely.
+
+app    Applications
+ar     Archive access
+arch   Arch-specific contents
+asm    Assemblers
+bench  Test benches
+bin    Binary blobs processing
+com    Communicate
+comp   Compilers
+data   Non-executable data
+doc    Documentation
+drv    Drivers
+emul   Emulators
+fs     Filesystems
+gr     Graphics
+hal    HAL powerups
+io     Input/Output
+lib    Miscellanous little routines
+mem    Memory management and data structures
+num    Numerical processing
+oberon The Oberon system
+tests  Automated tests
+text   Text processing
+xcomp  Cross compilation
+
+## app -- Applications
+
+Applications are units that provide an interactive runloop through [lib/coop].
+
+## ar -- Archive access
+
+Provides decoding (and sometimes encoding) access to data structured in
+particular manner. In this section fits:
+
+* Compression and decompression
+* tar
+* Document formats such as MS Word and PDF
+
+## arch -- Arch-specific contents
+
+This directory contains contents designed to be loaded through the logic
+implemented by [arch/core].
+
+## asm -- Assemblers
+
+Provides assemblers for different CPUs or VMs. Those will convert mnemonics into
+native bytecode.
+
+Disassemblers also go there.
+
+## bench -- Test benches
+
+What we call "benches" are quite similar to automated tests in "tests", except
+that they are interactive in nature. Rather than asserting stuff, they measure
+stuff. They don't have pass or failure conditions.
+
+Some benches may also be about exploring hardware drivers. Those benches are
+typically about turning the innards of the underlying driver inside out, which
+means they typically heavily use private (undocumented) words of those drivers.
+That's fragile, but well, it's a bench!
+
+## com -- Communicate
+
+Provide facilities for communicating with other machines.
+
+## comp -- Compilers
+
+Provides compilers for different languages such as DuskC. Those compilers will
+typically use assemblers to yield native bytecode.
+
+## data -- Non-executable data
+
+The vast vast majority of Dusk's content is source code compiling to executable
+words. But sometimes, we need a place to put non-executable data. This is this
+place.
+
+This directory as well as all its subdirectories, contain a "desc.txt"
+containing the description of all files contained in that directory.
+
+## doc -- Documentation
+
+Dusk documentation in text format.
+
+## drv -- Drivers
+
+Drivers for supported peripherals. For each supported machine, there's a
+subdirectory. Drivers will be placed in the most general directory possible for
+that peripheral.
+
+Units directly under "drv" will usually wrap machine-specific drivers in a
+machine-independent API.
+
+Some subdirectories such as "usb" are not machine-specific, it's just that their
+code is too voluminous and sprawling to live at the root of "drv".
+
+## emul -- Emulators
+
+Provides facilities for emulating a machine. This includes CPU and peripheral
+emulation logic.
+
+## fs -- Filesystems
+
+Filesystem implementations, which run on top of storage drivers. Filesystems are
+often accompanied by tools, which will also live in the "fs" directory, but in
+a separate unit with a "t" suffix. For example, "/fs/fatt.fs" is the unit for
+FAT tools.
+
+In short, anything revolving around [doc/fs/core].
+
+## gr -- Graphics
+
+Units revolving around graphical manipulation. Drawing and shoveling pixels
+around.
+
+## hal -- HAL powerups
+
+Done with being overwhelmed by [doc/hal]'s power? You can make it even more
+powerful right here!
+
+## io -- Input/Output
+
+This directory is a bit of a fuzzy one. At its core, there's [io/stream], which
+means that units that are mainly about streams can find a home here.
+
+However, the broad idea should be more about interactive textual Input/Output,
+that is, what comes from the operator, what we spit to the operator. Streams are
+of course a cornerstone of this, but units revolving around "RTYPE" and "in<"
+also belong here. It also mean that [io/kbd] belong here, and because it does,
+it kind of make sense to include [io/mouse] too, even if it's not textual input.
+Right?
+
+Under this definition, [io/blk] and friends would be outliers. The definition of
+this category has changed over time and might change again, we'll let this one
+slide for a while.
+
+## lib -- Miscellanous
+
+If a unit doesn't go anywhere else, it goes here.
+
+## mem -- Memory management and data structures
+
+Allocators and generic data structures go there.
+
+## num -- Numerical processing
+
+Crunching numbers, hashing them etc..
+
+## oberon -- The Oberon system
+
+This directory contains Oberon source code that consists of the Oberon system
+with adjustments so that it runs well on Dusk.
+
+The Oberon compiler [comp/oberon] looks in this directory when auto-loading
+modules.
+
+It also includes the "sys.fs" file. See [oberon].
+
+It also includes all ".ort" (Oberon Rich Text. We'd name them ".Tool", like in
+the original Oberon, but that wouldn't sit well with FAT's 8.3 filename format)
+files. Although these are not stricly "source code", it still makes more sense
+to have them there, so that's what we do.
+
+## tests -- Automated tests
+
+Collection of tests for all units in the system. Its directory structure mirrors
+the root structure. Each directory has a "all.fs" unit that includes all units
+of the directory. Loading "/tests/all.fs" runs all tests in the system.
+
+## text -- Text processing
+
+Provides facilities to process and vizualize textual data. Text editors go
+there.
+
+## xcomp -- Cross compilation
+
+Provides facilities to cross compile Dusk to any of the supported target
+machines.

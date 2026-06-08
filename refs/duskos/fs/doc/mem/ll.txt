@@ -1,0 +1,29 @@
+# Linked lists
+
+A collection of helpers around linked lists.
+
+llend     ll -- ll   *A* Iterate LL until we reach the last element.
+lladd     ll --      Write a new LL element to here then write its address to
+                     the last element of "ll".
+llinsert  elem ll -- Insert "elem" between "ll" and its next element. If "ll"
+                     is the last element of the list, elem is added at the end.
+llcnt     ll -- n    Yield the number of elements in "ll".
+
+llfind ( elem ll -- idx prev-or-0 ) *A*
+  Iterates "ll" until "elem" is found and yields its previous element as "prev"
+  as well as "idx" being the index of the element.
+
+  "elem" cannot be the same as "ll" and therefore, the resulting "idx" will
+  never be 0.
+
+  If the element is not found, prev=0 and idx is the number of elements in the
+  LL.
+
+llitern ( n ll -- prev elem-or-0 )
+  Iterate "n" time in "ll" and return the resulting element or 0 if end of list
+  was reached. Also, yield the previous element as "prev". If "elem" is 0,
+  "prev" is the last element of the LL.
+
+## See also
+
+* [doc/data] about Linked Lists

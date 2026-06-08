@@ -1,0 +1,12 @@
+# Common routines for HAL powerups
+
+These words are used in "hal/" units, mostly for the arch-dependent loading
+mechanism.
+
+## API
+
+archload ( basename -- )
+  Does the equivalent of "f<< hal/<archname>/<basename>.fs". "loadpath" is
+  avoided so that "endunit" isn't called. This way, afer having called
+  "archload", you can continue adding words to the unit that was created by the
+  source file you loaded.

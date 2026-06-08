@@ -1,0 +1,8 @@
+# PC Real Time Clock
+
+This unit realiases "now" from [lib/time] using the CMOS registers of the PC
+platform. This realiasing takes place on unit loading.
+
+## See also
+
+* https://wiki.osdev.org/CMOS

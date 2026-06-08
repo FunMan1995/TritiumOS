@@ -1,0 +1,115 @@
+# Symbols
+
+A Symbol is a name bound to a Type [lib/type] targeting a particular place in
+memory, either as an absolute address, a PSP-relative or a RSP-relative one, for
+the purpose of compiling accesses to them.
+
+Symbols targeting absolute addresses are permanent, the ones targeting RSP and
+PSP are temporary (local variables and arguments).
+
+For local variables and arguments, you add them through "addlocalvariable" or
+"addargument". Then you look them up by name and use them to compile the
+accesses you need. This unit contains words to generate the appropriate HAL
+[doc/hal] operand for a given Symbol.
+
+Global symbols are regular "create" entries in the sysdict with an associated
+SYMB tagged value [lib/tagl]. The value is a pointer to a Symbol struct. Global
+symbols are added to the sysdict and are thus part of the "unit bubbling"
+[doc/usage/unit] process.
+
+This unit manages temporary data related to local variables and arguments by
+storing it in an arena [mem/arena]. Every time to begin compiling a new
+function, you clear local symbols.
+
+## PS displacement
+
+When compiling expressions, we often need to temporarily push some results to
+PS for recalling later. This messes with PSP-relative offsets. For this purpose,
+this unit maintains a "current PS displacement" value, which is added to the
+Symbol's PS offset before yielding a HAL operand.
+
+You need to keep a tight leash on that displacement value through "PS+" "PS-".
+
+## API
+
+### Structures and constants
+
+enum GLOBAL LOCAL ARGUMENT
+struct Symbol { uint type class offset ; }
+
+type    Type [lib/type] of the symbol
+class   Either GLOBAL LOCAL or ARGUMENT
+offset  Offset in bytes relative to RSP/PSP, or absolute memory address
+
+### Values
+
+PSDisp   Current compile-time PS displacement. Modified by PS+ and PS-
+
+### Words
+
+addlocalvariable ( type name -- symbol )
+  Add a new local variable (RSP-relative), computing its offsets from local
+  variables already added, using the type size. We begin at RSP+0 and grow from
+  there.
+
+addargument ( type name -- symbol )
+  Same as "addlocalvariable" but for PSP. However, with arguments, we always
+  increase the current PSP offset by 4 rather than by the type size.
+
+  If you try to add a type that has a size exceeding 4, we abort with an error.
+
+growargzone ( -- )
+  Grow argument zone by 4 without adding an argument. This is generally not
+  needed, but could be in case of, for example, argument using multiple slots.
+
+addglobalsymbol ( type name -- symbol )
+  Add a regular "create" type of entry of the specified name, allocate enough
+  memory, zero-filled, to accomodate "type", then tag this entry with a SYMB
+  value, containing a Symbol struct.
+
+  Yields the associated Symbol struct.
+
+localvariablesz ( -- n )
+  Yields the size in bytes of all local variables, aligned to 4 bytes.
+
+argumentsz ( -- n )
+  Yields the size in bytes of all arguments.
+
+PS+ ( -- )
+  Increase PS displacement by 4.
+
+PS- ( -- )
+  Decrease PS displacement by 4.
+
+findsymbol ( name -- symbol-or-0 )
+  Look up for name in local symbols. If found, yield it. Otherwise, find an
+  entry with the "SYMB" tag in sysdict. If found, yield the symbol. Otherwise,
+  yield 0.
+
+findsymbol# ( name -- symbol )
+  Like "findsymbol" but assert we find it.
+
+argtypes ( -- ... n )
+  Yields a list of the types of all added arguments in a way that can be fed to
+  "newsignature" from [lib/type].
+
+symbol) ( symbol -- halop )
+  Yield the HAL source operand targeting symbol. GLOBAL yields a "m)", LOCAL
+  yields a "RSP)" and ARGUMENT yields a displacement-adjusted "PSP)".
+
+.localsymbols ( -- )
+  Print all local symbols (both variables and arguments)
+
+symbols$ ( -- )
+  Clear local variables and arguments, reset PS displacement.
+
+savesymstate ( -- ... )
+restoresymstate ( ... -- )
+  Fetch/Store all global variables of the unit from/to PS.
+
+  You might need to use it when parsing a function signature prototype
+  while parsing another signature prototype. Or any other kind of recursive
+  sub-parsing.
+
+  Note that this state only includes symbol pointers, not their data itself.
+  Therefore, it doesn't survive a "symbols$" call.

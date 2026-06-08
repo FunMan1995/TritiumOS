@@ -1,0 +1,25 @@
+Welcome to the Dusk PC rescue floppy!
+
+This is a [app/gcon] console. This disk is mostly there to repair a broken Dusk
+system. A floppy is tight, so it has no documentation. It has only PC drivers
+and xcomp. It has a text editor, binary editor, C compiler, assemblers, xmodem,
+ar/tarp. Enough to get you out of a tight spot.
+
+Mount ATA0:0 as a:
+needs fs/core fs/fat drv/pc/ata
+ATA0:0 newfatfs 'A' mapfs
+
+Setup XMODEM on COM1 at 115200 bauds for use with ar/tarp:
+needs drv/pc/com com/xmodem ar/tarp
+com$ com1 xmodem$
+
+Useful XMODEM/tarp commands:
+xmodem tar< init.txt
+p"a:" xmodem untar
+
+Rebuild the kernel on "a:" using itself:
+Note that depending on how far away the floppy is from the Dusk on ATA0:0, this
+might not work.
+
+needs fs/core xcomp/i386/pc/deploy
+p"a:" curfs bootfs! storage install

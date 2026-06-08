@@ -1,0 +1,161 @@
+### Setter semantics
+
+Dusk OS defines the immediate word "to" along with what is called "setter
+semantics". Any word, not only values, can have a setter routine. That setter is
+activated when "to" is called right before invoking it. This works at compile
+time too. For values, "to" is the exact equivalent to "!", but more efficient
+because we don't push and pop a destination address to stack. For other words,
+it might have another meaning. For example, [drv/pc/ioport] uses setter
+semantics to compile x86 OUT instructions.
+
+To implement a setter, you use "to?," like this:
+
+  :> ."getting!" ;
+  :> ."setting!" ;
+  code foo findselector
+    litn to?, ifz, swap i) @, then exit,
+  foo \ prints "getting!"
+  to foo \ prints "setting!"
+  : bar foo to foo ;
+  bar \ prints "getting!setting!"
+
+## value
+
+These semantics allow the concept of "value", which is like a "variable", but
+calling the word automatically dereferences the address, which saves a whole
+bunch of "@" calls. When you need to write to a value, use "to".
+
+## Local variables
+
+It's a common pattern, to avoid PS juggling, to place an element on RS (Return
+Stack) and recall that element with r@ or r>. It works well, but unfortunately,
+this only works with a single element. Another drawback is that this element can
+be "buried" by a pattern (a loop for example) that needs to place something on
+RS. Example:
+
+  : print100times ( n -- ) >r 100 0 do r@ . spc> loop rdrop ;
+
+is not going to work as expected because of the loop's usage of a RS slot.
+
+A common workaround to this is to declare a "private" value near the word and
+store temporary values in there.
+
+  0 value myval
+  : print100times ( n -- ) to myval 100 0 do myval . spc> loop ;
+
+It works too, but because those values are statically allocated, this can't be
+done in words that require recursion. Also, it's a bit verbose.
+
+Local variables are there to the rescue! There are 4 of them: V1 V2 V3 V4. They
+access RS like r@ does, from a point of reference, which is often call "stack
+frame pointer" in other computing environment. It's where RSP was when the word
+began its execution. We keep track of RS movement at compile time through the
+"[rcnt]" variable, which allow us to compile the proper RS-relative accesses.
+
+V1 is the "deepest" variable, V4 is the "shallowest". For example, let's imagine
+this word:
+
+  : foo 1 >r 2 >r 3 >r 4 >r V1 . 2rdrop 2rdrop ;
+
+This snippet will print "1" because at this point, RS looks like this, stack
+growing left:
+
+  4    3    2    1    ...
+  R+0  R+4  R+8  R+12
+
+Unlike words using static variables, words using variables can recurse just
+fine. They are also impervious to being "buried" because they remember their
+"slot" at compile time and adjust their compilation accordingly. For example,
+the code below:
+
+  : foo 1 >r 2 >r 3 >r 4 >r 10 0 do V1 . loop 2rdrop 2rdrop ;
+
+will print "1" 10 times even though "do..loop" pushes 2 elements to RS.
+
+When using local variables, you are responsible for pushing and popping to/from
+RS.
+
+Local variables obey setter semantics. More examples:
+
+  : foo ( a b c -- ) >r >r >r V1 . spc> V2 . spc> V3 . 2rdrop rdrop ;
+
+  1 2 3 foo \ prints "3 2 1"
+
+  : inc ( a -- a+1 ) >r doto V1 1+ | V1 rdrop ;
+  42 inc . \ prints 43
+
+  \ this works too
+  : inc5 ( a -- a+5 ) >r 5 0 do doto V1 1+ | loop V1 rdrop ;
+  42 inc5 . \ prints 47
+
+### Manual [rcnt] adjustments
+
+The "R counter" that determines local variable slots at compile time is
+oblivious to conditional code or loops. It's not common to have code that
+conditionally maintain separate RS levels (they always need to stay balanced, of
+course), but it can happen. For example, in early "exit" paths, we often have to
+include a few "rdrop" before the "exit" call. If you have a fancy word that
+returns a variable number of arguments, you might end up with >r and r> in
+loops. All of this messes up the "R counter". You can manually adjust it through
+the [rcnt] variable. For example, if you want your next ">r" to push to V1, you
+would precede it with "[ 0 [rcnt] ! ]". Example case:
+
+  : foo ( n -- )
+    dup >r 42 = if rdrop ."answer to universe" exit then
+    \ The conditional "rdrop" messed with [rcnt], we need manual adjustment
+    [ -4 [rcnt] ! ]
+    V1 . rdrop ;
+
+## getset,
+
+When implementing a typical setter words, you often end up with a findselector
+word that has to support three possibilities:
+
+* scry
+* get
+* set
+
+If you follow the instructions above, that's quite some boilerplate you have to
+carry around. To reduce this boilerplate, we have "getset,", which has this
+signature:
+
+  ( setxt getxt addrxt scryval tag -- )
+
+You supply it with the correct values and it generates a findselector
+for you, which will yield the correct values depending on values "SCRYING" and
+"to?".
+
+What are those good values? good question. First of all, the signatures of those
+xts are:
+
+  getxt ( halop -- )
+  setxt ( halop -- )
+  addrxt ( -- halop )
+
+Those words are combined to generate the code of the 4 possibilities (get or
+set multiplied by runtime or compile time). Those are all *compile time* words.
+
+"addxt" yields the HAL [doc/hal] operand that describes the address where the
+getsetter will act. It possibly compiles support native code (for example, if
+indirections are needed). The runtime signature of the code compiled by addrxt
+is ( ... -- a ).
+
+"getxt" takes that halop and compiles a fetch from it, putting the result on
+PS. Once again, the runtime signature is open ended ( ... -- n ). For inherent
+addresses, it will be ( -- n ), but for fields it will be ( struct -- n ).
+
+Same principle for "setxt". Again, runtime signature is open ended ( n ... -- ).
+For an inherent address, it's going to be ( n -- ), for fields it will be
+( n struct -- ).
+
+"scryval" is the value to yield on scrying mode. "tag" is an optional tag
+[doc/usage/tag] to apply to the created entry.
+
+When "scryval" is 0, getset, doesn't compile scry logic, which makes our
+resulting findselector word inscrutable. When tag is 0, no tag is written.
+
+That's a lot of words to describe concepts that are on a quite high
+"immediateness" plane, it might be difficult to follow. I suggest looking at the
+implementation of "value" (right underneath the implementation of "getset,") in
+[xcomp/boot.fs]. It's a bit easier to grasp with an example which, when it comes
+down to actual real stuff, isn't so complicated.

@@ -1,0 +1,34 @@
+# Oberon tokenizer
+
+The unit at [comp/oberon/tok.fs] implements a tokenizer based on [comp/tok] for
+the Oberon language.
+
+## Usage
+
+You initialize it with "obtok$", set your input stream to the Oberon source to
+parse and the begin calling "tok<" to consume tokens.
+
+## API
+
+obtok$ ( -- )
+  Initialize and install the Oberon tokenizer in [comp/tok].
+
+expectConst ( tok -- n )
+  Call "parse" on tok and abort on failure.
+
+isIdent? ( tok -- f )
+  Yields whether tok is a valid identifier.
+
+expectIdent ( tok -- tok )
+  Assert that tok is a valid identifier.
+
+expectChar ( tok c -- )
+  Assert that tok is the single char token c.
+
+readChar? ( c -- f )
+  Read token and check if it's the single char c. If it is, f=1. Otherwise, f=0
+  and we called tokstepback.
+
+read;
+read) ( -- )
+  Shortcuts for readChar.

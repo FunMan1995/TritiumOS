@@ -1,0 +1,36 @@
+# XMODEM
+
+The unit at [com/xmodem.fs] implements the XMODEM/CRC protocol. It does so by
+providing a [io/stream] that transparently handles the underlying handshaking.
+This stream needs another stream to wrap, which is its communication line. For
+example, an appropriate stream to wrap would be "com1" from [drv/pc/com].
+
+The stream provided by this unit is called "xmodem". When you read from it for
+the first time, it sends its "C" char, waiting for packets. Then, it expects a
+stream of packets until EOT.
+
+When you write to it, it waits for the other side to send its "C" char, then
+sends a stream of packet until you call "close" on the stream, which flushes the
+current partial packet and send EOT.
+
+Closing the stream doesn't prevent it from being reused, it simply ends the
+current XMODEM transaction.
+
+## Example usage
+
+  needs drv/pc/com com/xmodem
+  com$
+  com1 xmodem$
+  console xmodem spit \ spit whatever is coming in until EOT packet
+  xmodem f"init.fs" spitcloseboth \ send "init.fs" through XMODEM
+
+## API
+
+## Constants
+
+xmodem  Stream exposing this unit's functionality
+
+## Words
+
+xmodem$ ( commstream -- )
+  Initialize unit by specifying the stream it should wrap.

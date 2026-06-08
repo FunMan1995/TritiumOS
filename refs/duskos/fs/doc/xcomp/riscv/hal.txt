@@ -1,0 +1,379 @@
+HAL opcode structure (close to RISC-V structure)
+b0     +)
+b1     m)
+b2     8b) => 8-bit if set
+b3     dir)
+b4     &)
+b5     i)
+b6     16b) => 32-bit if set, 16-bit if unset
+b11:7  rd (destination register)
+b14:12 Zeroes (funct 3)
+b19:15 rs1 (source register)
+b24:20 rs2 (no meaning in HAL, but can temporarily hold a value)
+b25    signed)
+b27:26 Zeroes
+b31:28 hbank index
+
+See [hw/riscv] for general register assignment. There, it says that x10-x12 are
+for temporary HAL variables. To avoid stepping on each other toes, here are
+the policies for those registers:
+
+x10: immediate loading, either from i) m) or +)
+x11: source value "staging" register
+x12: carry flag and other uses that dont fit x10 or x11
+
+=) <>) <) >=) etc..
+  b2:0 correspond to funct3, but b3 is special and handled by "brc," before
+  orring the condition in. This bit indicates that we should swap rs1 and rs2.
+
+rd@  ( instr -- r )
+rs1@ ( instr -- r )
+rs2@ ( instr -- r )
+  Get the specified fields in "instr".
+
+rd!  ( instr r -- instr )
+rs1! ( instr r -- instr )
+rs2! ( instr r -- instr )
+funct3! ( instr n -- instr )
+  Set the specified fields in "instr".
+
+rd<>rs1  ( instr -- instr )
+rd<>rs2  ( instr -- instr )
+rs1<>rs2 ( instr -- instr )
+  Swap the specified fields in "instr".
+
+Bimm! ( instr n -- instr )
+  Encode n immediate so that it corresponds to the B-type encoding.
+  Because it's supposed to encode a multiple of 2, "n" is divided by 2 before
+  being encoded.
+
+Iimm! ( instr n -- instr )
+Simm! ( instr n -- instr )
+  You get the idea...
+
+dropz, ( -- )
+  00020593 addi) x11 rd) xW rs1)
+  0001a203 lw) xW rd) xPSP base)
+  00418193 addi) xPSP rd) xPSP rs1) 4 imm)
+  000585b3 add) x11 rdrs1) xZERO rs2) \ noop for Z flag
+
+if0, ( -- a )
+  00059663 bne) x11 rs1) xZERO rs2) 12 imm)
+  00000517 auipc) x10 rd) 0 imm)
+  ffc50567 jalr) x10 dst) x10 base) -4 src)
+
+op, ( instr op -- )
+  merge operand with instr and write
+
+imm, ( reg n -- )
+  Write instructions setting register "reg" to number "n".
+
+?inv ( instr op -- instr op )
+  If HALINV is set, swap RD and RS2 and make load instr into a store.
+
+sz! ( instr op -- instr op )
+  Given a load/store instruction "instr", set its size according to "op".
+
+loadstore, ( instr off op -- )
+  Assuming that "off" fits in 12-bit, write the load/store instruction based on
+  base instruction "instr" and depending on whether "op" has HALINV (load if no,
+  store if yes).
+
+@, ( op -- )
+  One of the complexities here is the "big offset" case, a fetch with HALOFF not
+  fitting in 12-bit. In that case, we load the offset in x11, add the source
+  register to it, then use x11 as a base register for the load/store.
+
+  00000003 lb) xZERO rd) xZERO base) 0 imm)
+
+swp, ( op -- )
+  Write an eor between operand's src and dereferenced dst.
+
+  00004033 xor) xZERO rd) xZERO rs1) xZERO rs2)
+
+@!, ( op -- )
+  00058013 mv) xZERO rd) x11 rs1)
+
+addrr, ( rd rs2 -- )
+  Compile a add) of register Rs2 with target register
+
+  00000033 add) xZERO rd) xZERO rs1) xZERO rs2)
+
+?imm, ( op -- op )
+  Checks if operand is i) or m). If it is, compile a write of this value to x10
+  and modify operand in consequence
+
+mvreg, ( op -- )
+  Write a move from operand's src to operand *dereferenced* dst.
+  If operand has an offset, use add/addi'rs2 to add the offset to dst.
+  Store offset in x10 if it does not fit in 12 bits.
+
+  00000013 addi) xZERO rd) xZERO rs1) 0 imm)
+  00000033 add) xZERO rd) xZERO rs1) xZERO rs2)
+
+regZ ( instr -- r )
+  Get the register to be used as the Z flag.
+  Depending on the operand type, this fetches the rd, rs1, or rs2 field.
+
+preari, ( op1 instr -- op1 instr op2 )
+  Prepares the arithmetic instruction for a call to "op," or alternatives.
+  This handles indirect source and destination (e.g. m) dir)) and load them in
+  x11. op2 is the modified operand to be written while op1 is the original.
+  op2 will always be direct and never immediate.
+
+  Immediate handling:
+  if instr & $fe00000 != 0 || immediate > 12 bits
+    load immediate into x10
+    change op to use x10
+  else
+    store immediate into instr
+    change instr's opcode from OP to OP-IMM
+
+?x11>src, ( op -- )
+  If op is indirect and dir), store x11 to its source.
+
+ari, ( op instr -- )
+  Write inverted arithmetic operation, that is:
+  1. Load operand's src in x11
+  2. Apply instr with x11 as Rd and Rs1 and operand's dst as Rs2.
+  3. Store x11 in operand's src
+
+swap-, ( op -- )
+  The setting of b31 is *not* part of RISC-V. It's an internal flag we set for
+  swapping rs1 and rs2 later on.
+
+?signed ( op cond -- op cond )
+  Transform the condition into a signed one if the operand is signed.
+
+?rs1<>rs2 ( cond op -- cond op )
+  Swap the two registers depending on cond's 3 bit. As described in the cond
+  words note above.
+
+?src>x11, ( op -- op )
+  Load the value of the register to x11 if the op is indirect and mangle the
+  bits so x11 is the new source. If not, make the operand "dyadic", that is:
+  move rs1 to rs2 and copy rd to rs1.
+
+bcc12, ( op cond -- )
+  Create a conditional branch instruction that jumps to 12 bytes forward.
+  Store an immediate or dereference a register to x11 if needed.
+
+  00000663 beq) xZERO rs1) xZERO rs2) 12 imm)
+
+?>12b ( n -- f )
+  Return a non-zero result if the given signed number does *not* fit in 12bits.
+
+  40b25213 srai) xW rdrs1) 11 imm)
+  00120213 addi) xW rdrs1) 1 imm)
+  ffe27213 andi) xW rdrs1) -2 imm)
+
+  Due to sign extension, the last operation is equivalent to 1 invand.
+
+bool, ( op cond -- )
+  Internally use bcc12, and a jump to simplify implementation.
+  TODO: Improve by using the slt[i][u] instruction instead.
+
+  0080006f jal) xZERO rd) 8 imm)
+
+shift, ( op instr -- )
+  Embed the high bits of the instruction into the immediate number so it can be
+  processed by ari,. This is because the immediates in shift are only 5-bit
+  wide and the function (e.g. srai) is encoded in the higher 7 bits.
+
+?swapreg ( instr op -- instr op )
+  Swap the two source registers in the final instruction if bit 32 is set. This
+  is used for swap-.
+
++n, ( n operand -- )
+  Use x12 as a staging register for the value to be added to.
+  A value of 0 is handled differently to only generate a load/move.
+
+brr, ( op -- )
+  000580e7 jalr) xRA rd) x11 rs1) 0 imm)
+
+TODO: &) combined with +) are broken
+br, ( op -- )
+  00058067 jalr) xZERO rd) x11 rs1) 0 imm)
+
+?br, ( op cond -- )
+  we're going to write a branch instruction using the negation of the given cond
+  this branch will jump over two instructions allowing to make the jump to the
+  given address so if the cond is true, we wont jump over the jump instructions,
+  and so we'll do the jump adding the conditional branch before the
+  2-instructions jump, also force us to adjust by four the address
+
+  01de0663 beq) xAcmp rs1) xBcmp rs2) 12 imm) \ jump over two instructions
+
+br! ( br tgt -- )
+  Need to read the targetted instructions to know which kind of jump/branch it
+  is in order to be able to write the immediate correctly
+
+?rs1>x10, ( op -- op )
+  Maybe move rs1 to x10 in the context of a le@, or be@, op.
+
+  If op's rs1 is the same as rd or if HALOFF is set, compile a move of that
+  register to x10 and set rs1 to x10.
+
+remdiv, ( op instr -- )
+  A special case of op, to handle the signedness and direction of the special
+  /mod, operation. We cannot use ari, because it only supports operations with
+  two operands. On the other hand instructions produced by /mod, use three
+  operands.
+
+/mod, ( op -- )
+  In order for microarchitectures to fuse both the remainder and division into
+  a single divide operation, it is recommended to order these as follow:
+
+  div[u] rdq, rs1, rs2
+  rem[u] rdr, rs1, rs2
+
+  Where rdq is neither rs1 or rs2. To achieve this order, the /mod, operation
+  uses x12 as rdq and xS as rdr (as required by the HAL). Then x12 is saved into
+  the original destination.
+
+le!, be!,
+  _srl8, ( op -- ) shift dst right by 8
+
+le@, be@,
+  _x11+@, ( op off -- )
+  _orr ( reg shift -- ) or left-shifted x11 in reg
+  _16 ( op -- op )
+
+lrot, ( op -- )
+  As rotation isn't supported in the core extension of RISC-V, it is emulated
+  through the following definition:
+  lrot(x, n) = ((x << n) | (x >> (sz - n)) & MASK
+  Where sz is the size of the destination operand and is only different in the
+  case of 16b) dir) or 8b) dir). The mask only matters in those cases but is
+  automatically performed by the store operation.
+
+  The following relation is used in the code to save instructions:
+  "(x & (sz-1)) - sz" is equivalent to "x | (-sz)"
+
+  00005593 srli) x11 rd) xZERO rs1) 0 imm)
+  00006513 ori) x10 rd) xZERO rs1) 0 imm)
+  40a00533 sub) x10 rd) xZERO rs1) x10 rs2)
+  00a05633 srl) x12 rd) xZERO rs1) x10 rs2)
+  00001033 sll) xZERO rd) xZERO rs1) xZERO rs2)
+  00c06033 or) xZERO rd) xZERO rs1) x12 rs2)
+
+rrot, ( op -- )
+  The same logic applies, but reversed. Machine code not documented here is
+  documented at lrot,.
+
+  00001593 slli) x11 rd) xZERO rs1) 0 imm)
+  00a01633 srl) x12 rd) xZERO rs1) x10 rs2)
+  00005033 sll) xZERO rd) xZERO rs1) xZERO rs2)
+
+C>x12, ( op -- )
+  This word is defined in [arch/riscv/hal/instr.fs].
+  Due to RISC-V's unique ability to not have any flag, we must emulate add with
+  carry and substract with carry through a temporary register which is x12.
+  A carry/borrow is generated if the result is smaller than its source.
+
+  00003633 sltu) x12 rd) x0 rs1) x0 rs2)
+
++-x12, ( instr op -- op )
+  This word is defined in [arch/riscv/hal/instr.fs].
+  Adds or substracts x12 to op's destination depending on instr.
+  
+  Due to the significant complexity it would require to handle immediate
+  properly, these are always loaded in x10 when dealing with carries.
+
+## Range words
+
+pre,
+  00030e63 beq) xS rs1) xZERO rs2) 28 imm)
+
+post,
+  fff30313 subi) xS rd) xS rs1) 1 imm)
+  fe0316e3 bne) xS rs1) xZERO rs2) -20 imm)
+
+move,
+  00022983 lw) x19 rd) xW base)
+  0132a023 sw) x19 src) xA base)
+  00420213 addi) xW rd) xW rs1) 4 imm)
+  00428293 addi) xA rd) xA rs1) 4 imm)
+
+wmove,
+  00025983 lhu) x19 rd) xW base)
+  01329023 sh) x19 src) xA base)
+  00220213 addi) xW rd) xW rs1) 2 imm)
+  00228293 addi) xA rd) xA rs1) 2 imm)
+
+cmove,
+  00024983 lbu) x19 rd) xW base)
+  01328023 sb) x19 src) xA base)
+  00120213 addi) xW rd) xW rs1) 1 imm)
+  00128293 addi) xA rd) xA rs1) 1 imm)
+
+pre,
+  00030a63 beq) xS rs1) xZERO rs2) 20 imm)
+
+post,
+  fff30313 subi) xS rd) xS rs1) 1 imm)
+  fe031ae3 bne) xS rs1) xZERO rs2) -12 imm)
+
+fill,
+  0042a023 sw) xW src) xA base)
+  00428293 addi) xA rd) xA rs1) 4 imm)
+
+wfill,
+  00429023 sh) xW src) xA base)
+  00228293 addi) xA rd) xA rs1) 2 imm)
+
+cfill,
+  00428023 sb) xW src) xA base)
+  00128293 addi) xA rd) xA rs1) 1 imm)
+
+pre,
+  00000613 addi) x12 rd) xZERO rs1) -1 imm)
+  02030063 beq) xS rs1) xZERO rs2) 32 imm)
+
+post,
+  00a64633 xor) x12 rd) x12 rs1) x10 rs2)
+  fff30313 addi) xS rd) xS rs1) -1 imm)
+  fe0602e3 beq) x12 rs1) xZERO rs2) -28 imm)
+  00060613 addi) x12 rd) x12 rs1)
+
+c[]=,
+  0002c503 lbu) x10 rd) xA base)
+  00024603 lbu) x12 rd) xW base)
+  00128293 addi) xA rd) xA rs1) 1 imm)
+  00120213 addi) xW rd) xW rs1) 1 imm)
+
+w[]=,
+  0002d503 lhu) x10 rd) xA base)
+  00025603 lhu) x12 rd) xW base)
+  00228293 addi) xA rd) xA rs1) 2 imm)
+  00220213 addi) xW rd) xW rs1) 2 imm)
+
+[]=,
+  0002a503 lw) x10 rd) xA base)
+  00022603 lw) x12 rd) xW base)
+  00428293 addi) xA rd) xA rs1) 4 imm)
+  00420213 addi) xW rd) xW rs1) 4 imm)
+
+pre,
+  fff24513 xori) x10 rd) xW rs1) -1 imm)
+  00030613 addi) x12 rd) xZERO rs1)
+  00060a63 beq) x12 rs1) xZERO rs2) 20 imm)
+
+post,
+  fff60613 addi) x12 rd) x12 rs1) -1 imm)
+  fe4518e3 bne) x10 rs1) xW rs2) -16 imm)
+  40c30333 sub) xS rd) xS rs1) x12 rs2)
+  fff30313 addi) xS rd) xS rs1) 1 imm)
+  00454533 xor) x10 rd) x10 rs1) xW rs2)
+
+cidx,
+  0002c503 lbu) x10 rd) xA base)
+  00128293 addi) xA rd) xA rs1) 1 imm)
+
+widx,
+  0002d503 lhu) x10 rd) xA base)
+  00228293 addi) xA rd) xA rs1) 2 imm)
+
+idx,
+  0002a503 lw) x10 rd) xA base)
+  00428293 addi) xA rd) xA rs1) 4 imm)

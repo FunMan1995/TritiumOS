@@ -1,0 +1,22 @@
+{
+  "field_id": "tritium-qwantum-field",
+  "description": "Indexed superposition of P_parallel programs before collapse to T0",
+  "creator": "Draco",
+  "product": "TritiumOS",
+  "dimensions": {
+    "timeline": ["T0", "T_parallel"],
+    "trit_signature": [-1, 0, 1],
+    "s3_mode": ["RANDOM", "ADDRESS_FOLD", "CONNECTED", "RESERVED"],
+    "artifact_type": ["forth", "csharp", "kotlin", "json", "fs", "md", "exe", "apk"]
+  },
+  "search_keys": [
+    "TritiumOS",
+    "DRENA",
+    "REKIA",
+    "Assimilate",
+    "LINEOS",
+    "tritium.poly",
+    "TritiumOS.exe",
+    "TritiumOS.apk"
+  ]
+}

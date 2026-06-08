@@ -1,0 +1,84 @@
+# Virtual registers
+
+Sometimes, the 3 registers of the regular HAL are a bit short. Virtual registers
+to the rescue! There are 4 of them and you use them like W), A) and S), but
+instead you use R0) R1) R2) and R3).
+
+Not all of them map to real registers on all CPUs, but when they don't, memory
+storage is used. Slower, but handled transparently by the HAL.
+
+## Mappings
+
+      R0   R1   R2   R3
+i386  EDI  ECX  mem  mem
+amd64 EDI  ECX  R8   R9
+ARM   r6   r5   r4   r3
+RISCV x24  x25  x26  x27
+m68k  D4   D3   D2   D1
+
+## Permanence and restrictions
+
+As with A and S, all virtual registers must be considered destroyed as soon as
+another Forth word that doesn't explicitly preserve them is called. Other than
+that, most HAL operations preserve them, including those implemented in the
+HAL powerup units... but there's a caveat.
+
+Some target CPUs, namely i386, are register starved. Despite that, we do want to
+use those registers to their fullest extent, so we include them in the virtual
+registers. This means, however, that some registers come with their "little
+warts", which are the lowest common denominator across all supported CPUS.
+
+Here's a list of those warts:
+
+R0:
+  * [EDI] R0>) cannot be used with 8b) or 16b)
+  * [EDI] Clobbered on /mod, on *any* register.
+  * [EDI] Clobbered on "&)" combined with "+)" on *any* register.
+          EDI is used as HAL's "LEA" dst.
+  * [EDI] Clobbered on move, fill, idx, []=,
+R1:
+  * [ECX] Clobbered on <<, >>, lrot, rrot, with a non-immediate source, on *any*
+    register. A single exception: If "R1) &)" is the source, it keeps its value.
+  * [ECX] Clobbered on *, when operand is indirect and not 32bit or inverted
+    on *any* register.
+  * [ECX] Clobbered on /mod, on *any* register
+  * [ECX] Clobbered on move, fill, idx, []=,
+  * [ECX] Clobbered on 8b) 16b) arithmetic (including if, ?br, bool,) on *any*
+    register. @, is fine.
+  * [r5] Clobbered on 8b) 16b) dir) lrot, and rrot,
+R2/R3:
+  * Equivalent to a "m)", but faster if a register is present
+  * Cannot be used with &) or +)
+  * Cannot be used as destination. R2>) and R3>) don't exist
+
+## API
+
+### Constants
+
+REGR0
+REGR1  Numerical constants corresponding to registers. Can be used the same way
+       as REGW, REGA etc. from [hal/opq]
+
+### Words
+
+R0)
+R1)
+R2)
+R3) ( -- halop )
+  Create a new HAL operand based on the specified virtual register.
+
+R0>)
+R1>) ( halop -- halop )
+  Set specified virtual register as target.
+
+?saveR0, ( halop -- )
+  On i386, this is equivalent to "R0>) !,". On other CPUs, it's a noop.
+
+?saveR1, ( halop -- )
+  Same as ?saveR0, but for R1.
+
+?restoreR0, ( halop -- )
+  On i386, this is equivalent to "R0>) @,". On other CPUs, it's a noop.
+
+?restoreR1, ( halop -- )
+  Same as ?restoreR0, but for R1.

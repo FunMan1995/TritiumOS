@@ -1,0 +1,66 @@
+# Developing a unit in Dusk
+
+Let's imagine that you want to create a new unit called "lib/foo", how would
+you go about that? This document tells you how you'd do it on a system running
+[app/gcon], that is, the canonical Dusk console.
+
+Let's begin by creating the unit:
+
+  pf"lib/foo.fs"
+
+See [fs/core] for details. You now have an empty "lib/foo.fs" file. You'll write
+automated tests for it, right? so let's create it too:
+
+  pf"tests/lib/foo.fs"
+
+We can now add the boilerplate, which in Dusk is minimal. Let's open
+[lib/foo.fs] by pressing CTRL+E on this very tag. Don't forget that you can
+press CTRL+[ to come back here.
+
+That will take you to a blank screen because the file is empty. You
+can type "i" followed by "unit lib/foo", then press Return. You have your
+boilerplate set, but the file is not saved yet. Press Shift+W to save.
+
+Tests now. Open [tests/lib/foo.fs]. If you get mixed up in ed buffers, you can
+press CTRL+B to get a list of them.
+
+So, we have an empty buffer again.
+
+Press "i" then "needs tests/harness lib/foo" then Return to add the first line
+of the test unit, then press "o" then "testbegin" then Return to add a line
+underneath, then again with "testend". You now have a complete boilerplate.
+Don't forget to save.
+
+Test files can be ran individually with f<<, in this instance:
+
+  f<< tests/lib/foo.fs
+
+You can also press CTRL+R on the file tag to run it. Units in the "tests"
+directory are also automatically picked up when you run all tests:
+
+  f<< tests/all.fs
+
+We can verify that our test unit isn't mistakenly ignored by adding a line like
+"0 #true" in it. Running the file will raise an assertion error, running the
+full suite with "f<< tests/all.fs" will error out at some point.
+
+So! boilerplate's done. Can we start coding? If you want, but if there's
+significant work involved, chances are you'll trigger a footgun during your
+experimentations and crash the machine. After a while, you'll get tired to
+typing the same "setup" commands all over again. That's not the Dusk way.
+
+The Dusk way is to configure your machine to "boot into" the work at hand so
+that crashing is painless. The best way to do so is to amend your [init.txt]
+welcome file. Go add references to the files you've just created. This means
+that upon reboot, you can quickly re-open them.
+
+Even when testing doesn't crash your machine, you'll want to forcibly reload
+the unit you're working on, then run the tests. Therefore, you'll likely want
+to add a line like this in your init.txt:
+
+  f<< lib/foo.fs f<< tests/lib/foo.fs
+
+You'll run that line every time you want to test a new change you've made to
+either your tests or your unit.
+
+Alright, now you're ready to write your code!

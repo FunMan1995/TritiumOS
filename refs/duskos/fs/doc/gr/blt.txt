@@ -1,0 +1,64 @@
+## Block Transfer operations
+
+NOTE: not all color/palette combinations and not all fast routines are
+implemented yet.
+
+The unit at [gr/blt.fs] is mainly about providing "movepixels", a highly
+optimized routine to copy a rectangle of pixels from one pixbuf [gr/buf] to
+another, even when they have a different color encoding [gr/color].
+
+This sounds simple, right? Yes it is, but when you consider the combination
+possibilities and speed constraints, that's quite a lot of routines to write.
+
+## Alignment matters
+
+While "movepixels" has the ability to move around any rectangle size, it will be
+much faster if both source and destination rectangles are aligned. When that
+happens, a special "much faster" routine is used. Otherwise, it's a regular
+[gr/rdwr] loop.
+
+Fast copying logic is only enabled what both rectangles are aligned at the
+beginning of the process. We could have a fancier detection logic implying
+partial unaligned copy followed by aligned copy, followed by an unaligned
+postlude, but we don't go there. Too complex.
+
+If the rectangle you want to copy is approximate, for example in a buffer
+invalidation context, you should use "alignedmovepixels" to enlarge your
+rectangle before copying it, This way, you'll be certain to enable the fast
+copying logic.
+
+## Color conversion and palette
+
+There are two types of colors, regular ones (its number is its color value) and
+palette-based ones. Possible copying directions are:
+
+* regular --> regular
+* palette --> regular
+* palette --> palette
+
+In the "regular --> regular" case, color conversion routines from [gr/color]
+are used to convert copied pixels.
+
+In the "palette --> regular" case, the "palette" field of [gr/buf] is used. A
+palette is an array of 32-bit values, each corresponding to the color associated
+to the palette index.
+
+In the "palette --> palette" case, we just move indexes around without
+conversion. If moving to a smaller depth, higher bits are discarded.
+
+"regular --> palette" moves aren't supported, we don't delve in the business of
+second guessing what palette index a given color should have.
+
+## API
+
+movepixels ( x y w h srcpb x y dstpb -- )
+
+  Copy pixels from specified rectangle in "srcpb" pixbuf [gr/buf] to specified
+  coordinates in "dstpb" pixbuf.
+
+  Bounds are checked and reduced if they don't fit in either source or
+  destination pixbuf. If bounds end up null, no copying take place.
+
+alignedmovepixels ( x y w h srcpb x y dstpb -- )
+  Like movepixels, but before proceeding, possibly reduce both "x" values and
+  augment "w" so that the move operation is aligned.

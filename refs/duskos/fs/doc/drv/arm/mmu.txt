@@ -1,0 +1,56 @@
+# ARM Memory Management Unit
+
+NOTE: although this unit seems to work as specified, I am puzzled because
+enabling the MMU and setting the main memory as CACHEABLE results in performance
+degradation. I add the unit nonetheless, but it isn;t actually used yet.
+
+Dusk doesn't need a MMU and has no use for memory protection. However, the ARM
+manual says that when the MMU isn't set up:
+
+* All data accesses are treated as uncacheable
+* Write buffer is disabled
+
+So... Only the instruction cache works. Without a data cache, the system can get
+pretty slow.
+
+The unit at [drv/arm/mmu.fs] sets up the MMU in a simplistic manner, that is
+with a regular 16kb section TTBR, 1MB per section. The unit allows to set any
+flag for any TTBR entry, but in practice, we only use these:
+
+* UNCACHEABLE: The default state of memory without a MMU.
+* DEVICE: Used for device mapping. Uncacheable with extra constraints. Shareable
+* XDEVICE: Non-shareable device.
+* CACHEABLE: Regular cacheable memory.
+
+When the MMU is initialized, we set all entries to UNCACHEABLE, for safety. We
+then let the operator specify section flags as they wish.
+
+In the above constants, we set permission flags to full access.
+
+## API
+
+### Constants
+
+All constants below have b1:0 set to 2 for the type "section".
+
+UNCACHEABLE  $0c02 AP=3 APX=0 TEX=0 C=0 B=0
+CACHEABLE    $0c0e AP=3 APX=0 TEX=0 C=1 B=1
+DEVICE       $0c06 AP=3 APX=0 TEX=0 C=0 B=1
+XDEVICE      $2c02 AP=3 APX=0 TEX=2 C=0 B=0
+
+### Words
+
+mmu$ ( -- )
+  Sets up and enables the ARM MMU. This mostly means setting up a primary TLB
+  (Translation Lookaside Buffer) table using the TTBR registers. Those tables
+  are setup for identity adresses and with UNCACHEABLE flags.
+
+  Domains register is set to -1, manager access everywhere.
+
+memflags! ( flags a u -- )
+  Set "u" entries in the TTRB, starting at entry that contains address "a", to
+  specified flags.
+
+## See also
+
+* ARMv6 manual, part B4 -- Virtual Memory System Architecture

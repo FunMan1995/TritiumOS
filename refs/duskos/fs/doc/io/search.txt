@@ -1,0 +1,18 @@
+# Search for substrings in streams
+
+This one trick poney has one important word, "search", which quite simply
+searches for a substring in a stream [io/stream].
+
+The devil is in the implementation details as they say. We don't want to be
+wasteful and copy read data needlessly, so we wrap "readbuf" instead of "read".
+
+However, therein lies a problem: what if the search string sits in between two
+(or more!) readbuf buffers? Oh, it becomes tricky there. Most of the complexity
+in here is about handling this case.
+
+## API
+
+search ( str stream -- f )
+  From current position, scan stream until substring "str" is found. If found,
+  f=1 and stream is positioned right before the first char of the found string.
+  Otherwise, f=0 and stream is at EOF.

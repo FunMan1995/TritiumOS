@@ -1,0 +1,27 @@
+# lib/coop bench
+
+This unit helps playing with [lib/coop].
+
+## API
+
+### Constants
+
+echoctx   Context of an application that emits all keypresses it receives. Stops
+          on letter 'q'.
+
+### Words
+
+idlerctx ( limit -- ctx )
+  Create a new context for a "idler" app that counts up to "limit" each time it
+  idles, printing the value of the counter each time.
+
+timerctx ( xt u -- ctx )
+  Create a new context for a "timer" app that executes "xt" with signature
+  ( -- ) every "u" milliseconds.
+
+atctx ( xt time -- ctx )
+  Create a new context for an "at" app that executes "xt" with signature ( -- )
+  once the given time has been reached.
+
+.at ( ctx -- )
+  Pretty print a message about the state of the given "at" context.

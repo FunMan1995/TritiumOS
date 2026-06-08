@@ -1,0 +1,449 @@
+# 11 rings of Dis(assembly)
+
+It was dawn on my journey to dusk.
+I typed left from the right key,
+and found myself alone
+in a dark terminal.
+
+I was struggling with moustaches, and
+mailed for guidance to the horizon.
+And Virgil came upon my trembling mind,
+and led me into the light before the night.
+
+Ok that's enough.
+
+The original question was about the most basic moustache I could make.
+And in his answer Virgil suggested I disassembled the thing to understand it.
+
+NOTE: moustaches aren't part of Dusk anymore, but the ARM listing is still
+relevant. The "@{'b}" moustache below was the equivalent of "[ b litn ] @".
+
+> needs asm/armd
+>  ok
+> : b 1 ;
+>  ok
+> : fluff @{'b} ;
+>  ok
+> ' fluff dis
+> 0001d5b0    STR  r14 r13 -04 !    e52de004
+> 0001d5b4    STR  r9  r10 -04 !    e52a9004
+> 0001d5b8    MOV  r1  00000001     e3a01001
+> 0001d5bc    LDR  r9  r1           e5919000
+> 0001d5c0    LDR  r15 r13 +04 !p   e49df004
+> [...]
+>
+> (This works on the POSIX VM, which emulates ARM)
+>
+> Some notion of assembly can simplify your life a lot if you want to figure out
+> stuff like that. What we see here is that "fluff" does a "dup", then does a
+> disaligned 32-bit fetch of address $00000001 into W (r9 under ARM, as
+> documented in doc/hw/arm).
+
+Virgil, in his vast experience, saw a dup, clear as a setting sun.
+I couldn't see jack shit.
+But the forest of ignorance seems darkest before dawn.
+So I went and disassembled the 11 stack operators and lo!
+It's not just the dup that's beaming, but many other patterns too!
+
+So I wrote this little guide from my notes in that grove,
+that you may find the light faster than I,
+and join us in the shining Mount of Joy,
+and code into the dusk.
+
+# preparations
+
+These operations are decompiled in x86, and the registers used have meanings
+associated with them. Let's just pull this dandy table from [doc/hal]:
+
+      W     A     S     PSP   RSP
+i386  eax   ebx   edx   esi   esp
+ARM   r9    r11   r8    r10   r13
+RISCV x4    x5    x6    x3    x2
+
+So W is EAX, PSP is ESI, RSP is ESP, and S is EDX.
+
+To run the code yourself, you need to set up a few things.
+
+First, make sure you are running a x86 environment:
+
+  cd duskos/usermode
+  make ARCH=i386 MACHINE_FLAGS=-m32 clean all
+
+this is called "Forcing i386" in the usermode/README.md
+
+Now we just run our dusk interpreter:
+
+  ./dusk
+
+And write in the prompt
+
+  needs asm/x86d
+
+which provides the "dis" function to disassemble the words.
+
+A little vocabulary:
+the active element of the stack is called the top, the start of the stack is
+called PSORIGIN .
+
+And remember, all of these operations are made on the parameter stack.
+
+All right let's go!
+
+# ESP and EAX
+
+' swap dis
+f360b1bc XCHG EAX,[ESI]    87 06
+f360b1be RET               c3
+  bc: Exchange the values of the register for the top of the stack
+      (EAX, known as W in the hal) and the second stack element.
+  be: since these are all functions that get CALLed, they need to RETurn.
+      These functions don't do anything with the return stack, so I won't
+      comment on it.
+
+The stack is split between two registers.
+
+The first element of the stack, its top, is kept in a separate register.
+This is EAX, or W when you're working with the HAL.
+
+You can reach the rest of the elements by offsetting the value in the ESI
+register:
+
+  [ESI]   is the second stack element
+  [ESI+4] is the third stack element
+  [ESI+8] is the fourth stack element
+  ... etc.
+
+You see that to access elements further back on the stack, you need to
+add the offset. I tripped over this several times, so just as a reminder:
+The stack grows downward: older entries are up in memory, newer entries are
+down in memory. Getting to older entries requires you add, getting to newer
+entries requires you subtract.
+
+The offsets come in multiples of 4 because that's the cpu-word size we're using.
+Everything is read 4 bytes at a time, including the elements of the stack.
+
+' rot dis
+f360b304 XCHG EAX,[ESI]    87 06
+f360b306 XCHG EAX,[ESI+04] 87 46 04
+f360b309 RET               c3
+                                       ( 3 2 1 -- )
+  04: exchange the top with the second ( 3 1 2 -- )
+  06: exchange the third with the top  ( 2 1 3 -- )
+
+We see the first use of offsets to ESI, [ESI+04] points to the third element in
+the stack.
+
+' rot> dis
+f360b36c XCHG EAX,[ESI+04] 87 46 04
+f360b36f XCHG EAX,[ESI]    87 06
+f360b371 RET               c3
+                                       ( 3 2 1 -- )
+  6c: exchange the top with the third  ( 1 2 3 -- )
+  6f: exchange the top with the second ( 1 3 2 -- )
+
+It's the same as rot , but the exchange operations are in reverse order.
+
+Hmm, it seems that the rots are made with two swaps. One between the top and
+second, and another between the third and top. Doesn't that give you an itch? To
+implement rot in terms of swap? But you'd have to implement that "swap third
+top" operation as well... Maybe write it in HAL to be more efficient?
+Go ahead, I'll wait here :) .
+
+# ESI manipulation
+
+' drop dis
+f360b100 LODS D            ad
+f360b101 RET               c3
+  00: copy the second to the top, shrink the stack up
+
+LODS is a special cpu operation. It's special because it does 2 things at once:
+
+  MOV EAX,[ESI]
+  ADD ESI,4
+
+Doing it in a single operation is faster than doing it separately.
+
+Remember that the stack grows down! So it shrinks up! You gotta take it higher
+to make it smaller!
+
+' dup dis
+f360613c SUB  ESI,04       83 ee 04
+f360613f MOV  [ESI],EAX    89 06
+f3606141 RET               c3
+  3c: grow the stack down
+  3f: copy the top to the second
+
+When the stack grows with "SUB ESI,04", its new value is the previous value
+-4. Since that space was empty (and it must contain garbage) we fill it with
+the top, and voilà! You got the top value twice!
+
+I'll draw you a picture.
+
+Let's start from the beginning, with an empty stack:
+
+[ g ]           This is the value of the top. I put it off the side cause it's
+                not in memory but in the EAX (W) register.
+G G G G G G G   This is the memory, where the stack lives
+            ^   This is the value of ESI
+            |   This is the value of PSORIGIN
+                G means that the value in memory is garbage
+                the g in the top is also just garbage, but I have it a different
+                letter so we can track how the stack deals with pushes.
+
+                Let's push the number 1 to the stack, what happens?
+
+[ g ]
+G G G G G G G   first, PSP grows the stack down in memory
+          ^
+            |
+
+[ g ]
+G G G G G g G   then, it writes the value of W to PSP
+          ^
+            |
+
+[ 1 ]           then, it saves the new top value in W
+G G G G G g G
+          ^
+            |
+
+                There! 1 is now the top of the stack.
+
+                PUSH 2 TO THE STACK
+
+[ 2 ]           write 2 to W
+G G G G 1 g G   advance PSP, write old W to it
+        ^
+            |
+
+                 PUSH 3 TO THE STACK
+
+[ 3 ]           write 3 to W
+G G G 2 1 g G   advance PSP, write old W to it
+      ^
+            |
+
+
+Now we're ready to see how "dup" works:
+
+
+                        SUB ESI,04
+[ 3 ]
+G G G 2 1 g G
+    ^           the stack grew down and now ESI is pointing to garbage
+            |
+
+                        MOV [ESI],EAX
+[ 3 ]
+G G 3 2 1 g G   we wrote top to the second stack position. Now the top is
+    ^           double!
+            |
+
+
+' ?dup dis
+f360bcb8 CMP  EAX,00       83 f8 00
+f360bcbb Jc   Z,f360bcc6   0f 84 05 00 00 00
+f360bcc1 ADD  ESI,fc       83 c6 fc
+f360bcc4 MOV  [ESI],EAX    89 06
+f360bcc6 RET               c3
+  b8: Is the top of the stack 0?
+  bb: if it's 0, jump to f360bcc6, which is the end of this function.
+      that is, do nothing.
+  c1: if it ain't 0, grow the stack down
+  c4: and copy the top to the second
+
+bb: is a conditional jump. If EAX is 0, skip the code that duplicates the top.
+Jc checks the value of the Z flag, which CMP sets when comparing EAX with 0.
+If the flag is 1, it does the jump. Else the next instruction is executed.
+The Z is not an argument. It is just a symbol the disassembler uses to say that
+this jump is the jz instruction, which is conditional on the Zero cpu flag, set
+by the CMP above it.
+
+Besides the conditional jump, the code is exactly like dup.
+
+What? You say that it's not subtracting, but ADDing? And a weird big number at
+that? Ah yes, Grasshopper, you have studied well. This is part of a curious
+mechanism that only works in intel chips. Let me explain:
+
+Since ESI is a 32 bit register, the normal instruction for addition is:
+
+  ADD  ESI,00000001
+
+which is adding a 32 bit immediate to the 32 bit register. When you add numbers
+in assembly, they need to have the same size. If they don't, you need to convert
+them into the same size.
+
+That ADDition instruction is compiled into the opcode
+
+  81 c6 01 00 00 00
+
+Now, intel engineers thought that that was a bit wasteful, and since they saw it
+happening all the time, they thought "hey, if we add a shortcut instruction for
+small immediates, we'll reduce binary size by a good chunk". So they designed
+the cpu so that the opcode "83 c6 01" would add a byte immediate to the given
+register. And the binaries did get smaller.
+
+These engineers kept thinking about the problem, and they asked: "Could we also
+include negative numbers? Could we have a short instruction to add -1?". And it
+turns out they could! There is an operation called "sign extension", where (to
+convert the 8 bit number into a 32 bit one) you repeat the 7th bit, instead of
+padding it with 0s. That is, to turn the number "fc" into 32 bits, instead of
+filling out with 0s to get "000000fc", you repeat the leftmost digit to get
+"fffffffc". And further, if you add fffffffc to any register, it overflows, and
+the result is the same as if you had SUBtracted 4 from it!
+
+That last part is not really intuitive, but it's true! See, if the register ESI
+has value 00000108, and you add fffffffc to it:
+
+  00000108
+  fffffffc +
+  00000104      \ result
+ 11111111       \ carry
+
+We drop off the last carry digit (though it might set the carry flag) and we got
+4 less than the original value, as if we'd done 2's complement.
+
+Virgil says we use this technique because it's simpler for the hal to change the
+sign of the number (between 4 and -4) than it is to change the operation (from
+ADD to SUB).
+
+' over dis
+f360b294 ADD  ESI,fc       83 c6 fc
+f360b297 MOV  [ESI],EAX    89 06
+f360b299 MOV  EAX,[ESI+04] 8b 46 04
+f360b29c RET               c3
+ 94: grow stack down by 4 bytes, now [ESI] is Garbage
+ 97: copy the top to the second stack position
+ 99: copy the third to the top
+
+Everything here we've seen before, but we're reaching further into the stack to
+get the value. A diagram will be clearer than a description.
+
+
+                        START
+[ 4 ]
+G G 3 2 1 g G
+    ^
+            |
+                        ADD ESI, fc
+[ 4 ]
+G G 3 2 1 g G
+  ^                Stack grows down by 4 bytes
+            |
+                        MOV [ESI],EAX
+[ 4 ]
+G 4 3 2 1 g G      copy W to [ESI], overwriting the garbage
+  ^
+            |
+                        MOV EAX,[ESI+04]
+[ 3 ]              copy the third to W
+G 4 3 2 1 g G
+  ^
+            |
+
+
+' nip dis
+f360b170 ADD  ESI,04       83 c6 04
+f360b173 RET               c3
+ 70: shrink the stack up
+
+This looks very simple, but there are several core concepts being tested at
+once. But nothing new, so you will be fine.
+
+We add 4 to the PSP, shrinking it up. Now it points to what was the third
+element of the stack. The second element has become garbage in memory.
+
+The top element in EAX is independent of those stack shenanigans, so we don't
+need to do anything to keep it at the top.
+
+[ 4 ]
+G G G 3 2 1 g G
+      ^
+              |
+                        ADD ESI,04
+[ 4 ]
+G G G 3 2 1 g G
+        ^
+              |
+
+Turning 3 into garbage does not overwrite it, of course. The value will stay in
+memory until the stack grows over it. That technically means that you could
+recover it, by growing the stack without pushing a new value. You can write a
+function that does that, if you feel so inspired.
+
+# EDX as intermediate register
+
+' tuck dis
+f360b3e0 MOV  EDX,[ESI]    8b 16
+f360b3e2 MOV  [ESI],EAX    89 06
+f360b3e4 ADD  ESI,fc       83 c6 fc
+f360b3e7 MOV  [ESI],EDX    89 16
+f360b3e9 RET               c3
+  e0: save the second element for later
+  e2: write the top to the second
+  e4: grow down the stack by 4 bytes
+  e7: restore the saved second element to the new second element position
+
+This is the first time we see EDX used as an intermediate variable. EDX
+is the S register in the HAL, and it is used in just this way to store
+intermediate values. You are free to use it yourself, heck even encouraged to!
+You can find guidance on how and when to use the W, A, and S registers in
+hal.txt
+
+Besides the intermediate variable, this includes no new information.
+
+[ 4 ]
+G G 3 2 1 g G
+    ^
+            |
+                        MOV  EDX,[ESI]
+[ 3 ]
+[ 4 ]
+G G 3 2 1 g G
+    ^
+            |
+                        MOV  [ESI],EAX
+[ 3 ]
+[ 4 ]
+G G 4 2 1 g G
+    ^
+            |
+                        ADD  ESI,fc
+[ 3 ]
+[ 4 ]
+G G 4 2 1 g G
+  ^
+            |
+                        MOV  [ESI],EDX
+[ 3 ]
+[ 4 ]
+G 3 4 2 1 g G
+  ^
+            |
+
+We can just leave the value in EDX as is. The next function will just clobber it
+anyway.
+
+# hardest last
+
+' 2drop dis
+f360b22c MOV  EAX,[ESI+04] 8b 46 04
+f360b22f ADD  ESI,08       83 c6 08
+f360b232 RET               c3
+  2c: move third to top
+  2f: shrink up the stack by 8 bytes
+
+' 2dup dis
+f360b484 ADD  ESI,f8       83 c6 f8
+f360b487 MOV  [ESI+04],EAX 89 46 04
+f360b48a MOV  EDX,[ESI+08] 8b 56 08
+f360b48d MOV  [ESI],EDX    89 16
+f360b48f RET               c3
+  84: grow down the stack by 8 bytes
+  87: store the top in the third element position
+  8a: save the fourth element in S
+  8d: write the fourth element to the second position
+
+These last 2 don't use any new information, but the intermediate steps are more
+complex. I've left the english interpretation of what they do as comments under
+them. I'll leave their diagrams as an exercise to the reader ;)

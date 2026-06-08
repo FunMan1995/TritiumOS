@@ -1,0 +1,23 @@
+Kayboard layouts are $200 bytes file containing mapping from NKC to ASCII. The
+byte index is the NKC and the value at that index is the ASCII value. 0 means
+no mapping.
+
+The file is split into 4 $80 byte areas. The first area is for keystrokes
+without any modifier key. The following area is for when the Shift key is
+pressed. Then comes RAlt (often called "AltGr"). Then Shift + RAlt.
+
+For example, byte at index $c1 of the "us" layout is 'A', which is the ASCII
+mapped to NKC $41 with the Shift key held.
+
+Layouts:
+
+us  US Layout
+dk  Danish Layout
+dv  US Dvorak Layout
+
+at  Austrian Layout
+ch  Swiss Layout
+cz  Czech Layout
+de  German Layout
+es  Spanish Layout
+fr  French Layout

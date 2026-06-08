@@ -1,0 +1,19 @@
+# i386 architecture
+
+## Register map
+
+EAX W
+EBX A
+ECX R1 [hal/vreg]
+EDX S
+ESP RSP
+EBP Pointer to SYSVARS
+ESI PSP
+EDI R0 [hal/vreg]
+
+## See also
+
+* [hw/i386/pc]
+* [xcomp/i386/pc/deploy]
+* [xcomp/i386/efi/deploy]
+* INTEL 80386 PROGRAMMER'S REFERENCE MANUAL

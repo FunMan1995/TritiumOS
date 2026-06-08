@@ -1,0 +1,17 @@
+kbdl
+  Keyboard layouts to [io/kbd].
+
+oberon.dsk
+  Disk image of the Oberon operating system. Used by [emul/oberon]
+
+pe.bin
+  A 512 byte template PE header with "fill-in-the-blank" values. It has a
+  single section of readable/writable/executable contents. Important offsets:
+
+  80  PE header
+  84  2b machine type. Default: $8664 (AMD64)
+  9c  4b Size of all code. Default: 0
+  d0  4b Total size of image
+  190 4b Virtual size. Diff with $198 is allocated memory.
+  194 4b address of code loaded in memory. Default $1000
+  198 4b Size of code. Should be same as $9c.

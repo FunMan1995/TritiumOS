@@ -1,0 +1,75 @@
+# Dusk's shell
+
+NOTE: many ideas here aren't implemented yet.
+
+Dusk is designed to be mostly used in text mode, but unlike UNIX, we assume more
+than a simple serial link: we assume an interactive keyboard and a screen.  When
+we can assume that, many interesting doors open.
+
+To be sure: Dusk is also usable through a serial link, but under these
+conditions, many of the nice features described here will be unavailable.
+
+## Interactive input
+
+Because we can assume an interactive keyboard, we can hook to more than "full"
+keypresses. We can act on both key down and key up event. We can also hook
+ourselves to "naked" mod keys (control, shift, alt) key presses.
+
+This is what allows the menu described below to work efficiently and this also
+allows behaviors similar to the "LEAP" key in the Canon Cat.
+
+## Screen
+
+Having direct access to the screen through the Grid (io/grid) is much simpler
+than having to implement a "curses" like library. It's also faster. But other
+than that, it doesn't provide us with more possibilities than a serial link.
+
+But the simplicity gain is important though and makes some things that would
+otherwise be complicated, easy. For example, a menu system that hides a small
+section of the screen (which can be managed by another app at the moment the
+menu is shown) to show itself, and then restore that corner of the screen
+afterwards. In UNIX, short of doing terminal multiplexing, there aren't many
+options. With the Grid, you can read the buffer directly, store it somewhere,
+restore it afterwards.
+
+## Menu system
+
+My idea for an efficient shell is a combination of menus and fuzzy finding. In
+a UNIX shell, much of the "typing" time is spent constructing command line
+arguments. That's why auto-completion is central to efficient shell usage.
+
+Dusk embraces statefulness and when typing into a Forth shell, it's not really
+command lines we're building, but states were changing. Some word expect some
+state, so to use the word, you change the states and then call the word.
+
+In that context, auto-completion is problematic. We don't have a clear context
+of what kind of information we're expecting from the sysop at any given moment
+because the order in which those states are changed is open-ended. This is why
+we have a menu system instead.
+
+The menu system is, of course, highly configurable by the sysop. It has two main
+mode of operations: quick and regular.
+
+The "quick" mode is when the mod key (let's say "ctrl") is pressed and that
+another key is pressed before "ctrl" is released. If a word is associated to it,
+it's called. It's a good old keyboard shortcut activated by a mod key.
+
+The regular mode is when ctrl is pressed and released right away. This pops up
+a menu that can be navigated through arrows and fuzzy finding.
+
+Of course, all those actions can present submenus. Those menus, of course, can
+also iterate over dynamic data (such as filesystem paths).
+
+For example, we could imagine CTRL+F being bound to a "select file" action,
+which would invoke the file selection menu (fuzzy finding + drilling to
+directories) and then open that file in the global "file" bind{}.
+
+Then, with that example hook, editing the file "tests/mem/arena.fs" could be:
+
+    <ctrl+f>tes/l/ar<return>edload<return>ged<return>
+
+If editing a file is something done often a specific hook could be added to, for
+example, CTRL+E with the same file selection but saving the "edload+ged" part.
+
+Applications could hook themselves into the menu, making this system global and
+streamlined.

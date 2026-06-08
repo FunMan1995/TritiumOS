@@ -1,0 +1,319 @@
+# Text Editor
+
+This unit provides an API for the examination and modification of text contents.
+The Grid-based [io/grid] editor based on it is [app/ed].
+
+The central structure of this unit is called the "edbuf" (editor buffer). It is
+an ivalmap [lib/ival], which means that there's only ever one of them active at
+once. Although there's only one of them active at once, edbufs are multiple and
+are organized as a linked list.
+
+Within the edbuf, text is organized as an array [mem/array] of Line structures
+which themselves reference buffers in an arena allocator [mem/arena]. Lines have
+a maximum length of ARENASZ bytes.
+
+## Position
+
+An important concept in the editor is the concept of "position", that is, a
+number that uniquely identifies a line in the buffer as well as a character
+within that line.
+
+Position is represented as a single integer with the high 16 bits being the line
+position (lpos) and the low 16 bits being the character position within the
+line (cpos).
+
+Line numbers and character numbers are 0-indexed.
+
+In the documentation below, "cursor" is used as a synonym for Edbuf's current
+position.
+
+## Clipboard
+
+Ed seamlessly integrates with the clipboard [text/clip] by providing edbuf's
+"clipto" word to copy a range of the buffer to the clipboard.
+
+## Stream wrapper
+
+This unit also provides "edstream", a static Stream [io/stream] that wraps the
+currently active edbuf in I/O semantics. Reading and writing from it modifies
+the active edbuf position.
+
+When writing, whenever a LF character is encountered, we insert a new line after
+the selected one and move current position at the beginning of that empty line.
+
+Therefore, "loading" a file contents to the buffer is a write to that stream.
+Saving the buffer somewhere else is a read from it.
+
+No special care is given to ASCII control characters except for LF. Try to avoid
+them in your text files.
+
+## Line API
+
+The Line structure describes a line in the edbuf. The line structure does not
+include the LF character. This means that an empty line has a cnt of 0.
+
+We maintain a separate character count and allocated size. It's possible,
+through deletion, that these two numbers differ. When inserting or appending
+contents to the line, if we have enough space, we don't needlessly reallocate in
+the arena buffer.
+
+### Structures
+
+struct Line {
+  uint ptr ;
+  ushort cnt allocsz ;
+}
+
+ptr     Pointer to the first character of the line
+cnt     Number of characters in the line
+allocsz Bytes allocated at ptr
+
+### Constants
+
+GRANULARITY  16  we allocate lines in chunks of that size
+
+### Words
+
+line[] ( line -- a u )
+  Return the range corresponding to this line
+
+printline ( line -- )
+  Call "rtype" with the line's range.
+
+?realloc ( arena n line -- )
+  Verify whether "n" characters could be added to the line. If not, reallocate
+  a sufficiently big buffer in "arena" to accomodate those "n" new characters.
+
+append ( a u line -- )
+  Assuming that there's enough space (aborts if not), append range "a u" at the
+  end of the line.
+
+split ( idx line -- a u )
+  Truncate line at "idx" and yield its right part as range "a u".
+
+words[] ( a u -- ... n )
+  Yield a list of indexes of word boundaries contained in the specified range,
+  that is, a non-whitespace character preceded by a whitespace character (or
+  beginning of line).
+
+  Highest index is on top of the list.
+
+wordunder ( a u idx -- a u )
+  Using words[], yield the subrange of the word under position "idx" in input
+  range. This range includes trailing whitespaces.
+
+## Edbuf API
+
+The edbuf is mainly an array of line structures with various metadata attached
+to them. The line structures themselves don't hold actual contents, that content
+is held in the arena allocator that the edbuf manages.
+
+Among edbuf's metadata, a very important one is the position, that is, where we
+currently "are" in the buffer. That information is held by "epos".  At all
+times, that position remain "bounded" at the character level, that is, whenever
+we select a new line, we ensure that the "cpos" part of the position is within
+bounds of that line.
+
+### Edbuf ivalmap
+
+variable curbuf
+curbuf ivalmap {
+  uint next epos buf lines ;
+  \ for app/ed
+  uint top gutter visualmode mark ;
+  [uchar,0] filename ;
+}
+
+curbuf     Points to the currently "active" struct
+
+next       Next edbuf in the LL
+epos       Current position of the cursor
+buf        An arena buffer with the contents of lines
+lines      Array of Line structures
+top        Line index of the top of the screen. Used in [app/ed]
+gutter     Position of the gutter, default 80. See [app/ed]
+visualmode Whether the visual mode is on for this buffer
+mark       Position where visual mode is anchored (has started at)
+filename   String buffer containing the path associated to the buffer
+
+### Words
+
+cpos ( pos -- cpos )
+  Extract the character index from "pos". For example, if n=0, it means the
+  cursor is at the beginning of the line.
+
+lpos ( pos -- lpos )
+  Extract the line number from "pos".
+
+joinpos ( lpos cpos -- pos )
+  Merge lpos and cpos in a single pos value.
+
+line ( idx -- line )
+  Yield the line struct at index "idx".
+
+curline ( -- line )
+  Yield line struct of current position.
+
+empty ( -- )
+  Empty the buffer, resetting positions and arena allocator.
+
+empty? ( -- f )
+  Yields whether "ed" is empty (contains a single empty line).
+
+bounds ( lpos cpos -- pos )
+  Ensure that "pos" is valid within the buffer. If its line index exceeds the
+  buffer line count, target the last line, then on that line, ensure that the
+  character index doesn't exceed the length of the line.
+
+godown ( n -- )
+  Move position down by "n" lines.
+
+goup ( n -- )
+  Move position up by "n" lines.
+
+go ( n -- )
+  Move position to line number "n".
+
+goleft ( n -- )
+  Move position left by "n" characters, not crossing line boundaries.
+
+goright ( n -- )
+  Move position right by "n" characters, not crossing line boundaries.
+
+poseol? ( -- f )
+  Yield whether current position is at the end of a line.
+
+nextword ( -- )
+  If positioned on a whitespace, advance it to the next non-whitespace character
+  on the same line, if any. If positioned on a non-whitespace, advance to the
+  next whitespace, then to the next non-whitespace.
+
+prevword ( -- )
+  Same as nextword, but scanning leftwards.
+
+edfind ( str -- )
+  Find occurence of "str" in buffer, starting from current position. If found,
+  position is moved to that occurence. If not, position stays unchanged.
+
+edfindnext ( -- )
+  Repeat the last edfind.
+
+linecnt ( -- cnt )
+  Return total line count of the buffer.
+
+delchars ( n -- )
+  Delete "n" characters starting from current position to the right, not
+  crossing line boundaries.
+
+replchar ( c -- )
+  Replace character at current position with "c". If current position is the
+  end of a line, grow that line by 1 character.
+
+dellines ( n -- )
+  Delete "n" lines starting from "lpos".
+
+clipto ( pos -- )
+  Copy the contents between current position and "pos", including newlines, to
+  the clipboard.
+
+delto ( pos -- )
+  Delete contents between current position and "pos", even across multiple
+  lines. If the text to delete doesn't span whole lines, the "before" part of
+  the first line is joined with the "after" part of the last line.
+
+appendline ( -- )
+  Append a new empty line after selection.
+
+insertline ( -- )
+  Insert a new empty line before selection.
+
+wordundercursor ( -- a u )
+  Move position to the first character of the word under it, or to the beginning
+  of the line, whichever comes first. Then, find the next whitespace that follow
+  that new position and yield the range that represents the resulting word. Can
+  yield a null range.
+
+edbufs ( -- a )
+  LL of edbufs, the LL structure being a 4b LL link followed by a 4b pointer to
+  an edbuf struct. This LL is never empty.
+
+newedbuf ( -- ed )
+  Create a new edbuf structure with its own "buf" arena.
+
+addedbuf ( -- )
+  Create a new edbuf and add it at the end of "edbufs", making the new edbuf
+  the current one.
+
+nextedbuf ( -- )
+  Set "curbuf" to the next element of the LL. If none, cycle back to the
+  beginning.
+
+findedbuf ( strpath -- f )
+  Search edbufs for one that is associated to "strpath". If found, that buffer
+  becomes the current one and f=1. Otherwise, f=0.
+
+findemptybuf ( -- f )
+  Look for an empty buffer in "edbufs" and, if found, make it the "curbuf" and
+  yield f=1. Otherwise, f=0.
+
+?addedbuf ( -- )
+  If an empty edbuf is available, make it active. Otherwise, add a new edbuf and
+  make it active.
+
+alphanum[] ( -- a u )
+  Yield a static range of range 0..9 followed by a..z followed by A..Z.
+  This is used for ".edbufs" indexing but can be useful in other contexts.
+
+.edbufs ( -- )
+  Print descriptions of all edbufs in "edbufs". Before each line, prints a
+  character from "alphanum[]" that can be used as an input for "c>edbuf".
+
+c>edbuf ( c -- edbuf-or-0 )
+  Yield the "c"-th buffer in the list, that is, the order of "c" in
+  "alphanum[]". In other words, with "c" being the character printed next to
+  a ".edbufs" line, yield the buffer printed on that line.
+
+  If "c" is not in "alphanum[]" or if there isn't that many opened buffers,
+  yield 0.
+
+bol ( -- )
+  Go to the beginning of the line.
+
+eol ( -- )
+  Go to the end of the line.
+
+sl ( -- )
+  If the line is longer than "gutter" characters, split line at cursor, that is,
+  append a line under the cursor, truncate the current line at the cursor and
+  move the truncated contents to the newly added line.
+
+  Cursor is moved to the beginning of the created line.
+
+jl ( -- )
+  Join line at cursor with the line under it. That is, delete the line under
+  the cursor and append the contents of the deleted line to the current line.
+
+  Cursor is moved to join position (right between former lines).
+
+edload ( strpath -- )
+  Empty edbuf, open "path", associate the buffer to it, then load the contents
+  of the opened file into the buffer.
+
+edload<< ( "..." -- )
+  Shorcut for "word edload".
+
+?edload ( strpath -- )
+  Try "findedbuf" on "strpath". If it yields 0, make an empty edbuf active using
+  "?addedbuf" and load "strpath" into it. In other words, this word always
+  preserves existing buffers and never overwrite their contents.
+
+?edload<< ( "..." -- )
+  Shortcut for "word ?edload".
+
+edsaveto ( file -- )
+  Save the contents of edbuf to "file", truncating it if the new contents is
+  smaller than the old one, then close the file.
+
+edsave ( -- )
+  Save contents of edbuf's associated filename, taking care of opening and then
+  closing it. Errors out if there is no associated filename.

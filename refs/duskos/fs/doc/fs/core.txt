@@ -1,0 +1,396 @@
+# File subsystem
+
+The file subsystem allows the system to interact with filesystems (FS) such as
+FAT [fs/fat].
+
+A FS is interacted with through the "fs" struct, which is exposed through the
+"curfs" ivalmap [lib/ival]. It basically allows two things: walking the
+directory structure and opening files. What we call "files" are
+implementation-specific structures that extend Stream [io/stream]. Handled in a
+generic manner, a file is a stream.
+
+## Walking a filesystem
+
+When taking a walk around a FS, you begin at its root, iterating over its
+children one after the other. If it's a directory, you can enter it. When
+walking over a file, you can open it.
+
+And that's pretty much it. In this unit, walking is a global operation. We can
+only ever walk one path at once. For parallel walking operation, see [fs/sh]
+which has a way to save/restore walking contexts.
+
+In documentation, when we refer to the "walked element", we refer to the FS
+element, that is a file or a directory, where the current walking context points
+to.
+
+### Walking paths are fleeting things
+
+The concept of "walking" a filesystem should be seen as a fleeting thing. It's
+quite limited in the directions it can take: it can't go up a level and it can't
+go back to top. Generally, a "walk" is a single lookup starting from root each
+time.
+
+However, there are some additional patterns that all FS implementations must
+allow. One of them is related to creation of files and directories. When those
+are created, the walking context must point to it.
+
+Moreover, creating a new file or directory must be possible regardless of the
+walk position within a context. For example, it's a valid use of a walking
+context to create a new file or directory directly after a failed lookup (that
+is, the walking context is at the very end of its walked directory).
+
+## Open and close files
+
+Files are streams with buffers into which they read and write, which means that
+opening files is somewhat expensive in terms of memory usage. This means that
+they should be closed when not used anymore.
+
+## mtime logic
+
+This unit has the "walkmtime" (modification time) variable which is available at
+walk time and map to FS fields which are present in most FSes. It's exposed as
+[lib/time] timestamps. When it's not available, it map to 0 (epoch).
+
+mtime is automatically set to "now" on creation and when a file handle's "close"
+implementation after at least one byte has been written to it. It can also be
+manually set through "writefsnode".
+
+We don't bother exposing creation time because nobody ever cares about it.
+
+## bootfs and FS mappings
+
+Although you can create as many FS structs as you want to access as many
+FSes as you want, this unit provides the "bootfs" value which is bound to
+the FS this system booted from. It's an important value because lookup for paths
+that aren't prefixed with a map letter (see below) will happen in bootfs.
+
+Although it's often harmless to change the bootfs value, it might cause
+troubles, for example because of path references tied to [text/ed] buffers. But
+the system itself doesn't generally keep FS references around, so unless you've
+created those references yourself, go ahead, change bootfs as needed.
+
+This unit also has a system to map FSes to case-insentive letters (from A to Z).
+If a path begins with a letter followed by a ':', the lookup logic looks into
+the mapping for a FS to perform its lookup into. Mappings are created through
+the word "mapfs".
+
+## Path finding logic
+
+To make children lookup conveniently recursive, we have the concept of "path",
+which is a hierarchical series of names. The "/" character is the path
+separator.
+
+For example, "foo/bar" refers to the "bar" child of the "foo" child of the
+lookup base directory.
+
+Path can contain a FS map prefix, for example "A:foo/bar", which will result in
+the lookup of "foo/bar" to be performed on the FS mapped to the letter 'A'.
+
+Such paths can be queried through "lookup ( name -- f )" which takes a path as a
+string and walks to it, yielding f=1 if found, f=0 otherwise.
+
+"lookup" always begins its lookup from the root of bootfs.
+
+There's also "lookuprel ( name -- f )" which can begin its lookup from the
+current walking point. These lookups can't contain FS map prefixes.
+
+## File loading shortcuts
+
+Feeding the Forth intepreter with the contents of a file is something you'll
+want to do fairly often, which might not sit well with the verbosity of the FS
+API. A shortcut to finding a path and then loading it is "f<<". This word,
+followed by a path to load in the input stream, will call "interpretstream" on
+that path.
+
+It happens frequently that some piece of code depends on some other so we want
+to load these files first. However, some units are depended upon by more than
+one units and we don't want to load these pieces of code twice. To this end,
+we have "needs" and "unit" (see [doc/usage/unit]).
+
+This mechanism is implemented in Dusk's core, but this unit implements the most
+important part, the part where we load the unit in case it wasn't already. The
+logic for doing so is to add a ".fs" suffix to the unit name to load and then
+apply the equivalent of "f<<" to it.
+
+## Booting filesystems
+
+There's a bit of a chicken-and-egg problem at boot time. A Dusk system that
+wants file capabilities (that is, a vast majority) will have to interpret
+[io/stream.fs] and [fs/core.fs] right after [xcomp/boot.fs]. We don't have an
+active bootfs yet because we have no FS implementation loaded. We don't even
+have a means to access mass storage! However, filesystem abstractions need to
+live in memory first, so we load them first.
+
+Then, the system will load whatever units it needs to load for having a FS
+implementation (for example, [fs/fat]), through whatever means it can muster to
+do so (on most modern systems, this means inlining the "payload code" right
+after the kernel code in memory and interpret all this merry code from memory).
+
+Until we do so, FS words shouldn't actually be used. There's a special provision
+for "needs" which is used in unit headers to specify dependencies. During
+booting, when there is no FS yet it's the equivalent of the core version of
+"needs", that is, it asserts that it exists and doesn't try to automatically
+load it in memory.
+
+Once it's done, once the boot process could manage to instantiate a concrete FS
+structure, it calls "bootfs! ( fs -- )" which then "activates" the FS mechanism.
+FS-related words can then be used freely.
+
+## A file grows when writing at the end of it
+
+A file is a sized stream. When reading or writing to it, "pos" is updated so
+that the next read or write takes place right after the previous operation
+(unless a "seek" is used).
+
+When reading up to a file's size, we don't read any longer, so "readbuf" yields
+a zero sized range (that's EOF condition).
+
+When writing, however, we try to grow the file by calling "resize". If it's
+successful, write to the resized file. Otherwise, "writebuf" will yield n=0.
+
+## FS implementations don't seek their storage
+
+It is an expected behavior for FS implementations to avoid seeking their
+underlying storage, that is, changing their stream position. This behavior is
+relied on, for example, in [xcomp/i386/pc/deploy] in the case where "install"
+target's the bootfs storage (in other words, a self-update). If the FS seeks its
+storage, data corruption occurs because the payload of "install" gets written
+all over the place instead of where it should be.
+
+To honor this promise, FS implementations should either use a [io/part] layer or
+use [io/blk]'s "window" word instead of regular [io/stream] words on the
+storage.
+
+## Example low-level API usage
+
+Most of the time, you'll interact with filesystems through the [fs/sh] unit, but
+here's an example of using the low level API provided here to copy a file from
+the bootfs to another filesystem.
+
+  "lib/str.fs" lookup#
+  open const firstfile
+  otherfs walk
+  "lib" newdir enterdir
+  "str.fs" newfile
+  open const otherfile
+  firstfile size otherfile resize
+  otherfile firstfile spitcloseboth
+
+## API
+
+### FS ivalmap
+
+$10 const WALKERCTXSZ
+addrof curfs ivalmap {
+  uint files storage caseinsensitive? ;
+  xt gotoroot gotonext enterdir ;
+  xt initfilestruct openfile addfsnode removefsnode ;
+  [void,WALKERCTXSZ] walkcontext ;
+}
+
+files
+  Linked list of file structs tied to this filesystem.
+
+storage
+  Stream [io/stream] structure upon which this filesystem is mounted.
+  Some FS implementation might depend on a more specific stream such as [io/blk]
+
+caseinsensitive?
+  Are lookups in this FS case insensitive?
+
+gotoroot ( -- )
+  Make the root directory of this FS the current walking context.
+
+  This doesn't begin the iteration. "gotonext" has to be called a first time
+  for the walking context to point to a valid element.
+
+  You will usually not want to call gotoroot directly, call "walk" instead.
+
+gotonext ( -- f )
+  Try to walk to the next item in the walking context. If there is one, yield
+  f=1 and set global walking variables "walkname" "walksize" and "walkdir?".
+  Otherwise, yield f=0.
+
+enterdir ( -- )
+  Provided that the last element we walked on was a directory, "enter" that
+  element so that it becomes the new walking context.
+
+  Abort with error when current element is not a directory.
+
+  This doesn't begin the iteration. "gotonext" has to be called a first time
+  for the walking context to point to a valid element.
+
+  This is a noop when iteration hasn't begun yet, that is, when gotoroot or
+  enterdir has just been called without a following gotonext call. In other
+  words, it's harmless to call "enterdir" twice in a row.
+
+initfilestruct ( -- )
+  Allocate, right "here", a new file structure that isn't tied to any file, but
+  that must be ready to be passed to "openfile".
+
+  The way it sets itself up is FS-specific, but one thing that must always be
+  done is for its "close" implementation to call "closecursor".
+
+openfile ( file -- )
+  Have the already allocated "file" struct target specified path id.
+
+  Aborts on error.
+
+addfsnode ( name dir? -- )
+  Create a new element named "name" in the current walking context. If "dir?"
+  is true, this element is a directory, otherwise it's a file. Its mtime and
+  mtime values are "now" from [lib/time].
+
+  This word can be called regardless of the iteration status of the current
+  context. For example, this word can be called even after having repeatedly
+  called "gotonext" until it yielded f=0. In this case, the new element will be
+  placed in the directory that has just been iterated upon.
+
+  After this word is called, the walking context points to that new element, but
+  it doesn't "enter" it.
+
+removefsnode ( -- )
+  Remove the walked element from the FS. After having called this, the walking
+  context becomes invalid.
+
+writefsnode ( -- )
+  Write these values to the walked element metadata:
+
+    * walkname
+    * walksize
+    * walkmtime
+
+  In other words, if you want to rename a file or directory, you could do:
+
+    p"foo/bar"
+    "baz" walkname strmove
+    writefsnode
+
+  "walksize" only refers to the "reported" size of that FS element in its
+  metadata. Changing it won't trigger any "grow" or "shrink" logic of the file
+  itself. This logic can only be triggered by opening a file. In other words,
+  although you *can* change "walksize", you probably shouldn't unless you know
+  what you're doing because otherwise, it could result in metadata
+  inconsistencies.
+
+### Global strings
+
+walkpath    The string path of the context currently being iterated upon. This
+            doesn't include the "walkname" part.
+walkname    The name of the walked element.
+lookupname  Last string passed to "lookupchild".
+
+### Values
+
+bootfs      FS that booted this system. Root of the lookups that don't have a
+            letter prefix.
+curfs       What the FS ivalmap points to.
+walksize    The size in bytes of the walked element.
+walkmtime   Modification time [lib/time] of the walked element.
+walkdir?    Whether the walked element is a directory.
+
+### Words
+
+newfs ( <xts in reverse order> case? storage -- fs )
+  Allocate a new FS struct tied to the specified methods. You will typically not
+  call this directly, as it's called by the FS implementations. "<xts>" is a
+  list of pointers to implementations for this FS' "XT" fields, in reverse order
+  ("removefsnode" is the deepest, "gotoroot" is on top).
+
+mapfs ( fs c -- )
+  Map "fs" to prefix letter "c". Abort if "c" is not in the A-Z range.
+
+fsletter ( -- c-or-0 )
+  Yield a character A-Z corresponding curfs' mapped slot. If curfs is not mapped
+  to any letter, yield '?'. If curfs is bootfs, yield 0.
+
+iterpath ( a u -- ?resta ?restu a u f )
+  If range "a u" contains a '/' character, yield the range the part preceding
+  the '/' as "a u" and the part following the '/' as "resta restu", with f=1.
+
+  Otherwise, yield "a u" unchanged and f=0.
+
+lookupchild ( name -- f )
+  Copy "name" into global "lookupname", then iterate the current walking context
+  (must be "entered") until a name that matches "name" is encountered. If FS is
+  case insensitive, make the comparison case insensitive.
+
+  If found, f=1 and walking context points to found item. Otherwise, f=0 and we
+  iterated the whole context.
+
+  When "name" is an empty string, no lookup is performed and f=1 (always found).
+
+lookuprel ( path -- f )
+  Separate "path" into components separated by "/", then call "lookupchild"
+  for each of those elements, starting with the leftmost, entering found element
+  each time.
+
+  If "/" is the first character, it is ignored.
+
+  If all lookups succeed, f=1 and the walking context points to the last lookup
+  result.
+
+  Otherwise, f=0 and the walking context points to an invalid element within
+  the walking context of the last found directory. This means that "addfsnode"
+  is ok to call after a "lookuprel".
+
+walk ( fs -- )
+  Begin walking specified FS, that is, set curfs to it, set walkdir? to 1, reset
+  walkpath and call gotoroot.
+
+walktopathroot ( path -- path )
+  If "path" has a drive letter prefix, set "curfs" to the FS corresponding to
+  that letter and trim those two characters from the path. Otherwise, set curfs
+  to bootfs and leave the path as is.
+
+walkdepth ( -- n )
+  Compute walkdepth from walkpath. When its empty, yield 0, otherwise, count the
+  number of '/' characters in the path and yield that +1.
+
+lookup ( path -- f )
+  An absolute lookup, always begins from the root of a FS. In other words, a
+  shortcut for "walktopathroot lookuprel".
+
+lookup# ( path -- )
+  Same as lookup, but aborts with error if not found.
+
+lookuprel# ( path -- )
+  Same as lookuprel, but aborts with error if not found.
+
+open ( -- file )
+  Open file corresponding to the walked element.
+
+  Aborts if walking context doesn't point to a file.
+
+newfile ( name -- )
+  Shortcut for "0 addfsnode".
+
+newdir ( name -- )
+  Shortcut for "1 addfsnode".
+
+openpath ( path:*uchar -- file:*Stream )
+  A shortcut for "lookup# open".
+
+closeall ( -- )
+  Close all files associated with curfs.
+
+loadpath ( path -- )
+  Lookup "path" then interpret is as Forth source. Automatically call "endunit"
+  when the end of file is reached. Closes the file afterwards.
+
+f<< ( "path" -- )
+  Read path from input stream then call "loadpath" on bootfs.
+
+exec<< ( w "path" -- )
+  Find path then hijack the input stream so that it yields its contents, then
+  call word "w". After "w" returns, close the opened file.
+
+pathcat ( path1 path2 -- path )
+  If path1 is not a null string, yield a concatenation, using strcat [lib/str]
+  of the two paths, inserting a '/' in between. Otherwise, yield path2.
+
+### Private words
+
+closecursor ( file -- )
+  Set the "used" flag of the file cursor to 0 so that this structure can be used
+  again through "open".

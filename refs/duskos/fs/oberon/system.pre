@@ -1,0 +1,26 @@
+needs lib/coop comp/sig comp/oberon comp/oberon/module
+
+:ob Quit (); stopcurrent ;
+
+:ob ShowModules ();
+  modules @ begin ?dup while ( e )
+    dup entryname[] rtype nl> @ repeat ;
+
+: ShowCommands ( u a -- )
+  DuskStr dup modules find ?dup if ( modname mod )
+    over stype ." commands:\n"
+    procedures @ begin ?dup while ( modname e )
+      dup e>xt @ ( modname e sig )
+      sigcounts + not if
+        over stype ."." dup entryname[] rtype nl> then
+      @ repeat ( modname ) drop
+  else ."module " stype ." not found\n" then ;
+annotatelast ( STRING -- )
+
+create S Texts.Scanner typesz allot0
+
+:ob CompileModule ();
+  Scanner S Arg.GetArg
+  S Scanner.class 1 = if \ Texts.Name
+    32 S Scanner.s DuskStr obimport
+    else ."Invalid argument for CompileModule\n" then ;

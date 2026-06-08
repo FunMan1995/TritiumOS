@@ -1,0 +1,23 @@
+needs text/clip
+
+:ob EnsureClipboardSize (size: INTEGER; VAR addr: INTEGER);
+  clipensure clipboard swap ! ;
+
+:ob GetClipboardAddr (VAR addr, lenaddr: INTEGER);
+  clipboard swap !
+  clipboardlen swap ! ;
+
+:~ word sysdict find ;
+
+~ hostcopy not [if]
+  : hostcopy ;
+  : hostpaste ;
+[then]
+
+1 value hostsync
+
+:ob HostCopy ();
+  hostsync if hostcopy then ;
+
+:ob HostPaste ();
+  hostsync if hostpaste then ;

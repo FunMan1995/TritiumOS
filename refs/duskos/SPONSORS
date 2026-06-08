@@ -1,0 +1,26 @@
+Some developments in Dusk OS were sponsored as per the mechanism described at
+http://duskos.org/services.html
+
+Some other developments were authored by someone else than me (Virgil Dupras),
+but can still be considered sponsored. When you submit work to the project, if
+you wish to specify a sponsor for you work, just mention it, it will end up
+here.
+
+Below is the list of sponsored works grouped in three levels. The first level
+is the sponsor, the second one is the sponsoree, the third is the nature of the
+sponsored work. Order is chronological within the same level.
+
+Cagatay Yuksel
+  Virgil Dupras
+    - Pine A64 port [deploy/sunxi]
+
+Institut National des Sciences Appliquées (INSA), Université de Lyon
+  Lucas Chaloyard
+    - RISC-V assembler [asm/riscv]
+    - RISC-V kernel [xcomp/riscv/kernel]
+
+Knud Werner
+  Virgil Dupras
+    - x87 assembler [asm/x87]
+    - HAL Floating Point Unit API [hal/float]
+    - Floating point numbers [lib/float]

@@ -1,0 +1,23 @@
+# Sample Qwantum reply (test ingest)
+
+## SEARCH REPORT
+fragments_found: boot.fs, Program.cs, MainActivity.kt
+recommended_collapse: C2 balanced
+
+```qwantum-dump
+{
+  "version": 1,
+  "source": "qwantum_compute",
+  "program": "TritiumOS",
+  "creator": "Draco",
+  "search_id": "sample01test",
+  "collapse": "C2",
+  "files": [
+    {
+      "path": "evolve/forth/refined/qwantum-sample.fs",
+      "encoding": "utf-8",
+      "content": "\\ TritiumOS fragment dumped from qwantum field\n: qwantum-ok .\" field dump ok\" cr ;\n"
+    }
+  ]
+}
+```

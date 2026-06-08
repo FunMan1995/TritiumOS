@@ -1,0 +1,39 @@
+# System Control Coprocessor interactions
+
+The unit at [drv/arm/sccp.fs] provides convenience words to interact with the
+System Control Coprocessor, also known as CP15.
+
+Far from every possible accesses are implemented, only those relevant to Dusk's
+interests.
+
+Constants:
+
+cpSC  15
+
+Register access words:
+
+"@" words have a ( -- n ) signature, "!" ones have a "( n -- )" one.
+
+cpuid@     Register 0 opcode 0
+cachetype@ Register 0 opcode 1
+tlbtype@   Register 0 opcode 3 
+armctl@    Register 1 opcode 0
+armctl!
+ttbr0@     Register 2 opcode 0
+ttbr0!
+ttbr1@     Register 2 opcode 1
+ttbr1!
+ttbrctl@   Register 2 opcode 2
+ttbrctl!
+domctl@    Register 3 opcode 0
+domctl!
+
+Some registers are write-only and constitute commands:
+
+invalidateicache ( -- )   Register 7 Rm 5  opcode 0
+invalidatedcache ( -- )   Register 7 Rm 14 opcode 0
+invalidateucache ( -- )   Register 7 Rm 15 opcode 0
+
+## See also
+
+* ARMv6 manual, part B3 -- The System Control Coprocessor

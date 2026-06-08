@@ -1,0 +1,57 @@
+# Array
+
+Arrays are lists of elements of arbitrary size living in contiguous memory,
+which means they can quickly be accessed by index. Arrays can have elements
+inserted to them and deleted from them, which means they can possibly end up
+with more elements than they started with. This represents a challenge in terms
+of memory allocation.
+
+This challenge is met with [mem/reuse]. Upon creation, an array must be
+specified a maximum capacity. It begins its life empty and as elements are added
+to it, its capacity is checked. If the needed capacity exceeds the current one,
+we reallocate (using "?realloc") the array with a capacity that is the double of
+what is needed at that time (the goal being to minimize reallocations).
+
+Out of bounds index access aborts with error message.
+
+## Example usage
+
+4 10 newarray const arr
+1 arr append 42 swap !
+2 arr append 54 swap !+ 102 swap !
+1 2 arr insert 99 swap !
+\ "arr" is now an array with 4 elements 42, 54, 99, 102 and with a capacity of
+\ 10 elements where each element is 4 bytes wide. if you try to add 5 more
+\ elements, the array will be reallocated.
+
+## Array API
+
+An array is a structure with those fields:
+
+ptr     Pointer to current memory area. Points to first element.
+cnt     Number of elements in the array.
+elemsz  Size in bytes of each element.
+alloc   Capacity in bytes of the array.
+
+Words:
+
+newarray ( elemsz allocnt -- array )
+  Create a new array where each element is "elemsz" bytes wide with enough
+  capacity for "allocnt" elements.
+
+get' ( idx array -- a )
+  Address in array of index "idx".
+
+get ( idx array -- n )
+  get' followed by @.
+
+append ( cnt array -- a )
+  Add "cnt" elements to the array, uninitialized, returning the address of the
+  first added element.
+
+insert ( cnt idx array -- a )
+  Insert "cnt" elements in the array, uninitialized, at index "idx" and return
+  the address of the first inserted element.
+
+delete ( cnt idx array -- )
+  Delete "cnt" elements from the array at index "idx".

@@ -1,0 +1,47 @@
+# The "low" part of the HAL
+
+The file xcomp/hallo.fs contains HAL implementation logic that is common to all
+CPUs and that are needed for further HAL implementation (that is, they can't
+simply go in xcomp/boot.fs) and can't go in xcomp/lo.fs either because they need
+some CPU-specific words.
+
+xcomp/hallo.fs implements these words, documented in [doc/hal]:
+
+  (&? -&) dir) (dir? -dir) signed) (signed? -signed) (slot slot)
+
+or [doc/dict]:
+
+  if then else ahead begin while repeat again (
+
+It also implements these "private" words that only make sense in the context of
+HAL implementations:
+
+hslot@ ( op -- n )
+  Shortcut for "(slot hbank@"
+
+hslot! ( op n -- )
+  Shortcut for "hbank! slot)"
+
+## CPU-specific layer
+
+The first role of xcomp/<arch>/hallo.fs is to define some "HAL flag" constants,
+that is, constants that yield a binary mask corresponding to HAL operand fields:
+
+  HALDIRECT  --> &)
+  HALINV     --> dir)
+  HALSIGNED  --> signed)
+
+Another role is to implement these words, documented in [doc/hal]:
+
+  bbr br!
+
+they also need to implement these "private" words:
+
+ifW, ( -- )
+  The equivalent of "if" without the immediate flag, that is, drop PS top and
+  branch if that dropped value was 0.
+
+  It is the functional equivalent of "dropz, ifnz,", but on some CPUs such as
+  RISC-V, generating it all at once allows us to generate tighter code and since
+  this is what generates all the "if" jumps of the system, it's worth the
+  troubles of defining a separate word.

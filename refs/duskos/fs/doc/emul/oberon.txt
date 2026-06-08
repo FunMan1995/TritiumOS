@@ -1,0 +1,41 @@
+# Project Oberon emulator
+
+The Project Oberon emulator lives in emul/oberon and can emulate Oberon RISC5
+machine with a 16-color framebuffer. To run in the emulator, images must
+support 16-color graphics, paravirtual disk access, and paravirtual (ASCII)
+keyboard. The image may not hard-depend on hardware floating point, as the
+emulator does not emulate this.
+
+Such image can be built with https://git.sr.ht/~vdupras/dusk-oberon-emul
+
+After loading emul/oberon.fs, various options can be set by modifying variables
+(using to semantics):
+
+megs - RAM size in megabytes. Must be between 1 and 64 (requirement of Project
+  Oberon). Note that with just 1 MB and a typical screen size of 1024x768, the
+  system does boot but is barely usable. 2 MB work. Default is 16 MB.
+
+leds - boolean whether to print output on the console whenever the LEDs status
+  changes. Off by default since it spams the screen with messages.
+
+console - boolean whether to print output written to Oberon's Debug Console on
+  the console. A normal system should not print anything during normal
+  operation, but it is useful for low-level debugging. On by default.
+
+diskimagepath - set to a path (e.g. p"data/oberon2.dsk" of a disk
+  image to use. If unset, data/oberon.dsk is used.
+
+When these are set, the emulator can be invoked by the "oberon" word.
+
+The emulator can be exited using "System.Quit"; also when your system supports
+breaking out of loops, you can quit the emulator that way. After quitting, you
+can run
+
+oberon - to restart the system (everything not on disk is lost)
+obreak - to restart at the system's break handler (as if the hardware break
+  button on the Project Oberon board is pressed)
+ocont - to (try to) continue at the point where it was interrupted (will be
+  treated like a break after "System.Quit".
+
+In these situations, console and leds can be enabled/disabled, but other state
+cannot be modified.

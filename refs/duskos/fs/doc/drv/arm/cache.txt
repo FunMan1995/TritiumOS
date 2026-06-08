@@ -1,0 +1,20 @@
+# ARM cache control
+
+Words in unit drv/arm/cache.fs wrap [drv/arm/sccp] for convenience.
+
+## API
+
+.caches ( -- )
+  Print a human-friendly status of caches on the current system.
+
+enabledcache ( -- )
+disabledcache ( -- )
+  Enable/disable data cache or, if unified, the whole cache.
+
+enableicache ( -- )
+disableicache ( -- )
+  Enable/disable instruction cache.
+
+enablewritebuffer ( -- )
+disablewritebuffer ( -- )
+  Enable/disable, you've guessed it, the write buffer.

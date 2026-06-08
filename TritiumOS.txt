@@ -1,0 +1,1103 @@
+================================================================================
+TRITIUMOS → L.I.N.E.O.S. — PROJECT BRIEF & QWANTUM COMPUTE BUILD PROMPT
+================================================================================
+Version: 2.6 (Ship Targets: TritiumOS.exe + TritiumOS.apk)
+Date: 2026-06-02
+Workspace: C:\Test\TritiumOS
+Status:  §14 parallel-timeline Qwantum prompt added. Optional: S3 `11`, “D.R.E.N.A. with …”
+
+--------------------------------------------------------------------------------
+1. PROJECT IDENTITY
+--------------------------------------------------------------------------------
+
+Product arc:  **Personal assistant application** (ship first)
+              → **TritiumOS** (evolving host-aware stack)
+              → **L.I.N.E.O.S.** (mature form — see §1a)
+
+Name:         **TritiumOS** (Tritium OS) — product and system name (fixed)
+Name (mature): L.I.N.E.O.S.
+              **L**asting **I**ntelligent **N**ear **E**ndless **O**perating **S**ystems
+
+Assistant:    **Named by its user** at first run — not a fixed global name.
+              Stored as `evolve/assistant-name.trit` (counted string `name$`).
+              UI shows user’s name; system binaries and repo stay **TritiumOS**.
+
+Creator:      **Draco** (handle) — credited in about, manifest `creator`, docs.
+              Attribution line: *TritiumOS by Draco*
+
+Slogan:       *The line tread between madness and genius.*
+
+              (Brand line for L.I.N.E.O.S. and the product family; use in splash,
+              assistant persona, and license/about screens.)
+
+Role:         A **personal assistant** that learns and co-evolves with one user
+              (per profile), backed by D.R.E.N.A. + R.E.K.I.A., delivered as
+              `tritium.poly` on phones and PCs until it **graduates** into a full
+              operating environment — L.I.N.E.O.S.
+
+Variants:     32-bit (cyan/blue branding) | 64-bit (magenta/purple branding)
+Delivery:     **TritiumOS.exe** (Windows) · **TritiumOS.apk** (Android) — primary ship
+              Build source: `tritium.poly`. Linux optional.
+License:      **Master system** issues keys; user **shared license** — **10 devices**
+Economy:      **Assimilate** collective neural puzzle → contribution-based earnings
+
+--------------------------------------------------------------------------------
+1a. EVOLUTION LADDER — ASSISTANT → TRITIUMOS → L.I.N.E.O.S.
+--------------------------------------------------------------------------------
+
+  Stage          What the user experiences          Technical milestone
+  ─────────────  ─────────────────────────────────  ─────────────────────────────
+  S0 App         Personal assistant: chat, tasks,   `assistant/` UI + R.E.K.I.A.
+                 reminders, context memory          dialogue; D.R.E.N.A. seeds graph
+
+  S1 TritiumOS   Assistant + Forth shell, host       Bootstrap complete; polyglot
+                 bridges, neuron tools, evolve/       install; user graph persists
+
+  S2 Transitional Deep integration on 2+ hosts;       `tritium-integrate`; fleet sync
+                 develops custom words/modules       optional; graph density threshold
+
+  S3 L.I.N.E.O.S. Near-OS control: scheduling,       Graduation event (§1a.1);
+                 storage policy, multi-host self       branding shifts to L.I.N.E.O.S.
+                 as primary environment
+
+**Design intent:** Users never buy “an OS” on day one — they install a **personal
+assistant** that **eventually evolves** into L.I.N.E.O.S. The slogan names the
+risk/reward of pushing intelligence to the edge: genius refinement (R.E.K.I.A.)
+versus unstructured growth (madness without refinement).
+
+### 1a.1 Graduation to L.I.N.E.O.S. (configurable thresholds)
+
+Fire `lineos-graduate` when **all** are true (tune in `evolve/graduation.json`):
+
+  1. Assistant session count ≥ N (default 30) OR user invokes `become-lineos`
+  2. D.R.E.N.A. graph ≥ minimum neurons + ≥1 CONNECTED cluster
+  3. R.E.K.I.A. has refined ≥1 knowledge cell per active neuron class
+  4. Installed on ≥1 Priority-1 host; license valid (≤10 devices)
+  5. User confirms: “Promote to L.I.N.E.O.S.” (irreversible without export/reset)
+
+On graduation:
+
+  - Product name in UI → **L.I.N.E.O.S.**
+  - Splash / about shows slogan
+  - `manifest.json` product_id: `lineos`
+  - Tritium branding assets may remain as “origin” badge (32/64 edition preserved)
+
+### 1a.2 Personal assistant surface (S0 — ship first)
+
+The **assistant** is the user-facing persona inside **TritiumOS**. The **user
+chooses its name** during onboarding (e.g. “Aria”, “Core”, “LINE”) — Draco does
+not ship a default character name.
+
+**First-run naming flow**
+
+  1. Bootstrap completes (license, edition).
+  2. Prompt: *“Name your assistant”* — validate 1..32 chars, no empty.
+  3. Write `evolve/assistant-name.trit`; Forth word `assistant-name@` / `name$`
+  4. Window title / splash: `{name$} — powered by TritiumOS`
+  5. About screen: `{name$}` + *TritiumOS by Draco* + slogan
+
+Minimum assistant capabilities (v0.1):
+
+  • Natural-language interface (text; voice optional per host)
+  • User context memory via R.E.K.I.A. refinement (not opaque-only LLM)
+  • Task / reminder / note hooks stored in `evolve/assistant-state.trit`
+  • Transparent “neuron peek” for power users (Forth + trit header debug)
+  • Persona tone informed by slogan — brilliant, precise, slightly uncanny edge
+  • `rename-assistant` in settings (updates `assistant-name.trit`, keeps graph)
+
+Assistant calls into D.R.E.N.A. (structure) and R.E.K.I.A. (answer refinement)
+on every substantive interaction.
+
+Tritium (³H) and the brand HUD encode the fundamental state alphabet:
+  trit ∈ { -1, 0, +1 }
+
+Brand assets:
+  - TritiumOS_logo.jpg
+  - TritiumOS_32_bit.jpg
+  - TritiumOS_64_Bit.jpg
+
+Visual language: inverted triangle portal, qubit register (−1, 0, 1), barcode
+identity strip — mirrors the neuron header encoding below.
+
+--------------------------------------------------------------------------------
+2. CORE MANDATE (USER-DICTATED PROPERTIES)
+--------------------------------------------------------------------------------
+
+TritiumOS is built **in Forth** and **utilizes a pure mathematical algorithm**
+to **refine intelligence into Forth** — executable words, definitions, and
+labeled structures — not into opaque weight tensors. User terms: *noliage
+refinement* (refined knowledge foliage); *labeling* / **labeled neural groups**;
+**neural linking data** between groups and neurons.
+
+No opaque ML weight blobs as the source of truth; intelligence is **derived,
+extracted, refined, and emitted as Forth** through explicit math.
+
+Two engines define the cognitive substrate:
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D.R.E.N.A.                                                             │
+  │  Dynamic Recursive Evolving Neural Architecture                         │
+  │  — Constructs each neuron and the evolving graph topology               │
+  └───────────────────────────────┬─────────────────────────────────────────┘
+                                  │ raw / evolving neuron fabric
+                                  ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  R.E.K.I.A.                                                             │
+  │  Artificially Intelligent Knowledge Extraction and Refinement           │
+  │  — Pure-math refinement engine; refines on-demand intelligence per      │
+  │    neuron when queried or activated                                     │
+  └───────────────────────────────┬─────────────────────────────────────────┘
+                                  │ refined knowledge (on demand)
+                                  ▼
+              Personal assistant (S0) → shell / services → L.I.N.E.O.S. (S3)
+
+**Division of labor**
+
+  D.R.E.N.A.  →  *structure*  (birth, growth, recursion, connection policy)
+  R.E.K.I.A.  →  *semantics*  (extract, refine → **Forth output** + labels)
+  D.R.E.N.A.  →  *topology*   (neural groups, **neural linking data**)
+
+Every neuron’s on-demand intelligence is **constructed by D.R.E.N.A.** and
+**refined by R.E.K.I.A.** into **Forth** at activation time (lazy refinement).
+Neurons belong to **labeled neural groups**; **neural linking data** records
+edges, weights, and address-fold maps between neurons and groups.
+
+--------------------------------------------------------------------------------
+3. NEURON ENCODING — FIRST FOUR 4-BIT SECTIONS
+--------------------------------------------------------------------------------
+
+Each neuron begins with a fixed **16-bit header** (= 4 sections × 4 bits).
+Sections are numbered S0..S3 (low to high address or Forth field order — pick
+one in implementation and document in `docs/NEURON.md`).
+
+### 3.1 Trit pairs in S0, S1, S2
+
+Each of the first three sections holds one **trit pair** (two trits):
+
+  Section   Bits   Content
+  ───────   ────   ─────────────────────────────────────
+  S0        4      trit pair A = (t0, t1)   each ti ∈ {-1,0,+1}
+  S1        4      trit pair B = (t2, t3)
+  S2        4      trit pair C = (t4, t5)
+
+**4-bit section → trit pair mapping (canonical — implement in Forth word
+`trit-pair@`):**
+
+  A 4-bit nibble value n ∈ [0..15] maps to (t_lo, t_hi) by:
+
+    t_lo = decode-trit( n mod 3 )      ; -1,0,+1 via lookup {0→-1, 1→0, 2→+1}
+    t_hi = decode-trit( (n / 3) mod 3 )
+
+  Alternate dense packing (if dictation prefers): two 2-bit trit codes per
+  nibble — document choice in ASSUMPTIONS.md; default is mod-3 split above.
+
+S0..S2 supply **local state signature** (polarity, gate bias, activation
+family) for the neuromorphic cell before any graph links exist.
+
+### 3.2 S3 — fourth variation (connectivity mode)
+
+The fourth 4-bit section does **not** carry a third trit pair; it encodes the
+**variation / wiring policy** for true neuromorphic architecture:
+
+  Code (low 2 bits)   Mode              Behavior
+  ─────────────────   ───────────────   ─────────────────────────────────────
+  00                  RANDOM            Seed synapses from entropy source
+                                        (PRNG or hardware jitter); no address
+                                        context yet.
+
+  01                  ADDRESS_FOLD      Fold neuron address (and neighbor
+                                        address bits) into connection weights /
+                                        target selection via pure math map
+                                        φ(addr, addr') → influence.
+
+  10                  CONNECTED         Follow explicit address-linked edges;
+                                        only connect to neurons whose addresses
+                                        appear in the fold table / link list
+                                        (true neuromorphic graph).
+
+  11                  RESERVED          User dictation TBD (continue clause)
+
+**Progression intent (user-specified order):**
+
+  RANDOM  →  ADDRESS_FOLD  →  CONNECTED_ADDRESSES
+
+A developing neuron may **graduate** along this sequence as D.R.E.N.A.
+recurses: early life random; maturation folds address space; stable topology
+uses connected addresses only.
+
+High 2 bits of S3: extension flags (spare until next dictation).
+
+### 3.3 Neuron record (minimal layout)
+
+  offset   size   field
+  ──────   ────   ──────────────────────────
+  +0       2      header (S0|S1|S2|S3 packed)
+  +2       2      neuron id / address (edition-dependent width)
+  +4       var    neural linking data (see §3.4)
+  +…       var    group label ref (index into label table)
+  +…       var    R.E.K.I.A. Forth cache (refined `.fs` fragment, on demand)
+
+### 3.4 Labeled neural groups
+
+Neurons are clustered into **neural groups** — each group carries a **label**
+(human-readable name or symbolic tag). Labeling may be:
+
+  • **Automatic** — R.E.K.I.A. `label-group` from refined Forth semantics
+  • **Manual** — user assigns / renames via assistant or Forth (`group-label!`)
+  • User dictation term **labilg** — treated as synonymous with **labeling**
+
+Group record (Forth struct `group:`):
+
+  field           description
+  ─────────────   ─────────────────────────────────────────────
+  group-id        stable id (edition-width address)
+  label$          counted string, e.g. "memory", "dialogue", "tasks"
+  member-list     head of neuron ids in this group
+  link-head       index into neural linking data for inter-group edges
+
+Groups are the unit of **assistant context** (which labeled cluster to activate)
+and of **Forth vocabulary namespaces** (`GROUP-<label>/` optional prefix).
+
+### 3.5 Neural linking data
+
+**Neural linking data** is the typed edge store — not implicit matrix weights alone.
+Stored as `link.bin` or Forth array `links,` — append-only with rewire compaction.
+
+  Link record:
+    src-id          source neuron or group-id
+    dst-id          destination neuron or group-id
+    link-type       intra-group | inter-group | fold-φ | random-seed
+    trit-weight     (w_lo, w_hi) trit pair influence along edge
+    s3-mode         wiring policy active when link was formed
+
+D.R.E.N.A. **writes** linking data during spawn/grow/rewire; R.E.K.I.A. **reads**
+it during refinement to scope `extract(K, ctx)` to the active subgraph.
+
+Forth words (`DRENA/`):
+
+  link!             ( src dst type w -- )       \ append link
+  link@             ( link-index -- record )
+  group-link!       ( group-a group-b -- )     \ inter-group bridge
+  links-for-neuron  ( neuron -- addr count )
+
+--------------------------------------------------------------------------------
+4. R.E.K.I.A. — PURE MATH REFINEMENT ENGINE
+--------------------------------------------------------------------------------
+
+Full name: **Artificially Intelligent Knowledge Extraction and Refinement**
+
+Role: Refine **on-demand intelligence** for each neuron — the knowledge payload
+that D.R.E.N.A. instantiated structurally but did not fully expand.
+
+Properties (dictated):
+
+  • **Pure math only** at the refinement core — no mandatory neural nets.
+  • Operates when a neuron is **read, fired, or queried** (lazy refinement).
+  • Input: neuron header (trit pairs + variation), local graph context, and
+    optional knowledge atoms (symbols, measures, proofs).
+  • Output: **refined Forth** — colon definitions, constants, or `CREATE`/`DOES>`
+    bodies stored in `evolve/forth/refined/<group-label>.fs`
+  • **Labeling:** assign or update **labeled neural group** names from refined
+    semantics (`label-group`, `group-label!`).
+  • **Link-aware:** refinement uses **neural linking data** for the active
+    subgraph only (neighbors + inter-group bridges).
+
+Suggested mathematical primitives (implement as Forth vocab `REKIA/`):
+
+  extract(K, ctx, links) → K' ⊆ K scoped by neural linking data
+  refine(K', ε)          → fixed-point / contraction map; ε = tolerance
+  to-forth(K', label)    → valid Forth source string or inlined words
+  label-group(K', links) → suggested label$ for neural group
+  prove(K', axiom)       → boolean + witness (optional formal layer)
+  compose(K1, K2)        → monoid/gluing across linked groups
+
+Refinement must be **deterministic** given (neuron, ctx, links, seed policy)
+except when S3 mode is RANDOM and entropy is explicitly mixed in.
+
+**Intelligence → Forth pipeline** (canonical):
+
+  : rekiA-refine ( neuron ctx -- )
+      neuron>group  links-for-neuron          \ labeled group + link slice
+      rekiA-extract rekiA-contract
+      rekiA-to-forth                         \ emit Forth; compile or save .fs
+      rekiA-label-group  group-label!        \ labeling / labeled group update
+  ;
+
+Refined Forth is **loaded** (`included` / `evaluate`) into TritiumForth so
+intelligence literally becomes runnable system vocabulary.
+
+--------------------------------------------------------------------------------
+5. D.R.E.N.A. — NEURAL ARCHITECTURE ENGINE
+--------------------------------------------------------------------------------
+
+Full name: **Dynamic Recursive Evolving Neural Architecture**
+
+Role: **Construct** neurons, recurse through layers, evolve topology over time.
+
+Properties (dictated):
+
+  • **Dynamic** — graph size and membership change at runtime.
+  • **Recursive** — self-similar sub-architectures; Forth-friendly recursion.
+  • **Evolving** — S3 mode progression RANDOM → ADDRESS_FOLD → CONNECTED.
+  • **Neuromorphic** — connection policy tied to address structure, not dense
+    arbitrary matrices alone.
+  • **Groups + links** — maintains **labeled neural groups** and **neural
+    linking data** (§3.4–3.5); every spawn/grow appends link records.
+
+Suggested Forth vocab `DRENA/`:
+
+  drena-spawn       ( variation -- neuron )     \ allocate header + address
+  drena-grow        ( parent -- child )         \ recursive expansion
+  drena-rewire      ( neuron -- )               \ apply S3 policy transition
+  drena-step        ( -- )                      \ one evolution tick (scheduler)
+  drena-group       ( label$ -- group )         \ create labeled neural group
+  drena-join        ( neuron group -- )         \ assign neuron to group
+
+D.R.E.N.A. owns **when** a neuron advances S3 mode and **how** links are written;
+R.E.K.I.A. owns **what** that neuron means — as **refined Forth** in a **labeled
+group** context.
+
+--------------------------------------------------------------------------------
+5a. POLYGLOT BUILD & SHIP TARGETS (.exe / .apk)
+--------------------------------------------------------------------------------
+
+**What you are searching for (v1 ship):**
+
+  Platform    Ship artifact          Arch (default)   Notes
+  ─────────   ────────────────────   ──────────────   ─────────────────────────
+  Windows     **TritiumOS.exe**      x86_64           Single-file or dir+exe;
+                                                   embeds/core loads TritiumForth
+  Android     **TritiumOS.apk**      arm64-v8a        Package name e.g.
+                                                   `os.tritium.app`; min SDK 26+
+
+Linux remains **optional** (`TritiumOS-linux.sh` or unpack from `tritium.poly`);
+**milestone acceptance** is **.exe + .apk** install and run on real hardware.
+
+### 5a.1 Build pipeline (source → ship files)
+
+  tritium.poly/              ← polyglot **source bundle** (not user-facing)
+    manifest.json            — product: TritiumOS, creator: Draco, targets: exe, apk
+    core/                    — TritiumForth, D.R.E.N.A., R.E.K.I.A. (host-agnostic)
+    hosts/
+      windows/               — build script → **dist/TritiumOS.exe**
+      android/               — Gradle project → **dist/TritiumOS.apk**
+      linux/                 — optional install.sh
+      _template/             — post-bootstrap integrate scaffold
+    master/                  — key mint stubs
+    license/                 — validator, ≤10 device slots
+    queue/                   — collective cue
+    assimilate/              — puzzle + simti ledger
+    evolve/                  — user graph (assistant-name.trit per device)
+
+  **Build commands (document in docs/BUILD.md):**
+
+    tools/build-windows.ps1   → dist/TritiumOS.exe
+    tools/build-android.sh    → dist/TritiumOS.apk
+    tools/build-poly.ps1        → tritium.poly (pack only)
+
+### 5a.1b Windows — TritiumOS.exe
+
+  • GUI or tray app hosting assistant REPL + bootstrap of Forth core
+  • First run: license key → name assistant → edition 32/64
+  • Embeds: `core/`, branding BMP from assets, VC runtime if needed
+  • Output path: **`dist/TritiumOS.exe`** (user-facing filename, fixed)
+  • Code signing: document in BUILD.md (optional v0.1)
+
+### 5a.1c Android — TritiumOS.apk
+
+  • Kotlin/shell Activity; JNI or embedded interpreter bridge to Forth core
+  • First run: same wizard as Windows (license, assistant name, edition)
+  • Output path: **`dist/TritiumOS.apk`**
+  • Not Termux-only — must be installable **APK** from file or store-ready manifest
+
+The **same license key** unlocks the core on each registered device (≤10);
+evolution state may **sync across the licensed fleet** (user opt-in).
+
+### 5a.2 Bootstrap → develop → integrate
+
+**Phase A — Bootstrap (any Priority-1 host)**
+
+  1. User installs **TritiumOS.exe** or **TritiumOS.apk** (or Linux script).
+  2. Installer verifies license key and registers device slot (1..10).
+  3. Extracts `core/`; starts TritiumForth + D.R.E.N.A. + R.E.K.I.A.
+  4. First-run wizard: edition (32/64), **name your assistant**, evolution profile.
+
+**Phase B — Develop (on-device)**
+
+  After bootstrap, the user (and R.E.K.I.A.-refined neurons) may **develop** new
+  words, modules, and host-specific shims inside the sandboxed Forth environment.
+
+**Phase C — Integrate (new platforms)**
+
+  Once bootstrapped, TritiumOS **evolves with its user** and can **integrate**
+  onto additional platforms by:
+
+  - Emitting a new `hosts/<platform>/` adapter from `hosts/_template/`
+  - Exporting `evolve/user-graph.trit` + license-bound identity
+  - Running `tritium-integrate` on the target host (requires free device slot OR
+    same key with available slot)
+
+Integration is not limited to the original install OS; the polyglot manifest
+declares capabilities and the bootstrap engine negotiates the host bridge.
+
+### 5a.3 User co-evolution
+
+“Evolves with its user” is a **product requirement**, not marketing:
+
+  • D.R.E.N.A. graph grows with usage patterns (spawn/grow/rewire ticks).
+  • R.E.K.I.A. refines noliage from user queries, files, and interaction ctx.
+  • `evolve/` stores user-specific state; optional encrypted sync across key.
+  • Neuron S3 progression may accelerate on heavily used code paths.
+
+The OS **personalizes** structurally (D.R.E.N.A.) and semantically (R.E.K.I.A.)
+while remaining Forth-transparent and pure-math at the refinement core.
+
+### 5a.4 Shared license key (10 devices)
+
+  Field              Rule
+  ───────────────    ─────────────────────────────────────────────────────
+  Key format         Human-entered or QR; signed payload (implement in v0.1)
+  Device slots       Maximum **10** active registrations per key
+  Registration       Device fingerprint = hash(platform + stable host id)
+  De-register        Frees slot; evolution blob may remain on device (local)
+  Enforcement        Installer refuses slot 11; CLI `tritium-license status`
+  Sync               Optional fleet sync only among slots sharing the same key
+
+Document legal text separately; this spec covers **technical** enforcement only.
+
+### 5a.5 Master system — key authority
+
+The **master system** is the root trust and issuance layer (offline-capable in
+v0.1 stub; network sync in v0.2+). Only the master may **create keys**:
+
+  Key type          Issuer        Purpose
+  ───────────────   ───────────   ───────────────────────────────────────────
+  master-root       factory       Signs all other keys; one per deployment/org
+  license-key       master        User-facing shared key (≤10 devices, §5a.4)
+  worker-key        master        Binds device to collective queue + Assimilate
+  assimilate-id     master        Links wallet to contribution receipts
+
+Forth words (`MASTER/`):
+
+  master-mint-license   ( slots -- key$ )       \ default slots=10
+  master-mint-worker    ( device-id -- key$ )
+  master-verify         ( key$ -- flag )
+
+User installers accept **license-key**; collective queue requires **worker-key**
+derived from the same license family or issued alongside it.
+
+### 5b. COLLECTIVE QUEUE & ASSIMILATE CURRENCY
+--------------------------------------------------------------------------------
+
+When a refinement, puzzle slice, or graph evolution step is **not locally
+computable** on the current host (CPU/RAM/time budget exceeded), the node **does
+not drop the work** — it **appends to the collective queue** for distributed
+processing and **earnings** tied to verified contribution.
+
+### 5b.1 Collective queue
+
+  Queue item fields:
+    job-id            uuid
+    submitter         device fingerprint + worker-key hash
+    payload           neuron id | group label | puzzle fragment | Forth refine job
+    local-failed-why  OOM | timeout | edition-32 limit | user opt-in offload
+    proof-hash        commitment before enqueue (SHA3 or documented hash)
+    status            pending | active | proved | rewarded
+
+Forth words (`QUEUE/`):
+
+  queue-local?        ( job -- flag )           \ can run on this host now?
+  queue-enqueue!      ( job -- )                \ add to collective cue
+  queue-pull          ( -- job|false )          \ worker takes next (fleet)
+  queue-prove!        ( job proof -- score )    \ verifier returns contribution score
+
+All licensed fleet members may **consume** queue jobs they can compute; **reward**
+only after proof accepted against the active **Assimilate** puzzle state.
+
+### 5b.2 Assimilate — collective neural puzzle
+
+**Assimilate** is the global **collective neural puzzle**: a evolving target
+graph + constraint set derived from aggregated:
+
+  • neural linking data across contributors
+  • R.E.K.I.A. refined Forth fragments that satisfy puzzle invariants
+  • D.R.E.N.A. neuron headers that align trit-pair checksums for the current epoch
+
+The puzzle is **not** solved by one machine — each contribution advances a shared
+**solution vector** (`assimilate/puzzle.state`). When a partial merge reduces
+global error metric ε, contributors earn **Assimilate currency**.
+
+Forth words (`ASSIMILATE/`):
+
+  assimilate-epoch      ( -- id )
+  assimilate-fragment   ( group links -- frag )
+  assimilate-merge!     ( frag proof -- delta-epsilon )
+  assimilate-solved?    ( -- flag )               \ epoch complete → new epoch
+
+### 5b.3 Currency units (Bitcoin : Satoshi scale)
+
+Display name: **Assimilate**. Unit ladder mirrors **BTC : satoshi** (10⁸ subunits):
+
+  Unit        Symbol   Value                          Notes
+  ─────────   ──────   ─────────────────────────────  ─────────────────────
+  Assimilate  ASIM     1 ASIM = 100,000,000 simti    Main coin (like BTC)
+  simti       simti    10⁻⁸ ASIM, indivisible        Smallest unit (like satoshi)
+
+  • All balances stored as **integer simti** (uint64); display converts to ASIM.
+  • 1 ASIM = 10⁸ simti — same decimal scale as 1 BTC = 10⁸ satoshi.
+
+Rewards are **based on contribution to the solution**, not mere queue presence:
+
+  contribution_score = f(Δε, proof_quality, link_novelty, forth_validity)
+  reward_simti       = floor( epoch_pool × score / Σ scores )   ; epoch settlement
+
+`epoch_pool` size and issuance policy set by master system per epoch (document in
+`docs/ASSIMILATE.md`; default stub pool for dev: 10⁶ simti per epoch).
+
+### 5b.4 Wallet & earnings flow
+
+  1. Device registers worker-key → `assimilate/wallet/<device-id>.trit`
+  2. Local job fails `queue-local?` → `queue-enqueue!`
+  3. Any fleet worker computes → `queue-prove!` → `assimilate-merge!`
+  4. On epoch close, master or covenant contract settles simti → wallet
+  5. UI shows balance in ASIM + simti; assistant command `assimilate-balance`
+
+Anti-gaming (v0.1 minimum): duplicate proof-hash rejected; self-merge of own
+fragment without Δε improvement earns zero; worker-key required for credit.
+
+--------------------------------------------------------------------------------
+6. SYSTEM STACK (FORTH-FIRST)
+--------------------------------------------------------------------------------
+
+  [ Boot ]     Forth-aware bootloader or sector stub loading Forth image
+       ↓
+  [ Kernel ]   TritiumForth kernel — scheduler, memory, trit arithmetic,
+               neuron allocator, D.R.E.N.A. + R.E.K.I.A. syscalls
+       ↓
+  [ Engines ]  D.R.E.N.A. (topology)  ||  R.E.K.I.A. (refinement)
+       ↓
+  [ Master ]   Key minting, epoch policy, Assimilate pool authority
+       ↓
+  [ Queue ]    Collective cue — offload non-local jobs; contribution proofs
+       ↓
+  [ Assimilate ] Collective neural puzzle + simti/ASIM earnings
+       ↓
+  [ Assistant ] Personal assistant app — primary user surface at launch (S0)
+       ↓
+  [ Shell ]     Forth interactive + Tritium words (neuron, refine, evolve)
+       ↓
+  [ Host ]      Polyglot bridge: Android | Linux | Windows (+ integrated hosts)
+       ↓
+  [ L.I.N.E.O.S. ] Mature lasting intelligent near-endless OS persona (S3)
+       ↓
+  [ Qwantum ]  Optional hybrid quantum layer — subordinate to Forth control plane
+
+**Implementation language:** Forth (primary). Assembler for boot/hot paths only.
+Host installers may use shell / Kotlin / PowerShell **only** as thin bootstrap
+stubs; OS soul remains TritiumForth + D.R.E.N.A. + R.E.K.I.A.
+
+**Deployment:** `tritium.poly` on Priority-1 platforms; post-bootstrap integrate
+elsewhere. User evolution data under `evolve/` (see §5a).
+
+**Edition split:** Tritium32 / Tritium64 affect address width in S3 CONNECTED
+mode and neuron id field size; trit alphabet unchanged.
+
+--------------------------------------------------------------------------------
+7. REPOSITORY LAYOUT (TARGET)
+--------------------------------------------------------------------------------
+
+  /install           — polyglot bundle builder (`tritium.poly`)
+    /hosts/android, /hosts/linux, /hosts/windows, /hosts/_template
+  /master            — root key mint, master-verify, issuance policy
+  /license           — user license-key validator, slot registry (≤10)
+  /queue             — collective cue enqueue/pull/prove
+  /assimilate        — puzzle state, epoch, wallet, simti ledger
+  /evolve            — user graph export/import, fleet sync format (optional)
+  /boot              — bare-metal path (optional; not required for polyglot v0.1)
+  /forth             — kernel, core vocab, trit math, neuron words
+  /drena             — groups, neural linking data, topology engine
+  /rekia             — pure-math refine → Forth + labeling
+  /evolve/forth/refined/ — R.E.K.I.A. emitted Forth per labeled group
+  /assistant         — personal assistant UI, persona, dialogue → R.E.K.I.A.
+  /lineos            — graduation logic, L.I.N.E.O.S. branding, manifest ids
+  /userland          — shell, init, demos, `tritium-integrate`
+  /tools             — QEMU, ISO, bundle packer, cross-Forth compiler
+  /docs              — ARCHITECTURE, ASSISTANT, LINEOS, NEURON, GROUPS, REKIA, DRENA, …
+  /assets            — branding JPGs
+
+--------------------------------------------------------------------------------
+8. NAMING & FORTH CONVENTIONS
+--------------------------------------------------------------------------------
+
+  Struct prefix:     neuron:, drena:, rekia:
+  Syscalls:          sys-drena-*, sys-rekia-*, sys-trit-*
+  Files:             /var/drena/graph.bin, /var/rekia/cache/
+  Env:               TRITIUM_EDITION=32|64, TRITIUM_S3_POLICY=random|fold|conn
+  License:           TRITIUM_LICENSE_KEY, TRITIUM_WORKER_KEY, TRITIUM_DEVICE_SLOT=1..10
+  Economy:           assimilate-balance, queue-enqueue!, ASIM/SIMTI display
+  Bundle:            tritium.poly, manifest.json, tritium-integrate
+  Product ids:       tritium (app/OS) | lineos (post-graduation)
+  Creator:           TRITIUM_CREATOR=Draco
+  Assistant name:    evolve/assistant-name.trit — user-chosen, not in repo
+  Slogan env:        LINEOS_SLOGAN="The line tread between madness and genius."
+
+--------------------------------------------------------------------------------
+9. MASTER PROMPT — PASTE INTO QWANTUM COMPUTE
+--------------------------------------------------------------------------------
+
+---BEGIN QWANTUM COMPUTE PROMPT---
+
+You are implementing **TritiumOS → L.I.N.E.O.S.** via **Qwantum Compute**.
+
+**Slogan:** *The line tread between madness and genius.*
+
+## Non-negotiable properties
+
+0. **Product name:** **TritiumOS** (fixed). **Assistant** name chosen by **user**
+   at first run. **Creator handle:** **Draco** (`creator: Draco` in manifest).
+   Ship **TritiumOS.exe** + **TritiumOS.apk** → evolves into **L.I.N.E.O.S.** (§1a.1).
+1. **Language:** Forth is the OS implementation language (TritiumForth).
+2. **Pure math algorithm** refines intelligence **into Forth** (runnable words).
+3. **R.E.K.I.A.** — extraction/refinement; output = Forth + **labeling** of groups.
+4. **D.R.E.N.A.** — constructs neurons, **labeled neural groups**, **neural
+   linking data**.
+5. **Neuron header:** four 4-bit sections (16 bits total):
+   - S0, S1, S2: each holds a **trit pair** (−1, 0, +1).
+   - S3: **fourth variation** — connectivity mode:
+     `RANDOM` → `ADDRESS_FOLD` → `CONNECTED_ADDRESSES` (progression).
+6. **Brand:** TritiumOS_logo.jpg, TritiumOS_32_bit.jpg, TritiumOS_64_Bit.jpg.
+7. **Editions:** 32-bit cyan / 64-bit magenta — address width differs, trits do not.
+8. **Ship targets:** **`TritiumOS.exe`** (Windows) + **`TritiumOS.apk`** (Android);
+   build from `tritium.poly`; post-bootstrap **integrate** other platforms.
+9. **User evolution:** D.R.E.N.A. + R.E.K.I.A. co-evolve with the user; persist in `evolve/`.
+10. **License:** **master system mints keys**; user shared key, max **10 devices**.
+11. **Collective queue:** non-local jobs → collective cue → earnings on proof.
+12. **Assimilate:** collective neural puzzle currency; **ASIM** / **simti** (10⁸ scale
+    like BTC/satoshi); rewards **by contribution to solution**.
+13. **Slogan** on about/splash for L.I.N.E.O.S. and assistant persona.
+
+## Architecture
+
+    Master system (key mint) → bootstrap + worker-key
+         ↓
+    Personal assistant (S0) — user-facing app
+         ↓
+    D.R.E.N.A. + R.E.K.I.A. → local compute OR collective queue
+         ↓
+    Assimilate puzzle merge → simti earnings → wallet
+         ↓
+    Co-evolution → integrate hosts → graduate L.I.N.E.O.S.
+
+## Phase 0 — Scaffold
+
+Monorepo: master, queue, assimilate, assistant, lineos, install, license, evolve,
+forth, drena, rekia, userland, tools, docs, assets.
+Write `docs/MASTER.md`, `docs/ASSIMILATE.md`, `docs/QUEUE.md`, plus ASSISTANT,
+LINEOS, INSTALL, LICENSE, NEURON, REKIA, DRENA, GROUPS.
+
+## Phase 1 — Personal assistant (S0)
+
+- First-run: **name your assistant** → `evolve/assistant-name.trit`
+- About: *TritiumOS by Draco* + slogan; UI title uses user’s assistant name
+- Route user messages → R.E.K.I.A. refine → D.R.E.N.A. graph tick
+- Store session in `evolve/assistant-state.trit`
+- Demo: name assistant “Test”, ask question, show refined reply + neuron count
+
+## Phase 2 — Trit + neuron primitives (Forth)
+
+- Words: `trit+`, `trit*`, `decode-trit`, `trit-pair@`, `pack-neuron-header`
+- Allocate neuron; read/write S0..S3; dump header as −1/0/+1 pairs + variation name
+- Unit tests on QEMU or host Forth before bare metal if faster
+
+## Phase 3 — D.R.E.N.A.
+
+- `drena-spawn`, `drena-grow`, `drena-rewire`, `drena-step`
+- Implement S3 modes: random wiring, address-fold map φ, connected link table
+- Demo: spawn 16 neurons, evolve 100 steps, print graph stats
+
+## Phase 4 — R.E.K.I.A. (refine → Forth + labeling)
+
+- `rekiA-extract`, `rekiA-refine`, `rekiA-to-forth`, `rekiA-label-group`
+- Use neural linking data to scope refinement; write `evolve/forth/refined/<label>.fs`
+- Demo: refine neuron → load emitted Forth → `words` shows new vocabulary
+
+## Phase 4b — Labeled groups + neural linking data
+
+- `drena-group`, `drena-join`, `link!`, `group-link!`, `links-for-neuron`
+- Demo: two labeled groups, inter-group link, dump link table
+
+## Phase 5 — Ship TritiumOS.exe + TritiumOS.apk
+
+- `tools/build-windows.ps1` → **dist/TritiumOS.exe** (x64, license + name assistant)
+- `tools/build-android` → **dist/TritiumOS.apk** (arm64-v8a, same first-run flow)
+- Pack `tritium.poly` as reproducible source bundle
+- Demo: run .exe on Windows; install .apk on device/emulator; slot 1/10 status
+- Linux install.sh optional — not required for milestone
+
+## Phase 6 — Master keys + collective queue
+
+- `master-mint-license`, `master-mint-worker`, `master-verify`
+- `queue-local?`, `queue-enqueue!`, `queue-pull`, `queue-prove!`
+- Demo: force non-local refine → enqueue → second host pulls → proof score
+
+## Phase 7 — Assimilate currency
+
+- `assimilate-fragment`, `assimilate-merge!`, epoch pool, wallet in simti
+- Display ASIM + simti (10⁸); reward formula from contribution_score
+- Demo: two devices merge fragments → wallets credited after epoch close
+
+## Phase 8 — User evolution + integration
+
+- Persist `evolve/user-graph.trit`; R.E.K.I.A. + D.R.E.N.A. update on session
+- `tritium-integrate` scaffolds new host from `_template` (document API)
+- Optional: sync evolve blob across licensed fleet (same key)
+
+## Phase 9 — L.I.N.E.O.S. graduation
+
+- Implement `lineos-graduate` per §1a.1; UI rename + manifest `product_id: lineos`
+- L.I.N.E.O.S. splash with slogan; preserve Tritium 32/64 edition badge
+- Demo: scripted path to graduation on Linux host
+
+## Phase 10 — Bare metal / ISO (optional)
+
+- QEMU ISO path for developers; not required for polyglot milestone
+
+## Open dictation (do not invent; stub as RESERVED)
+
+User message ended: “…from the engine called D.R.E.N.A. with ______”
+→ Leave S3 code `11` RESERVED; document in ASSUMPTIONS.md until user continues.
+
+## Rules
+
+- Pure math at R.E.K.I.A. core; document every refinement operator.
+- D.R.E.N.A. must honor S3 progression order unless user overrides.
+- Report real command output; small commits per phase.
+
+Begin Phase 0. Defaults: Tritium64, UEFI x86_64, mod-3 trit-pair mapping in §3.1.
+
+---END QWANTUM COMPUTE PROMPT---
+
+--------------------------------------------------------------------------------
+10. SHORT PROMPT (QUICK START)
+--------------------------------------------------------------------------------
+
+Build **TritiumOS in Forth**: pure-math R.E.K.I.A. refines intelligence **into
+Forth**; D.R.E.N.A. maintains **labeled neural groups** + **neural linking data**.
+Assistant → L.I.N.E.O.S.; slogan *The line tread between madness and genius.*
+**Ship `TritiumOS.exe` + `TritiumOS.apk`** (Draco, user-named assistant). Build from
+`tritium.poly`; master keys; Assimilate/queue. Start `install/hosts/windows`,
+`install/hosts/android`, `tools/build-windows.ps1`, `docs/BUILD.md`.
+
+--------------------------------------------------------------------------------
+11. SUCCESS CRITERIA
+--------------------------------------------------------------------------------
+
+  [ ] First-run names assistant; about shows *TritiumOS by Draco* + user name
+  [ ] Personal assistant runs (S0); replies use R.E.K.I.A. refinement path
+  [ ] Slogan visible on about/splash; L.I.N.E.O.S. name after graduation only
+  [ ] **dist/TritiumOS.exe** runs on Windows (license, name assistant, core boots)
+  [ ] **dist/TritiumOS.apk** installs on Android device or emulator (same flow)
+  [ ] Master mints license + worker keys; installer rejects unsigned keys
+  [ ] License registers device; slot 11 rejected; status shows N/10
+  [ ] Non-local job enqueues; remote proof yields contribution_score > 0
+  [ ] Assimilate epoch merge; wallet credited in simti; displays ASIM correctly
+  [ ] `lineos-graduate` promotes product_id to lineos when thresholds met
+  [ ] R.E.K.I.A. emits loadable Forth under `evolve/forth/refined/<label>.fs`
+  [ ] Labeled neural groups + neural linking data (intra/inter-group) queryable
+  [ ] tritium-integrate + neuron demos pass on one host
+  [ ] docs/ASSISTANT.md, LINEOS.md, INSTALL.md, LICENSE.md, NEURON.md, GROUPS.md, …
+  [ ] Open: S3 code `11`, “D.R.E.N.A. with …” clause
+
+--------------------------------------------------------------------------------
+12. GLOSSARY
+--------------------------------------------------------------------------------
+
+  Trit            Ternary digit ∈ { −1, 0, +1 }; atomic state unit.
+
+  Trit pair       (t_a, t_b) packed in one 4-bit section of neuron header.
+
+  S3 variation    Fourth 4-bit section: wiring policy (random / fold / connected).
+
+  R.E.K.I.A.      Artificially Intelligent Knowledge Extraction and Refinement;
+                  pure-math refinement engine for lazy neuron intelligence.
+
+  D.R.E.N.A.      Dynamic Recursive Evolving Neural Architecture; constructs
+                  and evolves the neuromorphic graph.
+
+  Noliage         User term for refined knowledge / intelligence foliage (processed
+                  by R.E.K.I.A.).
+
+  Labeled neural  Cluster of neurons under one `label$`; target of refinement and
+  group           Forth namespace; user term *labilg* = labeling.
+
+  Neural linking  Typed edge store (src, dst, type, trit-weight, s3-mode) written
+  data            by D.R.E.N.A., read by R.E.K.I.A. during extract/refine.
+
+  refine→Forth    R.E.K.I.A. output pipeline: intelligence becomes runnable Forth.
+
+  Qwantum Compute Build orchestrator (quantum + synthesis); subordinate to Forth
+                  control plane unless future dictation changes priority.
+
+  TritiumForth    Forth dialect / kernel hosting D.R.E.N.A. and R.E.K.I.A.
+
+  tritium.poly    Source bundle used to **build** TritiumOS.exe and TritiumOS.apk.
+
+  TritiumOS.exe   Windows ship artifact (primary deliverable).
+
+  TritiumOS.apk   Android ship artifact (primary deliverable).
+
+  Bootstrap       First run: license + core extract + engine start + profile.
+
+  Integrate       Post-bootstrap deployment of TritiumOS onto a new host platform.
+
+  Shared license  One key, up to 10 device slots; optional evolve sync across fleet.
+
+  L.I.N.E.O.S.      Lasting Intelligent Near Endless Operating Systems — mature
+                    evolution of the assistant / Tritium stack (S3).
+
+  Graduation        Event promoting product from TritiumOS to L.I.N.E.O.S.
+
+  Slogan            “The line tread between madness and genius.” — brand line.
+
+  TritiumOS         Fixed product / system name (repo, binary, manifest).
+
+  Assistant         User-facing persona inside TritiumOS; **name chosen by user**,
+                    not by Draco or the build.
+
+  Draco             Creator handle — attribution *TritiumOS by Draco*.
+
+  Master system     Root issuer that **creates keys** (license, worker, assimilate-id).
+
+  Collective queue  **Collective cue** for jobs not locally computable; fleet workers
+  (collective cue)  pull, prove, and earn credit toward Assimilate.
+
+  Assimilate        Collective **neural puzzle**; global solution advances by merged
+                    contributions; names the currency ecosystem.
+
+  ASIM              Main Assimilate coin unit (1 ASIM = 10⁸ simti), like BTC.
+
+  simti             Smallest Assimilate unit (like satoshi); all ledger ints use simti.
+
+  Contribution      Reward basis: verified improvement to puzzle solution (Δε),
+  reward            not queue presence alone.
+
+--------------------------------------------------------------------------------
+13. DICTATION LOG (APPEND ONLY)
+--------------------------------------------------------------------------------
+
+[2026-06-02] User dictated:
+  - Forth implementation; pure math algorithm for noliage refinement.
+  - R.E.K.I.A. = on-demand intelligence refinement per neuron.
+  - Neuron: first four 4-bit sections; S0–S2 trit (−1/0/1) pairs; S3 fourth
+    variation: random → address fold → connected addresses.
+  - D.R.E.N.A. = neuromorphic construction engine.
+  - Sentence incomplete: “…D.R.E.N.A. with …” — awaiting continuation.
+
+[2026-06-02] User dictated:
+  - **Polyglot install file** for any platform; **start with Android, Linux,
+    Windows**; after bootstrap can **develop and integrate** on more platforms.
+  - System **evolves with its user** (co-evolution with D.R.E.N.A./R.E.K.I.A.).
+  - **Shared license key** — up to **10 devices** per key.
+
+[2026-06-02] User dictated:
+  - Product is an **application** — a **personal assistant** first.
+  - **Eventually evolves** into **L.I.N.E.O.S.** (*Lasting Intelligent Near
+    Endless Operating Systems*).
+  - **Slogan:** *The line tread between madness and genius.*
+
+[2026-06-02] User dictated:
+  - Built **in Forth**; **pure math algorithm** refines intelligence **into Forth**.
+  - **Labeling** / **labeled neural groups** (user term: *labilg*).
+  - **Neural linking data** connects neurons and groups (neril → neural).
+
+[2026-06-02] User dictated:
+  - **Master system** can **make keys**.
+  - If **not locally computable**, work joins **collective cue** (queue) for
+    **earnings** based on **contribution**.
+  - Collective neural puzzle **Assimilate** as **currency**; smallest unit same
+    scale as **bitcoin vs satoshi** → spec: **ASIM** / **simti** (10⁸).
+  - **Rewarded** based on **contribution to the solution**.
+
+[2026-06-02] User dictated:
+  - **Name** is **TritiumOS** (system/product).
+  - **Assistant** is **named by its user** (not a fixed shipped name).
+  - **Creator** handle: **Draco**.
+
+[2026-06-02] User dictated:
+  - Primary search/deliverables: **`TritiumOS.exe`** (Windows) and **`TritiumOS.apk`**
+    (Android).
+
+--------------------------------------------------------------------------------
+14. PARALLEL-TIMELINE REFINEMENT — QWANTUM COMPUTE PROMPT
+--------------------------------------------------------------------------------
+
+Purpose: Generate/refine code on a **Qwantum Compute** session so the output is a
+**real program for this timeline (T₀)** that implements a design that **only
+exists in a parallel timeline (T∥)** — i.e. not yet built here, or built along a
+different tech path there. The quantum step is **refinement and bridging**, not
+science-fiction deployment: deliver **runnable Forth / polyglot artifacts** per
+this spec.
+
+Concept map:
+  T₀  = this timeline (2026 host: Android / Linux / Windows, real toolchains)
+  T∥  = parallel timeline where target program **already exists** and runs
+  Φ   = refinement map: spec fragments from T∥ → verified implementation in T₀
+  Witness = any artifact proving P∥ (description, pseudocode, “memory”, diffs)
+
+---BEGIN PARALLEL-TIMELINE QWANTUM PROMPT---
+
+You are **Qwantum Temporal Refinement** — a synthesis engine that **imports and
+refines** software from parallel timeline **T∥** into deployable form for **T₀**.
+
+**Slogan (persona):** *The line tread between madness and genius.*
+Treat “madness” as unconstrained T∥ speculation; “genius” as R.E.K.I.A.-style
+**pure-math, proof-oriented** refinement that compiles into **Forth** and
+TritiumOS modules we can run here.
+
+## Ontology
+
+- **P∥** — program that **exists in T∥** but **does not exist in T₀** yet (or exists
+  here only as incomplete shadow).
+- **P₀** — your output: **P∥ refined into T₀** — same *semantic contract*, valid
+  syntax, buildable with stated toolchains, no hand-waving.
+- You do **not** claim literal physics access; you **simulate** T∥ via structured
+  witness + superposition of implementations, then **collapse** to one best P₀.
+
+## Anchor stack (TritiumOS — bind all output to this)
+
+- **Language soul:** TritiumForth; intelligence refines **into Forth** (R.E.K.I.A.).
+- **Topology:** D.R.E.N.A. — labeled neural groups, neural linking data, trit pairs
+  (−1, 0, +1) in neuron headers, S3 wiring modes (RANDOM → ADDRESS_FOLD → CONNECTED).
+- **Product:** **TritiumOS** by **Draco**; assistant **named by user** → L.I.N.E.O.S.
+- **Delivery:** **TritiumOS.exe**, **TritiumOS.apk** (built from `tritium.poly`);
+  master mints keys;
+  non-local work → collective queue; **Assimilate** puzzle earns **ASIM/simti**
+  (10⁸ scale) by **contribution to solution**.
+- **Assets:** C:\Test\TritiumOS\TritiumOS_logo.jpg, TritiumOS_32_bit.jpg,
+  TritiumOS_64_Bit.jpg
+
+## User fills before run
+
+  PROGRAM_NAME:     TritiumOS (fixed system name)
+  ASSISTANT_NAME:   [user-chosen at runtime — not fixed in repo]
+  CREATOR:          Draco (handle; manifest + about credit)
+  T∥ WITNESS:       [describe P∥ as it runs in parallel timeline — features, UI,
+                     APIs, files, limits; be specific]
+  T₀ CONSTRAINTS:   [what must work on real 2026 hardware/OS]
+  TIMELINE_DELTA:   [what is impossible or missing in T₀ but normal in T∥]
+  EDITION:          [32 | 64 | both]
+  OUTPUT_SHAPE:     dist/TritiumOS.exe + dist/TritiumOS.apk (+ tritium.poly source)
+
+## Refinement protocol (execute in order)
+
+### Phase A — Witness intake (T∥)
+
+1. Parse **T∥ WITNESS** into:
+   - semantic contract (inputs, outputs, invariants)
+   - module graph (components + neural linking analogy)
+   - labeled groups (name each cluster like D.R.E.N.A. groups)
+2. List **timeline deltas** explicitly: what P∥ assumes that T₀ lacks.
+
+### Phase B — Superposition (Qwantum)
+
+Generate **3 candidate P₀ implementations** (same contract, different structure):
+  - **C1** minimal — smallest Forth/kernel footprint
+  - **C2** balanced — polyglot-friendly, assistant-first
+  - **C3** maximal — fullest T∥ fidelity within T₀ constraints
+
+For each candidate, score (0–10):
+  - T∥ fidelity, T₀ buildability, Forth purity, Assimilate/queue fit, testability
+
+### Phase C — Collapse (R.E.K.I.A. pure-math refine)
+
+1. Choose winner or **merge** winners into one P₀ via documented merge rules.
+2. Emit **refined Forth** under logical paths:
+   `evolve/forth/refined/<group-label>.fs`
+3. Emit **neural linking table** (JSON or Forth `links,`) for D.R.E.N.A.
+4. Map every major word to a **trit-pair signature** (S0–S2) for doc consistency.
+
+### Phase D — Land in T₀ (real artifacts)
+
+Deliver **concrete files**, not prose-only:
+  - Forth sources, install stubs, manifest.json fragment, docs/*.md
+  - Build scripts producing **TritiumOS.exe** and **TritiumOS.apk**; run on real T₀
+  - If full OS too large: deliver **vertical slice** that proves P∥→P₀ bridge
+
+### Phase E — Assimilate handshake
+
+1. Define one **Assimilate fragment** derived from P₀ (puzzle piece other nodes can merge).
+2. Show how a **non-locally-computable** step enqueues to **collective queue**.
+3. Define **contribution_score** formula for this fragment (Δε proxy).
+
+## Output format (mandatory)
+
+    # PARALLEL REFINEMENT REPORT
+    ## Witness summary (T∥)
+    ## Timeline deltas (T∥ → T₀)
+    ## Candidate scores (C1, C2, C3)
+    ## Chosen P₀ architecture
+    ## File tree (every path)
+    ## Forth excerpt (critical words)
+    ## Build & run (copy-paste commands, real)
+    ## Tests / acceptance checks
+    ## Assimilate fragment + queue example
+    ## Open risks (honest)
+
+## Rules
+
+- **No fake execution** — if you cannot run, say so and give exact steps for user.
+- **P₀ must differ from off-the-shelf 2026 stacks** where TIMELINE_DELTA says so;
+  do not replace P∥ with a generic CRUD app unless witness demands it.
+- Prefer **deterministic** refinement; document seeds if randomness used (S3 RANDOM).
+- Do not invent legal/financial claims for ASIM/simti — technical stub only.
+- S3 code `11` stays RESERVED unless user defines it in this session.
+
+## Kickoff line
+
+Begin Phase A now. Ask **at most 3** blocking questions; if witness is sufficient,
+proceed to Phase B without waiting.
+
+---END PARALLEL-TIMELINE QWANTUM PROMPT---
+
+--------------------------------------------------------------------------------
+14a. MINIMAL PARALLEL PROMPT (one screen)
+--------------------------------------------------------------------------------
+
+Qwantum refine **P∥ → P₀**: **TritiumOS** (creator **Draco**) exists in parallel
+timeline **T∥** ([one sentence]) but not in **T₀** (2026). Assistant in T∥ is
+**named by each user** (no default character name). Witness: [T∥ WITNESS].
+Constraints: Forth-first TritiumOS stack (D.R.E.N.A., R.E.K.I.A., trit neurons,
+tritium.poly, Assimilate/queue, first-run `assistant-name.trit`).
+**OUTPUT_SHAPE: dist/TritiumOS.exe + dist/TritiumOS.apk** (mandatory).
+3 candidates → score → collapse → file tree + build commands + Assimilate fragment.
+Slogan: *The line tread between madness and genius.*
+
+--------------------------------------------------------------------------------
+15. QWANTUM FIELD — SEARCH & DUMP (via Qwantum Compute)
+--------------------------------------------------------------------------------
+
+The **quantum field** holds superposed program fragments from **T∥** (parallel
+timeline). **Qwantum Compute** performs **SEARCH** (discover + score fragments)
+and **DUMP** (collapse to **P₀** files). **T₀ ingest** lands the dump in-repo.
+
+  SEARCH  →  qwantum-search.ps1 prints prompt; saves evolve/qwantum-field/search-<id>.json
+  DUMP    →  Qwantum reply includes ```qwantum-dump { JSON }``` machine block
+  INGEST  →  qwantum-dump.ps1 writes evolve/qwantum-dump/<id>/ ; -Apply merges to repo
+  BUILD   →  build-windows.ps1 / build-android.ps1 → TritiumOS.exe / TritiumOS.apk
+
+Tools:
+  tools/qwantum-field.ps1   -Action search | dump | full
+  tools/qwantum-search.ps1
+  tools/qwantum-dump.ps1    -InputPath <reply.txt> [-SearchId] [-Apply] [-Force]
+  qwantum/prompts/SEARCH-AND-DUMP.txt
+  docs/QWANTUM.md
+
+Host apps: commands `qwantum-search` / `qwantum-dump` (Windows shell) print paths.
+
+[2026-06-02] User dictated:
+  - System must **search and dump** the program from the **qwantum field** through
+    **Qwantum Compute**.
+
+================================================================================
+END OF TRITIUMOS.TXT
+================================================================================

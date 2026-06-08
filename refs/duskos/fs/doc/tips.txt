@@ -1,0 +1,69 @@
+# Tips and tricks
+
+A Forth system is very different from a UNIX one and a new operator might have
+troubles figuring out how to work efficiently in Dusk. Hopefully, those tips and
+tricks will help.
+
+## A memory-based system
+
+Don't forget that this is a memory based system. You're playing with addresses
+in memory, not files. Trying to build yourself elaborate systems around files
+is unforth-ish.
+
+## Streams are a good way to shove bytes around
+
+Although files are not important in Dusk, the ubiquity of "read" and "write"
+is present in Dusk in the form of [io/stream].
+
+This abstraction allows us to use a unified API for shoving bytes around in all
+kinds of peripherals.
+
+## Be messy
+
+Dusk units don't leak memory, but you can. You have so much memory around, you
+shouldn't concern yourself with leaking memory. Just use that thing.
+
+Also, don't be afraid of playing in the guts of your memory, realiasing system
+words to test things on your live system. Doing so makes the system unstable?
+No problem, rebooting is cheap if you follow the tips below.
+
+So, be messy, break your system, reboot often. The filesystem has no cache,
+the system is not hurt when it crashes. If you ran "edsave", your work is
+saved to disk without anything dangling around.
+
+## Living init script
+
+An interesting way of working with Dusk is to not be afraid of modifying your
+init.fs file often. By that, I mean to "boot yourself" into your current work.
+
+By that, I mean loading [text/ed] with all the files you need, setting up all
+the monkeypatching you need for the current work at hand. This way, the second
+you reboot, you're ready to resume your work without the distraction of setting
+yourself up for work.
+
+... but there's a caveat. If you modify your init.fs often, it means you often
+run the chance of introducing an error in it. Errors in the init.fs file can
+prevent you from booting.
+
+But! due to the way Dusk is built, as long as your error happens after the
+"prompt$" call from [app/prompt], an abort will get you to a prompt, which means
+you can recover from your error.
+
+Therefore, the "living" part of your init.fs should be after "prompt$". When you
+modify something before it, be more careful as to not brick yourself out.
+
+An even better way to proceed is to make [app/gcon] your console. Then, your
+"easing in" code at boot time isn't in init.fs, but in init.txt, a simple text
+file that cannot fail loading, but still contains all the useful commands and
+templates that you need for your work at hand.
+
+## Debugging an abort at load time
+
+You are puzzled by an abort that happens when you load a particular unit. It has
+dependencies, so it could happen anywhere! Try this:
+
+  1 echoin !
+  needs my/unit
+
+This will make all code being interpreted being spat on the console. You will
+then quickly see the exact moment when the abort occurs.

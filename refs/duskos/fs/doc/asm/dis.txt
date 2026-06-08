@@ -1,0 +1,11 @@
+# Disassembler loader
+
+This unit is a generic front to the diassembler that corresponds to the current
+system. It contains aliases to "dis" and "disn". If there is not available
+assemblers, those words are errors and noops.
+
+## See also
+
+* [asm/x86d]
+* [asm/armd]
+* [asm/riscvd]

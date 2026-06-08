@@ -1,0 +1,56 @@
+# Address Resolution Protocol
+
+This unit contains an ivalmap [lib/ival] pointing to [com/ip4]'s active frame
+payload as well as a cache that store mappings received from ARP replies.
+
+## API
+
+### ivalmap of an ARP structure
+
+This ivalmap points to [com/link]'s active frame's payload.
+
+addrof payloadptr ivalmap {
+  beshort HRD PRO ;
+  uchar HLN PLN ;
+  beshort OP ;
+  [void,0] SHA ;
+}
+
+Because SHA, SPA, THA and TPA are of variable length, the 3 last fields can't
+be regular ivalmap fields
+
+### Constants
+
+ARPCACHECNT  Maximum number of entries that the cache can contain.
+ARPSZ        Size in bytes of a regular ethernet ARP request/reply
+
+### Words
+
+SPA
+THA
+TPA ( -- a )
+  Yield the address of the 3 last fields of the ivalmap, taking HLN and PLN in
+  account.
+
+.arpcache ( -- )
+  Print all mapping stored in the ARP cache.
+
+arpadd ( ipaddr macaddr -- )
+  Add a new mapping to the ARP cache. Aborts if there's no more space.
+
+?arpadd ( ipaddr macaddr -- )
+  If ipaddr doesn't exist in cache, add mapping. Otherwise, update mapping with
+  specified macaddr.
+
+arplookup ( ipaddr -- macaddr-or-0 )
+  Look for ipaddr in cache. If it exists, yield the associated mac address.
+  Otherwise, yield 0.
+
+arprequest ( ipaddr link -- )
+  Send a ARP request for the specified IP4 addr on the specified link
+  [com/link].
+
+handlearp ( -- )
+  Plugged into [com/net]'s incoming handlers, handle incoming ARP requests
+  and reply. Requests are replied to if they're querying selfaddr [com/ip4].
+  Replies are stored in the ARP cache.

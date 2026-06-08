@@ -1,0 +1,130 @@
+# ARM HAL implementation
+
+HAL opcode structure (close to ARM structure)
+b3:0   Number bank index
+b4     Zero
+b5     Rn is an absolute memory addr in bank if set
+b11:6  Zeroes
+b15:12 Rd (destination register)
+b19:16 Rn (source register)
+b21:20 Zeroes
+b22    8-bit if set
+b23    dir)
+b24    &)
+b25    Immediate if set
+b26    32-bit if set, 16-bit if unset
+b27    signed)
+b31:28 Cond
+
+Register assignment:
+r13=RSP r10=PSP r9=W r11=A r8=S r7=SYSVARS
+r0=the main tmp register. Indirect ops values go there, big immediates too.
+r1=the backup tmp register. used in le@/be@ and in range ops.
+r5=tmp register during 8b)/16b) lrot/rrot
+
+Rn< ( n -- n<<16 )
+Rd< ( n -- n<<12 )
+Rn! ( op n -- op )
+Rd! ( op n -- op )
+Rn@ ( op -- n )
+Rd@ ( op -- n )
+
+bbl, ( a o -- )
+  Write a B or BL instr, with "o" being either $ea000000 or $eb000000, targeting
+  absolute addr "a".
+
+?off, ( op instr -- op instr off )
+  If "op" indicates that we should add an offset to LDR/STR "instr", do so,
+  while possibly writing down instructions and yield the offset that was
+  written.
+
+>ldrh ( instr -- instr )
+  Transform a regular LDR/STR instruction into a LDRH/STRH one, that is:
+
+  1. If it has a sub-8bit immediate offset, set the proper form and split it
+     in half, as the encoding demands.
+  2. If if has a immediate offset, which means sub-12bit, but that it's over
+     8bit, wrap that offset in a "imm," and transform this instruction in a
+     register-offseted one.
+  3. If it has a register offset, leave it be
+  4. If "op" is signed, set the "S" bit
+  5. If "op" is HAL8B, unset the "H" bit
+
+ldrstr, ( op instr -- )
+  Write down a LDR or STR instruction corresponding to "op", with "instr" as
+  a base. A "neutral" instr is e5900000, but it can be something else if you
+  wand to add, for example, pre/post increments.
+
+immrot ( n -- imm+rot rest ) *Z*
+  Spits "n" into an immediate and rotation field compatible with arithmetic
+  instructions of the Data Processing type.
+
+  Z if set if rest is 0.
+
+addlit, ( dstreg n -- )
+  Compile an addition of number "n" to register "dstreg".
+
+imm, ( dstreg n -- )
+  Compile number "n" being set to register "dstreg".
+
+op, ( op instr -- )
+  merge operand with instr and write
+
+?r0>src, ( op -- )
+  If op is dir), store r0 to its source.
+
+preari ( op instr -- origop instr op )
+  Prepares "op" for writing instruction "instr" with it, applying all necessary
+  logic, modifying "op" so that afterwards, "op" is ready to be sent to "op,".
+
+  "origop" is the *almost* original op. It only had ?mem>rn applied to it. The
+  reason for its existence is that it should be passed to "?r0>src," after
+  you've ran "op," so that it can generate its "writeback" operation if "dir)"
+  was used. We apply "?mem>rn" to is to that we don't set r1 twice.
+
+ari, ( op instr -- )
+  Write arithmetic operation, that is, apply "preari", then "op,", then
+  "?r0>src,",
+
+eor, ( rd rm -- )
+  Write a "eor) rd rdn) rm rm) ,)".
+
+shift, ( op mask -- )
+  Write a "mov) dst rd) dst rm) src shiftmask)". That's what e1b00000 is.
+  After the initial Rd and mask orr-ing in, we're set for everything except
+  b11:6 and b4, which values depend on whether we have HALIMM set. Stack before
+  the HALIMM check is ( op opcode ).
+
+hbank$ ( op -- op )
+  Set all hbank-related bits to 0.
+
+?mem>rn ( op -- op )
+  Checks if operand is m). If it is, compile a write of this value to r1 and
+  set Rn to r1.
+
+rn>r1, ( op -- op )
+  Compile a @, on "op" being dereferenced and stripped of HALINV with r1 as a
+  destination. Then, yield "op" witn Rn being r1 and its offset field being
+  zeroed out.
+
+?rn>r1 ( op -- op )
+  If op's Rn is the same as Rd, run rn>r1,
+
+?bigoff>r1 ( op -- op )
+  If op's offset doesn't fit in a single LDR/STR, run rn>r1.
+
+lrot, ( op -- )
+  For rotation to the left, the native ror instruction is used but the amount
+  is first computed such that "amt = 32 - amt". If a smaller destination is
+  required, e.g. 8b)/16b) dir), the same method as in RISC-V rotation is used.
+  Register r5 is clobbered for smaller destinations, see [hw/arm.txt].
+
+  e1a01010 mov) r1 rd) r0 rm) r0 rlsl)
+  e2605000 rsb) r5 rd) r0 rn) 0 imm)
+  e1810530 orr) r0 rd) r1 rn) r0 rm) r5 rlsr)
+
+rrot, ( op -- )
+  Same rules apply for clobbering. See comment on lrot, above.
+
+  e1a01030 mov) r1 rd) r0 rm) r0 rlsr)
+  e1810510 orr) r0 rd) r1 rn) r0 rm) r5 rlsl)

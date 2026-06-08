@@ -1,0 +1,587 @@
+( Source: https://git.sr.ht/~rabbits/turye
+  Files: src/turye.tal src/manifest.tal src/assets.tal
+  License: /licenses/uxn.txt )
+
+|00 @System/vector $2 &expansion $2 &wst $1 &rst $1 &metadata $2 &r $2 &g $2 &b $2 &debug $1 &state $1
+|20 @Screen/vector $2 &width $2 &height $2 &auto $1 &pad $1 &x $2 &y $2 &addr $2 &pixel $1 &sprite $1
+|80 @Controller/vector $2 &button $1 &key $1
+|90 @Mouse/vector $2 &x $2 &y $2 &state $1 &pad $3 &sx $2 &sy $1 &sy-lb $1
+|a0 @File/vector $2 &success $1 &success-lb $1 &stat $2 &delete $1 &append $1 &name $2 &length $2 &read $2 &write $2
+|0012 @header/height
+|008a @MARGIN
+
+|000
+
+  @glyph/sel $1
+  @guide/height $1
+  @src/buf $40 &cap $1 &changed $1
+
+|100
+
+@on-reset ( -> )
+  #f0b9 .System/b DEO2
+  #f0ec .System/g DEO2
+  #f0a8 .System/r DEO2
+  #0210 #01d0 window/<set-size>
+  ( | unlock )
+  ;on-button .Controller/vector DEO2
+  ;editor/on-mouse .Mouse/vector DEO2
+  ( | defaults )
+  [ LIT2 0b -guide/height ] STZ
+  src/<unchange>
+  [ LIT "a ] glyph/<select> <redraw-all>
+  BRK
+
+@nolbl $1
+@manifest/dat ( . )
+  ={ =nolbl
+  ( - ) 01 "q =project/<quit> =nolbl }
+  ={ =nolbl
+  ( - ) 01 "c =snarf/<copy> =nolbl
+  ( - ) 01 "v =snarf/<paste> =nolbl
+  ( - ) 01 "x =snarf/<cut> =nolbl
+  ( - ) 00 7f =glyph/<erase> =nolbl }
+  ={ =nolbl
+  ( - ) 11 00 =glyph/<drag-u> =nolbl
+  ( - ) 21 00 =glyph/<drag-d> =nolbl
+  ( - ) 41 00 =glyph/<drag-l> =nolbl
+  ( - ) 81 00 =glyph/<drag-r> =nolbl
+  ( - ) 42 00 =glyph/<decr-width> =nolbl
+  ( - ) 82 00 =glyph/<incr-width> =nolbl }
+  ={ =nolbl
+  ( - ) 10 00 =glyph/<move-u> =nolbl
+  ( - ) 20 00 =glyph/<move-d> =nolbl
+  ( - ) 40 00 =glyph/<move-l> =nolbl
+  ( - ) 80 00 =glyph/<move-r> =nolbl }
+  ={ =nolbl
+  ( - ) 12 00 =guide/<incr-height> =nolbl
+  ( - ) 22 00 =guide/<decr-height> =nolbl }
+  $1
+
+(
+@|vectors )
+
+@on-button ( -> )
+  .Controller/button DEI2 manifest/scan INC2k ORA ?{
+    POP2 .Controller/key DEI pangram/<push>
+    BRK }
+  ( * ) JSR2 BRK
+
+(
+@|src )
+
+@src/change ( -- )
+  .&changed LDZ ?{
+    [ LIT2 01 -&changed ] STZ !header/<draw> }
+  JMP2r
+
+@src/<unchange> ( -- )
+  .&changed LDZ ?{ JMP2r }
+  [ LIT2 00 -&changed ] STZ !header/<draw>
+
+(
+@|project )
+
+@project/<quit> ( -- )
+  #800f JMP2r
+
+(
+@|glyph )
+
+@glyph/<erase> ( -- )
+  glyph/get-addr #0020 <mclr>
+  src/change !<redraw>
+
+@glyph/<drag-u> ( -- )
+  glyph/get-addr STH2
+  #2000
+  &>ldu
+    #00 OVR STH2kr ADD2 INC2k LDA
+    ( save ) ROT ROT STA
+    INC GTHk ?&>ldu
+  POP2
+  ( cap ) #00 STH2r #001f ADD2 STA !<redraw>
+
+@glyph/<drag-d> ( -- )
+  glyph/get-addr STH2
+  #2000
+  &>ldd
+    ( load ) #00 OVR #1f SWP SUB STH2kr ADD2 LDAk
+    ( save ) ROT ROT INC2 STA
+    INC GTHk ?&>ldd
+  POP2 #00 STH2r STA !<redraw>
+
+@glyph/<drag-l> ( -- )
+  #10 !&shift
+
+@glyph/<drag-r> ( -- )
+  #01
+  &shift ( dir -- )
+  ,&dir STR
+  glyph/get-addr STH2
+  #1000
+  &>ls
+    #00 OVR STH2kr ADD2
+    ( left* right* ) DUP2 #0010 ADD2
+    ( load ) LDAk STH
+    SWP2 LDAk STHr
+    ( shift ) [ LIT &dir $1 ] SFT2
+    ( save ) STH
+    ROT ROT STA
+    STHr ROT ROT STA
+    INC GTHk ?&>ls
+  POP2 POP2r !<redraw>
+
+@glyph/<decr-width> ( -- )
+  [ LIT2 00 -&sel ] LDZ ;data/widths ADD2 LDAk
+  ( clamp ) DUP ?{ POP POP2 JMP2r }
+  #01 SUB ROT ROT STA !<redraw>
+
+@glyph/<incr-width> ( -- )
+  [ LIT2 00 -&sel ] LDZ ;data/widths ADD2 LDAk
+  ( clamp ) DUP #10 NEQ ?{ POP POP2 JMP2r }
+  INC ROT ROT STA !<redraw>
+
+@glyph/<move-u> ( -- )
+  .&sel LDZ #10 SUB !/<select>
+
+@glyph/<move-d> ( -- )
+  .&sel LDZ #10 ADD !/<select>
+
+@glyph/<move-l> ( -- )
+  .&sel LDZ #01 SUB !/<select>
+
+@glyph/<move-r> ( -- )
+  .&sel LDZ INC !/<select>
+
+@glyph/<select> ( glyph -- )
+  DUP .&sel LDZ NEQ ?{ POP JMP2r }
+  .&sel STZ !<redraw>
+
+@glyph/get-addr ( -- addr* )
+  [ LIT2 00 -&sel ] LDZ #50 SFT2 ;data/glyphs ADD2 JMP2r
+
+@glyph/get-width ( -- width )
+  [ LIT2 00 -&sel ] LDZ ;data/widths ADD2 LDA JMP2r
+
+(
+@|Collection )
+
+@collection/on-mouse ( -> )
+  cursor/<update>
+  .Mouse/state DEI ?{ BRK }
+  ( | detect inside frame )
+  ( x ) .Mouse/x DEI2 #0008 SUB2 #05 SFT2 NIP
+  ( y ) .Mouse/y DEI2 #00a8 SUB2 #0011 DIV2 #40 SFT2 NIP ORA glyph/<select>
+  BRK
+
+@collection/<draw> ( -- )
+  ( | selection )
+  [ LIT2 11 -Screen/auto ] DEO
+  [ LIT2 00 -glyph/sel ] LDZ
+  ( x ) DUP2 #0f AND #50 SFT2 #0008 ADD2 .Screen/x DEO2
+  ( y ) #04 SFT2 #0011 MUL2 #001d ADD2 ;MARGIN ADD2 .Screen/y DEO2
+  ;fill-icn .Screen/addr DEO2
+  [ LIT2 01 -Screen/sprite ] DEOk DEOk DEOk DEO
+  ( | table )
+  [ LIT2 15 -Screen/auto ] DEO
+  #00
+  &>l
+    ( | glyph )
+    #00 OVR
+    ( x ) DUP2 #0f AND #50 SFT2 #000c ADD2 .Screen/x DEO2
+    ( y ) DUP2 #04 SFT2 #0011 MUL2 #001d ADD2 ;MARGIN ADD2 .Screen/y DEO2
+    ( a ) #50 SFT2 ;data/glyphs ADD2 .Screen/addr DEO2
+    DUP .glyph/sel LDZ EQU #0f MUL INC #0f AND .Screen/sprite DEOk DEO
+    INC DUP ?&>l
+  POP !frame/<draw>
+
+(
+@|Editor )
+
+@editor/on-mouse ( -> )
+  cursor/<update>
+  [ LIT2 &last $1 -Mouse/state ] DEI #00 NEQ DUP ,&last STR
+  ( | handlers )
+  #0001 EQU2 ?&down
+  BRK
+
+  &down ( -> )
+  ( mouse ) .Mouse/x DEI2 #0008 SUB2
+  ( glyph ) #00 glyph/get-width #30 SFT2 GTH2 ?{
+    ( ) ;&on-mouse-paint .Mouse/vector DEO2
+    /<paint-at-mouse>
+    BRK }
+  .Mouse/x DEI2 ,&anchor STR2
+  ;&on-mouse-scale .Mouse/vector DEO2
+  BRK
+
+@editor/on-mouse-scale ( -> )
+  .Mouse/state DEI ?{ ;&on-mouse .Mouse/vector DEO2
+    BRK }
+  cursor/<update-trap>
+  [ LIT2 &anchor $2 ] .Mouse/x DEI2 LTH2k STH
+  SUB2 abs2 STHr /<drag-width>
+  BRK
+
+@editor/on-mouse-paint ( -> )
+  .Mouse/state DEI ?{ ;&on-mouse .Mouse/vector DEO2
+    BRK }
+  cursor/<update-trap>
+  .Mouse/state DEI ?{ BRK }
+  /<paint-at-mouse>
+  BRK
+
+@editor/<drag-width> ( abs* dir -- )
+  ?{
+    ( right ) #0008 GTH2 ?{ JMP2r }
+    .Mouse/x DEI2 ,&anchor STR2 !glyph/<decr-width> }
+  ( right ) #0008 GTH2 ?{ JMP2r }
+  .Mouse/x DEI2 ,&anchor STR2 !glyph/<incr-width>
+
+@editor/<paint-at-mouse> ( -- )
+  ( a ) glyph/get-addr
+  ( x ) .Mouse/y DEI2 #001c SUB2 #43 SFT2 NIP
+  ( y ) .Mouse/x DEI2 #0008 SUB2 #03 SFT2 NIP ORA !<toggle-pixel>
+
+@editor/<draw> ( -- )
+  #0008 .Screen/x DEO2
+  #001c .Screen/y DEO2
+  #0b00
+  &>ld
+    DUP .glyph/sel LDZ ADD /<draw-glyph>
+    INC GTHk ?&>ld
+  POP2
+  ( | glyph width )
+  [ LIT2 f1 -Screen/auto ] DEO
+  #00 glyph/get-width #30 SFT2 #0008 ADD2 .Screen/x DEO2
+  #001c .Screen/y DEO2
+  ;line-ver-icn/dashed .Screen/addr DEO2
+  [ LIT2 05 -Screen/sprite ] DEO !guide/<draw>
+
+@editor/<draw-glyph> ( ascii -- )
+  .Screen/x DEI2 ,&x STR2
+  .Screen/y DEI2 ,&y STR2
+  #00 OVR #50 SFT2 ;data/glyphs ADD2 ,&addr STR2
+  DUP /get-color ,&color STR
+  #0000
+  &>l
+    #00 OVR #0f AND #30 SFT2 [ LIT2 &x $2 ] ADD2 .Screen/x DEO2
+    #00 OVR #34 SFT2 [ LIT2 &y $2 ] ADD2 .Screen/y DEO2
+    STHk [ LIT2 &addr $2 ] STHr get-pixel #00 SWP #30 SFT ;pixel-icn ADD2 .Screen/addr DEO2
+    [ LIT2 &color 09 -Screen/sprite ] DEO
+    INC NEQk ?&>l
+  POP2
+  ( | recover )
+  #00 SWP ;data/widths ADD2 LDA #00 SWP #30 SFT2 ,&x LDR2 ADD2 .Screen/x DEO2
+  ,&y LDR2 .Screen/y DEO2
+  JMP2r
+
+@editor/get-color ( ascii -- )
+  .glyph/sel LDZ EQU ?{ #01 JMP2r }
+  #09 JMP2r
+
+@frame/<draw> ( -- )
+  ( | hor )
+  #1001
+  &>llv
+    DUP ;line-ver-icn/dotted /<draw-line-ver>
+    INC GTHk ?&>llv
+  POP2
+  ( | ver )
+  #1001
+  &>llh
+    DUP ;line-hor-icn/dotted /<draw-line-hor>
+    INC GTHk ?&>llh
+  POP2
+  ( | edges )
+  #00 ;line-ver-icn /<draw-line-ver>
+  #10 ;line-ver-icn /<draw-line-ver>
+  [ LIT2 01 -Screen/pixel ] DEO
+  #00 ;line-hor-icn /<draw-line-hor>
+  #10 ;line-hor-icn
+  ( >> )
+
+@frame/<draw-line-hor> ( x addr* -- )
+  STH2
+  #0008 .Screen/x DEO2
+  #00 SWP #0011 MUL2 #001c ADD2 ;MARGIN ADD2 .Screen/y DEO2
+  #05c0 STH2r #01 !<draw-times>
+
+@frame/<draw-line-ver> ( x addr* -- )
+  STH2
+  #00 SWP #50 SFT2 #0008 ADD2 .Screen/x DEO2
+  #001c ;MARGIN ADD2 .Screen/y DEO2
+  #05de STH2r #02 !<draw-times>
+
+(
+@|Pangram )
+
+@pangram/on-mouse ( -> )
+  cursor/<update>
+  BRK
+
+@pangram/<draw> ( -- )
+  ( | clear )
+  #0000 .Screen/x DEO2
+  #01b8 .Screen/y DEO2
+  [ LIT2 80 -Screen/pixel ] DEO
+  ( | draw )
+  .Screen/width DEI2 #01 SFT2 ;&mem data/get-str-width #01 SFT2 SUB2 .Screen/x DEO2
+  .Screen/height DEI2 #0014 SUB2 .Screen/y DEO2
+  [ LIT2 15 -Screen/auto ] DEO
+  ;&mem
+  &>wd
+    LDAk #00 SWP DUP2
+    ( addr ) #50 SFT2 ;data/glyphs ADD2 .Screen/addr DEO2
+    ( move ) ;data/widths ADD2 LDA #00 SWP .Screen/x DEI2 ADD2
+    ( draw ) [ LIT2 01 -Screen/sprite ] DEOk DEO
+    .Screen/x DEO2
+    INC2 LDAk ?&>wd
+  POP2 JMP2r
+
+@pangram/<push> ( c -- )
+  DUP ?{ POP JMP2r }
+  DUP #08 EQU ?/<pop>
+  [ LIT2 &ptr =&memcap ] INC2k ,&ptr STR2
+  STA !/<draw>
+
+@pangram/<pop> ( c -- )
+  POP [ LIT2 00 _&ptr ] LDR2 DUP2 ;&mem NEQ2 ?{ POP2 POP JMP2r }
+  #0001 SUB2 STAk ,&ptr STR2
+  POP !/<draw>
+
+@data/get-str-width ( addr* -- width* )
+  [ LIT2r 0000 ]
+  &>ww
+    LDAk #00 SWP ;data/widths ADD2 LDA [ LITr 00 ] STH
+    ADD2r INC2 LDAk ?&>ww
+  POP2 STH2r JMP2r
+
+(
+@|drawing )
+
+@<redraw-all> ( -- )
+  header/<draw>
+  ( >> )
+
+@<redraw> ( -- )
+  #0000 .Screen/x DEO2
+  #0012 .Screen/y DEO2
+  [ LIT2 80 -Screen/pixel ] DEO
+  collection/<draw>
+  editor/<draw> !pangram/<draw>
+
+@header/<draw-title> ( -- )
+  .Screen/width DEI2 #01 SFT2 .Screen/x DEO2
+  #0001 .Screen/y DEO2
+  [ LIT2 15 -Screen/auto ] DEO
+  .Screen/x DEI2 ;src/buf data/get-str-width #01 SFT2 SUB2 .Screen/x DEO2
+  ;src/buf data/<draw-line> POP2
+  [ LIT2 00 -src/changed ] LDZ EQU ?{
+    [ LIT "* ] data/<draw-char> }
+  JMP2r
+
+@get-pixel ( addr* yx -- mask )
+  STHk
+  ( addr ) [ #0f AND #13 SFT ] STHkr #07 SFT ADD #30 SFT
+  ( offset ) STHkr #04 SFT #07 AND ADD
+  ( load ) #00 SWP ADD2 LDA
+  ( pixel ) STHr #07 AND #07 SWP SUB SFT #01 AND JMP2r
+
+@<toggle-pixel> ( addr* yx -- )
+  STHk
+  ( addr ) [ #0f AND #13 SFT ] STHkr #07 SFT ADD #30 SFT
+  ( offset ) STHkr #04 SFT #07 AND ADD
+  ( load ) #00 SWP ADD2 LDAk
+  ( mask ) #01 [ #07 STHr #07 AND SUB #40 SFT ] SFT
+  ( mode ) .Mouse/state DEI #01 GTH ?{
+    ( TODO: Detect change ) ORA ROT ROT STA
+    <redraw> !src/change }
+  ( TODO: Detect change ) #ff EOR AND ROT ROT STA
+  <redraw> !src/change
+
+(
+@|Snarf )
+
+@snarf/<copy> ( -- )
+  ;&path .File/name DEO2
+  #0020 .File/length DEO2
+  glyph/get-addr .File/write DEO2
+  JMP2r
+
+@snarf/<paste> ( -- )
+  ;&path .File/name DEO2
+  #2100 .File/length DEO2
+  glyph/get-addr .File/read DEO2
+  <redraw> !src/change
+
+  &path ".snarf $1
+
+@snarf/<cut> ( -- )
+  /<copy> !glyph/<erase>
+
+@guide/<incr-height> ( -- )
+  .&height LDZ #01 SUB !/<set-height>
+
+@guide/<decr-height> ( -- )
+  .&height LDZ INC
+  ( >> )
+
+@guide/<set-height> ( height -- )
+  #0f AND .&height STZ !<redraw>
+
+@guide/<draw> ( -- )
+  #0008 .Screen/x DEO2
+  #0023 [ LIT2 00 -&height ] LDZ #30 SFT2 ADD2 .Screen/y DEO2
+  #0fc0 ;line-hor-icn/dotted #01 !<draw-times>
+
+@abs2 ( a* -- b* )
+  DUP2k #1f SFT2 MUL2 SUB2 JMP2r
+
+( @|utils )
+
+@header/on-mouse ( -> )
+  cursor/<update>
+  BRK
+
+@header/<draw> ( -- )
+  ( | 1px right )
+  .Screen/width DEI2 #0001 SUB2 .Screen/x DEO2
+  #000e .Screen/y DEO2
+  [ LIT2 a2 -Screen/pixel ] DEO
+  ( | 1px left )
+  #0001 .Screen/x DEO2
+  [ LIT2 b2 -Screen/pixel ] DEO
+  ( | title )
+  /<draw-title>
+  JMP2r
+
+@data/<draw-char> ( char -- )
+  #00 SWP
+  ( ) DUP2 #50 SFT2 ;&glyphs ADD2 .Screen/addr DEO2
+  ( ) ;&widths ADD2 LDA #00 SWP .Screen/x DEI2 ADD2
+  ( ) #01 .Screen/sprite DEOk DEO
+  .Screen/x DEO2
+  JMP2r
+
+@data/<draw-line> ( str* -- str* )
+  &>wdl ( -- )
+    LDAk #1f GTH ?{ INC2 JMP2r }
+    LDAk /<draw-char>
+    INC2 !&>wdl
+
+(
+@|cursor )
+
+@cursor/<refocus> ( -- )
+  .Mouse/y DEI2 ;header/height GTH2 ?{
+    ( ) ;header/on-mouse .Mouse/vector DEO2
+    JMP2r }
+  .Mouse/y DEI2 DUP2 #0098 GTH2 ?{
+    ( ) ;editor/on-mouse .Mouse/vector DEO2
+    POP2 JMP2r }
+  #01b6 GTH2 ?{ ;collection/on-mouse .Mouse/vector DEO2
+    JMP2r }
+  ;pangram/on-mouse .Mouse/vector DEO2
+  JMP2r
+
+@cursor/<update> ( -- )
+  /<refocus>
+  ( >> )
+
+@cursor/<update-trap> ( -- )
+  [ LIT2 12 -Screen/auto ] DEO
+  #40 ;fill-icn /<draw>
+  [ LIT2 16 -Screen/auto ] DEO
+  #c1 ;&down-chr .Mouse/state DEI ?{ POP2 ;&up-chr }
+  .Mouse/x DEI2 ,&x STR2
+  .Mouse/y DEI2 ,&y STR2
+  ( >> )
+
+@cursor/<draw> ( color addr* -- )
+  .Screen/addr DEO2
+  [ LIT2 &x $2 ] #0004 SUB2 .Screen/x DEO2
+  [ LIT2 &y $2 ] #0004 SUB2 .Screen/y DEO2
+  .Screen/sprite DEOk DEO
+  JMP2r
+
+(
+@|manifest )
+
+@manifest/scan ( but key -- fn* )
+  ORAk ?{ POP2 #ffff JMP2r }
+  ,&bk STR2
+  ;&dat
+  &>cat ( -- )
+    LDA2k OVR2 #0004 ADD2
+    &>opt ( -- )
+      LDA2k [ LIT2 &bk $2 ] NEQ2 ?{
+        NIP2 NIP2 INC2 INC2 LDA2 JMP2r }
+      #0006 ADD2 GTH2k ?&>opt
+    POP2 POP2 LDA2 LDAk ?&>cat
+  POP2 #ffff JMP2r
+
+(
+@|window )
+
+@window/height $2
+@window/<set-size> ( width* height* -- )
+  DUP2 ,&height STR2
+  .Screen/height DEO2
+  .Screen/width DEO2
+  JMP2r
+
+@<draw-times> ( color times addr* auto -- )
+  .Screen/auto DEO
+  .Screen/addr DEO2
+  SWP STH
+  [ LITr -Screen/sprite ]
+  &>l ( -- )
+    DEOkr
+    INC DUP ?&>l
+  POP POP2r JMP2r
+
+@next-glyph ( addr* -- addr* )
+  INC2 LDAk
+  ( utf8 ) #06 SFT #02 EQU ?next-glyph
+  JMP2r
+
+(
+@|stdlib )
+
+@<mclr> ( src* len* -- )
+  ,&length STR2
+  ,&addr STR2
+  ;&mmu .System/expansion DEO2
+  JMP2r
+  &mmu 00 &length $2 0000 &addr $2 00
+
+(
+@|assets )
+
+@fill-icn [ ffff ffff ffff ffff ]
+@pixel-icn [ 0000 0000 0000 0000 7cfe fefe fefe 7c00 ]
+
+@line-ver-icn [ 8080 8080 8080 8080 ]
+  &dotted [ 8000 8000 8000 8000 ]
+  &dashed [ 8080 8000 8080 8000 ]
+
+@line-hor-icn [ ff00 0000 0000 0000 ]
+  &dotted [ aa00 0000 0000 0000 ]
+
+@cursor/up-chr [
+  0000 0000 0814 1417 0000 0000 0008 0808
+  0000 0000 0000 00c0 0000 0000 0000 0000
+  1010 2010 1008 0700 0f0f 1f0f 0f07 0000
+  2010 1010 2020 c000 c0e0 e0e0 c0c0 0000 ]
+@cursor/down-chr [
+  0000 0000 0000 0817 0000 0000 0000 0008
+  0000 0000 0000 00c0 0000 0000 0000 0000
+  1010 2010 1008 0700 0f0f 1f0f 0f07 0000
+  2010 1010 2020 c000 c0e0 e0e0 c0c0 0000 ]
+
+@data/widths $100 &glyphs $2000
+
+@pangram/mem "Sphinx 20 "of 20 "black 20 "quartz, 20 "judge 20 "my 20 "vow.
+&memcap $1

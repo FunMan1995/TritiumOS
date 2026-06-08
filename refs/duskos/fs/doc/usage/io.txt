@@ -1,0 +1,174 @@
+# Input/Output
+
+## The input stream
+
+Our main loop, through "word", feeds itself from what we call the input stream.
+It's an endless stream of characters exposed by the "in< ( -- c )" word. This
+word is a consumer for what we call the "input buffer", which is a range of
+characters in memory represented by the inptr and INSZ system values.
+
+When "in<" is called, the character that inptr points to is read, inptr is
+increased and INSZ is decreased until it reaches 0.
+
+When this happens, we "rotate" the input stream by calling an indirect word
+pointer NEXTIN< ( -- ?a u ). This word must return replacement values for inptr
+and INSZ, which just ran out of steam. The originating "in<" call will then
+yield from that new stream.
+
+NEXTIN< can also return u=0, in which case the originating "in<" call will yield
+EOF (-1), which leads "word expected" abort in a regular interpret loop, but
+can be used to control the end of other kinds of sub-interpret loops.
+
+Overriding the input stream is generally made thus:
+
+1. Save current inptr, INSZ and NEXTIN< values.
+2. Set new inptr and INSZ values and NEXTIN< to the "endofstream" word, which
+   simply yields u=0.
+3. Run a word that consumes "in<" until EOF is encountered.
+4. Restore inptr, INSZ and NEXTIN<.
+
+Words like "f<<" temporarily plug NEXTIN< into the opened file's readbuf making
+it yield u=0 at the end of the file. It then runs "interpret" with that input,
+which is an interpret loop that runs until it encounters EOF. At that point,
+the old inptr, INSZ and NEXTIN< values are restored.
+
+### Stepping back
+
+It's a common pattern to want to "peek" the next character of the input stream
+with the possibility to tell the system "alright, that character wasn't mine to
+process, I wash my hands of it". Having this ability greatly simplifies some
+parsing patterns.
+
+In Dusk, this possibility is realized through "stepback ( -- )". What this does
+is that it "rewinds" the input stream by one character, which means that the
+next "in<" will yield the same character it did last time.
+
+This can't be called more than once for a given "in<" because it might mess with
+macros [lib/macro].
+
+When in EOF condition (if the last "in<" yielded -1), calling "stepback" has no
+effect. We *don't* rewind into our old stream.
+
+There is also the companion "peekback ( -- c )" which yields the last result of
+"in<" without stepping back.
+
+## Accumulating input into words
+
+The main loop uses the word "word" to accumulate input coming from "in<" into a
+string that can then be fed into its interpret logic.
+
+Accumulating a word is done by first discarding every whitespace coming from in<
+and when we reach the first non-whitespace, we accumulate into the string pool
+[doc/usage/lit] until a whitespace is reached. We discard that whitespace, then
+yield the accumulated character as a string.
+
+### wordorquote
+
+Sometimes, you'd like to read a word from the input stream, but with the
+possibility for it to contain whitespaces. One such example is "stringlist" from
+[lib/str]. You could use the '"' word for this, but this means that your input
+has to be quoted all the time. It's needlessly verbose.
+
+There's "wordorquote", which discards in< until the first non-whitespace, then
+checks whether that character is '"'. If it is, calls the '"' word. If it's not,
+it stepbacks, then calls "word".
+
+This means, for example, that 'wordorquote foo' will yield the string 'foo' and
+that 'wordorquote "foo bar"' will yield the string 'foo bar'.
+
+### Rest of line and eol?
+
+Some words will mention consuming the input's "rest of line". This means that
+they will consume the input stream until a LF character is met. A notable
+example is "needs" [doc/usage/unit].
+
+If a "\" character is met, it ignores the character following it. If it's an LF,
+it means that it inhibits this end of line, thus extending it.
+
+This logic is embodied in the word "eol? ( -- f )" [doc/dict]. This is broadly
+equivalent to "toword?" [doc/dict] except that in addition to stopping to word
+boundaries and EOF, it also stops on LF. f=1 if LF or EOF were met. This logic
+includes the whitespace that ended the previous word. Example usage:
+
+  : printline begin wordorquote stype spc> eol? until ;
+  printline foo \
+    "ba  zooka" baz
+
+A "rest of line" word directly followed by a LF will ignore that first LF.
+
+Those examples all do the same thing:
+
+  needs foo bar baz
+  needs foo \
+    bar \
+    baz
+  needs
+    foo bar baz
+
+There an important caveat to this nice little system: An unquoted word beginning
+with "\" can't be parsed. Using the previous "printline" example above:
+
+  printline foo \bar baz
+
+will print "foo ar baz"
+
+  printline foo "\bar" baz
+
+will print "foo \bar baz"
+
+### The double quote and the moustache
+
+Dusk diverges from other Forths by adding a special treatment, in "word", to the
+double quote (") character. When it is encountered, we accumulate it in the
+buffer, but then we stop the loop immediately.
+
+There's an exception upon those exceptions: if the above logic yield '" we peek
+the next character from the input stream. If it's a quote ('), then we append it
+to the result so that we can get the '"' character literal.
+
+The special treatment of the (") enables us to fix the "wart" that most Forths
+have with regards to string literals, that is that opening quotes must always
+be followed by a whitespace.
+
+While in regular Forths, whitespace *must* follow a word ending in double quote,
+in Dusk, it *must not* (unless you want it in your string). The word that has
+been accumulated will be called with the input stream untouched, so when that
+word consumes it (any word ending with '"' is extremely likely to consume the
+input stream in a "string like" manner), it will receive the character directly
+following the double quote character.
+
+This logic follows that in Dusk, you cannot have a word with a (") character in
+it that is anywhere else than at its very end.
+
+One might ask "what happens with compiled words ending with a double quote?".
+The logic above applies in the same way. Things are a bit weird if you do
+something like:
+
+  [compile] "foo
+
+because the logic will apply too, that is, the character following the " is not
+consumed by the [compile]. This means that the above code is the exact
+equivalent to:
+
+  [compile] " foo
+
+So, it's weird, but it's not much of a problem. It's as if you added an extra
+whitespace between the quote and the "foo" in the "traditional" word parsing
+logic. Nothing breaks, everything holds together.
+
+### Debugging input with "echoin"
+
+There is a runtime variable named "echoin" which controls whether all input will
+be echoed. This is different from keyboard input echoing, which is generally
+enabled. Here we're talking about all input, including loaded file, under all
+contexts, including the compilation of other code than Forth.
+
+You can enable this mode with "1 echoin !" and it can be quite useful to
+pinpoint exactly when an error occurs.
+
+## Output
+
+On the other side of the input stream pond, there's "rtype ( a u -- )" which
+wraps the RTYPE variable and spits a range of characters at the operator's face
+(or the screen they're looking at). Once it's set up, it rarely changes. "emit",
+"stype" and all these types of words all end up calling "rtype".

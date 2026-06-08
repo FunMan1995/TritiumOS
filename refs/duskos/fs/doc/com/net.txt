@@ -1,0 +1,74 @@
+# Networking
+
+This unit serves as an overarching importer of everything you need to do
+networking in Dusk, that is:
+
+* [com/link]
+* [com/ip4]
+* [com/arp]
+* [com/udp]
+* [com/tcp]
+
+Then, it implements "incoming" as described in [com/link] associating every
+known Frame Type to a handler.
+
+Theoretically, this code should live in [com/link], but because of mutual
+dependencies, there needs to be one big unit tying all the knots on top. This is
+the one.
+
+## The Active Links list
+
+Links can be polled individually with "incoming", but this unit also maintains
+a list of links to be polled, which is called the "Active Links" list. The
+"activeincoming" word goes through this list and polls all active links one
+after the other.
+
+## Example usage
+
+needs drv/nic/mynic com/net lib/coop
+mynic$
+mynic makeactive
+NetIncoming newcontext launchcontext
+
+This setup above initializes a NIC, activates it and then registers NetIncoming
+as a [lib/coop] background app. This means incoming packets that Dusk support
+will be "fanned out" to applications that listen to those events.
+
+## API
+
+### Applications
+
+NetIncoming  A background application that idles on "activeincoming".
+
+### Values
+
+activelink   Pointer to the last Link to be activated
+
+### Words
+
+incoming ( link -- )
+  Check for incoming frames and redirect them to their appropriate handler in
+  [com/ip4], [com/arp], etc..
+
+  A mechanism using a Link is expected to regularly call this for each active
+  link.
+
+makeactive ( link -- )
+  Add link to the active link list.
+
+makeinactive ( link -- )
+  Remove link from the active link list.
+
+activeincoming ( -- )
+  Goes through all active links and call "incoming" on them.
+
+.dgram+ ( -- )
+  Call .dgram from com/ip4, and depending of the Protocol field of the datagram,
+  call a sub-printer such as .udp [com/udp] or .tcp [com/tcp] etc..
+
+.frame ( -- )
+  Print active frame depending on "frametype". For example, if type is FTIP4,
+  call ".dgram+", if it's FTARP, call ".arp" etc..
+
+.nextf ( -- )
+  Call "nextf" [com/link] and then .frame if there is a next frame.

@@ -1,0 +1,29 @@
+# Extended PRAM access
+
+The unit at [drv/mac68k/xpram.fs] provides access to xPRAM through undocumented
+traps. This reverse engineering has been provided by Oleg from okmij.org. Thanks
+Oleg.
+
+Accessing this xPRAM is mostly useless except for one thing: forcing 32-bit
+addressing. Early macs have 24-bit addressing, which was kept around for
+compatibility purpose. Further macs, which have full 32-bit addressing
+capabilities, still sometimes boot in 24-bit addressing mode.
+
+When in this mode, everything is awkward. For example, the reported address for
+the video buffer is not the right address. We don't want to be in that mode.
+
+## API
+
+readxpram ( n off -- a )
+  Read n bytes from xPRAM at specified offset into a static buffer and yield
+  that buffer.
+
+writexpram ( a n off -- )
+  Write the range "a n" to specified xPRAM offset.
+
+set32bitmode ( -- )
+  Set bits 0 and 2 from the byte at offset $8a in xPRAM.
+
+## See also
+
+* https://okmij.org/ftp/xPRAM.html

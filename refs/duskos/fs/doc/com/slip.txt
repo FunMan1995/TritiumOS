@@ -1,0 +1,39 @@
+# Serial Line Internet Protocol
+
+This unit implements the Serial Line Internet Protocol (SLIP) over a target
+[io/stream]. This unit is global and singular, only one stream can be "slipped"
+at once. It implements a [com/link] that can then be used in units like
+[com/ip4].
+
+The implementation of that protocol allows you to read and write to the target
+stream in datagram chunks. With this unit, you read datagrams and you write
+datagrams.
+
+Sending datagrams is simple enough, but receiving them implies buffering partial
+data. There is a maximum datagram size and if that threshold is met, the
+datagram is flushed entirely.
+
+We only take care of $c0 boundaries and $dcdb escapes, no datagram logic here.
+
+## Example initialization
+
+needs com/slip
+myuart slip$
+sliplink incoming \ check for incoming packet
+
+## API
+
+### Constants
+
+MAXFRAMESZ   Size in bytes of the buffer for accumulating incoming datagrams
+sliplink     A Link [com/link] structure that transmits frames through SLIP
+
+### Words
+
+slip$ ( stream -- )
+  Set target stream and reset all buffers.
+
+## See also
+
+* RFC 1055
+* The TCP/IP Guide, Charles Kozierok, No Starch Press

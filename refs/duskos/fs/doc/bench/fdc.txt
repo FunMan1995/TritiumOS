@@ -1,0 +1,56 @@
+# FDC test bench
+
+The unit at [bench/fdc.fs] wraps [drv/pc/fdc] with words that help explore the
+hardware and test floppies.
+
+## TODO: explore floppy corruption problem
+
+There's a weird problem I get with floppies where depending on the floppy I use,
+a given binary will boot or not on the Powerbook 520. I suspect it has to do
+with head alignment but I lack the tools to diagnose this efficiently.
+
+So, let's develop those tools some day, I have an alarmingly small number of
+floppies that still work as they are.
+
+## Example usage
+
+  needs bench/fdc
+  rwall \ test read/write on all sectors of the inserted floppy
+
+## API
+
+### Constants
+
+FILLER  $cafebabe. What we fill test sectors with.
+
+### Variables
+
+mysec   A SECSZ bytes buffer where dummy test sectors are constructed
+dstsec  A SECSZ bytes buffer where sectors are read from the floppy
+
+### Values
+
+cyl  Current target cylinder
+head Current target head
+sec  Current target sector
+
+### Words
+
+dummysec ( sec -- )
+  Fill "mysec" with FILLER, except for the first 4 bytes, which contain
+  specified "sec".
+
+rwsec ( sec -- )
+  In the current seeked track, write a dummy sector in specified sector, then
+  read it back, ensuring that contents match.
+
+  Remember, sector numbers are 1-based!
+
+rwtrk ( -- )
+  Run "rwsec" on all sectors of the current seeked track.
+
+rwall ( -- )
+  Staring from cylinder 0, seek all possible tracks and run "rwtrk".
+
+formatfloppy ( -- )
+  Run "formattrack" on the whole disk.

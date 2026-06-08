@@ -1,0 +1,11 @@
+# Floating point numbers
+
+This unit wraps [hal/float] in convenience words.
+
+## API
+
+float"..." ( -- float ) *I*
+  Converts a string like "123.456" to the corresponding float value.
+
+f. ( float digits -- )
+  Print specified float with "digits" digits after the decimal dot.

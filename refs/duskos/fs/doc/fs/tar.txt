@@ -1,0 +1,20 @@
+# Tar filesystem
+
+The unit at [fs/tar.fs] accesses a tar file, through the [fs/core] API. This
+API is read-only.
+
+To speed seek operations (which would be very very slow if implemented naively),
+we build an index of all records when the tar FS is created. It's exclusively
+this index that is queried during "child" and "children".
+
+For this API to work, the tar is expected to have a particular format:
+
+1. All record names begin with "./"
+2. Directory records have their name ending with a "/".
+
+This FS doesn't handle walkmtime which is always 0.
+
+## Usage
+
+Have a [io/stream] that targets the tar contents and feed it to
+"newtarfs ( stream -- fs )". It behaves like a regular filesystem.

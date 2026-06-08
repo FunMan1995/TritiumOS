@@ -1,0 +1,122 @@
+# Cross compilation tools
+
+The unit at [xcomp/tools.fs] is a collection of words helping with cross
+compiling a Dusk kernel. Thos tools are mostly about managing offsets of the
+kernel's cross compiled dictionary.
+
+To be sure: Dusk doesn't cross compile Forth code. It's too hairy. However, the
+native code that the kernel assembles is organized in words, which will live
+at at an address that is different on their target host than on the system
+they've just been built on.
+
+These differences have to be "fudged up" so that the final binary is something
+that runs.
+
+The basic idea is that code words are created through "xcode", which acts like
+"code" except that it creates its entry in the "xbindict" dictionary.
+
+Before we begin spitting our binary we set "org" and "binstart" (from
+[asm/label]), which means that we can derive a "xoffset", that is, the
+difference in bytes between where the dictionary currently lives and where it's
+supposed to live on the target machine.
+
+Then, we spit the stuff.
+
+This will create a dictionary that is functional as it is built, which is
+important because we sometimes have to refer to words created with "xcode" at
+compile time (we do so through "xwordlbl").
+
+However, that dictionary won't run on its target machine because its "prev"
+references are wrong. We apply "orgifydict" on it, which will "break" it on
+the build machine, but will "fix" it on the target machine. From that point on,
+that dictionary becomes an opaque binary, untraversable from the build machine.
+
+We're ready to write the kernel to the target media.
+
+## xcompbegin/xcompend
+
+Rather than fudging up with "org" yourself, you're invited to run "xcompbegin"
+when you're about to write your first cross-compiled byte. This aligns here and
+sets "org" to here.
+
+When you're done, call "xcompend", which records the cross-compiled code
+beginning address and length, and calls "resetasm" [asm/label] as it should.
+
+The range of the cross-compiled code is then available as "xcomp[]".
+
+Calling "xcompbegin" again will overwrite the value yielded by "xcomp[]".
+
+## kernelbegin/kernelend
+
+"kernelbegin" and "kernelend" work like "xcompbegin" and "xcompend", but
+specifically for Dusk kernels. In addition to recording the beginning and end of
+the compiled kernel, it will also take care of initializing "xbindict" and then
+call "orgifydict" at the end.
+
+"kernelend" also takes care of calling "orgifydict". If you're spitting a big-
+endian kernel, end with "kernelendbe" instead, so that orgifying happens in big-
+endian too.
+
+"kernel[]" is separate from "xcomp[]", so one doesn't overwrite the other.
+
+## SYSVARS offset
+
+This unit also contains the offset of all SYSVARS, as described in [doc/data].
+The name of the constant is the name of the SYSVAR with a "o" prefix.
+
+## API
+
+### Constants
+
+oXXX       SYSVARS offset (example oCOMPILING yields 4)
+
+### Variables
+
+xbindict  Dictionary of words created through "xcode"
+
+### Words
+
+tgtallot ( tgtpc -- )
+  Call allot0 with "n" being enough to bring "pc" to value "tgtpc". If that
+  target has already been passed, raise an error.
+
+xoffset ( -- off )
+  Add this offset to a host address to yield a target address.
+
+xcode ( "name" -- )
+  Like "code", but add entry to "xbindict".
+
+xlatest ( -- a )
+  "xbindict" latest entry with "xoffset" applied
+
+xwordlbl ( "name" -- pc )
+  Yields *target* (xoffset applied) address of word "name" found in "xbindict".
+
+orgifydict ( 'dict -- )
+  Apply "xoffset" to all "prev" references in dict. After having been orgified,
+  "dict" becomes opaque. To allow multiple xdict to be created one after the
+  other, "'dict" is set to 0.
+
+orgifydictbe ( 'dict -- )
+  Same as orgifydict but write dict link with be! instead.
+
+xcompbegin ( -- )
+  Begins cross compiling by setting "org" appropriately.
+
+xcompend ( -- )
+  Stop cross-compiling and record xcomp length.
+
+xcomp[] ( -- a u )
+  Yield the range of the last compiled xcomp session.
+
+kernelbegin ( -- )
+  Begins cross compiling a kernel.
+
+kernelend ( -- )
+  Stop cross-compiling and record kernel length, calling "orgifydict".
+
+kernelendbe ( -- )
+  Same as "kernelend" but calls "orgifydictbe" instead.
+
+kernel[] ( -- a u )
+  Yield the range of the last compiled kernel.

@@ -1,0 +1,8 @@
+# Power management
+
+The unit at [drv/rpi/pwr.fs] wraps power management registers for the BCM2835.
+
+## API
+
+reboot ( -- )
+  Reboots the system immediately.

@@ -1,0 +1,36 @@
+# Arena allocator
+
+Scratchpads [mem/scratch] are fine for temporary data, but for semi-temporary
+data, not so much. Sometimes, we need to hold onto temporary data for longer and
+the size of that data can vary wildly, making it difficult to find a reasonable
+size for our buffer.
+
+If we have a clear point where we can say "from this moment, I don't need any of
+this class of data", then the arena allocator [mem/alloc] is ideally suited for
+the task.
+
+One such example are line buffers in text/ed. We don't know beforehand how many
+characters we'll have to deal with, it depends on the size of the input file.
+Also, we don't know if the user is going to edit the file a little bit or a lot.
+Allocating a static buffer either wastes memory or makes the app too
+constrained.
+
+The arena allocator is a linked list of fixed size buffers (4 kilobytes) that
+grow whenever we need more memory by adding a buffer to the linked list. When we
+clear the arena, it rewinds itself to its first buffer and reuse those
+previously allocated buffers for subsequent allocations, growing the list again
+if it reaches its previous limit.
+
+## API
+
+newarena ( -- alloc )
+  Create a new empty Arena
+
+ensurenext ( -- )
+  With CURALLOC being an arena, ensures that the current arena buffer has a
+  "next" buffer. Create one if it hasn't. This gives you leeway for some
+  allocations guaranteeing you you won't tap into system memory.
+
+reset ( -- )
+  With CURALLOC being an arena, reset it to its first buffer, HERE pointing to
+  the first byte of that buffer.

@@ -1,0 +1,54 @@
+# Stack
+
+The unit at [mem/stack.fs] provides a stack structure that lives in allocated
+memory. All elements are 4 bytes in size and bounds are checked on push and pop.
+The layout in memory is upwards, that is, the pointer goes up as elements are
+pushed. Example usage:
+
+  8 newstack const s
+  42 s push
+  54 s push
+  s peek . \ prints 54
+  s pop . \ prints 54
+  s pop . \ prints 42
+  s pop \ aborts with "Stack underflow"
+
+## API
+
+### Structures
+
+struct Stack {
+  uint size ptr ;
+  [void,0] buf( ;
+}
+
+size  Size in bytes of the buffer that contains the stack
+ptr   Points to where the next element will be pushed
+buf(  Points to the beginning of the buffer (bottom element)
+
+### Words
+
+newstack ( nbelem -- stack )
+  Create a new stack struct with "nbelem" elements.
+
+empty? ( stack -- f )
+  Yields whether the stack is empty.
+
+empty ( stack -- )
+  Empties the stack.
+
+count ( stack -- n )
+  Yields the number of elements in the stack.
+
+stack[] ( stack -- a u )
+  Yields the 32-bit range corresponding to elements in the stack, bottom element
+  first.
+
+push ( n stack -- )
+  Pushes an element "n" to the stack.
+
+peek ( stack -- n )
+  Yields the element at the top of the stack.
+
+pop ( stack -- n )
+  Pops and yields the element at the top of the stack.

@@ -1,0 +1,30 @@
+# ARM Program Status Registers
+
+The unit at [drv/arm/psr.fs] provides convenient words around the CPSR and SPSR
+registers.
+
+## API
+
+Constants:
+
+ARM_MODE_USER     $10
+ARM_MODE_FIQ      $11
+ARM_MODE_IRQ      $12
+ARM_MODE_SVC      $13
+ARM_MODE_ABORT    $17
+ARM_MODE_UNDEF    $1b
+ARM_MODE_SYS      $1f
+ARM_MODE_MASK     $1f
+ARM_IMPRECISE_BIT $100
+ARM_IRQ_BIT       $80
+ARM_FIQ_BIT       $40
+ARM_INTR_MASK     $1c0
+
+Words:
+
+.psr ( -- )
+  Print current CPSR and SPSR values.
+
+cpsr! ( val mask -- )
+  Update CPSR with "val" while preserving previous CPSR bits outside of "mask"
+  For example, if you wanted to update the mode, you'd use mask $1f.

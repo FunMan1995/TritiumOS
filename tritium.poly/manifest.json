@@ -1,0 +1,27 @@
+{
+  "product": "TritiumOS",
+  "creator": "Draco",
+  "version": "0.1.0-scaffold",
+  "slogan": "The line tread between madness and genius.",
+  "ship_targets": ["TritiumOS.exe", "TritiumOS.apk", "TritiumOS.AppImage"],
+  "initial_platforms": {
+    "windows": "Windows 11",
+    "android": "Google Pixel 9 Pro XL (komodo)",
+    "linux": "Portable .AppImage (on-demand)"
+  },
+  "edition": ["32", "64"],
+  "license_max_devices": 10,
+  "core_entry": "core/boot.fs",
+  "qwantum": {
+    "field": "tritium-qwantum-field",
+    "search_tool": "tools/qwantum-search.ps1",
+    "dump_tool": "tools/qwantum-dump.ps1"
+  },
+  "compute": {
+    "config": "qd/compute.json",
+    "set": "tools/compute-config.ps1 -Action set -Backend <id>",
+    "run": "tools/run-compute.ps1",
+    "ibm_status": "blocked"
+  },
+  "assets": ["../TritiumOS_logo.jpg", "../TritiumOS_32_bit.jpg", "../TritiumOS_64_Bit.jpg"]
+}

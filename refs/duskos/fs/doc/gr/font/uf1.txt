@@ -1,0 +1,23 @@
+# UF1 font
+
+UF1 is a bitmap font [gr/font/bit] format where glyphs are stored in the ICN
+format. UF1 fonts are always 8x8 bitmap fonts.
+
+Loading them is straightforward, but bit endianness has to be swapped because
+ICN is big endian and, as specified in [gr/buf], sub-8bit encodings are little
+endian.
+
+## File format
+
+Every UF1 file is $900 bytes long and contains $100 glyphs. The first $100 bytes
+are 8-bit widths, in pixels, for proportional fonts. We ignore those.
+
+The following $800 bytes are glyph data in a sequence of 8 bytes ICN images.
+An ICN image is a 8x8 bitmap with a 1-bit depth where each byte represents a
+row, starting from the top. The most significant bit is the leftmost pixel.
+
+## API
+
+loaduf1 ( path -- font )
+  Open and read "path" containing a UF1 font in memory, yielding a [gr/font]
+  structure.

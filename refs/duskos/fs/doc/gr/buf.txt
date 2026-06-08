@@ -1,0 +1,285 @@
+# Pixel buffers
+
+The unit at [gr/buf.fs] defines the "pixel buffer" (pixbuf) struct which is used
+to shove pixels around. It represents a rectangular grid of pixels of a
+particular color encoding [gr/color] and depth.
+
+This unit takes care of managing the structure, the memory of the buffer, line
+addressing, coordinate selection and bounds checking. For drawing pixels, other
+units such as [gr/rdwr] exist.
+
+The buffer memory is organized as a sequence of lines with each line being a
+sequence of pixels.
+
+The origin of the buffer, that is, its first address in memory, is the bottom
+left of the grid. This is unlike many other systems where the origin is top
+left. This allows us to fit better with [oberon].
+
+Because sub-8bit depths are supported, it means there can be more than a single
+pixel packed in a single byte.
+
+## Depth and endianness
+
+Ultimately, each pixel in the buffer has an associated color of the specified
+encoding. Storage modality of those pixels is determined by the buffer's depth
+field. Depth, measured in BPP (bits per plane) determines how many bits of
+storage is reserved for each pixel. That field's value is one of those
+constants:
+
+1BPPL 1BPPH
+2BPPL 2BPPH
+4BPPL 4BPPH
+8BPP
+16BPP
+24BPP
+32BPP
+
+Depths 8BPP 16BPP and 32BPP are straightforward enough. The color is there, at a
+particular address, with a particular width. You read/write it, you're happy.
+The endianness of those depth is the native one.
+
+24-bit depth is weird because there is no native access for it. It has to be
+accessed byte by byte, and therefore it has an endianness: little endian. The
+day we encounter hardware with a 24-bit depth organized in big endian, we'll add
+24BPPBE, but we'll wait for that day to come first.
+
+Then come the sub-8-bits depths. Fundamentally, they don't have endianness
+either, but because there is more than a single pixel packed in the same number,
+we have to know if the low bits are leftmost or rightmost.
+
+Also, because we're going to do bit fiddling anyways, to maximize register usage
+and minimize memory accesses, we say that all sub-8-bits depths are accessed
+with 32-bit read/writes in native endian-ness.
+
+But even then, as we stated above, we need to know pixel ordering of what we're
+reading or writing. We specify this in terms of whether low bits (L) or high
+bits (H) are leftmost. For example, in a 4BPPL depth, if the first 32-bits of
+the line are $12345678, then the leftmost pixel of the line has the color 8. On
+a 4BPPH depth, it would have the color 1.
+
+It goes without saying that pixbufs must be created with combinations of depth
+and color encoding that make sense, otherwise color values will be corrupted.
+For example, RGB565 doesn't make sense under a 8BPP depth.
+
+## Unallocated state
+
+When initialized with "newpixbuf", the structure has "buffer" and "bufsz" set to
+0. It's only when "?allocbuf" is called that they are initialized. We do this to
+accomodate the possibility of having a hardware buffer setup.
+
+## flipY
+
+When the "flipY" flag is set, "yaddr" and "xyaddr" yield an address that
+correspond to a buffer having its origin at the top left corner instead of the
+bottom left one.
+
+This flag is necessary on hardware buffers where we can't control the origin.
+
+When you write fast pixel routines, you might not call "yaddr" each time to
+target a new line. In that case, you must honor the flipY flag yourself.
+
+### flipY as a temporary flag
+
+This flag can also be used for buffers in regular memory with a top-left origin
+such as [gr/varvara], but in those cases, it's recommended to use the flag
+temporarily when needed (for example when copying parts of the buffer to
+another), but otherwise keep the flag off. Otherwise, things get really
+confusing really fast.
+
+As long as you stay within the "flipped" world, it doesn't matter that the
+buffer in memory is upside down. It's only when you interact with other buffers
+that it begins mattering. It's then that you use the flipY flag.
+
+For example, if you want to copy the top quarter of a 8x8 flipped buffer to the
+bottom left corner of a bigger buffer (regardless of its flipY status), you'd do
+something like this:
+
+  1 srcpixbuf to flipY
+  0 6 8 2 srcpixbuf 0 0 dstpixbuf movepixels
+  0 srcpixbuf to flipY
+
+When you blissfully work on your flipped rect with flipY off, it's possible that
+you play around with rectangles with a top-left point of view, for example for
+keeping up with [gr/damage]. In those cases, you'll want to flip that rectangle
+before you send it to "movepixels". Here's another way to do the same thing as
+above, but with a rectangle of a top-left perspective:
+
+  1 srcpixbuf to flipY
+  0 0 8 2 srcpixbuf fliprect 0 0 dstpixbuf movepixels
+  0 srcpixbuf to flipY
+
+## Invalidate
+
+Whenever the buffer is changed, its "invalidate ( x y w h pixbuf -- )" method is
+called once all drawing is finished. It allows for all kinds of little tricks
+such as updating [gr/damage] struct or implementing proxy schemes.
+
+## Palette resolution
+
+A pixbuf can contain any type of color encoding, which includes PALETTE. A
+pixbuf has a "palette" field to store a pointer to a palette, but it otherwise
+does nothing with it. Drawing routines have to manage palette logic themselves.
+
+## Memory and bounds management only
+
+This unit is only about memory and bounds management. Changing actual pixels
+within that buffer is left to other units such as [gr/rdwr] or [gr/blt].
+
+## Screen variable
+
+This unit also provides a "screen" value, which is a Pixbuf that points to the
+screen that is presented to the operator. We could call it the final *raison
+d'etre* of the graphical substack.
+
+This variable is initialized to a dummy uninitialized 0x0 pixbuf. This means
+that drawing to it will abort with error (or do nothing in some cases), but will
+not crash the machine.
+
+To test whether the screen has been initialized, you can't compare that value
+to zero, so there's also the "hasscreen?" word to test if the screen has been
+set to something else than that dummy screen.
+
+## API
+
+### Struct
+
+struct Pixbuf {
+  uint buffer width height encoding depth linesz bufsz palette flipY ;
+  xt invalidate ?allotbuf ;
+}
+
+buffer    Points to the first byte of the pixbuf
+width     Width in pixels of the pixbuf
+height    Height in pixels of the pixbuf
+encoding  [gr/color] encoding of the pixbuf
+depth     One of the depth constants
+linesz    Size in bytes of a line
+bufsz     Size in bytes of the allocated buffer
+palette   If encoding is palette-based, pointer to palette
+flipY     If nonzero, flip pixels vertically
+
+invalidate ( width height pixbuf -- )
+  Called after a buffer-mutating operation is done. At that point, target
+  coordinate is still valid and can be used to determine the scope of the
+  operation. Defaults to a noop.
+
+?allotbuf ( pixbuf -- )
+  Considering current width and height values, set "linesz" and check whether
+  current buffer can accomodate that size. If not, allocate a new buffer and
+  update "buffer" and "bufsz".
+
+  Default implementation sets linesz as width*colorbytes, always 32-bit aligned,
+  and doesn't do anything fancy in terms of allocation, just a straight buffer
+  aligned to 32-bit. Some pixbufs such as [gr/varvara] override this with
+  something fancier.
+
+### Depth constants
+
+1BPPL 1BPPH
+2BPPL 2BPPH
+4BPPL 4BPPH
+8BPP
+16BPP
+24BPP
+32BPP
+
+### Values
+
+screen    Main pixbuf of the system
+
+### Words
+
+depth>idx ( depth -- idx )
+  Each depth constant has a unique number in the form of an index starting
+  from 0 (1BPPL) and ending with 9 (32BPP). Yield that index from the specified
+  depth.
+
+depth>bpp ( depth -- bpp )
+  Yields the bits per plane value of the specified depth constant. For example,
+  16BPP --> 16.
+
+newpixbuf ( depth encoding width height -- pixbuf )
+  Allocate a new pixbuf with the specified field values. The rest is initialized
+  to 0 and either "setbuf" or "allotbuf" must be called before usage.
+
+setbuf ( linesz buffer pixbuf -- )
+  Sets linesz, buffer and bufsz.
+
+allotbuf ( pixbuf -- )
+  Allocate a new buffer of the proper size, considering linesz and height, and
+  call "setbuffer".
+
+configurebuf ( depth encoding width height linesz buffer pixbuf -- )
+  Writes all arguments to the corresponding pixbuf fields, and also set computed
+  "bufsz" field.
+
+  This is a convenience word for setting up a hardware buffer.
+
+computelinesz ( pixbuf -- linesz )
+  Yields the regular linesz that specified pixbuf should have, considering its
+  depth and width.
+
+yaddr ( y pixbuf -- a )
+  Yields the address of the beginning of the line "y".
+  Aborts if "y" is out of bounds.
+
+  Note that a line in a pixbuf is always aligned to 32-bit.
+
+yaddr, ( -- )
+  Compile yaddr code expecting A=pixbuf and W=y, yielding A=pixbuf and W=addr.
+  However, instead of aborting, it yields W=0 when out of bounds.
+  "yaddr" of course uses this. Preserves S.
+
+xyaddr ( x y pixbuf -- x a )
+  Yields the address containing the pixel at x/y. Sub 8-bit encodings pack more
+  than one pixel in a single byte. In those cases, whatever pixel manipulating
+  algorithm calling this word will have to further use "x" to do bit fiddling on
+  that address, which is why "x" is kept in PS.
+  Aborts if "x" or "y" is out of bounds.
+
+xyaddr, ( -- )
+  Compile xyaddr code expecting A=pixbuf W=y S=x, yielding W=addr.
+  However, instead of aborting, it yields W=0 when out of bounds.
+  "xyaddr" of course uses this.
+
+bounds ( x y width height pixbuf -- x y width height )
+  Yields the same rectangle as input unless a part of it is outside bounds.
+  That is:
+
+  1. If x is negative, reduce width and yield x=0.
+  2. If y is negative, reduce height and yield y=0.
+  3. If x+width is wider than pixbuf, reduce width.
+  4. If y+height is higher than pixbuf, reduce height.
+
+centerxy ( pixbuf -- x y pixbuf )
+  Yields the center point of pixbuf, slightly left/bottom if there is no exact
+  center point.
+
+  This word's signature is a bit weird because that's how this word will most be
+  used: tweak X/Y coordinated right before using it in, for example, [gr/blt]
+  movepixels.
+
+centerrect ( w h pixbuf -- x y pixbuf )
+  Yields the coordinates of a rectangle of specified size, in the center of
+  pixbuf.
+
+  This word's signature is a bit weird for the same reasons as alignx.
+
+fliprect ( x y w h pixbuf -- x y w h pixbuf )
+  Flip the specified rectangle, assumed to describe an area with a top-left
+  origin so that it represents the same rectangle with the pixbuf flipped and in
+  a bottom-left origin perspective. That is, "y" becomes "pixbuf.height-y-h".
+
+  Implies "bounds", applied before flipping.
+
+clear ( pb -- )
+  Fill whole buffer with zeroes.
+
+resize ( width height pb -- )
+  Check if resizing the pixbuf to specifiez size fits in "bufsz". If not,
+  allocate a new buffer to fit the size. This clears the buffer.
+
+  Then, sets size to specified values, adjusting "linesz".
+
+>screencolor ( rgb24 -- color )
+  Shortcut for "screen encoding >color" [gr/color].

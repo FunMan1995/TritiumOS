@@ -1,0 +1,71 @@
+# Duskberon's System module
+
+The module at [oberon/System.mod], when loaded, configures the system so that
+it's ready for launching. That is, it initializes the log and opens the startup
+viewers (the log and the system tool).
+
+In other words, "booting" a Duskberon system consists of loading this module,
+then calling "oberon" from [oberon/sys.fs].
+
+In addition to this, it also contains a hodgepodge of utility commands.
+
+## Procedures
+
+LogString (s: ARRAY OF CHAR);
+  Write the specified string to the system log.
+
+## Commands
+
+
+Quit
+  Stop Duskberon's loop and return to whatever called it.
+
+ShowModules
+  Print a list of all loaded modules.
+
+ShowCommands
+  Given a module name as an argument, print the commands contained in that
+  module.
+
+RunForth
+  Interpret global selection [oberon/texts] as Forth code through
+  "interpretstream" [io/stream].
+
+RunForthLine
+  Interpret the whole line on which the caret [oberon/textfram] current is,
+  through "interpretstream".
+
+Open
+  Given a path as an argument, create a new text viewer [oberon/textfram] in the
+  User track. If the path exists, its "ascii" flag depends on the opened file.
+  If it doesn't exist, set flag to TRUE.
+
+OpenTool
+  Given a path as an argument, create a new text viewer [oberon/textfram] in the
+  System track. If the path exists, its "ascii" flag depends on the opened file.
+  If it doesn't exist, set flag to FALSE.
+
+Clear
+  Provided that the target viewer is a text viewer with a menu, clear the
+  contents of that viewer.
+
+Close
+  Close the target viewer.
+
+CloseTrack
+  TODO: I'm not 100% sure of how it's supposed to be used yet.
+
+Recall
+  Reopen that previously closed viewer.
+
+Copy
+  Duplicate the target viewer and have it share its track.
+
+Grow
+  Duplicate the target viewer and place it "over" the viewers in the current
+  track, using up all the space. When that viewer is closed, the other viewers
+  will be visible again.
+
+ExtendDisplay
+  TODO: I'm not 100% sure of how it's supposed to be used yet.
+

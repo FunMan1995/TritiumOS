@@ -1,0 +1,65 @@
+# 8042 PS/2 controller
+
+The unit at drv/pc/ps28042.fs is a driver for the 8042 chip present on
+non-ancient PCs. It supplies a "(ps2@?)" compatible word,
+"8042kbd@? ( -- keycode? f )".
+
+This word always yields single bytes. If a particular keystroke yields
+multi-byte PS/2 codes, they will have to be read in multiple calls to
+"8042kbd@?", which is what [drv/ps2] does.
+
+This driver expect a typical PC setup, that is, that I/O port $60 is PS/2 data
+and port $64 is PS/2 cmd. Moreover, we expect the PIC to be set up in such a way
+that IRQ1 fires up on PS/2 input.
+
+The driver works by maintaining a buffer of PS/2 input data, which is written
+to every time IRQ1 fires up, and is read through "8042kbd@?". The buffer is of
+a limited size, so if it's not regularly read, it will overflow and past
+keystrokes will be lost.
+
+Before being used, it needs to be initialized through "8042ps2$ ( -- )".
+
+There is also a "poll-based" version of this very driver, supplying the same
+"8042kbd@?" word. It's much much simpler and doesn't need to be initialized, but
+if you "skip a beat" during the polling, you might lose a keystroke, making the
+"full" version of the driver generally preferable.
+
+## Breaking away
+
+There is a special condition that happens during IRQ1 handling: if the Pause key
+is pressed, we "break away" [doc/break].
+
+## Mouse
+
+This same unit also supplies "new8042mouse ( -- mouse )" which yields a struct
+that is compatible with [io/mouse].
+
+Before being used, the mouse needs to be initialized through
+"8042mouse$ ( -- )". This will hook its IRQ handler to IRQ 12, the IRQ assigned
+to the mouse on typical PCs.
+
+## Reboot
+
+Lastly, the 8042 controller can also be used to reboot the system, a feature
+that is exposed through the "reboot ( -- )" word.
+
+## API
+
+## Values
+
+8042scancodeset
+  Set during PS/2 initialization, during which the keyboard is interrogated
+  using the $f0 command. This value contains either 1 or 2. When the $f0 command
+  fails, this value is set to 2.
+
+## Words
+
+8042ps2$ ( -- )
+  Initializes the 8042 PS/2 controller.
+
+8042mouse$ ( -- )
+  Initializes the "mouse" part of the driver.
+
+8042kbd@? ( -- ?keycode f )
+  Check the PS/2 keyboard for incoming key codes. Designed to be plugged into
+  the "(ps2@?)" word of [drv/ps2].

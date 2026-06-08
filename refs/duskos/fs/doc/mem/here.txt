@@ -1,0 +1,26 @@
+# "here" allocator
+
+The unit at [mem/here.fs] implements an allocator [mem/alloc] that simply allows
+to move "here" around.
+
+You might ask yourself why do you need this. Can't you just set a new pointer in
+HERE and restore it when you're done? Yes you can, but if you want to do it in
+a recursive manner, things get murky. Also, if something else, like another
+allocator, needs to allocate to system memory at the same time, your blunt HERE
+override will make this allocation broken.
+
+By using this unit, you make sure that your override plays nice with the
+allocator system.
+
+## Example usage
+
+needs mem/here
+$1234 here[ 42 , ]here
+\ equivalent to 42 $1234 !
+
+## API
+
+here[ ( newhere -- oldhere )
+  Override here with address "newhere".
+]here ( oldhere -- )
+  Restore here to "oldhere".

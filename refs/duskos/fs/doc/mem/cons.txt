@@ -1,0 +1,142 @@
+# Lispy cons
+
+The unit at mem/cons.fs implements cons as used in Lisp. This concept is mostly
+used in [comp/lisp] but can be quite useful in other situations.
+
+The idea is that we have garbage collected pairs of values (called "car" and
+"cdr"). Each element of those pairs can reference another cons. We have a memory
+pool of a static size allocated to hold these cons and when we run out of space
+to create a new cons, we free unreferenced cons to create some space. If we
+can't free any space, we're out of memory.
+
+## Top level references
+
+To perform garbage collection, one has to keep track of the cons reference. We
+have 4 possible sources of references:
+
+1. Parameter stack
+2. Return stack
+3. "consref"
+4. Cons leaked with "leak"
+
+The underlying idea is that we have this pool of a specific size and at a
+specific address. If any number in PS or RS corresponds to this range and is
+divisible by 8 (pair of 32-bit numbers), we consider it a cons reference. Sure,
+there can be false positives, but these will be rather rare and of little
+consequence (we hold onto some memory longer than we should).
+
+"consref" is the same as a regular value, except that they are iterable. The
+garbage collector can go through all those values and add these to the garbage
+collection "keep list".
+
+## The keep list
+
+Parallel to the cons pool is the keep list, which is 1/64th of its size. It's a
+bit field that indicates which slots are used. When we want to create a new
+cons, we check into this list for the first 0 we can find. That indicates where
+our new cons will live.
+
+We happily use slots as long as they exist. When we don't have space anymore,
+we do garbage collection. That is, we set the whole keep list to 0, then we go
+through all top level references and recursively mark elements in the list.
+
+Once we've done that, if we still have no 0 left, we're really out of memory.
+
+## Lists and pairs
+
+There are of course a myriad of types of structures you can organize cons into,
+but at the fundamental level, there are two types: lists and pairs.
+
+A list is a cons where cdr is either 0 or another list (the check whether a
+cons is a list is recursive).
+
+A pair is a cons that is not a list. In terms of representation, we show lists
+as "(1 2 3)" (a set of 4 cons) and a pair as "(1 . 2)". Can a construct
+theoretically have something that could be represented as "(1 . 2 . 3)"? No.
+That would be something that Lisp would create with "(cons 1 (cons 2 3))", so
+it's "possible", but that would in fact be represented as "(1 . (2 . 3))".
+
+The keen eyes among you will notice a bit of a problem with this representation:
+pairs where the second element is 0 can't exists. "(cons 42 54)" is "(42 . 54)"
+alright, but "(cons 42 0)" cannot be represented as "(42 . 0)", even if that is
+its semantic significance. In representations, such pairs will show as "(42)".
+In the code, this changes nothing because that "false list" can still be used
+semantically as a pair (watch out for places where you use "islist?" though...),
+but if you inspect your data, you might be surprised by this. But not if you
+expect it after you've read that paragraph.
+
+## Warning about dynamic structures
+
+As shown in the paragraph above, relying on "islist?" outside of the printing
+context will usually be a bad idea because of the semantic ambiguity of 0.
+
+But you must also be careful about "iscons?"! That word only checks that the
+supplied address is in the cons pool range. If you supply it with an arbitrary
+literal, you *could* be unlucky and have it falsely yield true.
+
+In [comp/lisp], we do use "iscons?" to process cons in a dynamic manner, but we
+can do so because 100% of the input data is pointers (rawlists are cons of
+strings). Pointer to non-cons are never in the cons pool. In this context, this
+works. But once the rawlist is "cooked", arbitrary literals end up in the mix
+and from then on, all processing on those cons must be done in "static" mode.
+Lists can still have variable length, this works, but we can't have pairs where
+lists are expected, this will break horribly when the wrong literal is in the
+input.
+
+## API
+
+Fields:
+
+car  First element of the cons
+cdr  Second element of the cons
+
+Words:
+
+iscons? ( a -- f )
+  Yield whether address "a" is a cons.
+
+iscons# ( a -- )
+  Abort with error if "a" is not a cons.
+
+islist? ( a -- f )
+  Yields whether "a" is a list. If "a" is not a cons, yield 0 too.
+
+cons ( car cdr -- cons )
+  Find a free slot in the pool, mark it as used, set "car" and "cdr" as its
+  values and yield the address of that new cons.
+
+  If no free slot exist, launch the garbage collection mechanism. If there's
+  still no free slot, abort with "out of memory".
+
+carcdr ( cons -- car cdr )
+cdrcar ( cons -- cdr car )
+  Unwrap "cons" as a PS pair. Aborts if "cons" is not a cons.
+
+?carcdr ( a -- car cdr 1 OR a 0 )
+?cdrcar ( a -- cdr car 1 OR a 0 )
+  Call "carcdr/cdrcar" only if "a" is a cons.
+
+?single ( a -- x 1 OR a 0 )
+  If "a" is not a cons *or* if it's a cons that contains a single element,
+  unwrap that element as "x" and yield f=1. Otherwise, f=0.
+
+single# ( a -- x )
+  Unwrap "a" with "?single" and abort with error if that fails.
+
+append ( cons car -- newcons )
+  Create a new cons with "car" and have "cons" link to it. Yield the newly
+  created cons.
+
+length ( list -- n )
+  Yield the number of elements in a list.
+
+leak ( cons -- )
+  Mark "cons" so that it is never garbage collected.
+
+conscnt ( -- n )
+  Yield the number of cons slots currently used in the pool.
+
+.cons ( cons -- )
+  Print "cons" contents, wrapping it in parens like a list, as long as "cdr" is
+  a cons. If a cons is encountered as "car", we recursively begin the printing
+  of a new cons.

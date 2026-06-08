@@ -1,0 +1,35 @@
+# CRC
+
+This unit implements words that compute CRC checksum using the regularly used
+polynomials.
+
+The parameters used are CRC32-ANSI and CRC16-XMODEM. If you look at the code
+you'll see that it's rather easy to craft other crc words with custom
+parameters.
+
+## API
+
+crc16[]
+crc32[] ( a u -- crc )
+  Compute the checksum of range.
+
+crc16
+crc32 ( stream -- crc )
+  Compute the checksum of specified [io/stream] from its current position until
+  EOF.
+
+crc16<<
+crc32<< ( "path" -- crc )
+  Compute the checksum of file at "path".
+
+## Private API
+
+reflect ( poly -- n )
+  Reverse polynomial "n" by swapping all bits by its center. If "poly" is less
+  than 32 bit, you have to right-shift the result appropriately.
+
+  For example, "$1021 reflect" yields $84080000.
+
+acc16
+acc32 ( crc c -- crc )
+  Accumulate byte "c" into the existing CRC checksum.

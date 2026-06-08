@@ -1,0 +1,30 @@
+# Hello Operator!
+
+Dusk OS doesn't have users, but *operators*. What's the difference? Control.
+You *use* a phone, you *use* a coffee machine, hell you even *use* a car these
+days. But you *operate* a bulldozer, you *operate* a crane, you *operate* a
+plane.
+
+You *use* Linux, you *use* Windows. You *operate* Dusk OS.
+
+It's a primary design goal that Dusk OS allows its operator to maximally poke
+the hardware, but there's another side to that coin: footguns are aplenty. There
+are tons of ways to crash the system, lose data, even damage hardware.
+
+It is expected of the operator that she knows what she's doing. To that end, the
+documentation tries to be as thorough as possible, but it needs to be read. That
+documentation also needs to be complemented with knowledge about the hardware,
+which Dusk OS' documentation cannot cover, the subject being too wide.
+
+It is also expected that the operator is creative. When presented with a set of
+simple tools (along with documentation), the operator is expected to creatively
+match it to her needs. Dusk's documentation offers little hand holding.
+
+With so many footguns around, there's no way Dusk's documentation can guide the
+operator into debugging every little problem she can possibly encounter.
+Creativity needs to be applied actively to the problem solving task.
+
+Last but not the least, the operator is expected to be daring in face of the
+unexpected. Software fails more often than not, she has to be ready to roll up
+her sleeves and dive into the code, which luckily has been written precisely to
+be dived into.

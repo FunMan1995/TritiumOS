@@ -1,0 +1,9 @@
+{'backend': 'qiskit_aer (local)', 'shots': 1024, 'counts': {'11': 517, '00': 507}}
+{'backend': 'braket_local_simulator', 'shots': 1000, 'counts': {'11': 479, '00': 521}}
+{'backend': 'qiskit_aer (local)', 'shots': 1024, 'counts': {'00': 496, '11': 528}}
+{'backend': 'braket_local_simulator', 'shots': 1000, 'counts': {'11': 459, '00': 541}}
+{'backend': 'braket_local_simulator', 'shots': 500, 'counts': {'11': 249, '00': 251}}
+{'backend': 'qiskit_aer (local)', 'shots': 500, 'counts': {'00': 249, '11': 251}}
+{'backend': 'qiskit_aer (local)', 'shots': 500, 'counts': {'00': 245, '11': 255}}
+{'backend': 'braket_local_simulator', 'shots': 500, 'counts': {'00': 263, '11': 237}}
+{'backend': 'qiskit_aer (local)', 'shots': 500, 'counts': {'00': 254, '11': 246}}

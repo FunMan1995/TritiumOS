@@ -1,0 +1,14 @@
+/kernel-*
+/payload-*
+/kernel.h
+/payload*.h
+/dusk
+/dusk-stream
+/dusk-curses
+/dusk-sdl
+/dusk-conio
+/execchk
+*.exe
+SDL2.dll
+*.o
+/disk.img

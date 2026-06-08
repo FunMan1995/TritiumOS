@@ -1,0 +1,348 @@
+# The Grid
+
+The grid is a matrix of colored characters of an arbitrary size. It's a
+structure that extends [io/stream]'s Stream and the stream API is the main way
+of accessing its contents.
+
+The contents is organized as an array of lines. Therefore, the stream position
+is encoded as "y*columns+x".
+
+The grid's contents lives in memory, but you'll often want to mirror that
+contents on an actual console. This mirroring happens by having the grid keep
+track of its changes. It does so through double-buffering.
+
+## Colors
+
+As its core, the grid is a matrix of characters, so there's one byte per cell
+in its buffer. However, each of these characters has an 8-bit color attribute.
+
+This attribute is composed of a 4-bit foreground color index and a 4-bit
+background one.
+
+This means that we have 16 colors, which are organized as a palette. Referring
+to colors by their index is not very evocative, so this unit supplies constants
+that associate numbers 0 to 15 to the historical VGA text mode palette colors:
+
+0  BLACK    8  DGRAY
+1  BLUE     9  LBLUE
+2  GREEN    10 LGREEN
+3  CYAN     11 LCYAN
+4  RED      12 LRED
+5  MAGENTA  13 LMAGENTA
+6  BROWN    14 YELLOW
+7  LGRAY    15 WHITE
+
+This color attribute is stored in a buffer directly following the main buffer
+and with the same size. The grid has a global "color" attribute and whenever
+contents is written to it, the "color" field is written to the corresponding
+cells of the color buffer.
+
+## Propagating changes to screen
+
+When you modify a grid, it changes its in-memory buffer. So far, so good. But
+you'd like to have those changes displayed on a screen at some point right? But
+if every tiny little bit of change means that you refresh the whole screen, your
+grid might end up being a bit slow, right?
+
+That's why grid do double-buffering. Whenever you change the grid, it updates
+its main buffer, while the "mirror" buffer stays as is. Then, when you want to
+show changes to screen, you call "getnextchange" in a loop, updating the screen,
+until there is not more change to process. It's "getnextchange" that updates the
+"mirror" buffer.
+
+## ASCII control characters
+
+When a ASCII control character ($00 to $1f) is written to the Grid, it is either
+ignored or has a special behavior mapped to it:
+
+08  BS  Unless we're at the beginning of a line, go back one character, erasing
+        it in the process.
+09  TAB Advance position to the next position divisible by TABSTOP.
+0d  CR  Move the current position to the beginning of the line
+0a  LF  Move the current position at the beginning of the next line. If on the
+        last line of the screen, scroll the grid up.
+
+## Scrolling
+
+When trying to write past the Grid's size, scrolling occurs and writing happens
+at the beginning of the freshly created line at the bottom of the screen.
+
+When a LF or TAB make position go out of bounds, scrolling occurs.
+
+## The caret
+
+The Grid structure itself doesn't have a concept of "caret", "cursor" or
+whatever visual indicator that tells the operator "where we are".
+
+Because it's a Stream, it has a position, but seeking around doesn't change the
+buffer or doesn't, by itself, have a visual effect.
+
+However, the visual implementation that will render the Grid will likely want to
+have a concept of a "caret", because most Grid applications have that concept.
+
+The convention with the Grid is that its position "at rest" is the caret. By at
+rest, we mean where current position is when we yield to the run loop
+[lib/coop].
+
+What this means is: when you write grid-enabled code, be mindful of where you
+leave your grid position after you're done fiddling with it.
+
+### And the mouse?
+
+Grid applications can benefit from the presence of a mouse pointer. For example,
+for easier text selection in [app/ed].
+
+The handling of mouse events happen entirely outside of the grid. It's the
+responsibility of the individual applications to know what to do with those
+clicks. This management is made convenient in [lib/coop].
+
+As for drawing a mouse cursor, this is also outside io/grid's mandate. One could
+imagine wanting to "draw" a mouse cursor through a text console, for example
+in [drv/pc/vga], but again, this is not through io/grid's convention. These
+features fall entirely outside.
+
+### Marker common logic
+
+Even though the visual implementation of both the caret and the mouse are
+entirely on the side of the visual implementation, the underlying logic is, in
+many cases, the same everywhere:
+
+1. Remember where the marker used to be.
+2. When the marker moves, set the background of the new position *off grid*, to
+   the new position.
+3. Reset the color of the old position.
+
+By "off grid", we mean that this change of color shouldn't be recorded in the
+grid buffers because things can get messy when we fight with the application
+currently modifying the grid.
+
+This common logic exists through "?showmarker". See the API below.
+
+## pixw and pixh
+
+The concept of pixels is immaterial to the grid. We don't care about the size
+in pixel of each character, we're only dealing with a character matrix here.
+
+So, go away with your pixels!
+
+... Oh, unless you want to map something like mouse [io/mouse] coordinates to
+the grid. Hum, oh yeah, you need that concept.
+
+The "pixw" and "pixh" fields, defaulting to 1, represent the size of a single
+character in the grid. This allows us to implement "xypixpos", which
+conveniently maps mouse coordinates to a grid position.
+
+So, when your grid has a mouse and when that mouse has a pixel-based resolution
+rather than a character-based one, set something else than 1 to pixw and pixh.
+
+## The global grid
+
+This unit also hosts a global "grid" value, which is a grid structure that
+represents the main Grid screen on the system. Most grid applications will act
+on this grid.
+
+Using this grid will usually be made in conjunction with a "visual
+implementation" that will render the grid to *something*. For example, [gr/grid]
+is such an implementation and it renders the global grid on [gr/buf]'s screen.
+
+Such drawing is a visual implementation details. A grid-enabled system will hook
+up these implementation details in its init.fs file.
+
+To help figuring all this out, we have grid implementations follow a convention,
+which is described in the "API" subsection below.
+
+## Initialization
+
+The "grid" word is a value and is initialized as a tiny grid that is there
+just so grid-related words don't crash. When you setup a grid-enabled system,
+you'll want to resize that grid to its real dimensions.
+
+To hook a visual implementation to it, you bascially need 3 things:
+
+1. Hooking "console!" [doc/dict]
+2. Periodically propagate grid changes
+3. Update caret (and optionally, mouse cursor)
+
+Choosing a moment to propagate changes is delicate. It's a heavy operation that
+compares the whole grid with its mirror buffer. You don't want to do that after
+each write. A good moment to do it is on idle time [lib/coop].
+
+Then, you also want to update the caret when appropriate. An appropriate moment
+for this is defined in [io/kbd] and is called "promptforkey".
+
+Putting it all together, the initialization of a visual implementation such as
+[gr/grid] might look like this:
+
+  needs gr/font/uf2 io/grid lib/coop io/kbd gr/grid
+  "data/font/term12.uf2" loaduf2 grgrid$
+  :> grid write# ; console!
+  ' refreshcaret ' promptforkey realias
+  createapplication RefreshGrid
+  ' refreshgrid IDLE RefreshGrid sethandler
+  RefreshGrid newcontext launchcontext
+
+## API
+
+### Structure
+
+extends MemStream struct Grid {
+  uint columns lines color dirty pixw pixh ;
+}
+
+columns   Number of columns in the grid
+lines     Number of lines in the grid
+color     Color attribute to give written contents
+dirty     Whether there's at least one change in buffer compared to mirror
+pixw
+pixh      Width and height, in pixels, of a character in the grid
+
+### Constants
+
+BLACK
+WHITE
+BLUE
+RED
+...           See "Colors" above.
+
+TABSTOP       8. By how much the TAB character advances in "gtype"
+
+### Values
+
+grid          The global [io/grid] structure
+DEFAULTCOLOR  White FG, Black BG
+INVERTEDCOLOR Black FG, White BG
+
+### Grid Words
+
+newgrid ( columns lines -- grid )
+  Allocates a new grid of the specified size and yield it.
+
+  The associated buffer is allocated with [mem/reuse] so that the grid can be
+  resized.
+
+colorptr ( grid -- a )
+  Address of the beginning of the color buffer.
+
+colorrange ( grid -- a u )
+  Range of the whole color buffer.
+
+posxy ( grid -- x y )
+  Yield grid's position as "x y" coordinates.
+
+xypos ( x y grid -- pos )
+  Yield the linear position of "x y" in the grid.
+
+xypix ( x y grid -- x y )
+  With "x" and "y" being *pixel* coordinates, divide by pixw/pixh.
+
+xypixpos ( x y grid -- pos )
+  Combines "xypix" with "xypos".
+
+xyptr ( x y grid -- a )
+  Yield buffer address of specified "x y" position.
+
+seekxy ( x y grid -- )
+  Encode x and y as a linear position then call "seek" [io/stream].
+
+alldirty ( grid -- )
+  Mark the whole grid as dirty, meaning that the next refresh will update all
+  cells.
+
+clear ( grid -- )
+  Fill buffer with SPC and color buffer with current color.
+
+  Sets damage to the whole grid.
+
+line[] ( idx grid -- a u )
+  Yields a range with contents of the line "idx", with trailing spaces removed.
+
+clrline ( idx grid -- )
+  Fill line index "idx" with spaces.
+
+scrollup ( grid -- )
+  Scroll contents up one line, leaving an empty line at the bottom.
+
+insertlines ( n grid -- )
+  Insert n blank lines at current position, shifting contents at and under that
+  position down n lines.
+
+deletelines ( n grid -- )
+  Delete n lines at current position, shifting contents under that position
+  up n lines.
+
+setcolor[] ( pos n col grid -- )
+  Set the color of the range "pos n" to color "col".
+
+setcolor ( pos col grid -- )
+  Set color of a single cell.
+
+getcolor ( pos grid -- col )
+  Get color at specified position.
+
+resetcolor ( grid -- )
+  Set color to DEFAULTCOLOR.
+
+fillcolor ( color grid -- )
+  Make the whole grid have the specified color.
+
+getnextchange ( frompos grid -- ?color ?char ?pos f )
+  Starting from position "frompos", compare the main buffer with its mirror.
+  As long as color and character data are the same, go on comparing. When
+  there's a difference, update the mirror buffer with the new data, then yield
+  the color and char from that position with f=1.
+
+  If the end of the buffer is reached without finding a difference, yield f=0
+  with "color", "char" and "pos" being absent.
+
+  You'll want to call this in a loop, with "frompos" starting at 0, then using
+  the yielded "pos" as an input for the next "frompos".
+
+## Global words
+
+joinfgbg ( fg bg -- col )
+  Join foreground and background colors into a color byte of the same format as
+  in the color buffer of the grid.
+
+COLS ( -- n )
+  Same as "grid columns".
+
+LINES ( -- n )
+  Same as "grid lines".
+
+cell! ( c pos -- )
+  Same as "grid seek grid putc".
+
+at-xy ( x y -- )
+  Same as "grid seekxy".
+
+showruler ( -- )
+  Fill upper and right edges of the grid in order to easily see its size.
+
+showcolors ( -- )
+  Emit 'X' 256 times, with all possible color combinations.
+
+?showmarker ( color pos updatext 'oldpos -- )
+  Check "pos" against the value in "'oldpos". If they're different, call
+  "updatext ( color pos -- )" with the color currently in the grid at that
+  position. Then, update "'oldpos".
+
+  Then, unconditionally call that same "updatext" with "color" and "pos" as an
+  argument.
+
+  In both cases, "updatext" is only called for position within bounds.
+
+  See "refreshcaret" in [gr/grid] for a canonical usage.
+
+## Convention for grid implementations
+
+refreshgrid ( -- )
+  Loop over "getnextchange", drawing each changed cell, until all changes have
+  been processed.
+
+refreshcaret ( -- )
+  Redraw the caret, possibly "undrawing" the old one. This implies a
+  "refreshgrid" before caret drawing occurs.
+
+refreshmouse ( -- )
+  Redraw the mouse cursor, possibly "undrawing" the old one. This implies a
+  "refreshgrid" before cursor drawing occurs.

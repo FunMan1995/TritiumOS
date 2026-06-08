@@ -1,0 +1,55 @@
+# The Oberon System
+
+Dusk OS hosts a port of the Oberon System, which is enabled by the Oberon
+Compiler [comp/oberon]. Because it's not quite the same as Project Oberon, we
+call this port Duskberon.
+
+This is not emulation, this is a native port! That is, this code doesn't compile
+to some RISC5 bytecode to be emulated or ran on the Oberon-specific FPGA. It's
+compiled through the HAL [doc/hal], using native bytecode for all CPUs supported
+by Dusk.
+
+This of course requires a significant rework of all the lower layers of the
+Oberon system which are RISC5-specific. We strip all those parts and hook them
+to the appropriate Dusk drivers.
+
+This implies changing a few things here and there. The goals here stay close to
+the spirit of the Oberon project while blending it with Dusk in the most awesome
+way possible.
+
+## Launching and using Duskberon
+
+You load the Oberon system by loading [oberon/sys.fs] with "needs oberon/sys".
+This loads [comp/oberon] and compiles a wrapper unit that loads all the
+important Oberon modules.
+
+You launch the Oberon system with "oberon ( -- )". This launches OberonApp
+[lib/coop] which runs until System.Quit is called from within Oberon.
+
+Then, you hop on to [oberon/usage] for a guide on how to use it.
+
+## Further documentation
+
+The system mostly runs as documented in Project Oberon, but is also documented
+right here, in files under the "doc/oberon" directory. It's a bit like Dusk
+documentation: mostly one page per module, with topical pages here and there.
+
+The original Oberon documentation does a good job of explaining how the system
+works, but it lacks a thorough reference documentation. Many types and
+procedures are quite lightly documented with regards to their exact semantics.
+
+Documentation in Duskberon aims to supplement this, as well as to document the
+deviations from the original Oberon.
+
+## Information hiding
+
+Wirth liked information hiding a lot. He routinely refers to this in Oberon
+documentation. This idea is at odds with Dusk, where we like the opposite:
+showing off all our innards for the world to see.
+
+One of the annoying things in Oberon's API are those useless "setter" procedures
+that do nothing else than setting a field in a record. Not only do they
+represent useless noise, but they also give the impression that they do more
+than what they actually do. By setting a field, you know, as a programmer, that
+you're purely handling levers in a stateful machine. That's an important
+information to have when you want to know what you're doing.

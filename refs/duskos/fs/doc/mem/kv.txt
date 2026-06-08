@@ -1,0 +1,104 @@
+# Key-Value tables
+
+The unit at [mem/kv.fs] provides key-value tables, an efficient way to associate
+a value to a key for the purpose of looking up that value later, through the
+key.
+
+Both values and keys are 32-bit values.
+
+A KV table has this structure:
+
+* A 32-bit entry count
+* <count> key elements
+* <count> value elements
+
+This means that "idx" can be used to search keys, which gives us the index at
+which the associated value lives.
+
+At the moment, keys are unsorted, but we can very much imagine the same lookup
+table being sorted and allowing a bisect algorithm to speed up the search.
+
+## Executable lookup tables
+
+This unit also provide semantics that are very similar to those of [lib/wordtbl]
+for values that are execution tokens.
+
+## Dynamic KV tables
+
+The peculiar structure of KV tables, with all keys on one side and all values on
+the other, allows for some pretty fast lookups. However, this makes them rigid:
+once created, you can't add elements to it.
+
+If you want dynamic tables, this is kind of a problem. What you can do to work
+around this rigidity is to create an "empty" KV table using "nsame" from
+[lib/psrs]. For example:
+
+create mytbl 0 0 2 16 nsame kvtbl,
+
+will create an empty table with all zeroes in it. Then, you can use "kvreplace"
+and "kv!" to "add" new entries to it. When "kvreplace" fails, your table is
+full.
+
+## Example usage
+
+  create mytbl 1 42 2 54 3 128 3 kvtbl,
+  mytbl 1 kv@# . \ prints 42
+  mytbl 2 kv@# . \ prints 54
+  mytbl 4 kv@# \ aborts with error
+
+  kvtbl[
+  'a' :> 42 . ;
+  'b' ' anotherword
+  'c' :> 54 . ;
+  'd' over \ low-tech way to bind multiple values to the same word
+  ]kvtbl mytbl
+
+  mytbl 'd' ?kvexec . \ prints 54, then 1
+  mytbl 'z' ?kvexec . \ prints 0 and calls nothing
+
+## API
+
+kvtbl, ( ... n -- )
+  Write a KV table with n elements in it. Elements are present in PS in the
+  forms of pairs, intertwined. For example, a PS ( 1 2 3 4 2 ) will generate a
+  table with 2 entries keyed 3 and 1 to values 4 and 2, respectively.
+
+kv@ ( tbl key -- ?val f )
+  Look up for "key" in "tbl". If found, f=1 and "val" is the associated value.
+  Otherwise, f=0 and "val" is absent.
+
+kv@# ( tbl key -- val )
+  Perform a lookup and abort with error if not found.
+
+kv', ( -- notfoundjmp )
+  Compile a [doc/hal] lookup of W into table where A points to. The codepath
+  directly following the word is the one where key is found. W points the
+  associated value. "notfoundjmp" is a forward jump that must point to the
+  "not found" code path.
+
+  Note that the A register is *not* preserved.
+
+kv! ( tbl key val -- f )
+  Look up for "key" in "tbl". If found, f=1 and "val" becomes the new associated
+  value. Otherwise, f=0 and "tbl" stays unchanged.
+
+kv!# ( tbl key val -- )
+  Calls "kv!" and aborts with error if f=0.
+
+kvreplace ( tbl oldkey newkey -- f )
+  Look up for "oldkey" in "tbl". If found, f=1 and "newkey" becomes the new
+  key of the pair. Otherwise, f=0 and "tbl" stays unchanged.
+
+kvreplace# ( tbl oldkey newkey -- )
+  Calls "kvreplace" and aborts with error if f=0.
+
+kvtbl[ ( -- )
+  Create a new word table named "name" and write elements accumulated since the
+  previous "wordtbl[" call to that table.
+
+]kvtbl ( ... "name" -- )
+  Creates a lookup table "name" and write accumulated pairs on PS to that table.
+
+?kvexec ( tbl val -- f )
+  Look up "val" in lookup table "tbl". If found, execute the associated XT and
+  yield f=1. Otherwise, f=0.

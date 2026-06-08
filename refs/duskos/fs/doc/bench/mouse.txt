@@ -1,0 +1,15 @@
+# Mouse test bench
+
+The unit at [bench/mouse.fs] wraps [io/mouse] and interactively tests its
+functionalities.
+
+## Example usage
+
+  needs bench/mouse
+  mousebench
+
+## API
+
+mousebench ( -- )
+  Listen for MOUSECLICK event and print something whenever we have one. Do that
+  until any key is pressed.

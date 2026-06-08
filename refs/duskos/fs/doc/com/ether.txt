@@ -1,0 +1,85 @@
+# Ethernet com link
+
+This unit implements an Ethernet [com/link] that primarily deals with ethernet
+frames:
+
+6b Destination MAC
+6b Source MAC
+2b Ethertype or payload size
+.. Payload
+
+Optional 802.1Q VLAN tagging (Ethertype $8100) is not handled yet.
+
+## Ethernet and ARP
+
+Frames need to be sent to particular MAC addresses, which we don't know
+beforehand. The ARP protocol [com/arp] is designed to solve this problem by
+mapping IP [com/ip4] addresses to MAC addresses.
+
+The proper way to proceed would be, that whenever we want to send a frame
+containing an IP datagram where the destination IP is not in the ARP cache,
+we hold this frame for a while, do an ARP request and, when it returns, send the
+frame we wanted to send earlier to the proper MAC address.
+
+The problem is that we definitely don't want to do this in a blocking way. This
+would make the system freeze for as long as it takes for a ARP reply to come
+back, if it does.
+
+We need to do this in an asynchronous manner, but this involves a quite complex
+system out outgoing buffer queues.
+
+The approach we take in Dusk is one of slight network rudeness: send ethernet
+frames to ethernet broadcast address (FF:FF:FF:FF:FF:FF) as long as the ARP
+request hasn't returned. This saves us the trouble of having to manage outgoing
+buffer queues. This situation will typically be very short lived, so the network
+spurious chatter should be minimal.
+
+## API
+
+### EtherLink struct
+
+extends Link struct EtherLink {
+  *uchar macptr ;
+  xt rxbuf txbuf ;
+}
+
+macptr  Pointer to the MAC address of this ethernet link
+
+rxbuf ( link -- ?a u-or-0 )
+  Check for an incoming frame and yield its range if there is one. Otherwise,
+  u=0 and a is absent.
+
+txbuf ( link -- a u )
+  Find a free outbound buffer and yield its range. As per [com/link]
+  specifications, it must be at least $200 bytes in size.
+
+### ivalmap of an ethernet frame
+
+This ivalmap points to [com/link]'s active frame.
+
+addrof frameptr ivalmap {
+  [uchar,6] dstmac srcmac ;
+  beshort ethertype ;
+}
+
+### Constants
+
+BROADCAST  Address to a FF:FF:FF:FF:FF:FF MAC address.
+
+### Words
+
+.mac ( a -- )
+  Print a MAC address living at "a".
+
+.ether ( -- )
+  Pretty-print the active ethernet frame
+
+macmove ( src dst -- )
+  Copy MAC address from src to dst.
+
+newetherlink ( sendframext txbufxt rxbufxt macptr -- link )
+  Create a new [com/link] from the specified method XTs as well as a pointer to
+  this link's MAC address.
+
+  This unit takes care of implementing "readframe" and "beginframe" and
+  "replytoframe".

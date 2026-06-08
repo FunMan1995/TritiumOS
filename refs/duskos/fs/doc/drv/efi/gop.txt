@@ -1,0 +1,52 @@
+# UEFI Graphics Output Protocol
+
+*GOP trumps UGA*
+
+The unit at [drv/efi/gop.fs] implements the [gr/buf] screen on top of UEFI's
+Graphics Output Protocol. Note that this is UEFI-specific. If you use EFI 1.x,
+you might be wanting to use [drv/efi/uga].
+
+The general principle is that we maintain a in-memory pixbuf with the same pixel
+format as the one we're being told is used by the GOP. When that buffer is
+invalidated, we call Blt. And that's it.
+
+You use this unit by initializing the screen and then use it like any [gr/buf].
+
+## Initialization example
+
+  needs drv/efi/gop
+  gop$ \ "screen" from gr/buf is set
+
+## Going further
+
+By default, we'll use the first available GOP protocol, but some system have
+more than one, for whatever reason. You might want to use another one. For this,
+you can use "gopcnt" to know the number of available GOP handles, select one by
+index, then use "gop!" to select it. Then you can call "gop$".
+
+## API
+
+### Constants
+
+gopcnt  Number of available GOPs
+gops    Array of 64-bit handles to GOPs
+
+### Words
+
+gop$ ( -- )
+  Query the current active mode for size and pixel format information, then
+  allocate a gr/buf of the correct size/format. Then, initialize the "screen"
+  variable with it.
+
+gop ( -- a64 )
+  Yield the "current" GOP handle.
+
+gop! ( idx -- )
+  Set current GOP to "idx".
+
+.gop ( -- )
+  Print information about the currently selected GOP mode.
+
+.gopmodes ( -- )
+  For each of the possible modes for currently selected GOP, print a single line
+  description of the format "<width>x<height>:<pixfmt>".

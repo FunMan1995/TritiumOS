@@ -1,0 +1,80 @@
+# Duskberon's GrowFont module
+
+The GrowFont module [oberon/growfont.mod] uses pixel-art scaling algorithms
+to create a larger version of a given .Fnt file.
+
+The used algorithms are documented in [this wikipedia article][wiki] and/or
+[this GitHub repository][repo]
+
+[wiki]: https://en.wikipedia.org/wiki/Pixel-art_scaling_algorithms
+[repo]: https://github.com/libretro/common-shaders
+
+## [Key Concept]
+
+## Structures
+
+CallbackProc = PROCEDURE (in: SET; VAR out: SET);
+
+Takes a set of bits describing a pixel and the pixels in the vicinity,
+and produces a set describing the new (4 or 9) pixels created from it.
+
+         input bit pattern      output bit pattern
+               9
+             0 1 2              0 1       0 1 2
+           a 3 4 5 b            2 3       3 4 5
+             6 7 8                        6 7 8
+               c
+
+
+LineRec = POINTER TO LineDesc;
+LineDesc = RECORD l: ARRAY 32 OF BYTE END;
+
+Represents up to 128 pixels of a horizontal line of a glyph.
+
+GlyphRec = RECORD w, h: BYTE END;
+
+Represents the width and height of a glyph in the font file, to facilitate
+converting the file in a single pass.
+
+## Global variables
+
+oldLines: ARRAY 5 OF LineRec;
+
+Are used to store 5 lines (the one to be grown and two adjacent lines above
+and below each) of the old glyph.
+
+newLines: ARRAY 3 OF LineRec;
+
+Are used to store the up to 3 new lines created from the line to be grown.
+
+## Command arguments
+
+All commands take two file names as arguments, the input file and the
+output file. The algorithm is encoded in the command name. As both files are
+opened concurrently, they may not point to the same name.
+
+## Commands/algorithms
+
+X2
+  Just create 4 identical pixels (2x2) from each pixel.
+
+X3
+  Just create 9 identical pixels (3x3) from each pixel.
+
+EPX2
+EPX3
+  Use EPX algorithm to double or triple font size.
+  Eric's Pixel Expansion (EPX) is an algorithm developed by Eric Johnston at
+  LucasArts around 1992, when porting the SCUMM engine games from the IBM PC
+  (which ran at 320x200x256 colors) to the early color Macintosh computers.
+
+Eagle
+  Use Eagle View Graphics Filter algorithm to double font size.
+
+Scale2SFX
+Scale3SFX
+  Use the Scale2SFX/Scale3SFX algorithm to double/triple font size.
+  These algorithms are improved/fixed version of the Scale2x and Scale3x
+  algorithms that were initially developed by Andrea Mazzoleni for MAME.
+  This is the only implemented algorithm that takes into account pixels that
+  are two orthogonal steps away from the pixel to be transformed.

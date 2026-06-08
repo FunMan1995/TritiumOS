@@ -1,0 +1,285 @@
+# Types
+
+This unit provides a universal type system. The main goal of this unit is for
+different programming languages to talk to each other, but the type system can
+be used independently.
+
+What are types for? For answering these questions:
+
+1. What size is it?
+2. How could it be described in a human readable form?
+3. How do I get or set its value?
+
+## The Type structure
+
+What we call a Type is a pointer to this structure:
+
++00 Flags
++04 Printer XT ( type -- )
++08 Size XT    ( type -- n )
++0c fetcher XT ( halop -- )
+... type-specific fields
+
+The bit structure of the Flags field is:
+
+b31:8 type-specific bits
+b7:3  reserved
+b2:0  HAL modifier. 0=8b) 1=16b) 2=32b) 3=&)
+
+The vast majority of types have the "@," fetcher XT. The only exceptions are
+litte-endian and big-endian fields.
+
+## Type entries
+
+When you create type entries in the sysdict, you should use "addtype" instead of
+"create" or "const". It will make the entry tagged [doc/usage/tag] with "TYPE".
+
+Then, what you can do is to use "findtype" which takes uses "findtagged" to give
+you a universal type repository.
+
+## All types have a size
+
+All types have a size, yielded by "typesz". This number represents the number
+of bytes that a single element of that type needs for storage. This size is
+*not* aligned. There are moment when you'll want to apply alignment to that
+size.
+
+## All types are printable
+
+All types can be printed through ".type ( type -- )". When you define a new
+category, you have to supply it with a "printer word". This makes types very
+introspectible.
+
+## All types are are HAL-accessible
+
+All types have a routine that fiddles with a base HAL [doc/hal] operand, for
+example the ones coming from [comp/sym] ("W)", "RSP) 4 +)", etc.), then apply
+the proper HAL modifiers on it, that is, 8b) 16b) 32b) or, in the case of
+references, &). This is done through "type)".
+
+Even though 32b) is the HAL default, "32b)" is applied explicitly by type). The
+reason for this is that we seek the "&) inhibiting" effect of 32b). The input
+HAL operand, in compiling context, will often come from an array or structure
+and thus have a &) applied to it. If we're then looking, for example, to build a
+HAL access to a structure field, then it's important that this 32b) is
+explicitly applied, or else the &) will stick around when it shouldn't.
+
+## Type identity
+
+It's often needed to check for a type identity, for example "is this type an
+integer?". There is no reserved field in the type structure for such a check.
+The manner to do so is type-specific and, well, a bit stretched. For example,
+most of the time, type identity is done by the address of the Printer XT. That
+is, if the type has the printer XT address corresponding on the integer printing
+routine, then it's an integer!.
+
+Usually, each type will supply this identity check routine, for example "int?",
+or "pointer?".
+
+## The void type
+
+This single type named "void" has a 0 size and errors out whenever we try to
+compile an access for it.
+
+## Integer types
+
+Those are the integer types:
+
+  int     4b signed
+  short   2b signed
+  char    1b signed
+  uint    4b unsigned
+  ushort  2b unsigned
+  uchar   1b unsigned
+  leint   4b unsigned little-endian
+  leshort 2b unsigned little-endian
+  beint   4b unsigned big-endian
+  beshort 2b unsigned big-endian
+
+Integer types have this structure:
+
+   ...
+  +10 Name (inlined string)
+
+It defines these flag bits:
+
+b8  Signed?
+
+It's not a coincidence that these type names are similar to those of the C
+language.
+
+## Pointer type
+
+A pointer type is dynamic and is created with "pointer ( type -- type )". It
+has this structure:
+
+  ...
+  +10 target type
+
+Getsetter for this type is the same as uint.
+
+## Array type
+
+An array type is dynamic and is created with "array ( count type -- type )". It
+has this structure:
+
+  ...
+  +10 type of the elements
+  +14 count
+
+An array with a 0 count can be used to represent an area of memory with an
+indefinite size, or where the size of that array is dynamically determined.
+
+## XT type
+
+The static type named "xt" represents an eXecution Token (XT), that is, an
+address that can be executed.
+
+Its size is always 4 bytes. Its getter aliases to "brr," and its setter aliases
+to "!,". This means that "getting" a value of a XT type calls it and "setting"
+it changes its address to the specified one.
+
+## Signature type
+
+The Signature type is a dynamic 32-bit type that represent a an eXecution Token
+that has a signature attached to it, that is, information about its input and
+output arguments.
+
+A signature has a 4b size because it represents a pointer to something that is
+to be called. The fetcher XT for the signature is, like others, "@,". You'll
+often want to compile a jump or call to it, but you're expected to compile these
+"by hand", after a "signature?" check.
+
+Its Flag fields are:
+
+b31:24 Number of output elements
+b23:16 Number of input elements
+b15:10 unused
+b9     Variable output
+b8     Variable input
+
+Its structure is an array of pointers to types for each output, then input
+elements. In each of those arrays, the shallowest element comes first.
+
+When printed, the type prints "( ... -- ... )", where the first "..." is the
+printed representation of input elements seperated by a space and the second
+"..." output elements.
+
+If the signature has the "Variable input" flag, a literal "..." will be printed
+before its input types. If it has the "Variable output" flag, a literal "..."
+will be printed before its output types.
+
+A signature type can be created via "newsignature".
+
+## Parsing types
+
+This unit also provides a convenience routine for parsing complex types. The
+general idea is that what is printed by ".type" can be parsed back into the same
+type. Examples:
+
+  uint                    --> uint
+  *uint                   --> uint pointer
+  [uint,42]               --> 42 uint array
+  [*uint,42]              --> 42 uint pointer array
+  ( uint *char -- short ) --> short 1 uint char pointer 2 0 xt
+  ( foo:int -- bar: int ) --> int 1 int 1 0 xt
+
+You parse types with "type<" which parses the input stream, possibly write new
+types to HERE, then yield the result type.
+
+In signatures, the ":" character makes the parser discard anything accumulated
+in the word so far. This allows one to write signatures that also document
+argument names.
+
+## API
+
+### Builtin types
+
+void xt uint ushort uchar int short char
+String --> *uchar
+AnyPtr --> *void
+
+### Words
+
+typesz ( -- n )
+  Yields the size in bytes needed to store an element of that type.
+
+.type ( type -- )
+  Print a human-readable representation of type.
+
+type) ( halop type -- halop )
+  Apply appropriate HAL modifiers, that is 8b) 16b) 32b) or &) to "halop".
+
+type@, ( halop type -- )
+  Compile code that fetches halop's source into halop's dest.
+
+  You will generally want to call "type)" first.
+
+type!, ( halop type -- )
+  Apply dir) to halop then call type@,
+
+  Errors out when type is a &) one.
+
+type< ( "..." -- type )
+  Parse a type from input stream as described in "Parsing types" above and yield
+  the resulting type. Aborts with error if the parsed string in invalid.
+
+newtype ( fetcherxt sizext printerxt flags -- type )
+  Create a new type and yield it.
+
+newint ( fetcherxt signed? width name -- type )
+  Create a new integer type of the specified width (1, 2 or 4) and signedness.
+
+  "fetcherxt" will most of the time be "' @,", but can be something else for
+  fancy types.
+
+newpointer ( type -- type )
+  Create a new pointer type pointing to the specified type.
+
+newarray ( count type -- type )
+  Create a new array type of the speified count and type.
+
+newsignature ( ... n ... n flags -- type )
+  Take two counted lists from PS where each is a list of types. The shallowest
+  list is the output signature and the deepest list is the input. The shallowest
+  item of each list represents the shallowest item of the signature.
+
+  The flags field is for setting the variable input and output (b8 and b9)
+  flags. The rest of the type flags are automatically set by "newsignature".
+
+  For example, the signature "( a b -- c d )" would go thus:
+
+    typeA typeB 2 typeC typeD 2 0 newsignature
+
+addtype ( type "name" -- )
+  Same as "const", but tags the entry with "TYPE"
+
+findtype ( name -- type-or-0 )
+  Uses "findtagged" to perform a dict lookup in sysdict specifically for entries
+  with the "TYPE" tag.
+
+intsigned? ( inttype -- f )
+  Yields whether inttype is signed.
+
+reftype ( type -- type )
+  Works for both pointers and arrays. Yields the type it refers to. When you
+  create types that are meant to refer to other types, place your reference type
+  field at the same offset to piggy back on "reftype".
+
+arraycount ( arraytype -- count )
+  Yields the count of a type of an Array category
+
+typealign ( a type -- a )
+  Align "a" to an address that properly stores "type", that is, align to 2 for
+  typesz=2, don't align for typesz=1 and otherwise, align to 4.
+
+sigcounts ( type -- inputcount outputcount )
+  Yields the IN/OUT counts for specified signature.
+
+siginputs ( type -- a )
+sigoutputs ( type -- a )
+  Yields the address of the first input/output type of the signature.
+
+sigvarinput? ( type -- f )
+sigvaroutput? ( type -- f )
+  Yields whether the signature has variable input/output arguments.

@@ -1,0 +1,12 @@
+# FAT bench
+
+This unit is a work bench for [fs/fat].
+
+## API
+
+.fatentry ( id fat -- )
+  Print all interesting FAT entry fields related to the specified ID, as well as
+  the list of cluster IDs that make it up.
+
+.cluster ( cl fat -- )
+  Spit the binary contents of specified cluster

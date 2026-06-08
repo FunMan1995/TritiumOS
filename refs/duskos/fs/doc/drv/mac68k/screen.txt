@@ -1,0 +1,34 @@
+# mac68k screen
+
+The unit at [drv/mac68k/screen.fs] implements a [gr/buf] for all the supported
+mac68k models. There is no initialization required, the "screen" variable from
+[gr/buf] is set when the unit is loaded.
+
+Initialization depends on particular Mac models and these models are
+auto-detected by the unit so that proper initialization ensues.
+
+Supported models are:
+
+* Powerbook 520 (2-bit grayscale, 640x480)
+
+## TODO: wrap gDevice and and sResource
+
+This unit, as it is now, is pretty much hardcoded for a Powerbook 520, and maybe
+even my particular Powerbook 520, because from its specs, it should be
+supporting 4-bit grayscale.
+
+When I try to boot from a Powerbook 180, the display is weird, and that's
+probably because its gdMode is not 2-bit grayscale and it's certainly not
+640x480 (the powerbook 180 LCD is 640x400).
+
+What I need to be doing is to wrap up GetDeviceList and interpret gdMode either
+so that I can change to the desired mode through InitGDevice or so that I can
+initialize newpixbuf with the correct parameters.
+
+But I don't want to do that now, so it's a TODO, for later.
+
+## See Also
+
+* Inside Macintosh volume V
+* Designing Cards and Drivers for Macintosh II and Macintosh SE
+* Power Macintosh programming starter kit, Tom Thompson

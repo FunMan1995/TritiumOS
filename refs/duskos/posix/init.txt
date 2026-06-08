@@ -1,0 +1,37 @@
+Welcome to the Dusk console!
+
+It's a quite special one, not unlike Plan 9's: it's a text editor that
+incidentally can run commands.
+
+With arrow keys, Page Up, Page Down, place your cursor on the line below and
+press CTRL+Return (To come back here afterwards, press CTRL+Z):
+
+."Answer to life, the universe and everything: " 21 2* . nl>
+
+You can also select the text to run by holding shift while moving. This system
+also has a mouse hooked. That's the green cursor moving around. Left-clicking
+moves the caret (the blue thing), right-click+drag selects text.
+
+This editor can follow "tags" [fs/utag]. If you place your cursor over
+[app/gcon] and press CTRL+E, you'll open the source code for this very console.
+If you press CTRL+D, you'll see its documentation. Again, press CTRL+Z to come
+back here.
+
+You can also get a directory listing by placing your cursor on a directory path
+and press CTRL+S. Try on this one: /
+
+You want to run the Dusk Tour? Place your cursor on [doc/tour] and press CTRL+D.
+
+And that's not all! This console runs on a Grid Multiplexer [app/gmux]. This is
+one of the subcontexts it can run. You can press F1 to F4 to switch between
+subcontexts. Other contexts have traditional prompts [app/prompt].
+
+Run all tests:
+
+f<< tests/all.fs
+f<< bench/gr.fs grall
+
+Hey, wanting to try Duskberon real quick?
+
+needs oberon/sys
+oberon

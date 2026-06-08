@@ -1,0 +1,34 @@
+# Mark lists
+
+A mark list is an arbitrary large bitfield that keeps indexed boolean flags.
+Around this list is a collection of useful and fast words.
+
+Its first field is the number of 32-bit elements in it, followed by n/8 bytes.
+
+Mark lists are mostly used to keep track of whether certain indexes are used or
+not, for example in [mem/cons].
+
+## API
+
+newmarklist ( n -- mlist )
+  Create a new mark list with n zeroed bits in it. That number is aligned to 32
+  bit and consumes n/8 bytes.
+
+markall ( mlist -- )
+unmarkall ( mlist -- )
+  Set all bits in the mark list to 0 (unmark) or 1 (mark).
+
+marked? ( idx mlist -- f )
+  Yields whether index "idx" is marked in the list. Aborts if index is out of
+  bounds.
+
+mark ( idx mlist -- )
+unmark ( idx mlist -- )
+  Set specified index as marked or unmarked. Aborts if index is out of bounds.
+
+findunmarked ( mlist -- ?idx f )
+  Find first index to be unmarked in the list. If found, f=1 and idx is its bit
+  index. Otherwise, f=0 and idx is absent.
+
+markcnt ( mlist -- n )
+  Yields the number of marked bits in the list.

@@ -1,0 +1,67 @@
+# Dusk OS is simple
+
+Many software projects claim to be simple. I believe that Dusk's claim to
+simplicity is stronger than most non-Forth software projects.
+
+Dusk's simplicity comes from it being a Forth. Forth's approach to simplicity is
+revolutionary, but it's difficult to comprehend without a good hands on
+experience with it. To describe this simplicity to the uninitiated, I'd say that
+Forth's approach to complexity is to sidestep it.
+
+Let's try to illustrate this simplicity with examples. Because Dusk's main
+innovation compared to other Forths is to include a C compiler, my main
+reference when comparing complexity is Fabrice Bellard's Tiny C Compiler.
+
+Tcc enjoys a very good reputation among geeks, and Fabrice Bellard is generally
+considered to be a genius. Nevertheless, Dusk's C compiler is less than 40
+kilobytes of code and tcc is 1400 kilobytes of code. So, a ratio of 35 to 1.
+
+How can we explain this difference? It's true that Forth code is generally
+denser than C, but not by a factor of 35. It's true that I'm sometimes clever,
+but not more than Fabrice. There are multiple reasons for these differences and
+they all have to do with Forth's habit of side-stepping complexity.
+
+First of all, there's relocation and binary format. tcc produces ELF binaries
+where Dusk CC compiles code in memory designed to run where its written. Tcc
+dedicates 10,000 lines of code to only file format logic. That's huge, but if
+you want to build a compiler in the UNIX world, you *have* to do this.
+
+Forth is a memory oriented system. It comes with constraints, but it also comes
+with simplicity benefits. As UNIX users, we're blind to these benefits and
+see some of the complexity associated with computing as unavoidable. It's not.
+That is why Forth's approach to simplicity is revolutionary, because it removes
+a blindfold.
+
+Another simplicity factor is parsing boilerplate. Tcc's assembler's input is
+text formatted in GNU assembler format. This parsing boilerplate is a
+significant part of tcc assembler-related complexity. This contraint in UNIX is
+inevitable because inter-process communication in UNIX generally has to be done
+through streams, usually in text format for maximum compatibility. This implies
+serialization and deserialization boilerplate at multiple levels. In Forth,
+memory is shared and no such constraint exists. Words communicate through
+structured memory. We can thus afford to sidestep this complexity and use
+regular Forth words to assemble binaries.
+
+We have a good example of the kind of constraints UNIX imposes on programs by
+looking at i386-gen.c. In there, we see that the assembler included in tcc isn't
+used. Instead opcodes are directly generated in binary format. This makes sense
+because proceeding this way is simpler than generating textual assembler syntax
+in a buffer and then processing it through the assembler.
+
+It is unfortunate, however, to have to do this because it makes the code more
+cryptic than in has to be. DuskCC can freely use the words from its HAL, which
+encapsulates encoding logic, and doesn't have to go through a clunky text
+interface.
+
+Inline assembly is another interesting one. Yes, it's nice to have the option to
+add inline assembly to a C unit. To this end, tcc includes an assembler that
+weights 1200 lines with 2100 lines for the i386 backend. DuskCC has the "##"
+directive allowing to execute arbitrary Forth code, which can of course include
+calls to the assembler words, but also more sophisticated constructs. The
+implementation of that directive is 6 lines of code.
+
+In conclusion, I think we can say that DuskCC is simpler than TinyCC because it
+has less features. But as it turns out, those features, as they are designed,
+are not needed in Dusk because it has better and more powerful alternatives at a
+lesser complexity cost. They're just designed differently. That is what I call
+"side-stepping".

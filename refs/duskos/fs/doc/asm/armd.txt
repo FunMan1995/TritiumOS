@@ -1,0 +1,38 @@
+# ARM Disassembler
+
+The unit asm/armd decodes byte streams containing ARMv4 code into listings
+where each line contains an operation.
+
+Not all instructions are decoded yet, but the most important ones are supported.
+
+The disassembler is used mainly through "dis ( a -- )", which spits a list of
+"listingsz" (default 20) lines. To continue listing, use "disn ( -- )", which
+continues where the last "dis" left off.
+
+## Listing format
+
+Each line in the listing has this format:
+
+  addr cond mnemonic arguments rawbytes
+
+Columns have a fixed width and are thus aligned with each other. The format of
+the decoded instructions broadly follow "official" ARM assembler dialect.
+
+While register numbers are in decimal form, all immediates and offsets are in
+hexadecimal format, in their "rotated" final form. That is, the number being
+shown is the result of the 8-bit immediate with its "rotate" field applied to
+it.
+
+LDR and STR have "!" and "p" flags. "!" is the "write back" flag and "p" is the
+"post-inc" flag.
+
+"B" and "BL" targets are displayed in absolute target address.
+
+The "rawbytes" column is a dump of the raw bytes that were decoded on that line.
+
+## Word labels
+
+When listing a "B" or "BL", we check wether the target address is a xt, that is,
+a payload to a dictionary entry. We do so with the help of "?xt>e" [mem/dict].
+If it is, we replace the "raw bytes" printing with the name of the associated
+word.

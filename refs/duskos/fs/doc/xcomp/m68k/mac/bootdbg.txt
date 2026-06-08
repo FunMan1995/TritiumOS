@@ -1,0 +1,29 @@
+# mac68k bootloader debugging
+
+The unit at [xcomp/m68k/mac/bootdbg.fs] is a mac68k bootloader that aims to
+help debugging boot issues on a mac68k.
+
+Its features are limited because it needs to fit into the $400 bytes boot area.
+
+## Deployment
+
+This unit is deployed through [xcomp/m68k/mac/deploy] "installdbg". Example:
+
+needs xcomp/m68k/mac/deploy
+floppy installdbg \ the floppy can now be booted from a mac68k
+
+## Usage
+
+As is, this bootloader doesn't do much:
+
+1. Initialize QuickDraw
+2. Erase a small rectangle on the screen
+3. Print "DuskDBG"
+4. Print 42 in hexadecimal.
+
+This allows one to verify whether a mac68k machine has hope of every being
+able to boot Dusk (if it can't boot this, there's a deep problem).
+
+But otherwise, the idea is also that you write your debug code yourself. There
+is a print routine, a hex formatting routine. That's a good basis for quick and
+dirty debugging output.

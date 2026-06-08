@@ -1,0 +1,22 @@
+# Graphics bench
+
+This unit contains a handful of routines that test the graphical capabilities of
+Dusk. Unlike units tests in tests/gr, these tests are meant for manual
+validation by the operator.
+
+The word "grall" goes through all available tests of the unit.
+
+## API
+
+gradient ( -- )
+  Draw a gradient on the screen.
+
+ufx ( -- )
+  Draw all possible glyphs of the atari8.uf1 and sans12.uf2 fonts.
+
+varvara ( -- )
+  Draw a bunch of varvara sprites on the screen.
+
+grall ( -- )
+  Perform all the tests above. Before each test, print a description of what is
+  going to happen, then wait for a key press, then do it.

@@ -1,0 +1,40 @@
+﻿IBM Quantum Platform - support report (TritiumOS)
+Generated: 2026-06-02T18:55:49.6725646Z
+
+ISSUE: Ghost Open Plan instance
+  - UI: No instance visible on https://quantum.cloud.ibm.com/instances
+  - Create instance fails: 422 only one open plan instance is allowed per account
+  - API list_instances returns 0 instances for the same API key
+
+REQUEST: Delete or expose the orphaned Open instance, or provision a visible
+  Open instance for this account so Qiskit Runtime can run jobs.
+
+Trace IDs from user:
+  626c-1114ce38fcbbb253
+  626c-ec1ce2f9a4678e1a
+
+--- API diagnostic (automated) ---
+TritiumOS ΓÇö IBM Quantum instances
+(Open plan: only ONE instance allowed ΓÇö use existing, do not create another)
+
+API list_instances (raw): 0 instance(s)
+
+API sees ZERO instances, but UI may block a second Open instance (422).
+This usually means:
+  - An Open instance exists in IBM records but is not linked to this API key yet
+  - Wrong IBM Cloud account selected in the dashboard header
+  - Instance is Archived (check Archive section on Instances page)
+  - Region is not us-east (Open Plan requires us-east)
+
+See docs/IBM-INSTANCE.md ΓÇö do NOT create another instance.
+If Instances page shows a CRN, add it to apikey.json as "instance".
+
+--- Checks performed by user (fill in if opening ticket) ---
+[ ] Region set to us-east in IBM Quantum header
+[ ] Checked Open, Pay-As-You-Go, Flex, Premium, and Archive tabs on Instances
+[ ] Tried every IBM Cloud account in header account switcher
+[ ] API key created from same account shown in quantum.cloud.ibm.com
+[ ] Registration completed at https://quantum.cloud.ibm.com/registration
+
+Product context: TritiumOS personal project (creator Draco), Qiskit Runtime smoke test.
+

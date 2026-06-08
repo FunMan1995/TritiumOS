@@ -1,0 +1,75 @@
+# x87 assembler
+
+This unit assembles opcodes for Intel's x86 Floating Point Unit (FPU). It covers
+only a small part of the instructions, as they are implement in a "as needed"
+basis.
+
+## Operands
+
+FPU instructions have two types of operands: ST(i) and memory references.
+
+ST(i) operands are passed through one of the STn constants:
+
+  ST0 ST1 ST2 ST3 ST4 ST5 ST6 ST7
+
+Memory references are passed through [asm/x86] operands. Only a subset of those
+are valid for FPU instructions. Only 32-bit references are supported.
+
+Example usages:
+
+## Instructions
+
+Instructions are divided in multiple groups with different signatures.
+
+### Two-ways ( ST0 src -- ) OR ( dst ST0 -- )
+
+All regular arithmetic instruction involve ST0, but the direction can be
+reversed depending on what argument is placed where.
+
+"src" and "dst" can be either a ST(i) argument or a [asm/x86] operand
+referencing memory.
+
+TODO: the "mem" part isn't implemented yet.
+
+List of instruction:
+
+  fadd, faddp,
+  fsub, fsubp,
+  fmul, fmulp,
+  fdiv, fdivp,
+
+Examples:
+
+  ST1 ST0 fadd,     \ Add ST0 into ST1
+  ST0 ST1 fadd,     \ Add ST1 into ST0
+  ST0 ax 0 d) fadd, \ Add [EAX], as a float, to ST0
+  ST1 ST0 faddp,    \ Add ST0 into ST1 and pop the stack
+
+### Memory-only ( src-or-dst -- )
+
+These instructions involve only a memory pointer, with ST0 as a source or
+destination being inherent.
+
+List of instruction:
+
+  fld, fst, fstp,
+  fild, fist, fistp, fisttp,
+  fldcw, fstcw, fnstcw,
+
+Examples:
+
+  ax 0 d) fild,  \ Push integer where EAX points to the FPU stack
+  ax 0 d) fist,  \ Store rounded ST(0) where EAX points to
+
+### Single ST argument ( streg -- )
+
+  ffree,
+
+Examples:
+
+  ST0 ffree,
+
+### Inherent ( -- )
+
+  fincstp, fdecstp,
+  finit, fninit,

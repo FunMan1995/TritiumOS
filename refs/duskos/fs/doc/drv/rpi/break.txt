@@ -1,0 +1,63 @@
+# Breaking away
+
+The unit at [drv/rpi/break.fs] implements a way to break away [doc/break]
+through a push button connecting one of the GPIO pins to one of the GND pins.
+An interrupt is generated upon falling edge detection allows us to break away.
+
+The proposed implementation chooses GPIO27 connected to one of the GND pins
+(there's one right next to it).
+
+One unfortunate thing that can happen when "breaking" this way is to interrupt
+the system while it's talking to hardware and leave it in a broken state. Sure,
+we could begin adding "interrupt off/interrupts on" gates everywhere that is
+sensitive, but it would kind of defeat the simplicity advantage we get from the
+"no concurrency" design of Dusk OS. Therefore, our mitigation for this problem
+entirely takes place in the "break" logic.
+
+When a "break" interrupt is fired, we don't abort right away. Instead, we
+decrease the "breakcnt" variable, which is initialized to BREAK_FORCE_AFTER,
+which is 5 by default. Then, we return from interrupt normally.
+
+In the idle loop [lib/coop], we have a routine that repeatedly check for this
+variable. When it's less than its initial value, reset it and then abort. This
+means that when we press the "break" button inside a loop that calls "idle" we
+won't need to interrupt the flow and we'll abort cleanly. This is the case, for
+example, for a loop that polls the keyboard for input.
+
+If "idle" is never called, then this litte variable will have no effect and
+we'll still be in your "tight" infinite loop. What we can do is press the
+"break" button repeatedly to force a call to abort during the interrupt handler.
+When "breakcnt" reaches 0, it forces the break.
+
+Even though we interrupt on the "synchronised" version of the falling edge
+detector, there are still debouncing problems making the interrupt often fire
+more than once for a single press. But less than 5. We don't want to bother with
+precise debouncing logic, so we don't. Therefore, you'll likely have to push the
+button twice or thrice before forcing.
+
+With this system, we reliably have effective and clean breaks.
+
+## Configure the circuit breaker
+
+Calling "break$ ( -- )" sets pin27 as an input pin and enables the pull-up
+resistor on it, which means that its level will generally read as 1. When we
+press the button, its level will read as 0. It also enables interrupts on pin
+27 falling edge.
+
+The "break$" call will also install "breakidle" in the idle loop.
+
+To set up a proper "break" mechanism, what you'll want to do is to compile
+"breakisr, ( -- handled-jmp )" in your general IRQ handler. For example, you
+might have something that looks like this in your init.fs:
+
+  needs drv/arm/exc drv/rpi/intr drv/rpi/break
+  armexc$ intr$
+  code irqhandler ( -- )
+    isrsave,
+    breakisr, then
+    isrrestore, reti,
+
+  current ARMEXCTBL $18 + !
+  break$
+
+At that point, pressing the push button wired to pin 27 will break.

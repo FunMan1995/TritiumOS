@@ -1,0 +1,28 @@
+# BIOS storage access through INT13H
+
+The units at [drv/pc/int13hl.fs] and [drv/pc/int13hc.fs] implement a driver to
+access the boot drive through the BIOS INT13H call. One is for LBA mode
+(required for a partition deployment of Dusk) and the other is for CHS mode.
+
+They implement "biossec@ ( sec buf -- )" and "biossec! ( sec buf -- )" as well
+as the "bootsec@" wrapper for "biossec@" (for [io/secld]).
+
+These words can be used to create a [io/blk] structure that can then be the
+mounting point for a filesystem [fs/core]. Example:
+
+  :> drop biossec@ ;
+  :> drop biossec! ;
+  BOOTSECSZ -1 newblk newfatfs bootfs!
+
+This driver is probably unreliable (it has to go in real mode and the process
+for doing so is very very hairy. I'm not sure of how solid it is.) but will work
+on all PCs until a better driver is activated.
+
+## Overriding this drive
+
+As we write above, this drive is unreliable and you'll want to use a proper one
+as soon as possible, likely in your init.fs file. Because the underlying drive
+is the same with the same contents, no need to remount a filesystem, just to
+swap the underlying storage (see [fs/fat] for fatstorage!):
+
+  mynewblk bootfs fatstorage!

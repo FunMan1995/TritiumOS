@@ -1,0 +1,345 @@
+# What's in a word?
+
+## Word, Entry, Execution Token
+
+The term "word" in Forth is ambiguous. In Dusk, we use the word "word" to refer
+to the general concept of an entry in a dictionary attached to some code. For
+example, you can say "I created a new word", "you should call the word 'foo'",
+"the word 'foo' doesn't exist", "look at this word's signature".
+
+When comes the time to refer to specific addresses in memory however, we don't
+use the word "word". We use either "entry" to refer to the "link" field of a
+dictionary entry [doc/data], or we use "execution token" to refer to its
+payload, the executable part of the word.
+
+An entry can be examined and iterated upon, an execution token can be executed,
+either with "execute" or with a CPU-native jump or call. Execution tokens can
+exist outside a dictionary. It's anything that is executable.
+
+In word signatures, "entry" is abbeviated "e" and "execution token", "xt".
+
+## Creating a word
+
+Like in any Forth, Dusk's main mechanism for creating new words is ":".
+
+  : foo bar baz ;
+
+What this does is:
+
+1. Create a new dictionary entry named "foo".
+2. Call "pushlr," [doc/hal]
+3. Enter compile mode.
+4. Compile calls to "bar", then "baz".
+5. Call "popexit," [doc/hal].
+6. Stop compile mode.
+
+There are other ways to create words differently. For example, "entry ( name
+dict -- )" creates an entry in dictionary "dict" without entering compile mode.
+"code ( "name" -- )" does the same but takes its name from the input stream and
+unconditionally adds the entry to the system dictionary.
+
+Those are relatively straightforward mechanisms. There are other ones that are a
+bit more special, described below.
+
+## Find selectors
+
+As with any Forth, Dusk has immediates. They work as expected and are bound the
+the $80 bit of the length flag of the dictionary entry, like on many Forths.
+
+But Dusk has a second flag, bound to the bit $40: find selector.
+
+When that flag is active, it makes the word "find immediate", that is, the word
+is called on "find". That word is expected to have the signature "( e -- e xt )"
+and yields the actual execution token that the find operation should yield.
+
+This is used, for example, to yield a different word at compile time and at
+run time (see below), to enable "scrying mode" (see below), or to enable the
+"setter mode" [usage/to].
+
+This mechanism is active on almost all "find" related word, as well as during
+the interpret and compile loops. The only exceptions are "findentry" and words
+that specifically mention not applying find selectors. All other "find" words
+can be assumed to apply that logic.
+
+A word can be made into a find selector with the "findselector" word. A find
+selector is, yes, executed immediately, but the word it yields isn't necessarily
+so. During compilation, it will be only if its "immediate" flag is set. Example
+dummy usage:
+
+  : foo ."hello" ;
+  : bar ."find!" ['] foo ; findselector
+  bar \ prints "find!hello"
+  : baz bar ; \ prints "find!"
+  baz \ prints "hello"
+  : bar ."find!" ['] foo ; findselector immediate
+  : baz bar ; \ prints "find!hello"
+  baz \ prints nothing
+
+## Compiling dual behavior
+
+Find selectors can be used to have words that behave differently in run time and
+compile time. This can be done with the word "compiling ( compxt regularxt -- )"
+which creates a find selector from two words:
+
+  :> ."compiling!" ;
+  :> ."running!" ;
+  compiling foo
+  foo \ prints "running!"
+  : bar foo ; \ prints "compiling!"
+  : bar ['] foo execute ; \ prints nothing
+  bar \ prints "running!"
+
+The words ":> ( -- xt )" and "code> ( -- xt )" are like their ":" and "code"
+counterparts, but don't create any dictionary entry and yield a pointer to their
+code to PS.
+
+As you can see from the example, dynamic finds ("'", "[']", etc.) yield the
+runtime versions of the words, even when called from a compiliation context.
+The only exception to this is "[compile]".
+
+## Inlinable words
+
+This compiling dual behavior opens the door to easy word inlining with the word
+"inline ( -- )":
+
+  : drop, PSP) @+, ; inline drop
+
+which is the equivalent of:
+
+  : drop, PSP) @+, ;
+  code> current execute exit,
+  compiling drop
+
+With this version of drop, a regular "drop" will be called at runtime or when
+we use references of it. But when "drop" is used in a compilation context, a
+straight "PSP) @+," (see [doc/hal]) will be compiled, no call will be made.
+
+## compile, [compile] and [rcompile]
+
+As with any Forth, "compile" notches up the "compiling level". For example:
+
+  : foo ."hello" ;
+  : bar compile foo ."compiling!" ; immediate
+  : baz bar ; \ prints "compiling!"
+  baz \ prints "hello"
+
+[compile] doesn't really do that. It should more be seen as a "immediate
+bypasser". When used on words that aren't immediate, [compile] is a noop:
+
+  : foo ."hello" ;
+  : bar [compile] foo ;
+  : baz foo ;
+  bar \ prints "hello"
+  baz \ prints "hello"
+
+But sometimes, what you want to do is do a regular call to an immediate word
+*as if it wasn't an immediate*:
+
+  : foo ."hello" ; immediate
+  : bar [compile] foo ;
+  : baz foo ; \ prints "hello"
+  bar \ prints "hello"
+  baz \ nothing
+
+[rcompile] is exactly like [compile], but if the target word has a dual
+compile/runtime behavior, as seen with "compiling" above, then it selects the
+"runtime" behavior instead of the "compile time" behavior like [compile] does:
+
+  :> ."compiling!" ;
+  :> ."running!" ;
+  compiling foo
+  : bar [compile] foo ;
+  : baz [rcompile] foo ;
+  bar \ prints "compiling!"
+  baz \ prints "running!"
+
+## Aliases
+
+An alias is a shortcut to another word:
+
+  alias noop myalias
+
+Calling "myalias" is the same as calling "noop". An alias is a native jump to
+its target, so there's almost no runtime overhead to using aliases.
+
+You can change the target of an alias, you can use the word
+"realias ( xt tgt -- )" which makes target word "tgt" alias to "xt". Example:
+
+  ' anotherword ' myalias realias
+
+Note that while "tgt" is usually an alias, it doesn't have to be. You can make
+a "hostile takeover" of a word with realias and brutally make it point
+elsewhere. If you do, make sure that the word is big enough for a native jump.
+For example, using realias on the word "noop", which only contains a "return"
+op, would likely corrupt the dictionary entry of the following word.
+
+Aliases have two main usages: dynamically pluggable words, or forward
+declarations. For the latter type, there is also the syntactically more pleasant
+word ":realias", which is a combination of, drum roll, ":" and "realias" and can
+be used thus:
+
+  alias abort foo \ Forward declaration
+  : bar foo ;
+  :realias foo bar ;
+
+It is the equivalent of:
+
+  alias abort foo \ Forward declaration
+  : bar foo ;
+  : _ bar ;
+  current ' foo realias
+
+Aliases copy the immediate and findselector flags of their target, which means
+that calling an alias to such words replicate the behaviors exactly.
+
+## Binding and Scrying
+
+Like any Forth, Dusk has does>, but it works slightly differently than the
+traditional does> where it's a binding of a "create" and behavior.
+
+Dusk's "does>" has one less level of indirection, that is, it can yield any
+number as its "does parameter". Example:
+
+  : foo does> . ;
+  42 foo bar
+  bar \ prints 42
+
+The word "bar" is created by "does>", which has the signature ( n "name" -- ).
+
+If you want to reproduce the "traditional" does>, you can do this:
+
+  : foo here# swap , does> @ . ;
+  42 foo bar
+  bar \ prints 42
+
+Note that we didn't use "create" because otherwise, two words would be created,
+one by "create" and one by "does>".
+
+"does>" is a wrapper around "bind ( xt n "name")" which binds the word "xt" to
+parameter "n". Our first "does>" above is the equivalent of:
+
+  ' . 42 bind bar
+  bar \ prints 42
+
+### Scrying
+
+The binding created by bind is a conditional call that checks on the global
+"SCRYING" variable. Each "check" resets the "SCRYING" flag to 0. When SCRYING is
+1, the bind isn't called. Instead, the parameter is yielded, as would a simple
+"create". Example:
+
+  : foo does> . ;
+  42 foo bar
+  scry bar .x \ prints 0000002a
+  bar \ prints 42
+
+All words created with "bind" or "does>" are "scryable".
+
+Scrying depends on findselector mechanism. What "scry" does is to run a regular
+"find" on the next word of the input stream ("bar" in the example above). The
+findselector mechanism is then expected to check on the "SCRYING" flag and if
+set, yield the data to scry *directly*. This means that the address that the
+findselector yields in this case is *not meant to be executed*.
+
+This allows us to scry without fear of executing stuff that isn't meant to be
+scried. When a word that can't be scried is fed to "scry", we abort with the
+"inscrutable" error.
+
+Creating a scrutable word will look a lot like what "bind" already does:
+
+  : bind ( xt n "name" -- )
+    code> over litn rot bbr, ( n boundxt )
+    code findselector swap ?scry, litn exit, ;
+
+## Anonymous words with :~
+
+It's a common pattern to define words that are used in very local contexts and
+then never needed anymore. They can be called something like "_" to indicate
+that their name don't matter and that they'll never be referenced anywhere.
+
+This will, however, create a dictionary entry for "_". In addition to being a
+bit wasteful, it's also an unwanted side effect in some cases, for example if
+you're trying to create a "clean" dictionary using "extractdict" from
+[mem/dict].
+
+The ":~" and "~" words allow the definition and referencing of words without
+creating dictionary entries:
+
+  :~ 1+ . ;
+  : print42 41 ~ ;
+
+The "~" word is a findselector reference to the last word defined with ":~".
+Being a findselector makes it just as if "~" was a regular word. You can do
+"' ~" and "['] ~" and you will get a properly dereferenced address to your last
+anonymous execution token.
+
+## Recursion and self-shadowing
+
+Unlike some other Forths, Dusk adds the words it defines to the dictionary at
+the beginning of that definition. This means, for example that:
+
+  : foo foo ;
+
+recursively calls itself until the Return Stack blows up. This also means that
+doing recursion in Dusk is as simple as calling the word.
+
+Sometimes, what you want to do is to call the word you're shadowing. For
+example:
+
+  : foo ."foo" ;
+  : foo foo ."bar" ;
+
+will not print "foobar", it will blow the stack. In Dusk, you either have to
+rename "foo" or use a "~" trick:
+
+  : foo ."foo" ;
+  :~ foo ;
+  : foo ~ ."bar" ;
+
+## Templates
+
+Templates are immediate words that compile other words in a particular pattern
+in order to reduce repetition of those patterns. For example, a common pattern
+is to do something like "dup X swap Y" to apply words X and Y to a common
+element. After a while, this pattern is repetitive (and even worse, when X and
+Y are a series of words, the role of "dup" and "swap" can become less obvious),
+so we have the template "bi" which achieves the same thing with "bi X | Y"
+
+The central word of templates is "|", the template "slicer" and its mechanism is
+disarmingly simple: "|" is an immediate alias to "execute". What a template word
+such as "bi" does is, after having compiled it's "opening" words ("dup" in the
+case of "bi"), pushes compiler words to PS for "|" to execute. Again, in the
+case of "bi", the "|" compiles "swap".
+
+Templates cannot be used in interpret mode.
+
+To create your own template, all you have to do is to have something that looks
+like "bi" implementation:
+
+  : bi dup, ['] swap, ; immediate
+
+List of builtin templates:
+
+bi X | Y      --> dup X swap Y        a -- x y
+dupbi X | Y   --> dup X over Y        a -- a x y
+tri X | Y | Z --> dup X over Y rot Z  a -- x y z
+dip X |       --> >r X r>             a b -- x b
+doto name X | --> name X to name      --
+doto fld X |  --> r! fld X r> to fld  struct --
+
+### doto
+
+The "doto template is worth a special mention.  It is meant as an elegant way of
+fetching a getsetter [doc/usage/to], doing something with the value and setting
+it back. Example:
+
+  : foo doto myval 1+ | ;   --> : foo myval 1+ to myval ;
+
+That example was for getsetters with an inherent address, that is, values,
+ivalues, local variables. doto also works for offset-based ones (fields
+[lib/struct]), but the generated code is slightly different:
+
+  : foo data doto fld 1+ | ; --> : foo data r! fld 1+ r> to fld ;
+
+As you see, it places the struct base offset in RS, which is something you have
+to keep in mind if you access RS in your inside code.

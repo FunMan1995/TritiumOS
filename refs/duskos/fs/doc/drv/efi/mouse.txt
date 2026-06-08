@@ -1,0 +1,24 @@
+# EFI mouse
+
+The unit at [drv/efi/mouse.fs] implements [io/mouse] through
+EFI_SIMPLE_POINTER_PROTOCOL.
+
+You create a new mouse with "newefimouse ( mouseid -- mouse )". You figure out
+the correct "mouseid" through "lsmouse".
+
+## Example initialization
+
+  needs drv/efi/mouse
+  lsmouse
+  0: blah blah blah
+  1: blah blah blah
+
+  0 newefimouse to mouse
+
+## API
+
+lsmouse ( -- )
+  Lists available mouses by their mouseid followed by their devpath.
+
+newefimouse ( mouseid -- mouse )
+  Allocate and initialize a new [io/mouse] struct.

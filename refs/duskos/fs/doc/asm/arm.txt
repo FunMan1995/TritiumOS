@@ -1,0 +1,224 @@
+# ARM assembler
+
+ARM instructions all encode to a 32-bit number and the way these encodings work
+incite us to deviate a little bit from the general Dusk assembler mechanism:
+Instead of pushing arguments to PS and then call the "instruction writer" word,
+we begin the instruction mnemonic and "accumulate" arguments into it.  When all
+arguments are accumulated, the number on PS is exactly what we want to write,
+which we can do with "le,", of which ",)" is an alias.
+
+For example, to write a "add" instruction with r4 as a destination (Rd), r5 as
+the first operand (Rn) and 42 as an immediate, we would do:
+
+  add) r4 rd) r5 rn) 42 imm) ,)
+
+Symbol-wise, ")" means "accumulate", where the final ",)" means "write what has
+been accumulated".
+
+WARNING: this assembler will not prevent you from assembling nonsensical
+instructions, checks are minimal (it does check immediate ranges though). For
+example, this means that using "rn)" on "mov)" or "rd)" on "cmp)" results in a
+broken instruction.
+
+## Generic words
+
+All instructions work on registers and they pretty much all have a destination
+register and one or two operand registers. Each register has a constant word:
+
+  r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15
+  rIP=12 rSP=13 rLR=14 rPC=15
+
+There's also a definition for Dusk-specific registers:
+
+  rPSP=10 rW=9 rA=11 rS=8
+
+These constants are meant to be used in conjunction with these accumulator
+words:
+
+  rd) Destination register
+  rn) First operand register
+  rm) Second operand register
+  rs) Used only for Multiply
+  rdn) Shortcut for rd) rn) when they're the same
+
+In data processing and load/store instructions, the barrel shifter can be
+configured with these words which all have the ( op n -- op ) signature, "op"
+being the accumulated instruction:
+
+  lsl) lsr) asr) ror)     n = shift by "n" bits
+  rlsl) rlsr) rasr) rror) n = register id containing the amount to shift by
+
+In data processing instructions, these affect the rm) argument. In load/store,
+they affect the +r) and -r) arguments.
+
+Immediates replace the rm) operand and can be specified with the imm) word.
+Shift encoding is automatically performed by imm) and will abort with an error
+message if the specified immediate can't be encoded.
+
+All instructions can be conditionally executed. This condition is activated by
+one of these words:
+
+  eq) ne) cs) cc) z) nz) hs) lo) mi) pl) vs) vc) hi) ls) ge) lt) gt) le) al)
+
+## Data processing instructions
+
+All those instructions except mov) and mvn) have 3 operands:
+
+  and) eor) sub) rsb) add) adc) sbc) rsc)
+  tst) teq) cmp) cmn) orr) mov) bic) mvn)
+
+rn) shouldn't be used with mov) and mvn)
+
+To have the instruction set the CPSR flags, you can use the word f) which sets
+the "S" bit of the instruction.
+
+tst) teq) cmp) and cmn) have an implied "f)".
+
+## Multiply
+
+The multiply instruction, mul), has a different structure than other data
+processing instructions and does Rd := Rm * Rs. For this instruction, rn) can't
+be used and there's a rs) parameter word just for this instruction (Rs is
+generally set with the lsl), lsr), etc. family of words).
+
+Additionally, there's the possibility of making a Multiply+Add through the acc)
+word, which takes a register ID in parameter.
+
+Rd cannot be the same as Rm and rPC can't be used.
+
+The f) flag works with mul). Example usages:
+
+  mul) r0 rd) r1 rm) r2 rs) ,)
+  mul) r0 rd) r1 rm) r2 rs) r3 acc) ,)
+  mul) r0 rd) r1 rm) r2 rs) f) ,)
+
+## Single Data Transfer
+
+The str) and ldr) instructions only use rd) and rn), with rd) being the register
+containing the value to store or the register being the target for the load
+instruction. rn) is the register containing the target adress for the store/load
+instruction.
+
+Many options come with those two instructions and they are enabled with those
+words:
+
+  +i)   op n -- op  Add offset "n" to rn)
+  -i)   op n -- op  Subtract offset "n" from rn)
+  +r)   op r -- op  Add offset in register "r" to rn)
+  -r)   op r -- op  Subtract offset in register "r" from rn)
+  pre)  op -- op    Add offset before transfer (default)
+  post) op -- op    Add offset after transfer
+  byte) op -- op    Load/Store instruction is 8-bit
+  !)    op -- op    Write effective address back to rn)
+
+## Swap
+
+The swp) instruction has the same base semantics as ldr) and str), that is, that
+rn) is the base address, but it doesn't support any kind of indexing. Only the
+byte) flag can be used.
+
+  swp) r1 rd) r2 rn) r1 rm) ,) \ Swaps the value at address r2 with r1
+  swp) r1 rd) r2 rn) r3 rm) ,) \ r3 --> [r2] --> r1
+
+## MRS/MSR
+
+MRS and MSR allow direct access to CPSR and SPSR. By default, CPSR is selected.
+SPSR can be selected with spsr).
+
+mrs) transfers "status register" to "register", with rd) being the destination.
+
+msr) does the opposite. A register can be selected as the source with rm). imm)
+also works.
+
+As a reminder:
+
+* $1f is the "mode" mask.
+* b6 is FIQ disable
+* b7 is IRQ disable
+* b28 is V
+* b29 is C
+* b30 is Z
+* B31 is N
+
+## MCR/MCRR/MRC
+
+The instructions are used to receive data from (MRC) or to send data to
+(MCR/MCRR) a coprocessor. It has it has the following arguments:
+
+  cp#)  op n -- op  The target coprocessor number
+  cpi)  op n -- op  Coprocessor "information" (not for MCRR)
+  cpop) op n -- op  Instruction mode
+
+It also has the rd) rn) and rm) arguments, but their meaning depend on the
+instruction:
+
+  MCR/MRC:
+    rd)   op r -- op  Destination register on the main CPU
+    rn)   op r -- op  Coprocessor operand register 1
+    rm)   op r -- op  Coprocessor operand register 2
+  MCRR:
+    rd)   op r -- op  Main CPU register 1
+    rn)   op r -- op  Main CPU register 2
+    rm)   op r -- op  Coprocessor destination register
+
+In a "ARM syntax" listing that looks like:
+
+  MCR p15, 1, r2, c3, c4, 5
+
+p15 is cp#), 1 is cpop), r2 is rd), c3 is rn), c4 is rm) and 5 is cpi).
+
+In a "Plan 9 5a syntax" listing that looks like:
+
+  MCR 15, 1, R2, 3, 4, 5
+
+15 is cp#), 1 is cpop), R2 is rd), 3 is rn), 4 is rm) and 5 is cpi)
+
+## Branching
+
+The b) bl) and bx) branching words differ from other mnemonic words because they
+need an argument from PS. In the case of b) and bl), it's a relative offset that
+follows rules described in doc/asm/intro, that is, that "0" must mean an
+infinite loop.
+
+In the case of bx), the argument is a register ID. Examples:
+
+  begin abs>rel b) ,) \ infinite loop
+  r0 bx) eq) ,) \ jump to address in R0 if Z is set
+
+## Macros
+
+The ARM assembler also has a few convenience macros, built from the instructions
+described above:
+
+push, ( r -- )
+  Push value of register "r" to RS.
+
+pop, ( r -- )
+  Pop RS into register "r".
+
+ppush, ( r -- )
+  Push value of register "r" to PS.
+
+ppop, ( r -- )
+  Pop PS into register "r".
+
+return) ( -- op )
+  Equivalent to "mov) rPC rd) rLR rm)". Can be used straight as "return) ,)",
+  but it can also have conditions applied to it.
+
+ret, ( -- )
+  Equivalent to "rLR bx) ,)"
+
+reti, ( -- )
+  Equivalent to "sub) rPC rd) rLR rn) 4 imm) f) ,)", which is the vodoo
+  incantation we're supposed to do to return from an interrupt.
+
+absb, ( a -- )
+  Equivalent to "abs>rel b) ,)"
+
+absbl, ( a -- )
+  Equivalent to "abs>rel bl) ,)"
+
+fiqena, irqena, fiqdis, irqdis,
+  Enable/Disable FIQ/IRQ on the system. Destroys r0. Shortcut to copying CPSR
+  to r0, setting/unsetting the proper bit, then copying r0 back to CPSR.

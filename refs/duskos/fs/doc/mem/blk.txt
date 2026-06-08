@@ -1,0 +1,15 @@
+# In memory block device faker
+
+The unit at [mem/blk.fs] fakes a [io/blk] device in memory.
+
+## API
+
+### Structure
+
+extends Blk struct MemBlk { [void,0] buf( ; }
+
+### Words
+
+newmemblk ( blksz blkcnt -- blk )
+  Allocate and yields a Blk structure that read/write its block from a memory
+  buffer which this word allocates.

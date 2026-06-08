@@ -1,0 +1,18 @@
+# Questions and answers
+
+## 'e and '
+
+[doc/data] tells me that the payload of an entry is 4 bytes after the entry's
+address. However, when I do "' swap 'e swap -", I get a negative number! How
+come?
+
+You get this discrepancy because you chose "swap" instead of a more regular
+word. If you try the same with other words, for example "allot", you'll get 4.
+
+"swap" and other stack words are created with "inline" [doc/usage/words] to make
+them faster due to their wide usage. This means that the resulting "swap" entry
+is marked as a "find selector" [doc/usage/words].
+
+Lookups on those words don't yield the actual entry payload, but the result of a
+code being executed. The word "'" executes find selector code, where "'e", as
+documented in [doc/mem/dict], doesn't. That's why you get this discrepancy.

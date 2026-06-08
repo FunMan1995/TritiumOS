@@ -1,0 +1,40 @@
+# Scratchpad
+
+Sometimes, words produce temporary data which is returned as a result with a
+lifetime that is beyond that word's control. If we use a static buffer, we
+corrupt the returned data as soon as the word is called again, and sometimes
+it's a problem.
+
+One such example is DuskCC's tokenizer. To process the data it receives from the
+stream and yield tokenized strings, it needs to put those strings in memory. The
+tokenizer is very clear about those string being temporary and that if you want
+to hold onto them, you need to copy it.
+
+However, a static buffer is inconvenient because the consumer of that tokenizer,
+sometimes has to hold onto a handful of those token (3 or 4) at once and juggle
+with them while it processes them.
+
+For these scenarios, Dusk has scratchpads, which are allocators [mem/alloc] .
+
+Scratchpads are rolling buffer of a pre-defined size. Whenever it reaches the
+end of its buffer, it rolls back to the beginning, overwriting previous data.
+All you have to do is to choose a size that is big enough to hold all the data
+you'll ever need at one particular moment, and small enough not to be wasteful.
+
+Example usage:
+
+    $100 ( size-in-bytes ) newscratchpad bindrun1@ pad1@
+    : processstr ( str -- str )
+      c@+ pad1@ s, ( copied-str )
+      \ do some processing
+    ;
+    "hello" processstr value foo
+    "goodbye" processstr value bar
+    \ foo and bar both point to valid processed copies
+    \ if I call "processstr" often enough, I'll end up overwriting "foo" and
+    \ "bar", but for now I'm ok.
+
+## Scratchpad API
+
+newscratchpad ( size -- alloc )
+  Create a new scratchpad allocator of "size" bytes.

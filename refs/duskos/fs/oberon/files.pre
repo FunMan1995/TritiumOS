@@ -1,0 +1,23 @@
+needs fs/core fs/sh io/stream mem/pool
+
+$1000 64 newmempool const filepool
+
+: file>stream @ @ ;
+:ob Lookup (name: ARRAY OF CHAR): BOOLEAN; ( u a -- f )
+  DuskStr lookup ;
+:ob EnsurePriv (name: ARRAY OF CHAR); ( u a -- )
+  DuskStr ensurefile ;
+:ob Open (): OPAQUE;
+  open ;
+:ob Remove ();
+  removefsnode ;
+:ob Length (f: File): INTEGER;
+  file>stream Stream.size ;
+:ob NewPoolFile : OPAQUE;
+  filepool getpoolstream ;
+
+: Register ( uname namea file -- )
+  rot> DuskStr ensurefile open swap spitcloseboth ;
+annotatelast ( STRING OPAQUE -- )
+
+: DebugFile ( off len file -- ) @ @ >r swap r@ seek console r> spitn nl> ;

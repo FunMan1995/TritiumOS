@@ -1,0 +1,248 @@
+# Communication link
+
+This unit defines the Link structure which models the OSI layer 2 interface.
+Basically, a link sends and receive frames and has a MTU (maximum transmission
+unit).
+
+Frames are expressed as regular byte ranges "a u", which make the Link quite
+similar to a [io/stream]. In theory, a link could be a stream, but streams are
+about mix and matching read/write buffers of different sizes. We want to avoid
+false friends, so we keep them separate.
+
+## Frame Types
+
+Layer 2 frame headers typically indicate the type of payload they contain, but
+that ID depends on the layer 2 implementation. This unit defines its own enum
+of all the Layer 3 implementation Dusk supports. For example, FTIP4 refers to a
+frame of type "IPv4" implemented in [com/ip4].
+
+Those constants are used as arguments in the generic methods defined here.
+Specific implementations then map those constants to their own type constants.
+
+## The Active Frame
+
+For all links in the system, there is one frame that we call the Active Frame.
+It's a pointer to either an incoming or an outgoing frame, as well as a pointer
+to the beginning of the payload within it. They are represented by the
+"frameptr" and "payloadptr" values.
+
+Right after having been received by the Link, "payloadsz" represents the size
+of the frame, minus the frame header. Actual payloads are often much smaller
+than link frame size, and "payloadsz" is lated shrinked by "deframe" to the
+reported size of the actual payload.
+
+There's only one! It's very short-lived. Whatever you're doing with it, do it
+fast because as soon as you return from your word, it's gone.
+
+It will typically point to buffers supplied by the Network Interface Controller
+(NIC) drivers such as [drv/nic/rtl8169].
+
+## Receiving frames
+
+Reading a frame is done through "readframe", which polls the NIC driver for an
+incoming frame and, if there is one, sets the active frame to it, then yield its
+frame type.
+
+However, a OSI layer 3 implementation will rarely call "readframe" directly
+because what will it do with frames that aren't for it? Leave them on a queue
+for someone else to pick them up? What happens when nobody picks them up? We
+need to implement a complex queue system with timeouts? That's inefficient and
+complicated.
+
+What we do instead is to have this word, "incoming", implemented in [com/net].
+What "incoming" does is that it empties the frame queue with a repeated call to
+"readframe", and for each frame, determines what to do according to the
+protocols it knows. In other words, "incoming" knows about all layer 3 protocols
+the system supports and "fans out" all incoming frames to the appropriate
+handlers, which live in layer 3 units such as [com/ip4] or [com/arp].
+
+Layer 2 drivers supply the buffers for the received frames and those have a
+short lifetime (until the next "readframe" call). Therefore, frame handlers from
+layer 3 implementations must entirely process this data before returning, or
+copy that data over somewhere else.
+
+## Sending frames
+
+Like with the receiving side, the layer 2 drivers are responsible for supplying
+buffers for outgoing frames as well. We do this to minimize copying. If, for
+example, I want to send a [com/ip4] datagram I've constructed somewhere in
+memory. I want to send it through [com/ether], but this requires that an
+ethernet header is prepended to that datagram.
+
+What to do if we want to avoid copying the datagram in memory? One solution
+could be to require that all outgoing frame payloads are prepended with a
+specific number of bytes that can be written to be the layer 2 driver. But what
+if that driver has alignment requirements? Things get messy real fast.
+
+It's easier and simpler to say that all outgoing buffers are supplied by the
+layer 2 driver. So, back to the datagram. Let's say we want to write one.
+
+First, we call "beginframe", which prepares whatever frame header it has to
+prepare for the specified type in whatever buffers it has, then sets the active
+frame to it. "payloadsz" is initially the maximum payload size a frame on that
+NIC can handle.
+
+The caller then does its thing, stuffing the payload as needed. Then, it sets
+"payloadsz" to the actual payload size, which of course must be smaller than the
+previous value.
+
+Then, we call "sendframe", which indicates to the layer 2 driver that the frame
+is ready to send. "u" is the actual number of bytes used by the payload. It must
+be, of course, smaller than the range yielded by "beginframe".
+
+There are situation, such as [com/arp] replies, where it makes sense to reuse
+the receive buffer as a template for a message to send. To avoid copying, we
+have "replytoframe", which keeps the same active frame, but swaps source and
+destination in the frame header.
+
+### sendframe and layer 2 addresses
+
+Some layer 2 protocols such as [com/ether] have an addressing system of their
+own (the MAC address). When we have a payload to send, it's the responsibility
+of "sendframe" to figure out what this address is.
+
+For example, again with [com/ether], what happens is that when a FTIP4 frame is
+about to be sent, a ARP lookup is made into the cache for the IP4 destination
+address and, if not found, a ARP request is made to figure out that address.
+
+Special care has to be taken by the Link implementation to work around the fact
+that there can only be one Active Frame at once. In the case of a cache miss in
+ARP lookups, we have no choice but to copy memory around, that is, save the
+active frame somewhere, build and send the ARP request, then somehow record
+somewhere that this frame we've saved has to be sent as soon as we get a ARP
+reply back.
+
+## Frame logging
+
+This unit has a static buffer with the purpose of logging all incoming and
+outgoing frames. When the buffer is full, it stops logging. When you begin
+logging again, it overwrites previous contents.
+
+You begin logging with "beginlogging". "loggedframes" is the static buffer,
+which point to the first element of a linked list of this structure:
+
+  +00 Link to next
+  +04 lib/time stamp
+  +08 Link that sent or received that frame [com/link]
+  +0c Frame type
+  +10 Payload offset from frame address
+  +14 Frame size in bytes
+  +18 Frame
+  ...
+
+You inspect logged frames with "nextf" (next frame). This selects the next
+frame in the log LL, then sets it as the Active Frame. This alows you to inspect
+it at will. You might want to turn off networking before you do that. The first
+time you call "nextf" after a "beginlogging", the first frame of the buffer is
+selected. When there is no more logged frame, a message is prnted and the
+Active Frame doesn't change.
+
+During logged frame iteration, the "logtime" variable is set to the lib/time
+stamp of the frame.
+
+This unit doesn't initiate logging itself, it provides "?log" so that upper
+layers can conviently log their frames. For example, [com/net] does it in its
+"incoming" handler.
+
+## API
+
+### Frame types
+
+FTIP4     [com/ip4]
+FTARP     [com/arp]
+FTUNKNOWN Invalid type
+
+### Constants
+
+LOGSZ  $1000. Log buffer size in bytes.
+
+### Values
+
+frameptr    Pointer to the beginning of the active frame, either incoming or
+            outgoing.
+frametype   Type of the Active Frame
+payloadptr  Pointer to the beginning of the payload part of the frame
+payloadsz   Size of the payload in bytes
+curlink     Pointer to link that created the Active Frame
+
+logging?    Flag indicating whether logging is currently active
+logtime     During iteration, is set to the time stamp of the logged frame
+logtype     During iteration, is set to the frame type of the logged frame
+
+### Structures
+
+struct Link {
+  xt readframe beginframe replytoframe sendframe waitsent ;
+}
+
+readframe ( link -- f )
+  Polls whether a frame is available to read on the link. If yes, f=1 and
+  the Active Frame is now the received frame. Also, set curlink to link.
+
+  Otherwise, f=0 and the Active Frame is left unchanged.
+
+beginframe ( link -- )
+  Set the Active Frame to a new empty buffer of the maximum size the NIC can
+  handle. This frame is of the type "frametype".
+
+  The frame thus yielded is guaranteed to always be at least $200 bytes in size.
+
+  It goes without saying that the implementation of this method must allow a
+  "beginframe" to be called very shortly after a previous "sendframe", that is,
+  before that frame had the chance to be sent. It is acceptable, in this case,
+  that the method blocks until the previous frame is finished sending. However,
+  most implementations will just use the multi TX buffer capabilities of the
+  hardware to thus avoid any waiting time.
+
+  Also, set "curlink" to link.
+
+replytoframe ( link -- )
+  Swap Source and Destination fields in the frame header part of the current
+  Active Frame.
+
+sendframe ( link -- )
+  Mark frame Active Frame as being ready to be sent by the NIC.
+
+  Aborts with error if "payloadsz", added to the frame header, is larger than
+  the NIC's Maximum Transmission Unit (MTU).
+
+waitsent ( link -- )
+  Wait until all outgoing buffers are sent.
+
+### Words
+
+newlink ( waitxt sendxt replyxt beginxt readxt -- link )
+  Create a new Link with the specified values.
+
+  Arguments are all the XTs of the link struct in reverse order.
+
+beginlogging ( -- )
+  Start a logging session.
+
+deframe ( -- )
+  Some network units need to set some indirections after the Active Frame
+  pointer is set so that all fields point to the right place. One such example
+  is "ip4payload" from [com/ip4]. This word does that. It is called on "nextf"
+  so that observing a logged frame sets the same fields as when it was received.
+
+  This word also has the responsibility of shrinking "payloadsz" to the actual
+  size of the payload. When the frame is freshly received, that value is the
+  frame size minus header, but ultimately, it should be the size of the payload,
+  for example the value of the TL field in the case of [com/ip4]. This operation
+  must never result in "payloadsz" being bigger.
+
+  At the moment, this is a simple noop that is realiased by [com/ip4] becase
+  that's the only place where "deframing" is needed. It might become a fancier
+  indirection in the future.
+
+nextf ( -- f )
+  Iterate to the next logged frame in the current logging session. If there is
+  one, set the Active frame and appropriate log values to it and yield f=1.
+
+  Otherwise, yield f=0
+
+?log ( -- )
+  Log the Active Frame to the buffer if a logging session is currently active.
+
+  If there is not enough space in the buffer for that frame, don't log and
+  set "logging?" to 0.

@@ -1,0 +1,176 @@
+# Transmission Control Protocol
+
+NOTE: This unit is a WIP, this page doesn't describe what the unit actually
+      does yet.
+
+## Transmission Control Block
+
+TCP connections need an elaborate structure to manage incoming and outgoing
+data. The central concept of this structure is that of the sliding window. TCP
+specs call this structure the TCB, Transmission Control Block.
+
+On the incoming side, a fully efficient TCB would have to maintain a list of
+ranges it received, allowing for holes in the middle. Such a structure would add
+significant complexity for a case that, I think, doesn't happen very often, that
+is receiving chunks not only out of order, but with holes in the middle.
+
+We allow ourselves to simplify significantly at the cost of possibly
+under-acknowledging data, leading to needless retransmission. What we do is that
+we track a single range with a beginning offset and an end offset, which
+complement the concept of "last acknowledged offset", which we call "origin
+offset". The logic goes thus:
+
+1. In a fully acknowleged state, beginning, end and origin are equal.
+2. On an incoming range that begins at our origin offset, we increase our three
+   offsets and acknowledge. This is the happy path.
+3. On an incoming range that begins later, we set beginning and end offsets to
+   that new range, leaving origin behind.
+4. On further incoming ranges, *if* the range is adjacent to either the
+   beginning or the end offset, we enlarge the range this way. If it's not, we
+   ignore that range. It's lost and will lead to needless retransmission.
+5. If that enlargement allows us to close the gap between "beginning" and
+   "origin" fully, we acknowledge and reset our three offsets to that point.
+6. If the received range is outside origin+windowsize, we ignore it.
+
+### Outgoing and incoming buffers
+
+TCBs need buffers for both incoming and outgoing data. For outgoing data, we
+need those buffers to store data written to the TCB until it has not only been
+sent, but acknowledged. A buffer as big as the window size could be good for
+this.
+
+For incoming data, we need those buffers not only for the implementation of the
+sliding window logic, but also to hold data until it is consumed by whatever is
+using that TCB. This might mean something like twice the window size.
+
+The simplest way to go would be to allocate static buffers to each TCB, but that
+would mean that a given amount of memory could only afford a limited number of
+connections. In a hostile world where connections are nefariously opened without
+being used or closed, we might end up, unless we set a very short timeout, with
+servers that are very cheaply overwhelmed.
+
+Therefore, we prefer our TCB structures to use very little memory, allowing us
+to have a large amount of it, but having those TCBs use a shared buffer for
+incoming and outgoing data.
+
+This buffer is a specialized one. It's a collection of chunks, each of which
+being twice the maximum size of a window, which is statically determined by
+MAXWINDOWSZ.
+
+We track the use of chunks through a [mem/mark] structure. As long as TCBs have
+no incoming or outgoing data to manage, they don't use any chunk. When they need
+it, they look for a free one and mark it as used as soon as the buffer is
+entirely consumed.
+
+It's entirely possible that we end up in a "we're rolling!" situation where we
+never quite consume the whole buffer, which means we'll break through the window
+size. For this reason, each buffer is essentially a [mem/roll], but wrapping a
+chunk instead of holding its own data.
+
+## Incoming ACK timers
+
+One of the efficiencies built into TCP is this idea that ACKs can be merged.
+It's not every little segment that needs a receipt. Moreover, because a reply
+often follows a request directly, it's even possible that an ACK be made by that
+reply.
+
+We implement this with an ACK timer. First, we define a threshold with
+MAXINACKMS. Then, we have a background job [lib/coop] that, on IDLE, goes
+through all TCBs needing ACK and check if the threshold has been reached. If
+yes, craft a ACK and send it.
+
+In parallel, whenever we send a packet for whatever purpose (for example
+outgoing contents), we check if there's a need for a ACK. If there is, we
+include that ACK right here, which means that the IDLE timer won't ever have a
+chance to reach the threshold. We saved a packet!
+
+## Outgoing ACK timers
+
+When sending contents, we need to set a threshold at which point we resend the
+contents. This threshold is determined by MAXOUTACKMS.
+
+Moreover, the contents we have to send might exceed MSS (Maximum Segment Size,
+which is smaller than the window size), which means we have to send our contents
+in chunks.
+
+So, first of all, writing to a TCB writes to the outgoing buffer but doesn't
+actually send anything. The TCP background job does it.
+
+The background job goes through all TCBs that have outgoing contents to send.
+For each of them, if there's contents to send and that the window allows it,
+send a packet. If the timer isn't already running, set it, but otherwise, leave
+it untouched.
+
+In parallel of that, whenever we receive an "effective" ACK (that is, a ACK that
+is for a range that actually makes our sliding window move), we reset the timer
+if there's further outgoing contents to ACK, or disable it if we're 100% synced.
+
+In parallel of all that, we check for outgoing timeouts. Whenever the threshold
+is reached for a TCB, we consider all outgoing packets lost and start sending
+again, resetting the timer.
+
+TCP specs speak of multiple timers, but I think it's not worth bothering. This
+single timer implementation will, I think, do an optimal job in a good majority
+of the cases.
+
+## Plugging TCBs to streams
+
+TCBs have incoming and outgoing stream pointers. These can be 0, but when
+they're non-zero, the act as feeds and sinks for the buffers. On the incoming
+side, data gets written to the stream as soon as it's acknowledged. On the
+outgoing side, the stream is polled for contents as soon as the outgoing buffer
+is empty. When it reaches EOF, the stream is closed and the pointer becomes 0.
+
+## PSH behavior
+
+In the design described above, we already push received data as soon as it's
+acknowledged. We can therefore ignore the PSH flag on the incoming side.
+
+On the outgoing side, TCBs have a TFlags field which is ORed into outgoing
+packets, so you can set the PSH bit in there if needed.
+
+## URG behavior
+
+Urgent data is out-of-band data. When an URG packet is received, a TCPURGENT
+event is triggered and whoever listens to it can act on it.
+
+To send an urgent packet, one needs to call "sendurgentpacket". Its contents
+can't be larger than MSS.
+
+TODO: theoretically, we should also be implementing a logic where urgent data
+is mixed in regular in outgoing packets for efficiency, but is it really worth
+the trouble? What is URG actually used for?
+
+## Behavior at limits
+
+There are four tricky limits with our design:
+
+1. Outgoing buffer is full
+2. Incoming buffer is full
+3. There are no more available buffers for either outgoing or incoming data
+4. We're out of TCBs
+
+When writing outgoing data to a TCB that already has an outgoing buffer, it's
+possible that this buffer is full of unacknowledged data. In this case, writing
+to it will yield "0 bytes written". This means that whenever writing to a TCP
+connection, one has to provide logic for the possibility that not all data has
+been written.
+
+When writing outgoing data to a TCB that doesn't have a buffer yet, and if there
+is no available buffer, the result is similar: 0 bytes written.
+
+When there's incoming data to a TCB that already has an incoming buffer, as long
+as the system consumes the incoming data fast enough, the window system makes it
+impossible not to find a place for it. However, if for whatever reason the
+incoming data isn't consumed fast enough, we need to drop incoming data.
+
+Incoming window size *can* overlap unconsumed data in the rolling buffer, but
+when writing incoming packets, we only write and acknowledge what fits from the
+incoming packet, dropping the rest.
+
+However, when there's incoming data for a TCB that doesn't have a buffer, then
+we need to drop that data. We never acknowledge it, so it's going to be resent
+at some point, hopefully at a moment when we have available buffers.
+
+Lastly, there's the case of a new incoming SYN packet at a time where all TCBs
+are used up, we refuse the connection and answer with a RST packet.

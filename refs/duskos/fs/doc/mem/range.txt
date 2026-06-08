@@ -1,0 +1,52 @@
+# Range utilities
+
+This unit lives at [mem/range.fs] and provides a few range related words.
+
+## API
+
+intersect[] ( a1 u1 a2 u2 -- ?a u )
+  Compute the intersection between the two given ranges and return the part
+  common to both. If there is no intersection, u=0 and a isn't present.
+
+glue[] ( a1 u1 a2 u2 -- a u )
+  Glue two ranges together, yielding the smallest possible range that include
+  them both. If one of the ranges has a zero length, the "other range is yielded
+  as is.
+
+?[] ( a u -- ?a ?u f )
+  If u=0, yield f=0 with "a" and "u" absent. Otherwise, yield f=1 and "a" and
+  "u" present and unchanged.
+
+cmove- ( src dst u -- )
+  Like "cmove", but operates backwards. You'll want to use this when copying
+  overlapping memory area "forward" (dst > src).
+
+rslide+ ( by a u -- )
+  Move range "a u" forward in memory by "by" bytes.
+
+rslide- ( by a u -- )
+  Move range "a u" backward in memory by "by" bytes.
+
+ltrim[] ( a u n -- a u )
+  Trim "n" characters at the left of range "a u" and return the resulting range.
+
+rtrim[] ( a u n -- a u )
+  Trim "n" characters at the right of range "a u" and return the resulting
+  range.
+
+swap[] ( a u -- )
+wswap[] ( a u -- )
+cswap[] ( a u -- )
+  Reverse the order of the elements in the range. For example, a range with
+  3 elements "1 2 3" becomes a range with elements "3 2 1".
+
+split[] ( a u idx -- alo ulo ahi uhi )
+  Split range "a u" at index "idx", thus yielding "a idx a+idx u-idx".
+
+  If idx >= u, yields "a u a+u 0".
+
+map[] ( a u xt -- )
+wmap[] ( a u xt -- )
+cmap[] ( a u xt -- )
+  For each element of the range, run xt ( n -- n ) on it and write the result
+  back in the range.

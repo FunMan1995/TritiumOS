@@ -1,0 +1,153 @@
+# Duskberon's Viewers module
+
+Duskberon's main display [oberon/display] is split horizontally in what is
+called Tracks, which are then split vertically in what is called Viewers.
+Viewers, in turn, can be furter split into Frames.
+
+Tracks are Viewers. Viewers are Frames.
+
+Frames can contain subframes or be leaf frames. No leaf frame overlap any other
+leaf frame on the display. The whole screen is covered by leaf frames.
+Initially, leaf frames are "filler" that shrink as "real" viewers are opened.
+
+This hierarchy allows us to map any mouse position to a single leaf frame, which
+will receive events, a FrameMsg record, through their "handle" field.
+
+An obvious type of event is the InputMsg [oberon/oberon] which is sent when the
+mouse moves over or clicks on that frame, or when a key is pressed when that
+frame contains the caret. There are many other types of events, each with their
+own FrameMsg sub-record.
+
+These are all events generated and handled elsewhere. In this module, we
+generate the ViewerMsg, an event related to hide, show and resize viewers.
+
+## Constants
+
+Viewer message ID constants:
+
+restore  0
+modify   1
+suspend  2
+
+## Structures
+
+Frame* = POINTER TO FrameDesc;
+FrameMsg* = RECORD END;
+Handler* = PROCEDURE (F: Frame; VAR M: FrameMsg);
+FrameDesc* = RECORD
+  next, dsc: Frame;
+  X, Y, W, H: INTEGER;
+  handle: Handler
+END;
+
+next    Next sibling to frame
+dsc     Direct descendant of frame
+X/Y/W/H Rectangle of frame in display
+handle  Handler procedure
+
+Viewer* = POINTER TO ViewerDesc;
+ViewerDesc* = RECORD (FrameDesc) state: INTEGER END;
+
+state   0=close 1=filler >1=displayed <0=suspended
+
+ViewerMsg* = RECORD (FrameMsg)
+  id: INTEGER;
+  X, Y, W, H: INTEGER;
+  state: INTEGER
+END;
+
+id       one of the "Viewer message ID" constants
+X/Y/W/H  Rectangle, in display, associated with the message
+state    New state of the target viewer
+
+Track = POINTER TO TrackDesc;
+TrackDesc = RECORD (ViewerDesc) under: Track END;
+
+under   If not NIL, this track hides this other track
+
+## Global Variables
+
+curW    Total width occupied by the tracks we've added so far
+minH    Minimum height of a frame. Defaults to 1. TODO: why not a const?
+
+## Procedures
+
+Open (V: Viewer; X, Y: INTEGER);
+  Carve some space on the display for V at position X/Y.
+
+  That is, place it in its proper place in the Track/Viewers hierarchy, then
+  set its rectangle to an appropriate size, resizing its new neighbor, whether
+  it's a "real" viewer or the filler viewer.
+
+  If there's enough space to do that carving, a ViewerMsg with id=modify
+  is sent to the neighboring Viewer *before* the resize is effective.
+
+  If there's not enough space to do that carving, the new Viewer replaces its
+  "neighbor", which goes in suspended state. It then receives a ViewerMsg with
+  id=suspend *before* the suspend is effective.
+
+Change (V: Viewer; Y: INTEGER);
+  Resize V so that its top ends at Y unless the resulting change ends up
+  resizing V under minH.
+
+  A ViewerMsg with id=modify is sent to V *before* the resize is effective.
+
+Close (V: Viewer);
+  Remove V from its hierarchy and set its state to 0 (closed). Sends a ViewerMsg
+  with id=suspend to the view *before* changing its state.
+
+  While doing so, resize its neighboring viewer to fill the void, sending it a
+  ViewerMsg with id=modify *before* the resize takes place.
+
+  This is unless this viewer was the only one (besides the filler) of its track
+  *and* if that track has a non-NIL "under" field. In that case, we close that
+  track to reveal what was previously under it.
+
+  This results in a ViewerMsg with id=restore to be sent to all viewers in that
+  restored track.
+
+Recall (VAR V: Viewer);
+  Yields the last viewer to be closed.
+
+This (X, Y: INTEGER): Viewer;
+  Yields the displayed leaf viewer (there can be only one) that contains the
+  specified coordinates.
+
+Locate (X, H: INTEGER; VAR fil, bot, alt, max: Frame);
+  Yield, for the track at position X and a H maximum height, the frames matching
+  specific categories:
+
+  fil: the filler viewer of the track
+  bot: the viewer at the bottom of the track
+  alt: an alternate choice (TODO: wtf is this?)
+  max: the top viewer of the track under H
+
+  TODO: if X is out of the 16-bit range, nothing happens. Shouldn't it instead
+  abort with error?
+
+InitTrack (W, H: INTEGER; Filler: Viewer);
+  Initialize a new track of specified width and height and with the specified
+  filler viewer.
+
+  TODO: Why height? isn't a track supposed to always take the whole vertical
+  space?
+
+  TODO: If Filler.state is 0, nothing happens. What could cause that to happen?
+  Should it really silently do nothing? Shouldn't it abort with error?
+
+OpenTrack (X, W: INTEGER; Filler: Viewer);
+  Initialize a new track and place it *on top* of the track at position X.
+  That's the "under" field in action.
+
+CloseTrack (X: INTEGER);
+  Close a track that has previously been initialized with OpenTrack
+
+Broadcast (VAR M: FrameMsg);
+  Propagate specified message to all currently displayed viewers.
+
+UpdateScreenSize (ow, oh, nw, nh: INTEGER);
+  Adjust all frames of the display so that they fill or shrink according to
+  the change in display size.
+
+  This implies sending a ViewerMsg with id=suspend to all displayed viewers, do
+  the resize dance, then sending ViewerMsg with id=restore to everyone.

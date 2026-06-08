@@ -1,0 +1,28 @@
+# VGA text mode Grid
+
+The unit at [drv/pc/vga.fs] implements the Grid [io/grid] on a VGA text console.
+
+For it to work, you need to be in VGA text mode, something you can do with
+"vgatextmode ( -- )".
+
+## Example initialization
+
+  needs io/kbd io/grid lib/coop drv/pc/vga
+  vgagrid$
+  :> grid write# ; console!
+  ' refreshcaret ' promptforkey realias
+  createapplication RefreshGrid
+  ' refreshgrid IDLE RefreshGrid sethandler
+  RefreshGrid newcontext launchcontext
+
+## API
+
+vgagrid$ ( -- )
+  Resize the grid to the dimensions of the VGA text console.
+
+vgatextmode ( -- )
+  Enable VGA text mode though INT 10H.
+
+refreshgrid ( -- )
+refreshcaret ( -- )
+  As per [io/grid] convention. The caret is the actual VGA cursor.

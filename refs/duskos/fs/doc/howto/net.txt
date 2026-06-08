@@ -1,0 +1,141 @@
+# Networking
+
+NOTE: The TCP/IP stack is still a WIP, which means that this document is
+incomplete. However, everything described here has been implemented already and
+works as advertised.
+
+Networking in Dusk is implemented broadly following the architecture dictated by
+the design of the TCP/IP stack, that is, following the OSI layers from afar.
+
+To be able to say that you've got networking going, you need to cover layers 2
+(ethernet link), 3 (IP) and 4 (TCP)
+
+## The Ethernet link
+
+First, you need a layer 2 link, that is, a driver for your ethernet card. At the
+moment, there's only one supported card, the Realtek's RTL8169 [drv/nic/rtl8169]
+that I have in a HP Mini 210-3070 [hw/i386/hpmini].
+
+The Link layer concept is modelised through the Link structure in [com/link].
+Its role is to receive arbitrary data from layer 3, package it into what is
+called a frame and send it out to the world. Its complementary role is to
+receive frames from the outer world, unpack them into arbitrary data to send
+to layer 3.
+
+In the TCP/IP context, the general way to do this is through Ethernet which is
+implemented in [com/ether], a unit that extends [com/link].
+
+Of all the reference soup I've thrown at you above, the first to look at is
+[com/link] because it's the unit that contains the most important concept of the
+whole networking stack, the Active Frame.
+
+Although the concept of Frame is a layer 2 one, it trickles down the whole
+network stack because, to avoid copying data in memory, the unpacking of a
+received frame happens directly in it, right from the buffer the network card
+wrote to. It's a pointer to memory that moves when a new frame is created for
+sending or when a new frame is received.
+
+So, whether it's for sending or receiving, there is only one Active Frame at
+once, ever. When the IP layer [com/ip4] refers to fields in its packet, it's at
+an offset in the Active Frame. Then, when the TCP layer [com/tcp] refers to its
+own fields, it's also, ultimately, at an offset in the Active Frame.
+
+Sending a frame can be done at a moment of your choosing, but receiving a frame
+can't. The mechanism for receiving frames rests on [lib/coop] events. It's
+implemented as a background application in [com/net] called NetIncoming which
+polls all active network cards for incoming frames. Whenever it receives a frame
+from a NIC (Network Interface Card), it dispatches it to the appropriate layer 3
+handler, at the moment [com/ip4] or [com/arp]. Then, that handler handles it in
+any way it sees fit.
+
+For example, in the case of a UDP packet [com/udp] received through IP4, the
+[com/ip4] handler unpacks the datagram, sees that it's a UDP one, dispatches it
+to the [com/udp] handler, which then broadcasts a system-wide IP4UDPRECV event.
+Any [lib/coop] application having a handler for this even can hook a word to it.
+That word has access to the unpack Active Frame that has just been received and
+can act on it. You can look at [app/udc]'s IP4UDPRECV handler for an example.
+
+Enough theory. Now, how to I set up my layer 2? It depends on the NIC, but let's
+look at the RTL8169 example:
+
+  needs drv/nic/rtl8169 com/net lib/coop
+  rtl8169pci$
+  rtl8169 makeactive
+  NetIncoming newcontext launchcontext
+
+The first line is unit loading, the second one is hardware initialization of
+the NIC itself. The NIC unit provides a Link [com/link] implementation under the
+name "rtl8169". That Link needs to be marked as active for it to receive frames,
+so that's what the third line does. Lastly, the fourth line launches the
+NetIncoming background apps which dispatches incoming frames of all active links
+in the manner described above. The layer 2 is set!
+
+## The IP layer
+
+Next comes the layer 3, the IP one. It's where we set up an IP address, a subnet
+mask and a router (gateway) address. The unit that implements it, [com/ip4] is
+also the one that contains the handler that will process a vast majority of
+received frames.
+
+At the moment, this unit is designed around a single address concept. There is
+no such thing as having multiple IP address. Maybe one day. The IP address of
+the system is stored in the "selfaddr" value, a 32-bit number. For example, the
+number $c0a8002a represents address 192.168.0.42. There is also "subnetmask" and
+"routeraddr". You can print them all with ".ip4".
+
+You can set those 3 values manually if you want, but most of the time, you'll
+want to use DHCP [com/dhcp]. Here's an example DHCP setup on your RTL8169:
+
+  needs com/dhcp
+  rtl8169 senddiscover .dhcpwait
+
+If your home router properly leases you an IP address, you'll see something
+like:
+
+  Discover
+  Request
+  Bound
+  Self: 192.168.0.100
+  Subnet: 255.255.255.0
+  Router: 192.168.0.1
+
+Your layer 3 is set!
+
+## The UDP layer
+
+When the layer 3 is set, there is no configuration necessary for UDP. You're
+already set for it. To send a UDP message, you first create a new IP4 datagram
+with "newdgram" [com/ip4] and then set the UDP payload with "udp!", then send
+the frame with "sendframe". For example:
+
+  rtl8169 beginframe
+  newdgram
+  "hello!\n" udp!
+  selfaddr to SourceAddr
+  $c0a8002b to DestAddr \ 192.168.0.43
+  42 to SourcePort
+  43 to DestPort
+  com/udp wrap
+  rtl8169 sendframe
+
+Note that for this snippet above to work, there needs to be no idling in between
+any of the steps or else you might have your Active Frame swept up from under
+your feet. It is thus generally unwise to run this in interpret mode. Compile
+this code into a word and run the word. Only this way can you tightly control
+idling timing.
+
+The concept of "wrapping" is worth a few words. Most packets require fiddling
+with before sending, mostly to set checksum fields. Therefore, before sending a
+packet, you generally need to "wrap" it, otherwise you'll send a packet with
+an incorrect checksum.
+
+Receiving UDP packets happens through the IP4UDPRECV [lib/coop] event. You can
+see trivial examples in [bench/udp] and more elaborate ones in [app/udc].
+
+## TCP layer
+
+TODO
+
+## See also
+
+* The TCP/IP Guide by Charles M. Kozierok, No Starch Press

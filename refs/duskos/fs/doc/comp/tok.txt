@@ -1,0 +1,110 @@
+# Tokenizer mechanics
+
+The unit at [comp/tok.fs] fills a triple role. First, it serves as a common API
+to tokenizers in Dusk OS, allowing tokenizers to be decoupled from their
+consumers. Second, it implements a few convenience words makes implementing
+tokenizers easier. Third, it keeps track of debugging information such as the
+current line number to make generating friendly error messages easier.
+
+## Usage
+
+The tokenizer feeds from the input stream and produces tokens. Tokens are
+strings. On the "user" side, the main interface will be "tok< ( -- tok )" and
+"?tok< ( -- tok-or-0 )". Before parsing a piece of text, "tok$ ( -- )" should be
+called to reset the system.
+
+Upon resetting, the tokenizer will be in "default" mode, which is the equivalent
+of the Forth "word" tokenizer (words separated by whitespaces). If you use
+another tokenizer, it will typically have its own initializer word which will
+call "tok$" and then install its own tokenizer word. For example, the C
+tokenizer [comp/c/tok.fs] is initialized through "cctok$" instead of "tok$".
+
+For line counting to work, every character that is read from the input stream
+has to go through "?line+ ( c -- c )" which checks is "c" is a line feed and
+increases the counter if it is. All words defined in the API below already do
+this, but a custom tokenizer might feed directly from "in<" and will need to
+do this.
+
+Tokens yielded by this unit are buffered in the string pool [doc/usage/lit].
+This allows more than one token to "float around".
+
+## API
+
+### Consumer API
+
+curfile! ( str -- )
+  Sets the string to print under the "File: " line in "tokdbg". If none have
+  been set since the last tok$ call, "(none)" will be printed.
+
+?tok< ( -- tok-or-0 )
+  Read a token from the input stream and yield it. If EOF is reached before a
+  token could be read, yield 0.
+
+tok< ( -- tok )
+  Read a token from input stream and abort if EOF is reached.
+
+tok$ ( -- )
+  Initialize line counter and "(?tok<)" to its default value.
+
+tokdbg ( -- )
+  Prints a line with current line number and token.
+
+err" ( "msg" --- )
+  Same as abort" but with more context
+
+?err" ( "msg" --- )
+  Same as ?abort" but with more context
+
+n>tok ( n -- tok )
+  Format "n" as a decimal number, set it as the "current token" and yield a
+  reference to that token.
+
+### Tokenizer API
+
+(?tok<) ( -- tok-or-0 )
+  Points to the active implementation of "?tok<". By default, a wrapper around
+  "word". To change it, "realias" it.
+
+MAXTOKSZ ( const )
+  $3f, the maximum size, in bytes, of a token, not counting the first byte.
+
+newtok ( -- )
+  Allocate a new empty token in the scratchpad.
+
+tokacc ( c -- )
+  Accumulate character "c" in the current token.
+
+tokdel ( -- )
+  Remove the last char of the current token.
+
+curtok ( -- a )
+  Current token being "accumulated" upon. This is a static buffer and shouldn't
+  be directly yielded as a token.
+
+curtokcopy ( -- a )
+  Copy curtok into internal scratchpad and yield it.
+
+nexttok ( value )
+  If nonzero, the next "?tok<" call will yield this token.
+
+tokstepback ( -- )
+  Like "stepback" (see [doc/usage/io]), but for tokens. Rewind the previous
+  "?tok<" result so that the next call yield the same token.
+
+peektok< ( -- tok )
+  Shortcut for "tok< tokstepback".
+
+curline ( value )
+  Number of "LF" characters that have been read so far, plus 1.
+
+?line+ ( c -- c )
+  If "c" is a line feed (LF), increase curline.
+
+tonws< ( -- lastws c-or-0 )
+  Read the input stream until a non-whitespace (smaller than $21) is read, then
+  yield this character as "c" with "lastws" being the last character read before
+  this one. If a non-WS character was hit immediately, "lastws" is LF. If EOF is
+  reached, "c" is 0.
+
+isChar? ( tok c -- f )
+  Yields whether "tok" is a 1-sized string containing character "c".

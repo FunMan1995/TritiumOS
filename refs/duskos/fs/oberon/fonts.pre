@@ -1,0 +1,43 @@
+needs lib/struct lib/type lib/bit gr/buf gr/color gr/font \
+      comp/oberon/type comp/oberon/module comp/oberon/gc
+
+struct FontDesc { }
+1 FontDesc "FontDesc" obaddtype
+1 FontDesc newgcpointer "Font" obaddtype
+
+struct FontDesc {
+  [CHAR,32] name ;
+  INTEGER height minX maxX minY maxY ;
+  Fonts.Font next ;
+  [INTEGER,128] T ;
+  INTEGER raster ;
+}
+
+:ob GetPat (fnt: Font; ch: CHAR; VAR dx, x, y, w, h, patadr: INTEGER);
+  T swap 128 mod 4* + @ ( pa 'dx 'x 'y 'w 'h 'pa )
+  3 - c@+ rot ! c@+ rot ! c@+ sex8 rot ! c@+ rot ! c@+ rot ! ( 'pa pa+2 )
+  2- swap ! ;
+
+1BPPL BW1 32 32 newpixbuf dup const glyphbuf allotbuf
+
+: raster, ( glyphidx font -- )
+  >r 0 0 glyphbuf V1 fonttarget! ( glyph ) \ V1=font
+  0 1 V1 fontcolors!
+  V1 drawglyph
+  V1 tgtx c, 0 c, 0 c, V1 tgtx c, V1 Font.height c,
+  V1 Font.height 0 do ( )
+    i glyphbuf yaddr ( a )
+    V1 tgtx 8 /+ 0 do c@+ c, loop drop loop ( )
+  rdrop ;
+
+:ob FromDusk (name: ARRAY OF CHAR): Font;
+  DuskStr getfont ?dup not if 0 exit then ( font )
+  FontDesc newptr 2>r \ V1=font V2=obfont
+  V1 Font.height dup V2 to FontDesc.height V2 to FontDesc.maxY
+  V1 Font.maxwidth V2 to FontDesc.maxX
+  0 V2 to FontDesc.minX 0 V2 to FontDesc.minY
+  here V2 to raster
+  128 0 do ( )
+    here 3 + V2 T i 4* + !
+    i V1 raster, loop
+  r> rdrop ;

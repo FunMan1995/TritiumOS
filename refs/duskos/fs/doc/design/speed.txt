@@ -1,0 +1,74 @@
+# Dusk OS approach to speed
+
+The vast majority of the hardware that Dusk is going to run on is massively
+overpowered compared to Dusk's typical workload on it. Speed is therefore de-
+priotized. It doesn't mean, however, that we squander the computing ressources.
+After all, we want Dusk to run as well as possible on old and slow machines.
+
+As with anything in Dusk, we aim for efficient code as long as it doesn't hinder
+simplicity and grokkability. Where is the tradeoff cutoff? Difficult to say.
+
+## I/O speed
+
+One place where we intentionally de-prioritize speed is in drivers. There's a
+huge difference in complexity between a driver that works in the simplest manner
+possible, albeit slowly, and a driver that uses all possible features of the
+target hardware to maximize speed. Huge difference. In Dusk, we choose the slow
+and simple way intentionally.
+
+## Caching
+
+In software, caching is a major source of complexity. The layers of indirection
+it brings means we're seldom quite sure of what happens exactly when we call a
+piece of code because it depends on many runtime factors.
+
+Dusk OS has as little caching as possible to be functional. That is very little.
+For example, to be able to write to a 512 bytes sector, one has to read it in
+memory first. Of course, we could go with a strict "no caching" policy and have
+every little byte written involve a sector read followed by a sector write, but
+that would be stupidly inefficient, so filesystem handles maintain a sector
+cache along with its dirtiness status. But no more.
+
+Let's use another example, the FAT table. When seeking entries in a FAT FS, the
+FAT table is heavily sollicited. Caching it in memory would speed up things, but
+then one has to manage cache invalidation when the FAT changes. Therefore, we
+do the same thing for the FAT as we do for file handle: a single sector cache
+along with a dirtiness flag. This makes FAT seeking slower (unless we're lucky)
+but the code simpler. But yes, this means that Dusk OS has slow FAT access.
+
+Therefore, we could say that in Dusk, cache isn't related to speed, but to
+function.
+
+Does it mean that the Dusk OS operator can't use their gigabytes of memory to
+speed up their operation a little bit? No, it doesn't mean that. They can cache
+their stuff, but on their own terms and explicitly. Core routines don't cache.
+
+## Filesystem speed
+
+Dusk OS is memory oriented, not file oriented. There are very few scenarios,
+actual or imagined, where mass storage access becomes a critical bottleneck.
+
+Therefore, we accept that filesystem access is inherently slow. The FS API is
+written with that understanding. This, of course, doesn't mean that we squander
+ressources, only that simplicity has much more weight than speed with regards to
+the filesystem.
+
+## Speed in the graphics subsystem
+
+There's a whole lot of pixels to push in whatever involves graphics. If you
+naively prioritize simplicity in this area, you naively end up with a very
+sluggish system.
+
+This is why, in Dusk, code involving pixel pushing is written with speed in
+mind... up to a point. When you begin writing code for speed, it's easy to lose
+track of where you are and steer a bit too steeply in the direction of
+complexity.
+
+So yes, graphics code is mostly HAL, yes, it maximizes in-register computation
+over memory accesses, yes, it designs its structure around speed rather than
+compactness, yes, it's mindful of alignment, but no, it doesn't go much further
+that.
+
+The final archetypal goal is to be able to scroll a PDF on the slowest of Dusk's
+target machine at a speed that isn't dreadfully sluggish. As long as we have
+that, we're good.

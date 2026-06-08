@@ -1,0 +1,31 @@
+# SD-MMC Host Controller
+
+The unit at drv/sunxi/smhc.fs drives what is called the SD-MMC Host Controller.
+It's a common interface to both the SD slot and the eMMC one. Each slot has its
+own set of registers (SMHC* constants) which behave similarly.
+
+For now, only the SD slot has been tested. Moreover, we rely on the
+initialization that is done by uboot's SPL.
+
+This unit provides a [io/blk] struct which works like any other blk.
+
+Example initialization for the SD card:
+
+  SMHC0 newsmhcdrive const mydrv
+
+## API
+
+Constants:
+
+SMHC0  SD card controller registers
+SMHC1  SD IO controller registers
+SMHC2  MMC controller registers
+
+Words:
+
+newsmhcdrive ( smhcregs -- drv )
+  Create a new [io/blk] struct around "smhcregs".
+
+## See also
+
+* [doc/hw/arm/sunxi]

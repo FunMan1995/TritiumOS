@@ -1,0 +1,60 @@
+# Dusk OS' purpose
+
+Dusk OS' primary purpose is to be maximally useful during the first stage of
+civilizational collapse, that is, when we can't produce modern computers anymore
+but that there are many modern computers still around.
+
+As communities become isolated and those machines begin to break down, they will
+need to be used in creative manners if one wants to use them at all. The
+complexity of modern operating systems will hinder this creativity and make its
+success less likely.
+
+Dusk OS, through simplicity, aims to minimally hinder this creativity and
+provide as many tools as possible to help it.
+
+Maximally use the hardware, alright, but what for? While the ultimate purpose of
+these computers is open ended, Dusk OS is developed and optimized for a few of
+those purposes that are expected to be important during civilizational collapse.
+
+## Access to archives
+
+We have enormous amounts of knowledge stored on media that is only accessible
+through the use of a modern computer. Some of this knowledge will be of vital
+importance to different communities as they become isolated. Access to this
+knowledge will have a big influence on the fate of those communities.
+
+Therefore, one of Dusk's primary purposes is to be able to access as many kinds
+of storage media as possible, through as many kinds of encodings (filesystems,
+file formats, compression algorithms, etc.) as possible and present them in a
+way that humans can consume (view it on a screen, print it to paper, etc.).
+
+## Bit banging
+
+Collapse OS' primary goal stays true for Dusk OS: managing electricity will
+always be immensely useful. Collapse OS fullfils that goal through very simple
+computers, but at the cost of heavy constraints. As long as modern hardware
+stays available, Dusk OS will be preferable to Collapse OS because it's more
+powerful and convenient.
+
+Therefore, we want to be able to repurpose modern hardware in wicked ways to
+achieve goals with severely limited means. For example, one could imagine
+repurposing a router's ethernet connectors to do simple bit banging to control
+an adhoc circuit. Dusk is designed to maximally allow that.
+
+## Keeping the internet alive
+
+We can expect that the internet as we know it will break down, but TCP/IP is
+pretty resilient and we can think that some communities will manage to keep some
+form of long distance communication alive. This means the possibility of keeping
+some kind of internet alive.
+
+Dusk OS aims to have the tools to help with that.
+
+## Efficient "free-handed" computing
+
+Move bytes around, slice them, dice them, examine them. One of Dusk OS' primary
+purposes is to provide a powerful, flexible, efficient shell. That's something
+that a Forth environment provides naturally.
+
+In Dusk, we just want to make sure that all the bells and whistles that makes a
+operators feel happy are there.

@@ -1,0 +1,79 @@
+# Macros
+
+Macros conveniently allows the operator to repeat textual input, with or
+without placeholders. General Forth mechanisms allow, of course, plenty of ways
+to conveniently repeat a piece of logic, but when the repetition is more textual
+in nature, there is no obvious way to repeat. Enter macros:
+
+  : greetFoo ." Hello Foo!" ;
+  : greetBar ." Hello Bar!" ;
+  : greetBaz ." Hello Baz!" ;
+
+This piece of code has no obvious way to avoid the churn of repeating text, but
+with macros it becomes:
+
+  thrice" : greet%< .\" Hello %0!\" ;\n" Foo Bar Baz
+
+The command above results in the Dusk interpreter to read the *exact* same text
+as previously shown. To achieve this, it uses input overrides (see
+[doc/usage/io]) to temporarily hijack the input and insert interpolated strings
+resulting in the macro format string applied to specified parameters.
+
+## Parameters
+
+As shown above, macros will spit quoted contents verbatim until they hit a "%"
+character. This character will insert a parameter. If you need a verbatim "%"
+character, write "%%".
+
+The inserted parameter can come from two sources:
+
+1. The input stream. If you follow "%" with "<", a string is taken from the
+   input stream through "wordorquote" (see [doc/usage/io]) and inserted.
+2. A previous parameter. If you follow "%" with a 0-9 digit, a previously read
+   parameter will be re-inserted. The digit is the index, in reading order, of
+   a parameter previously read. Error occurs if index exceeds read parameters.
+
+The input stream will expect a number of word-or-quotes that exactly corresponds
+to the number of "%<" elements in the macro.
+
+You can also use "%-" which consumes an argument from the input stream, places
+it in the appropriate 0-9 slot, but doesn't spit it in the macro's result right
+away. You can use this to "drop" an argument, or simply use it in an order that
+is different from the input argument order.
+
+## Named macros
+
+The "thrice" word above, a convenience around "times", is for ad-hoc macros.
+You can also have named macros:
+
+  macro greet ": greet%< .\" Hello %0!\" ;\n"
+  greet Foo
+  greet Bar
+  greet Baz
+
+## Compilation and other contexts
+
+Macros override the input stream in a way that makes them very versatile. They
+don't merely interpret the macroed code, but inject it in the input stream in a
+way that makes it *exactly as if typed*, whatever the context, without yielding
+EOF at the end of the override. If you're in the middle of a word compilation
+and insert a macro there, the macro will not "run" the words, but compile them
+as if they were typed right in there.
+
+If you use a macro in the middle of a CC compilation, then this contents can be
+C code, it's going to work.
+
+## API
+
+macro ( "name" "macro" -- )
+  Create a new macro named "name" with contents "macro". The resulting macro is
+  an immediate word. "macro" is read with "wordorquote".
+
+times" ( n "macro" -- ) *I*
+  Executes "macro" n times.
+
+twice" ( "macro" -- ) *I*
+  Equivalent to "2 times"".
+
+thrice" ( "macro" -- ) *I*
+  Equivalent to "3 times"".

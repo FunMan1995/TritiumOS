@@ -1,0 +1,42 @@
+This work is marked with CC0 1.0. To view a copy of this license, visit
+http://creativecommons.org/publicdomain/zero/1.0
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+Some parts of this project are taken from other projects with different
+licences. Units of foreign source begin with a comment indicating their
+source and the license that comes with it. Those licenses are distributed
+with this project under the "licenses" directory.
+
+Distributing this project as a whole need to satisfy all of those licenses'
+requirements.
+
+The text below is a commentary and has no legal value:
+
+The intent behind choosing CC0 is to maximize flexibility. Regardless of the
+license above, I wasn't going to sue you over this copyright, ever. So legally,
+you were always in the clear. With CC0, it's even more explicit.
+
+Regardless of the legal mumbo jumbo, this software has been created by humans as
+a labor of love, so there's an emotional link to it. Omitting attribution has to
+be done with what is commonly called "common sense".
+
+There's a piece of code that you think is great and you want to use it elsewhere
+without weighing your code with too much attribution mumbo jumbo? Sure, go
+ahead. Nobody likes noise in the code, me first. A shoutout in the commit
+comment would be great.
+
+You want to strip the whole project of authorship marks and republish it as your
+own? Sure, you're in the right. Nobody's going to sue you for it, nobody can sue
+you for it. But know that this is generally seen as what is called a "dick move"
+and makes you a special kind of person.
+
+Therefore, this non-binding part of the license is a plea to humanity and common
+sense.
+

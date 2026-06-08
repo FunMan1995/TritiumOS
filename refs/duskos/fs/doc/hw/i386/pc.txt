@@ -1,0 +1,136 @@
+## PC kernel
+
+The PC kernel lives at [xcomp/i386/pc/kernel.fs] and builds on the i386 kernel.
+The most important things it adds are
+
+* int13hchs ( drv head cyl sec cmd -- buf )
+* int13hlba ( drv lbasec cmd -- buf )
+* int10h ( cx/dx bx ax -- bx ax )
+
+Those words are used in [drv/pc/int13h] and [drv/pc/vesa].
+
+These three words implement all the ugly things one has to do to manage to make
+a BIOS call from protected mode, that is, "descend" into real mode, do the
+call, emerge back from real mode, all the while not messing up the PIC. Very
+hairy, very ugly, which is why you should rely on these words as little as
+possible.
+
+The approach to keeping the PIC intact is twofold. First, we mask interrupt
+lines during the int13hlba, int13hchs, and int10h calls. On int10h, it's
+completely masked. On int13hlba and int13hchs, we mask everything except IRQs 2
+(cascade) 6 (floppy) 14-15 (ATA) because some BIOS need those. We unmask them
+to their previous value when we re-emerge from real mode.
+
+Second, we copy IVT entries from the original $08/$70 PIC configuration to the
+remapped $20/28 PIC configuration. This way, the ISRs that are set up by the
+BIOS will continue to work during int13hlba and int13hchs calls. In "normal"
+times, those IVT entries are never used because the protected mode uses the
+IDT, which is where we set our "real" ISRs.
+
+But all in all, this is all very ugly and BIOS calls should be avoided.
+
+## Memory layout
+
+PS lives at the end of x86 conventional memory, that is $80000.
+
+RS lives at $f800. It needs to live below the $10000 line so that we don't have
+to save/restore ESP when doing the calls to real mode. If we have it live over
+this line, the 64K wrap-up makes those calls push to unexpected places in
+memory.
+
+The bootloader is loaded at $7c00, and then begins loading the payload from
+$500 to $7bff inclusive. Then, we jump to the kernel which makes "here" start
+at $10000. From there, the boot code begins interpreting itself.
+
+The bootloader contains the Global Descriptor Table (GDT) at $7d80.
+
+$7800-79ff is used by the int13h driver as a sector buffer.
+
+During higher level initialization, we're expected to deal with the A20 gate,
+stop needing int13h, and then make "here" jump to its final playground, that is
+$100000 and above.
+
+## Deploying Dusk to a PC
+
+As long as the PC has a 80386 CPU, it should be good enough to run Dusk, which
+has very small memory and disk requirements.
+
+So far, the most underpowered computer Dusk has been known to run on is an old
+Pentium 75Mhz laptop from Zenith Data Systems with 16MB of RAM. It boots in
+about 5 seconds and can load [comp/c] from its ATA disk in about another 5
+seconds.
+
+Dusk can boot from whatever media the BIOS can read. Its boot-time drive is
+[drv/pc/int13h], a Blk [io/blk] implementation that can read and write to the
+boot drive through the "int13hlba" and "int13hchs" (for floppies) words
+implemented in the PC-specific part of the i386 kernel
+[xcomp/i386/pc/kernel.fs].
+
+You *can* stay on this drive if you want, but calling BIOS from protected mode
+is tricky and error prone. It's better to get off that Blk implementation as
+soon as possible. Your options are:
+
+* [drv/pc/fdc]
+* [drv/pc/ata]
+* [drv/pc/ahci]
+* [drv/usb/blk]
+
+### Creating a boot media for the PC
+
+Whatever the BIOS can read through INT13h, Dusk can boot from it. Dusk is
+installed as a FAT volume using "newFAT" from [fs/fatt] with a bootloader
+embedded in its first sector. Following that first sector are a few dozens
+"reserved" sectors which contain Dusk's kernel followed by its boot payload.
+
+The task of the bootloader is to load those reserved sectors in memory, go in
+32-bit protected mode, then jump to the first address of these sectors we've
+just loaded. Then, bootstrapping takes placed normally.
+
+Then, what you need to do is to copy all files of the Dusk system into that new
+FAT volume, and craft a proper "init.fs" file.
+
+### Bootloader options
+
+If you look at [xcomp/i386/pc/mbr.fs], you'll see some commented out code you
+can enable if you need it.
+
+Currently, the only commented out code simply waits for a keypress before going
+to video mode 80x25 so that you have enough time to see debug output.
+
+## Troubleshooting
+
+This section is for various troubleshooting notes.
+
+### Can't boot?
+
+This is a frequent problem and many things can be wrong. The first thing to
+check when you can't boot is to check at what level the break happens. You have
+to try a few things in order.
+
+1. Minimal init.fs: Remove everything from the init.fs except the code needed to
+get something to spit on screen. If you can spit something on screen, you're
+good to go, add things back one at a time and see when it breaks.
+
+2. If you can't get something on screen, you'll have to use a trick: write stuff
+at $b8000, the VGA text buffer. Each character in the screen is 2 bytes wide.
+The low byte is the character, the high byte is the color. To write a 'X', it's
+"$758 $b8000 w!". What you can do is insert these little snippets at different
+stages of the boot process: right on top of boot.fs, at the end of it, right
+before the first "fload", right at the top of init.fs. This gives you an idea of
+where to look for problems.
+
+3. Debug INT13H. In most other OSes, the console is setup before disk access
+is. In Dusk, because of its peculiar boot process, it's not the case. It is
+therefore very important to make sure that the boot process is able to read
+from the disk. Dusk checks the number of heads in the FAT header to decide
+whether to load the boot payload using CHS (Cylinder-Head-Sector) mode or LBA
+(Logical Block Address) mode. This is done because CHS is very inconvenient but
+floppies require it, and they happen to have a numheads of at most 2. All
+BIOSes released after the mid-1990s supposedly support the BIOS LBA extensions.
+In the unlikely case that you need to debug CHS mode, however, see
+[drv/pc/bios13].
+
+## See also
+
+* [hw/i386]
+* IBM Personal Computer Hardware Reference Library, Technical Reference

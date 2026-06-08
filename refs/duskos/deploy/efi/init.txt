@@ -1,0 +1,16 @@
+Welcome to Dusk OS EFI port!
+
+This is a [app/gcon] console. Here's a few files you might want to edit:
+
+init.fs init.txt /
+text/ed app/ed
+io/stream
+
+Mouse not working? Look at available mouses with:
+lsmouse
+and then go change the mouse index in [init.fs]
+
+QA commands:
+f<< bench/gr.fs grall
+f<< oberon/sys.fs oberon
+f<< tests/all.fs

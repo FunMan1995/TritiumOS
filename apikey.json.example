@@ -1,0 +1,7 @@
+{
+  "name": "Your Name",
+  "description": "IBM Quantum API key",
+  "createdAt": "2026-01-01T00:00+0000",
+  "apikey": "PASTE_44_CHAR_IBM_QUANTUM_KEY_HERE",
+  "instance": "OPTIONAL — CRN or name from quantum.cloud.ibm.com/instances (Open plan: only one allowed)"
+}

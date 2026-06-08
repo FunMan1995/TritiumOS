@@ -1,0 +1,177 @@
+# Units and dependencies
+
+In Dusk, we call a "unit" a collection of words tied to a certain name (the unit
+name). For example, the unit "lib/str" provides the word "s)". Its structure is
+described in [doc/data].
+
+In their primary use case units are tied to a source file of the same name. For
+example, the source file associated with unit "lib/str" is lib/str.fs. Its
+associated documentation lives at doc/lib/str.txt.
+
+A unit is declared with the word "unit". For example, "unit lib/foo" declares
+the unit "lib/foo". All following dictionary entries following this declaration
+will be associated with the unit "lib/foo". This association stops when the word
+"endunit" is called. Following words will be unassociated.
+
+Units can't be nested and the word "unit" implicitly calls "endunit".
+
+Declaring a unit creates a word of the same name. That word can be called
+directly, but that's not it's primary use case. It's primary use case is the use
+of the unit name with "needs". It "bubbles" its associated words on top of the
+system dictionary, that is, it makes those words be found before all the others.
+
+This simple little trick allows complex dependency chains to occur while
+avoiding word shadowing problems that inevitably crop up as a Forth codebase
+becomes wider.
+
+For example, let's say that you loaded "lib/str" earlier, but then created a new
+word called "s)" which has completely different semantics from lib/str's "s)".
+
+So far, so good. You can do that and everything will work fine. However, now you
+want to load "app/foobar" which depends on "lib/str" and it just so happens that
+it needs to use "s)". Guess what? it's going to pick up the wrong "s)" and
+"app/foobar" is going to be broken.
+
+But if "app/foobar" does "needs lib/str", then all those words are going to be
+bubbled up to the top in the system dictionary. The words don't actually move,
+only the dictionary chain links change (so all compiled references to those
+words are still valid, of course). But because "app/foobar" declared that need,
+the the "s)" it actually needs will re-shadow the "s)" that shadowed it earlier.
+
+Let's see an example where "lib/a" define a single word, "a", "lib/b", "b" and
+"lib/c", "c":
+
+  f<< lib/a.fs
+  f<< lib/b.fs
+  f<< lib/c.fs
+  words \ prints "c b a (... rest of system dict)"
+  needs lib/a
+  words \ prints "a c b ..."
+  needs lib/c
+  needs lib/b
+  words \ prints "b c a ..."
+
+## The "needs" word
+
+Let's talk more about this "needs" word.
+
+When called, "needs" reads the rest of the line and then expects a list of unit
+names separated by whitespace. The last element of the line must be directly
+followed by a LF (no whitespace in between).
+
+As long as [fs/core] is not loaded, "needs ..." is the equivalent to calling
+each of the following words directly. Once [fs/core] is initialized, it checks
+whether the name exists in the system dict and automatically loads the unit from
+file if it doesn't. The associated file is "<unitname>.fs". For example, doing
+"needs lib/str" when "lib/str" doesn't exist in the system dictionary would
+do "f<< lib/str.fs" first, then call "lib/str".
+
+"needs" cannot be called inside a unit definition. Like "unit", it implicitly
+calls "endunit".
+
+Sometimes, the "needs" list can be quite lengthy and span over multiple lines.
+Rather than calling "needs" more than once, which is incorrect, you can insert
+a "\" at the end of a line to indicate that the unit list continues on the
+following line.
+
+  needs a \
+    b \
+    c
+
+is exactly equivalent to:
+
+  needs a b c
+
+## The two stages of needs
+
+Naively, you could think that:
+
+  needs lib/a lib/b lib/c
+
+and:
+
+  needs lib/a
+  needs lib/b
+  needs lib/c
+
+are equivalent. You'd *almost* be right. If all libraries are already loaded in
+memory, they are equivalent. If one of the libraries is not, then the two forms
+are not equivalent because the "bubbling up" that is a side effect of the
+loading will mess up our own top level "bubbling up".
+
+For example, if "lib/c" wasn't already in memory and it depended on "lib/a",
+then "lib/a" is going to end up "on top" of "lib/b", which is not the intent.
+
+It sets the stage for some really tricky bugs and we don't want that. We want a
+given namespace following a "needs" to be deterministic.
+
+Therefore, needs operates in two stages. First, it goes through the specified
+units and ensure that they're loaded in memory. Then, it goes through the list
+again, from left to right, then "bubbles up" each unit one after the other.
+
+This ensures a deterministic namespace, independent of the prior "loaded" state
+of the specified dependencies.
+
+## On-the-fly unit sub-lookups
+
+In Dusk's code, we avoid both namespaces and word name prefixes. Each unit
+chooses its names for "maximum local elegance", that is, the code should be
+understandable locally, without adding spurious prefixes to avoid global name
+clashes.
+
+In practice, we find that as long as "needs" list are thoughtfully ordered, such
+clashes rarely occur.
+
+... but it *can* happen. When that happens, you have one last wildcard: calling
+the unit word directly.
+
+The unit word is a "find selector" (see [doc/usage/word]). When called, it
+consumes the following word, then begins a regular dictionary lookup, but
+starting from the unit's top entry rather than from the system dictionary.
+
+This means that if the looked up word has been shadowed since the declaration of
+the unit, this lookup will still find the word from the unit.
+
+That word, being a find selector, works just as fine in interpret and compile
+mode.
+
+Let's imagine that both "lib/foo" and "lib/bar" have a "xlerb" word. As long as
+they're not used together, no problem. They could even be used together, but
+only one of the "xlerb" is used, so it's only a matter of correctly ordering the
+"needs".
+
+But if we need to use them both, you'll need to so something like:
+
+  needs lib/foo lib/bar
+  : callbothxlerbs lib/foo xlerb lib/bar xlerb ;
+
+or, if you want to rely on your "needs order a bit, you can be more terse:
+
+  needs lib/foo lib/bar
+  : callbothxlerbs lib/foo xlerb xlerb ;
+
+The second "xlerb" comes from lib/bar because it's the top unit of the needs
+list.
+
+## needs""
+
+"needs" is a word that is intended to be used in interpret mode. In some rare
+cases, you need to compile a "needs". For example, in [app/ed], we want to
+bubble up [text/ed] each time to launch the editor so that the editor commands
+are on top of the dictionary, for the ":" key binding to work as expected.
+
+In this case, needs"" can be used, with a single unit, in this fashion:
+
+  : foo needs"lib/foo" ;
+  foo \ bubbles up lib/foo
+
+## xcomp/boot unit
+
+There is a builtin unit called "xcomp/boot". It includes all kernel words as
+well as the words defined in [xcomp/boot.fs]. This includes the HAL.
+
+You usually don't need to do include it in your needs list because most code
+avoid shadowing core words. But in some case, it's necessary.
+
+But the general rule if you want to have a good time is: don't shadow xcomp/boot
+words.

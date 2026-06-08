@@ -1,0 +1,41 @@
+# Dynamic Host Configuration Protocol
+
+This unit implements a rudimentary DHCP client, just enough to set its [com/ip4]
+host information. It assumes a reasonably well-behaved DHCP server, the only
+one of its kind in the subnet with lease time good enough so that renewals will
+only be necessary when we begin getting long-running Dusk systems.
+
+A rework of this unit is necessary before running it in a subnet where
+adversarial elements can be present.
+
+The process begins at "senddiscover", which broadcasts a DISCOVER message. A
+"DHCPBG" background application [lib/coop] listens to UDP/68 for replies. A
+timeout mechanism repeat messages after a while up to a certain number of
+retries.
+
+When the BG listener receives an offer, it accepts it immediately, that is, it
+replies (not broadcasting anymore, but still requesting a broadcast because that
+IP ain't ours yet) with a REQUEST.
+
+It waits for a ACK, then we're done. The client IP, gateway and subnet mask in
+that ACK message become active in [com/ip4].
+
+## API
+
+### Applications
+
+DHCPBG  A background application that listens to UDP/68 for DHCP offers and
+        ACKs.
+
+### Words
+
+senddiscover ( link -- )
+  Begins the DHCP process by broadcasting a DISCOVER message on the specified
+  link [com/link].
+
+.dhcp ( -- )
+  Prints out the status of the current DHCP process.
+
+.dhcpwait ( -- )
+  As long as a DHCP process is active, monitor its progress while idling,
+  printing relevant information as state changes.

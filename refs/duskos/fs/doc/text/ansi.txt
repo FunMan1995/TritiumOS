@@ -1,0 +1,111 @@
+# ANSI escape codes
+
+The unit at [text/ansi.fs] extends the Grid [io/grid] so that writing ANSI
+escape codes to it results in the corresponding grid action. The same unit can
+also do the opposite: encode grid actions into ANSI escape codes.
+
+To use the "decode" feature, you initialize a new ANSIGrid with "newansigrid"
+then set the "grid" global value [io/grid] to it. And just like that, you can
+emit ANSI escape codes and have them do the right thing on the grid.
+
+To use the "encode" feature, you first realias "ansirtype ( -- a u )" to a word
+that writes to your serial line. By default, this world is aliased to whatever
+RTYPE was when the unit was loaded. Then, you set up the supplied grid
+implementation conventional words [io/grid] ("refreshgrid" etc.) in the regular
+way. Grid refreshes will result in ANSI-encoded data to be spit through
+"ansirtype".
+
+## Limitations of the decode logic
+
+With tons of terminals supporting tons of escapes all around, shooting for
+feature parity with those implementations is too much. What we do is that we
+expect the other side to encode their escape codes using the "ansi" terminfo.
+
+Note that at the moment, we're not quite done implementing those escape codes.
+
+## Debugging buffer
+
+All decoded escape sequences, along with their arguments, get pushed to a
+rolling buffer [mem/roll] named "esclog". When it's full, we silently ignore it
+and drop the sequence.
+
+This buffers allows debugging of decoded sequence. A ".esclog" helper word spits
+the contents of the buffer to the console.
+
+## UNIX tty setup
+
+For ANSI escape sequences to work well, the other side of the line has to be
+properly configured, namely by setting the TERM environment variable to "ansi"
+and by setting the grid size. The latter is done through the "stty" command.
+
+For example, if we have a 100x75 grid, we'd want to run:
+
+  stty rows 75 columns 100
+
+To facilitate this, we provide "ttycfgcmd ( grid -- str )" which generates those
+command with the right values interpolated.
+
+## Example usage
+
+If we have a communication line where we get ANSI codes, a UNIX tty for example,
+and we'd like to hook into that line using [io/ride] on a system with a
+[io/grid] that is already setup, setup would look like this:
+
+  needs io/grid io/ride text/ansi
+  COLS LINES newansigrid to grid
+  grid ttycfgcmd commline puts
+  commline ride \ incoming ANSI escapes will drive the grid
+
+## API
+
+### Structure
+
+extends Grid struct ANSIGrid {
+  uint esclog escstate arg1 arg2 ;
+}
+
+esclog
+  A [mem/roll] buffer where all decoded sequences get pushed, for debugging
+  purposes.
+
+escstate
+  Current "escaping" state. We parse escape as a state machine, one character
+  at a time. We need to remember were we were. Possible values:
+
+  NOESC   Not escaping
+  WAIT[   Waiting for the opening '['
+  ARG1    Parsing argument 1
+  ARG2    Parsing argument 2
+
+arg1
+arg2
+  Argument parsed in the last escape sequence. When they are missing, they are
+  set to 0.
+
+### Decode words
+
+ttycfgcmd ( grid -- str )
+  Generates a string containing commands to run on a UNIX shell so that the
+  terminal is properly configured to be driven by Dusk.
+
+.esclog ( grid -- )
+  Spits contents of "esclog" to "console" [io/stream].
+
+### Encode words
+
+ansirtype ( -- a u )
+  What is called by "refreshgrid" and "refreshcaret" to spit its contents. At
+  unit load time, is set to whatever RTYPE points to. Realias as needed.
+
+refreshgrid ( -- )
+  Loop over "grid"'s changes, outputting ANSI escape codes as needed. Logic:
+
+  1. When there is no change, nothing is spit.
+  2. Whenever the FG or BG color changes, a SGR is spit accordingly.
+  3. We make an exception when color = DEFAULTCOLOR. SGR param is then 0.
+  4. Whenever a change is only one position after the previous emitted change,
+     we don't emit positioning CSI
+  5. Otherwise, we position using CSI H.
+
+refreshcaret ( -- )
+  Emit CSI H to current grid pos.
