@@ -122,7 +122,7 @@ class MainActivity : AppCompatActivity() {
         if (line.isEmpty()) return
         append("> $line\n")
         when (line.lowercase().split(" ").first()) {
-            "help" -> append("help | status | compute | compute-set | about | load-core | drena-demo | rekiA-demo | assimilate | bootstrap-host | full-stack-optimize | host-hw-info | load-refined\nAny other input sent to TritiumForth VM (demos or raw Forth).\n" +
+            "help" -> append("help | status | compute | compute-set | about | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo | assimilate | bootstrap-host | full-stack-optimize | host-hw-info | load-refined\nAny other input sent to TritiumForth VM (demos or raw Forth).\n" +
                 "assimilate = ingest software on this phone hardware into evolve/assimilated/\n" +
                 "full-stack-optimize = DRENA+REKIA + assimilate + emit host bootstrap plans + refined modules\n")
             "compute" -> append(formatCompute())
@@ -151,7 +151,9 @@ class MainActivity : AppCompatActivity() {
             ).show()
             "load-core" -> append(vm?.evaluate("load-core") ?: "")
             "drena-demo" -> append(vm?.evaluate("drena-demo") ?: "")
-            "rekiA-demo" -> append(vm?.evaluate("rekiA-demo") ?: "")
+            "rekiA-demo", "rekia-demo" -> append(vm?.evaluate("rekia-demo") ?: "")
+            "s3-reserved-demo" -> append(vm?.evaluate("s3-reserved-demo") ?: "")
+            "grow-step-demo" -> append(vm?.evaluate("grow-step-demo") ?: "")
             "assimilate" -> {
                 append(vm?.evaluate("assimilate") ?: "")
                 loadRefinedModules()  // auto-activate any emitted refined .fs
@@ -197,13 +199,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 val src = mod.readText()
                 append("[VM]   include ${mod.name}\n")
-                // In a full VM: vm?.evaluate(src) or Interpret
-                // For current Android stub: log the head so user sees the emitted intelligence is active
-                append("    [head] ${src.take(120).replace("\n", " ")}...\n")
-                // Also feed a bit to the VM if it can handle simple words
-                if (src.contains("host-assimilated")) {
-                    append(vm?.evaluate("host-assimilated") ?: "")
-                }
+                append(vm?.evaluate(src) ?: "")
             } catch (e: Exception) {
                 append("[VM]   Failed ${mod.name}: ${e.message}\n")
             }
