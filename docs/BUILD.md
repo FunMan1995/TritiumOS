@@ -9,6 +9,13 @@
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
+### Linux (.AppImage)
+
+- `gcc` (static link)
+- `file`
+- `python3` (Pillow recommended for logo JPG→PNG)
+- Network once for appimagetool if not installed; packaging uses `APPIMAGE_EXTRACT_AND_RUN=1` (no FUSE required)
+
 ### Android (.apk)
 
 - JDK 17+
@@ -40,7 +47,7 @@ bash tools/build-linux.sh
 |--------|--------|
 | `build-windows.ps1` | `dist/TritiumOS.exe` |
 | `build-android.ps1` | `dist/TritiumOS.apk` |
-| `build-poly.ps1` | `dist/tritium.poly.zip` |
+| `build-poly.ps1` / `build-poly.sh` | `dist/tritium.poly.zip` |
 | `build-linux.sh` | `dist/TritiumOS.AppImage` (and AppDir) |
 
 ## First run (both hosts)
