@@ -146,3 +146,16 @@ The builds now produce artifacts that support the core architecture ("all curren
 - **AV exclusion is mandatory** for these features on Windows (see the build script output, the Win11 README, and SYSTEM-DESIGN-INITIAL-PLATFORMS.md for details). The exception you added for the project folder enables this.
 
 See `install/hosts/windows/Program.cs` (LoadRefined + command wiring) and the host impls for the concrete bridges.
+
+### Host REKIA hooks (Win / Android / Linux)
+
+Deferred Forth words `platform-write-refined` / `platform-include-refined` (`docs/REKIA.md` §3.1) write and include under each host’s evolve dir:
+
+| Host | Evolve root | Artifact |
+|------|-------------|----------|
+| Linux | `~/.tritiumos/evolve` | `forth/refined/refined-<id>.fs` |
+| Windows | `%LocalAppData%/TritiumOS/evolve` | same relative path |
+| Android | `filesDir/evolve` | same relative path |
+
+Smoke: `rekia-demo` then confirm artifact on disk; `s3-reserved-demo` for S3=`11` leave-alone.
+

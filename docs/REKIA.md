@@ -44,7 +44,7 @@ Helpers (internal): `contract-trit`, `contract-nibble`, `extract-trit-signature`
 
 ### 3.1 Host hooks (defer)
 
-Pure Forth defaults are no-ops; Linux (and later Win/Android) must implement:
+Pure Forth defaults are no-ops; Linux / Win / Android hosts implement:
 
 | Deferred word | Stack | Duty |
 |---------------|-------|------|
@@ -71,7 +71,7 @@ Gate on tip that includes this contract:
 3. Core still reports trit / drena / rekia load; `status` OK.
 4. First failure reported by platform if any step fails.
 
-Windows / Android: same acceptance once host hooks are wired; until then assets sync only.
+Windows / Android: same acceptance — host VMs implement `platform-write-refined` / `platform-include-refined` under each platform evolve dir (`%LocalAppData%/TritiumOS/evolve`, Android `filesDir/evolve`).
 
 ## 6. Non-goals (this tip)
 
@@ -85,7 +85,7 @@ Windows / Android: same acceptance once host hooks are wired; until then assets 
 1. Typed link records + trit-weight (`link!` / `links-for-neuron` per §3.5)
 2. `rekiA-label-group` + `group-label!` writing labeled group metadata
 3. Persist refine into `evolve/assistant-state.trit` / user-graph
-4. Wire Win + Android `platform-*-refined` hooks (parity with Linux)
+4. ~~Wire Win + Android `platform-*-refined` hooks~~ (landed on host tip)
 5. Qwantum → extract handoff note (dump files as K atoms, not bypass)
 
 ## 8. Cite
