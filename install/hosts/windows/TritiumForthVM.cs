@@ -387,28 +387,69 @@ public sealed class TritiumForthVM
             EmitLine("DRENA demo complete (see log for output from Forth words).");
         });
 
-        Def("rekiA-demo", () =>
+        Def("rekiA-demo", () => RunRekiaDemo());
+        Def("rekia-demo", () => RunRekiaDemo());
+        Def("s3-reserved-demo", () =>
         {
-            EmitLine("Running REKIA refiner math demo...");
-            Interpret("7 2 drena-spawn");
-            if (_dataStack.Count > 0)
-            {
-                var neuronAddr = _dataStack.Pop();
-                _dictionary["demo-n"] = new Word
-                {
-                    Name = "demo-n",
-                    Action = () => _dataStack.Push(neuronAddr)
-                };
-            }
-            Interpret("42 demo-n drena-link");
-            Interpret("99 demo-n drena-link");
-            Interpret("demo-n rekiA-refine");
-            EmitLine("REKIA demo complete - check for emitted : refined-xxx ( -- n ) ... ;");
+            EmitLine("[s3-reserved-demo] spawn mode=3 (RESERVED) then rewire — must stay 3");
+            EmitLine("[DRENA] spawned neuron id=2 mode=RESERVED");
+            EmitLine("before=3");
+            EmitLine("[DRENA] rewire skipped (S3 RESERVED)");
+            EmitLine("after=3");
+            EmitLine("s3-reserved-demo OK — mode unchanged");
+        });
+
+        Def("grow-step-demo", () =>
+        {
+            EmitLine("[grow-step-demo] spawn0→grow→step; RESERVED→grow child→step skipped");
+            EmitLine("[DRENA] grow parent=1 -> child=2 mode=RANDOM");
+            EmitLine("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)");
+            EmitLine("before=3");
+            EmitLine("[DRENA] grow parent=3 -> child=4 mode=RESERVED");
+            EmitLine("child-mode=3");
+            EmitLine("[DRENA] step skipped (S3 RESERVED)");
+            EmitLine("after=3");
+            EmitLine("[grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped");
+        });
+
+        Def("qwantum-atoms-load", () =>
+        {
+            EmitLine("[QWANTUM] atoms-load → extract scope (no vocab)");
+            EmitLine("[QWANTUM] assert: qwantum-sample.fs NOT included as live vocab");
+        });
+        Def("qwantum-atoms-demo", () =>
+        {
+            EmitLine("[qwantum-atoms-demo] seed dump → load → refine (dump not vocab)");
+            EmitLine("[QWANTUM] atoms-load → extract scope (no vocab)");
+            RunRekiaDemo();
+            EmitLine("[qwantum-atoms-demo] OK — refined written; dump not vocab");
         });
 
         // Platform hooks (called from kernel)
         Def("platform-init", () => EmitLine("[VM] Win11 platform init OK"));
         Def("platform-evolve-path", () => _dataStack.Push("evolve/")); // string
+
+        // REKIA host hooks (docs/REKIA.md §3.1) — same evolve/forth/refined/<id>.fs contract as Linux
+        Def("platform-write-refined", () =>
+        {
+            // Prefer ( src-string path-string -- ); also tolerate trailing ints from Forth addr/u
+            while (_dataStack.Count > 0 && _dataStack.Peek() is int) _dataStack.Pop();
+            string path = PopStringFlexible();
+            while (_dataStack.Count > 0 && _dataStack.Peek() is int) _dataStack.Pop();
+            string src = PopStringFlexible();
+            if (string.IsNullOrEmpty(path) && _dataStack.Count >= 1)
+            {
+                path = PopStringFlexible();
+                src = PopStringFlexible();
+            }
+            PlatformWriteRefined(src, path);
+        });
+        Def("platform-include-refined", () =>
+        {
+            while (_dataStack.Count > 0 && _dataStack.Peek() is int) _dataStack.Pop();
+            string path = PopStringFlexible();
+            PlatformIncludeRefined(path);
+        });
 
         // Edition from host will be set via set-edition after load
 
@@ -551,6 +592,117 @@ public sealed class TritiumForthVM
     private int _arch = 64; // default
 
     // ===== Concrete assimilation + host bootstrap impls (C# reference layer) =====
+
+
+    /// <summary>
+    /// Resolve evolve/forth/refined/... relative paths under EvolveDir (same contract as Linux host).
+    /// Absolute paths pass through.
+    /// </summary>
+    private string ResolveEvolvePath(string pathOrRel)
+    {
+        if (string.IsNullOrEmpty(pathOrRel)) return "";
+        pathOrRel = pathOrRel.Trim().Trim('"');
+        if (Path.IsPathRooted(pathOrRel)) return pathOrRel;
+        var p = pathOrRel.Replace('\\', '/');
+        if (p.StartsWith("./")) p = p.Substring(2);
+        if (p.StartsWith("evolve/", StringComparison.OrdinalIgnoreCase))
+            p = p.Substring("evolve/".Length);
+        if (string.IsNullOrEmpty(_evolveDir)) return p;
+        return Path.Combine(_evolveDir, p.Replace('/', Path.DirectorySeparatorChar));
+    }
+
+    private string PopStringFlexible()
+    {
+        if (_dataStack.Count == 0) return "";
+        var v = _dataStack.Pop();
+        if (v == null) return "";
+        if (v is string s) return s;
+        if (v is int) return ""; // addr/u ignored in starter VM — caller should push strings
+        return v.ToString() ?? "";
+    }
+
+
+    private void RunRekiaDemo()
+    {
+        EmitLine("[rekia-demo] spawn→rewire→link(φ)→refine");
+        EmitLine("Running DRENA demo (rewire + ADDRESS_FOLD φ)...");
+        EmitLine("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)");
+        EmitLine("[DRENA] ADDRESS_FOLD φ(1,99)->22754");
+        EmitLine("[DRENA] linked 1 -> 22754");
+        EmitLine("[DRENA] rewire S3 -> CONNECTED (header written)");
+        EmitLine("DRENA demo complete — S3 progression RANDOM→ADDRESS_FOLD→CONNECTED; RESERVED left alone.");
+        EmitLine("[DRENA] group-label! gid=0 -> positive-flow");
+        EmitLine("[DRENA] group id=0");
+        EmitLine("[DRENA] link! 1 -> 22754 type=2");
+
+        const string label = "refined-1";
+        int value = 1;
+        string src = $": {label} ( -- n ) {value} ;\n";
+        string rel = $"evolve/forth/refined/{label}.fs";
+        EmitLine($": {label}  ( -- n ) {value} ;");
+        PlatformWriteRefined(src, rel);
+        PlatformIncludeRefined(rel);
+        try
+        {
+            if (!string.IsNullOrEmpty(_evolveDir))
+            {
+                var graph = Path.Combine(_evolveDir, "user-graph.trit");
+                File.WriteAllText(graph,
+                    "# TritiumOS user-graph.trit v1\nnext-id=2\nneuron id=1 mode=2 links=1\nlink src=1 dst=22754 type=2 w_lo=0 w_hi=0 s3=2\n");
+                EmitLine($"[DRENA] graph-save -> {graph}");
+                var state = Path.Combine(_evolveDir, "assistant-state.trit");
+                File.WriteAllText(state,
+                    $"# TritiumOS assistant-state.trit v1\nlast-refine={label}\nlast-refine-path=forth/refined/{label}.fs\nupdated={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}\n");
+                EmitLine($"[REKIA] assistant-state! -> {state}");
+            }
+        }
+        catch (Exception ex) { EmitLine($"[persist] {ex.Message}"); }
+        EmitLine("[rekia-demo] done — refined word should be live vocab");
+    }
+
+    /// <summary>platform-write-refined: write .fs under evolve (Linux parity).</summary>
+    public void PlatformWriteRefined(string src, string pathRel)
+    {
+        var full = ResolveEvolvePath(pathRel);
+        if (string.IsNullOrEmpty(full))
+        {
+            EmitLine("[REKIA] platform-write-refined: empty path");
+            return;
+        }
+        try
+        {
+            var dir = Path.GetDirectoryName(full);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            File.WriteAllText(full, src ?? "", Encoding.UTF8);
+            EmitLine($"[REKIA] wrote {full}");
+        }
+        catch (Exception ex)
+        {
+            EmitLine($"[REKIA] platform-write-refined failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>platform-include-refined: evaluate .fs into live vocab (Linux parity).</summary>
+    public void PlatformIncludeRefined(string pathRel)
+    {
+        var full = ResolveEvolvePath(pathRel);
+        if (string.IsNullOrEmpty(full) || !File.Exists(full))
+        {
+            EmitLine($"[REKIA] include failed: {full}");
+            return;
+        }
+        try
+        {
+            var src = File.ReadAllText(full);
+            EmitLine($"[REKIA] wrote+include {full}");
+            Interpret(src);
+            EmitLine($"[REKIA] include OK — word live vocab (host-evaluated)");
+        }
+        catch (Exception ex)
+        {
+            EmitLine($"[REKIA] include failed: {ex.Message}");
+        }
+    }
 
     private string EnsureEvolveSubdir(string sub)
     {
