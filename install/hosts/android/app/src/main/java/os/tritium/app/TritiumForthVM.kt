@@ -462,6 +462,7 @@ class TritiumForthVM(private val context: Context) {
         def("rekiA-demo") { runRekiADemo() }
         def("rekia-demo") { runRekiADemo() }
         def("s3-reserved-demo") { runS3ReservedDemo() }
+        def("grow-step-demo") { runGrowStepDemo() }
 
         // Host bridge words (Forth-callable, match C# effects)
         def("host-hw-info") {
@@ -556,6 +557,18 @@ class TritiumForthVM(private val context: Context) {
         emitLine("[DRENA] rewire skipped (S3 RESERVED)")
         emitLine("after=3")
         emitLine("s3-reserved-demo OK — mode unchanged")
+    }
+
+    private fun runGrowStepDemo() {
+        emitLine("[grow-step-demo] spawn0→grow→step; RESERVED→grow child→step skipped")
+        emitLine("[DRENA] grow parent=1 -> child=2 mode=RANDOM")
+        emitLine("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)")
+        emitLine("before=3")
+        emitLine("[DRENA] grow parent=3 -> child=4 mode=RESERVED")
+        emitLine("child-mode=3")
+        emitLine("[DRENA] step skipped (S3 RESERVED)")
+        emitLine("after=3")
+        emitLine("[grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped")
     }
 
     // ========== Host OS bridge / assimilation layer (Android komodo) ==========

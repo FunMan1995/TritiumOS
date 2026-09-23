@@ -87,14 +87,16 @@ Validation: `valid-header?`, `valid-neuron?`, `validate-neuron`.
 
 | Word | Stack | Notes |
 |------|-------|-------|
-| `drena-spawn` | `( variation -- neuron )` | variation = initial S3 mode |
+| `drena-spawn` | `( variation -- neuron )` | variation = initial S3 mode; sets `last-grown` |
+| `drena-grow` | `( parent -- child )` | child inherits parent S3; link parent→child; never rewire / never advance RESERVED |
+| `drena-step` | `( -- )` | one tick: no neuron→spawn0; RESERVED→skip; CONNECTED(mode≥2)→grow; else rewire `last-grown` |
 | `drena-link` | `( src-neuron dst-id -- )` | fold if mode=1 |
 | `drena-rewire` | `( neuron -- )` | writes advanced S3 into header |
 | `set-s3-mode` | `( mode n-addr -- )` | packs via `pack-neuron-header` |
 | `neuron-add-connection` | `( connected-id n-addr -- )` | append link |
 | `make-neuron` | `( id mode -- n-addr )` | allocate at HERE |
-| `drena-group` | `( label-addr -- group-id )` | stub / extend later |
-| `drena-join` | `( neuron group -- )` | stub / extend later |
+| `drena-group` | `( label-addr -- group-id )` | labeled neural group |
+| `drena-join` | `( neuron group -- )` | assign neuron to group |
 
 ## 7. Acceptance (Test Lab)
 

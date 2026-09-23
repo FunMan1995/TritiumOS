@@ -37,6 +37,7 @@
   drop ." neuron stable & valid" cr ;
 
 variable next-id  1 next-id !
+variable last-grown  0 last-grown !  \ addr of last spawn/grow (for drena-step)
 
 : make-neuron ( id mode -- n-addr )
   here >r swap >r
@@ -137,6 +138,7 @@ variable _gid
   next-id @ dup 1 next-id +!
   swap make-neuron
   dup validate-neuron
+  dup last-grown !
   dup ." [DRENA] spawned neuron id=" neuron-id
   ." mode=" dup neuron-header header>mode mode-name cr ;
 
@@ -171,6 +173,34 @@ variable _dtype
   ." [DRENA] rewire S3 -> " mode-name ." (header written)" cr
   drop ;
 
+\ drena-grow: recursive expansion — child inherits parent S3 mode; link parent→child.
+\ Never calls rewire / never advances RESERVED (RESERVED parent → RESERVED child).
+: drena-grow ( parent -- child )
+  dup >r
+  r@ neuron-header header>mode
+  drena-spawn                    \ child; last-grown updated
+  dup neuron-id r@ swap drena-link
+  ." [DRENA] grow parent=" r@ neuron-id . ." -> child=" dup neuron-id .
+  ." mode=" dup neuron-header header>mode mode-name cr
+  r> drop ;
+
+\ drena-step: one evolution tick (scheduler). Tracks via last-grown.
+\ no neuron → spawn mode 0; RESERVED → skip; CONNECTED (mode≥2) → grow; else rewire.
+: drena-step ( -- )
+  last-grown @ 0= if
+    0 drena-spawn drop
+    exit
+  then
+  last-grown @ neuron-header header>mode
+  dup 3 = if
+    drop ." [DRENA] step skipped (S3 RESERVED)" cr exit
+  then
+  dup 2 >= if
+    drop last-grown @ drena-grow drop exit
+  then
+  drop
+  last-grown @ drena-rewire ;
+
 : .neuron-graph ( n-addr -- )
   dup .neuron
   dup neuron-link-count 0 ?do
@@ -197,7 +227,7 @@ defer platform-graph-load
   ." [DRENA] graph-load <- evolve/user-graph.trit" cr ;
 
 : drena-init ( -- )
-  1 next-id !  0 link-count !  0 group-count !
+  1 next-id !  0 link-count !  0 group-count !  0 last-grown !
   ." [DRENA] Trit intelligence engine initialized" cr ;
 
 drena-init

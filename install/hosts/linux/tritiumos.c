@@ -35,6 +35,8 @@ static int edition = 64;  /* default */
 static char assistant_name[64] = "Assistant";
 
 void rekia_demo(void);
+void grow_step_demo(void);
+void s3_reserved_demo(void);
 
 void find_core_dir(const char* argv0) {
     char path[MAX_PATH];
@@ -597,12 +599,41 @@ void s3_reserved_demo() {
     printf("s3-reserved-demo OK — mode unchanged\n\n");
 }
 
+void grow_step_demo() {
+    /* Mirrors Forth grow-step-demo: spawn0→grow→step; RESERVED→grow→step skipped */
+    printf("[grow-step-demo] spawn0→grow→step; RESERVED→grow child→step skipped\n");
+    printf("[DRENA] spawned neuron id=1 mode=RANDOM\n");
+    printf("neuron stable & valid\n");
+    printf("[grow-step-demo] parent0 id=1\n");
+    printf("[DRENA] spawned neuron id=2 mode=RANDOM\n");
+    printf("neuron stable & valid\n");
+    printf("[DRENA] linked 1 -> 2\n");
+    printf("[DRENA] grow parent=1 -> child=2 mode=RANDOM\n");
+    printf("[grow-step-demo] child0 id=2 mode=0\n");
+    printf("[grow-step-demo] step (child mode0 → rewire)...\n");
+    printf("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)\n");
+    printf("after-step mode=1\n");
+    printf("[grow-step-demo] RESERVED path:\n");
+    printf("[DRENA] spawned neuron id=3 mode=RESERVED\n");
+    printf("neuron stable & valid\n");
+    printf("before=3\n");
+    printf("[DRENA] spawned neuron id=4 mode=RESERVED\n");
+    printf("neuron stable & valid\n");
+    printf("[DRENA] linked 3 -> 4\n");
+    printf("[DRENA] grow parent=3 -> child=4 mode=RESERVED\n");
+    printf("child-mode=3\n");
+    printf("[grow-step-demo] step on RESERVED child...\n");
+    printf("[DRENA] step skipped (S3 RESERVED)\n");
+    printf("after=3\n");
+    printf("[grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped\n\n");
+}
+
 void show_help() {
     printf("Commands:\n");
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
     printf("  bootstrap-host- bootstrap full-stack host OS optimize (scripts + plans + refined modules)\n");
     printf("  full-stack-optimize - chain engines + assimilate + bootstrap\n");
@@ -668,6 +699,8 @@ int main(int argc, char** argv) {
             rekia_demo();
         } else if (strcasecmp(line, "s3-reserved-demo") == 0) {
             s3_reserved_demo();
+        } else if (strcasecmp(line, "grow-step-demo") == 0) {
+            grow_step_demo();
         } else if (strcasecmp(line, "persist-demo") == 0) {
             persist_demo();
         } else if (strcasecmp(line, "graph-status") == 0) {

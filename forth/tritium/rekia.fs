@@ -107,6 +107,29 @@ defer platform-assistant-state!
   r> drop ;
 
 
+
+: grow-step-demo ( -- )
+  ." [grow-step-demo] spawn0→grow→step; RESERVED→grow child→step skipped" cr
+  0 drena-spawn >r
+  r@ ." [grow-step-demo] parent0 id=" neuron-id . cr
+  r@ drena-grow >r
+  r@ ." [grow-step-demo] child0 id=" neuron-id .
+  ." mode=" r@ neuron-header header>mode . cr
+  ." [grow-step-demo] step (child mode0 → rewire)..." cr
+  drena-step
+  r@ neuron-header header>mode ." after-step mode=" . cr
+  r> drop r> drop
+  ." [grow-step-demo] RESERVED path:" cr
+  3 drena-spawn >r
+  r@ neuron-header header>mode ." before=" . cr
+  r@ drena-grow >r
+  r@ neuron-header header>mode ." child-mode=" . cr
+  ." [grow-step-demo] step on RESERVED child..." cr
+  drena-step
+  r@ neuron-header header>mode ." after=" . cr
+  r> drop r> drop
+  ." [grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped" cr ;
+
 : persist-demo ( -- )
   ." [persist-demo] refine then persist graph+state" cr
   rekia-demo

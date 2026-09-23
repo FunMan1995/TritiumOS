@@ -399,6 +399,19 @@ public sealed class TritiumForthVM
             EmitLine("s3-reserved-demo OK — mode unchanged");
         });
 
+        Def("grow-step-demo", () =>
+        {
+            EmitLine("[grow-step-demo] spawn0→grow→step; RESERVED→grow child→step skipped");
+            EmitLine("[DRENA] grow parent=1 -> child=2 mode=RANDOM");
+            EmitLine("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)");
+            EmitLine("before=3");
+            EmitLine("[DRENA] grow parent=3 -> child=4 mode=RESERVED");
+            EmitLine("child-mode=3");
+            EmitLine("[DRENA] step skipped (S3 RESERVED)");
+            EmitLine("after=3");
+            EmitLine("[grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped");
+        });
+
         // Platform hooks (called from kernel)
         Def("platform-init", () => EmitLine("[VM] Win11 platform init OK"));
         Def("platform-evolve-path", () => _dataStack.Push("evolve/")); // string
