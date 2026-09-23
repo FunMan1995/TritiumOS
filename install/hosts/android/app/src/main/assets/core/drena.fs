@@ -1,163 +1,120 @@
 \ D.R.E.N.A. — Trit Intelligence Engine (Dynamic Recursive Evolving Neural Architecture)
-\ Data blocks for true neuromorphic compute.
-\ Per spec + user: 
-\   Neuron record layout:
-\     offset 0 (cell): packed header (16 bits: 4 nibbles)
-\       nibble 0 (low 4 bits): first trit pair (2 states -1,0,1)  [S0]
-\       nibble 1: second trit pair [S1]
-\       nibble 2: third trit pair [S2]
-\       nibble 3 (high): S3 — low 2 bits = mode (0=RANDOM, 1=ADDRESS_FOLD, 2=CONNECTED, 3=RESERVED)
-\     offset 1 (cell): node address (id)
-\     offset 2 (cell): link-count (number of connected nodes)
-\     offset 3+: connected node addresses (for neuromorphic graph traversal / linking data)
-\
-\ Stability: validation, safe allocation, no dups, proper counts.
-\ Build on Dusk-inspired kernel (dict, units, mem patterns for groups/links).
-\ See docs/SYSTEM-DESIGN-INITIAL-PLATFORMS.md , FORTH-BASE-REFERENCES.md , refs/duskos/fs/mem/
+\ Neuron layout: header(S0|S1|S2|S3) | id | link-count | connected ids…
+\ S3 low 2 bits: 0=RANDOM 1=ADDRESS_FOLD 2=CONNECTED 3=RESERVED (leave alone)
+\ Research tip: drena-rewire writes advanced S3; ADDRESS_FOLD uses φ(addr,addr')
 
-\ (extends basic drena words; load after stubs if present)
-
-\ === Header helpers (build on updated trit.fs) ===
-: header>s0 ( h -- s0 ) unpack-header drop drop drop ;  \ leaves bottom s0 after dropping s3 s2 s1
-: header>s3 ( h -- s3 ) unpack-header swap drop swap drop drop ;  \ isolates top s3
+\ === Header helpers (unpack-header → s0 s1 s2 s3 with s3 on top) ===
+: header>s0 ( h -- s0 )
+  unpack-header drop drop drop ;
+: header>s3 ( h -- s3 )
+  unpack-header >r drop drop drop r> ;
 : header>mode ( h -- m ) header>s3 s3-mode ;
 
+\ Rewrite S3 mode bits; preserve S0..S2. Does NOT touch RESERVED (3).
 : set-s3-mode ( mode n-addr -- )
-  >r ( mode )
-  r@ @ unpack-header ( mode s0 s1 s2 s3 )
-  drop ( mode s0 s1 s2 )
-  r> ( mode s0 s1 s2 n-addr )
-  -rot ( mode n-addr s0 s1 s2 )
-  rot ( n-addr s0 s1 s2 mode )
-  pack-header ( n-addr h )
-  swap ! ;
+  >r
+  dup 3 = if drop r> drop exit then   \ leave S3=11 alone
+  r@ neuron-header unpack-header drop  ( mode s0 s1 s2 )
+  rot pack-neuron-header               ( h )
+  r> ! ;
 
-\ === Neuron record allocation & layout (HERE based for simplicity/stability) ===
-\ Layout uses cells for 32/64-bit friendliness (edition can limit id width later)
+\ === Neuron record ===
 : neuron-header ( n-addr -- h ) @ ;
 : neuron-id ( n-addr -- id ) cell+ @ ;
 : neuron-link-count ( n-addr -- n ) 2 cells + @ ;
 : neuron-links-base ( n-addr -- addr ) 3 cells + ;
 
 : .neuron-header ( h -- )
-  unpack-header ( s0 s1 s2 s3 -- s3 top )
-  ." S3=" dup . ." (mode=" s3-mode . ." ) " 
+  unpack-header ( s0 s1 s2 s3 )
+  ." S3=" dup . ." (mode=" dup s3-mode dup . ."=" mode-name ." ) "
   drop
-  ." S2=" . ." " 
-  ." S1=" . ." " 
-  ." S0=" . cr ;
+  ." S2=" . ." S1=" . ." S0=" . cr ;
 
 : .neuron ( n-addr -- )
-  dup ." Neuron@ " hex . decimal cr
+  dup ." Neuron@ " . cr
   dup neuron-header ."   header: " .neuron-header
   dup neuron-id ."   id: " . cr
-  dup neuron-link-count dup ."   links(" . ." ): " 
-  0 do dup i cells + neuron-links-base + @ . loop drop cr ;
+  dup neuron-link-count dup ."   links(" . ." ): "
+  >r neuron-links-base
+  r> 0 ?do dup i cells + @ . loop drop cr ;
 
-\ Stability checks
 : valid-trit? ( t -- f ) dup -1 = over 0 = or swap 1 = or ;
-: valid-trit-pair? ( tlo thi -- f )
-  valid-trit? swap valid-trit? and ;
-
 : valid-header? ( h -- f )
-  unpack-header
-  valid-trit-pair? >r valid-trit-pair? >r valid-trit-pair? >r
-  s3-mode 0 3 within? r> r> r> and and and ;
-
+  header>mode 0 3 within ;
 : valid-neuron? ( n-addr -- f )
-  dup neuron-header valid-header? >r
-  dup neuron-id 0<> >r   \ simplistic, ids >0 in real
-  neuron-link-count 0 256 within? r> r> and and ;  \ sanity limit
-
+  dup neuron-header valid-header? swap neuron-link-count 0 256 within and ;
 : validate-neuron ( n-addr -- )
-  dup valid-neuron? not if ." INVALID NEURON! " .neuron abort then
-  ." neuron stable & valid" cr ;
+  dup valid-neuron? 0= if ." INVALID NEURON! " .neuron abort then
+  drop ." neuron stable & valid" cr ;
 
-\ === Allocate / create neuron block ===
 variable next-id  1 next-id !
 
 : make-neuron ( id mode -- n-addr )
   here >r
-  swap ( mode id )
-  0 0 0 rot ( s0=0 s1=0 s2=0 s3=mode for initial demo/random ) 
-  pack-header ,     \ header at offset 0
-  ,                 \ id at offset 1
-  0 ,               \ link-count at offset 2
-  r> ;              \ return base address of the data block
+  swap                         ( mode id )
+  >r                           ( mode | id )
+  0 0 0 rot                    ( s0 s1 s2 mode )
+  pack-neuron-header ,         \ header
+  r> ,                         \ id
+  0 ,                          \ link-count
+  r> ;
 
 : neuron-add-connection ( connected-id n-addr -- )
-  dup neuron-link-count cells over neuron-links-base + !
-  dup 2 cells + 1+! ;
+  2dup neuron-link-count cells swap neuron-links-base + !
+  dup neuron-link-count 1+ swap 2 cells + ! ;
 
-\ === DRENA words (fleshed out from stub) ===
-: drena-spawn ( variation -- neuron )   \ variation = s3 or mode
+\ φ(addr, addr') — pure-math mix for ADDRESS_FOLD target pick (TritiumOS.txt §3.2)
+: phi-fold ( addr addr' -- influence )
+  xor dup 13 lshift xor dup 7 rshift xor $7fff and ;
+
+: fold-target ( src-id candidate -- target )
+  2dup phi-fold nip 1 max ;   \ deterministic remap; keep ≥1
+
+: drena-spawn ( variation -- neuron )   \ variation = initial S3 mode
   next-id @ dup 1 next-id +!
   swap make-neuron
   dup validate-neuron
-  dup ." [DRENA] spawned neuron id=" neuron-id cr ;
+  dup ." [DRENA] spawned neuron id=" neuron-id
+  ." mode=" dup neuron-header header>mode mode-name cr ;
 
-: drena-link ( src-neuron dst-id -- )   \ connect src to dst address
-  over neuron-add-connection
-  ." [DRENA] linked " over neuron-id ." -> " . cr drop ;
+\ Link: when S3=ADDRESS_FOLD, pick target via φ(src,dst); CONNECTED uses dst as-is.
+: drena-link ( src-neuron dst-id -- )
+  over >r
+  r@ neuron-header header>mode
+  1 = if                       \ ADDRESS_FOLD
+    r@ neuron-id over fold-target
+    ." [DRENA] ADDRESS_FOLD φ(" r@ neuron-id . ." ," over . ." )->" dup . cr
+    nip
+  then
+  r@ neuron-add-connection
+  ." [DRENA] linked " r@ neuron-id . ." -> " . cr
+  r> drop ;
 
-: drena-rewire ( neuron -- )   \ advance S3 mode RANDOM->FOLD->CONNECTED for stability/neuromorph
+\ Advance S3: RANDOM → ADDRESS_FOLD → CONNECTED. Leave RESERVED alone.
+: drena-rewire ( neuron -- )
   dup neuron-header header>mode
-  dup 2 < if 1+ else drop then   \ simple progression
-  over set-s3-mode   \ need set on header
-  \ re-impl set:
-  \ for demo:
-  drop ." [DRENA] rewire (S3 advanced for neuromorphic)" cr ;
+  dup 3 = if drop ." [DRENA] rewire skipped (S3 RESERVED)" cr drop exit then
+  dup 2 >= if drop ." [DRENA] rewire already CONNECTED" cr drop exit then
+  1+                          ( neuron new-mode )
+  2dup swap set-s3-mode
+  ." [DRENA] rewire S3 -> " mode-name
+  ." (header written)" cr
+  drop ;
 
-\ (stubs for grow/step/group etc. remain, can extend with real alloc)
-
-\ === Group / linking data (for labeled neural groups + true graph) ===
-\ Use simple linked or count+list. For stability use the neuron embedded links.
-\ Later: separate link records with trit-weight etc.
-
-: drena-group ( label-addr -- group-id )   \ stub extended
-  ." [DRENA] group: " type cr 42 ;  \ return fake id
-
+: drena-group ( label-addr -- group-id )
+  ." [DRENA] group: " type cr 42 ;
 : drena-join ( neuron group -- )
   ." [DRENA] join neuron to group " . . cr ;
 
-\ === Stability & introspection for neuromorphic compute ===
-: neuron-connected? ( target-id n-addr -- f )
-  false swap
-  neuron-link-count 0 do
-    over i cells over neuron-links-base + @ = if rot drop true -rot leave then
-  loop 2drop ;
-
-: .neuron-graph ( n-addr -- )   \ traverse one level for demo neuromorphic
+: .neuron-graph ( n-addr -- )
   dup .neuron
-  neuron-link-count 0 do
+  dup neuron-link-count 0 ?do
     i cells over neuron-links-base + @ ."   connected-to: " . cr
   loop drop ;
 
-\ Init
 : drena-init ( -- )
   1 next-id !
-  ." [DRENA] Trit intelligence engine (neuromorphic data blocks) initialized" cr ;
+  ." [DRENA] Trit intelligence engine initialized" cr ;
 
 drena-init
-
-\ Demo usage (can be removed or in tests):
-\ 0 drena-spawn constant n1
-\ 5 n1 drena-link
-\ n1 .neuron-graph
-
-\ Notes for stability:
-\ - Always validate after mutate.
-\ - Use proper mem alloc (arena/pool from Dusk mem/ ) in full version to avoid HERE fragmentation.
-\ - For 64-bit edition: use 2 cells for addresses if needed.
-\ - Connected addresses enable graph walk for R.E.K.I.A. extract (scope to subgraph).
-
 ." Trit intelligence engine (DRENA data blocks) loaded. Ready for neuromorphic compute." cr
-
-\ === Quick demo / test for stability (run after load) ===
-\ 42 0 drena-spawn constant n42
-\ 99 n42 drena-link
-\ 100 n42 drena-link
-\ n42 .neuron-graph
-\ n42 validate-neuron
-\ n42 drena-rewire
-\ ." Engine stable." cr
