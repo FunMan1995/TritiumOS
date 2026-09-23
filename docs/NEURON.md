@@ -5,6 +5,9 @@
 **Sources of truth (code):** `forth/trit.fs`, `forth/tritium/drena.fs`  
 **Policy:** S3 mode `11` (RESERVED) — see `docs/ASSUMPTIONS.md`; do not invent behavior.
 
+**Engine ops:** see [`docs/DRENA.md`](DRENA.md) (spawn/link/rewire/grow/step, groups, persist).
+
+
 ## 1. Purpose
 
 Each neuron begins with a fixed **16-bit header** (four 4-bit sections S0..S3). D.R.E.N.A. allocates the record and graph links; R.E.K.I.A. reads the header + links to refine intelligence into Forth.

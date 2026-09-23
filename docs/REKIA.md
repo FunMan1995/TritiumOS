@@ -92,6 +92,7 @@ Windows / Android: same acceptance — host VMs implement `platform-write-refine
 
 - `TritiumOS.txt` §4 (pipeline + primitives)
 - `docs/NEURON.md` (header / S3 / φ)
+- `docs/DRENA.md` (topology / grow / groups)
 - `docs/IMPLEMENTATION-GAPS.md` (historical gap ledger)
 - `docs/QWANTUM.md` (T∥ → T₀ ingest; complementary)
 - `docs/QWANTUM-REKIA.md` (dumps = K atoms for extract only)
