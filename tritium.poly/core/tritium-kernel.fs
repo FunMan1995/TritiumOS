@@ -44,11 +44,7 @@ create SYSVARS 256 allot   \ placeholder size
 \ Build on existing forth/trit.fs
 \ (include it in boot)
 
-\ TODO (study Dusk hal/instr.fs + mem/struct.fs):
-\ : trit+ ( t1 t2 -- t3 ) ... ;
-\ : trit* ...
-\ : pack-neuron-header ( s0 s1 s2 s3 -- header )
-\ : .neuron-header ( header -- )  \ dump as -1/0/+1 pairs + variation name
+\ Phase 2 primitives live in trit.fs: trit+ trit* pack-neuron-header (alias pack-header)
 
 \ === Cold boot / interpret loop skeleton (see Dusk kernel.txt + HAL) ===
 \ Platform HAL provided by host (C# on Win11, Kotlin on komodo/Pixel 9 Pro XL).

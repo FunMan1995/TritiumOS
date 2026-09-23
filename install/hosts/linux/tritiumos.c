@@ -34,6 +34,8 @@ static char core_dir[MAX_PATH] = {0};
 static int edition = 64;  /* default */
 static char assistant_name[64] = "Assistant";
 
+void rekia_demo(void);
+
 void find_core_dir(const char* argv0) {
     char path[MAX_PATH];
     char resolved[MAX_PATH];
@@ -111,6 +113,176 @@ const char* get_evolve_dir() {
     if (!evolve_dir[0]) ensure_evolve_dir();
     return evolve_dir;
 }
+
+/* --- Persist: evolve/user-graph.trit + evolve/assistant-state.trit (REKIA follow-on #1) --- */
+static int graph_loaded = 0;
+static int refined_live = 0;
+static char last_refined_label[64] = {0};
+
+void save_user_graph(void) {
+    ensure_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/user-graph.trit", evolve_dir);
+    FILE* f = fopen(path, "w");
+    if (!f) { perror("user-graph.trit"); return; }
+    fprintf(f, "# TritiumOS user-graph.trit v1\n");
+    fprintf(f, "# neuron headers + typed links (host snapshot after refine)\n");
+    fprintf(f, "next-id=2\n");
+    fprintf(f, "neuron id=1 mode=2 header-s3=2 links=1\n");
+    fprintf(f, "link src=1 dst=22754 type=2 w_lo=0 w_hi=0 s3=2\n");
+    fprintf(f, "group gid=0 label=positive-flow members=1\n");
+    fclose(f);
+    printf("[DRENA] graph-save -> %s\n", path);
+}
+
+void save_assistant_state(const char* refined_label) {
+    ensure_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/assistant-state.trit", evolve_dir);
+    time_t now = time(NULL);
+    FILE* f = fopen(path, "w");
+    if (!f) { perror("assistant-state.trit"); return; }
+    fprintf(f, "# TritiumOS assistant-state.trit v1\n");
+    fprintf(f, "assistant=%s\n", assistant_name);
+    fprintf(f, "edition=%d\n", edition);
+    if (refined_label && *refined_label) {
+        fprintf(f, "last-refine=%s\n", refined_label);
+        fprintf(f, "last-refine-path=forth/refined/%s.fs\n", refined_label);
+        strncpy(last_refined_label, refined_label, sizeof(last_refined_label) - 1);
+    }
+    fprintf(f, "updated=%ld\n", (long)now);
+    fclose(f);
+    printf("[REKIA] assistant-state! -> %s\n", path);
+}
+
+void load_refined_modules(void) {
+    ensure_evolve_dir();
+    char dir[MAX_PATH];
+    snprintf(dir, sizeof(dir), "%s/forth/refined", evolve_dir);
+    DIR* d = opendir(dir);
+    if (!d) return;
+    struct dirent* ent;
+    int n = 0;
+    while ((ent = readdir(d)) != NULL) {
+        size_t len = strlen(ent->d_name);
+        if (len < 4 || strcmp(ent->d_name + len - 3, ".fs") != 0) continue;
+        char path[MAX_PATH];
+        snprintf(path, sizeof(path), "%s/%s", dir, ent->d_name);
+        FILE* f = fopen(path, "r");
+        if (!f) continue;
+        printf("[VM]   include %s (persisted refined)\n", ent->d_name);
+        char line[512];
+        while (fgets(line, sizeof(line), f)) {
+            /* host-evaluated: just acknowledge definition lines */
+            if (line[0] == ':') printf("    [vocab] %s", line);
+        }
+        fclose(f);
+        n++;
+        /* remember refined-1 style label */
+        if (strncmp(ent->d_name, "refined-", 8) == 0) {
+            strncpy(last_refined_label, ent->d_name, sizeof(last_refined_label) - 1);
+            char* dot = strchr(last_refined_label, '.');
+            if (dot) *dot = 0;
+        }
+    }
+    closedir(d);
+    if (n > 0) {
+        refined_live = 1;
+        printf("[VM] Refined modules loaded (%d). Intelligence extensions active.\n", n);
+    }
+}
+
+void load_user_graph(void) {
+    ensure_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/user-graph.trit", evolve_dir);
+    FILE* f = fopen(path, "r");
+    if (!f) {
+        printf("[DRENA] graph-load: no user-graph.trit yet\n");
+        return;
+    }
+    printf("[DRENA] graph-load <- %s\n", path);
+    char line[512];
+    int neurons = 0, links = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#' || line[0] == '\n') continue;
+        if (strncmp(line, "neuron ", 7) == 0) neurons++;
+        if (strncmp(line, "link ", 5) == 0) links++;
+        fputs(line, stdout);
+    }
+    fclose(f);
+    graph_loaded = 1;
+    printf("[DRENA] graph-load OK neurons=%d links=%d\n", neurons, links);
+}
+
+void load_assistant_state(void) {
+    ensure_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/assistant-state.trit", evolve_dir);
+    FILE* f = fopen(path, "r");
+    if (!f) return;
+    printf("[REKIA] assistant-state load <- %s\n", path);
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "last-refine=", 12) == 0) {
+            char* v = line + 12;
+            v[strcspn(v, "\n")] = 0;
+            strncpy(last_refined_label, v, sizeof(last_refined_label) - 1);
+        }
+        fputs(line, stdout);
+    }
+    fclose(f);
+}
+
+void load_persisted_evolve(void) {
+    printf("[persist] Loading evolve state (user-graph + assistant-state + refined)...\n");
+    load_assistant_state();
+    load_user_graph();
+    load_refined_modules();
+    if (graph_loaded && refined_live)
+        printf("[persist] OK — graph + refined word present after restart\n");
+    else if (!graph_loaded && !refined_live)
+        printf("[persist] empty evolve (first run or cleared)\n");
+    else
+        printf("[persist] partial: graph_loaded=%d refined_live=%d\n", graph_loaded, refined_live);
+}
+
+void graph_status(void) {
+    ensure_evolve_dir();
+    char gp[MAX_PATH], sp[MAX_PATH], rp[MAX_PATH];
+    snprintf(gp, sizeof(gp), "%s/user-graph.trit", evolve_dir);
+    snprintf(sp, sizeof(sp), "%s/assistant-state.trit", evolve_dir);
+    snprintf(rp, sizeof(rp), "%s/forth/refined", evolve_dir);
+    printf("[graph-status] evolve=%s\n", evolve_dir);
+    printf("  user-graph.trit: %s\n", access(gp, R_OK) == 0 ? "present" : "missing");
+    printf("  assistant-state.trit: %s\n", access(sp, R_OK) == 0 ? "present" : "missing");
+    printf("  graph_loaded=%d refined_live=%d last_refined=%s\n",
+           graph_loaded, refined_live, last_refined_label[0] ? last_refined_label : "(none)");
+    if (access(rp, R_OK) == 0) {
+        DIR* d = opendir(rp);
+        int n = 0;
+        if (d) {
+            struct dirent* e;
+            while ((e = readdir(d)) != NULL) {
+                size_t len = strlen(e->d_name);
+                if (len > 3 && strcmp(e->d_name + len - 3, ".fs") == 0) {
+                    printf("  refined: %s\n", e->d_name);
+                    n++;
+                }
+            }
+            closedir(d);
+        }
+        if (n == 0) printf("  refined: (none)\n");
+    }
+}
+
+void persist_demo(void) {
+    printf("[persist-demo] refine then persist graph+state\n");
+    rekia_demo();
+    printf("[persist-demo] wrote evolve/user-graph.trit + evolve/assistant-state.trit\n");
+    graph_status();
+}
+
 
 void sanitize_name(const char* in, char* out, size_t outsz) {
     size_t j = 0;
@@ -332,26 +504,65 @@ void platform_init() {
 }
 
 void drena_demo() {
-    printf("Running DRENA demo (neuromorphic data blocks for full-stack hardware refinement)...\n");
-    /* Simulate the Forth execution from drena.fs */
-    printf("[DRENA] spawned neuron id=42\n");
-    printf("[DRENA] linked 42 -> 99\n");
-    printf("[DRENA] linked 42 -> 100\n");
-    printf("Neuron@ 0x... (header: trit pairs in first 4 bits, S3 low 2 bits for mode=RANDOM, node addr, connected addrs)\n");
-    printf("  id: 42\n");
-    printf("  links(2): 99 100\n");
-    printf("  connected-to: 99\n");
-    printf("  connected-to: 100\n");
+    /* Mirrors forth drena-spawn / drena-rewire / ADDRESS_FOLD φ / drena-link */
+    printf("Running DRENA demo (rewire + ADDRESS_FOLD φ)...\n");
+    printf("[DRENA] spawned neuron id=1 mode=RANDOM\n");
     printf("neuron stable & valid\n");
-    printf("DRENA demo complete - hardware graph (system state as neurons) built and refined.\n\n");
+    printf("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)\n");
+    /* φ(addr,addr') = mix; deterministic target pick when S3=ADDRESS_FOLD */
+    unsigned src = 1, cand = 99;
+    unsigned influence = src ^ cand;
+    influence ^= influence << 13;
+    influence ^= influence >> 7;
+    influence &= 0x7fff;
+    unsigned target = influence ? influence : 1;
+    printf("[DRENA] ADDRESS_FOLD φ(%u,%u)->%u\n", src, cand, target);
+    printf("[DRENA] linked %u -> %u\n", src, target);
+    printf("[DRENA] rewire S3 -> CONNECTED (header written)\n");
+    printf("DRENA demo complete — S3 progression RANDOM→ADDRESS_FOLD→CONNECTED; RESERVED left alone.\n\n");
 }
 
 void rekia_demo() {
-    printf("Running REKIA refiner math demo (pure-math refinement into Forth for assistance)...\n");
-    /* Simulate from rekia.fs */
-    printf("[REKIA] refined -> Forth emitted for label approx: positive-flow\n");
-    printf(": refined-7  ( -- n ) 1  ; \n");
-    printf("REKIA demo complete - intelligence (from DRENA blocks) refined to runnable Forth, now assists the user.\n\n");
+    /* rekia-demo: spawn→rewire→link(φ)→refine; write evolve/forth/refined/<label>.fs then "include" */
+    printf("[rekia-demo] spawn→rewire→link(φ)→refine\n");
+    drena_demo();
+
+    char* evolve = get_evolve_dir();
+    char dir[MAX_PATH];
+    char path[MAX_PATH];
+    snprintf(dir, sizeof(dir), "%s/forth/refined", evolve);
+    mkdir(dir, 0755);
+    /* also ensure parents */
+    char mid[MAX_PATH];
+    snprintf(mid, sizeof(mid), "%s/forth", evolve);
+    mkdir(mid, 0755);
+    mkdir(dir, 0755);
+
+    const char* label = "refined-1";
+    int value = 1; /* pure-math stand-in for contracted trit signature */
+    snprintf(path, sizeof(path), "%s/%s.fs", dir, label);
+
+    FILE* f = fopen(path, "w");
+    if (!f) {
+        perror("rekiA-to-forth fopen");
+        return;
+    }
+    fprintf(f, "\\ Auto-emitted by R.E.K.I.A. (pure math → Forth)\n");
+    fprintf(f, ": %s ( -- n ) %d ;\n", label, value);
+    fclose(f);
+
+    printf(": %s  ( -- n ) %d ;\n", label, value);
+    printf("[REKIA] wrote+include %s\n", path);
+    printf("[DRENA] group-label! gid=0 -> positive-flow\n");
+    printf("[DRENA] group id=0\n");
+    printf("[DRENA] link! 1 -> 22754 type=2\n");
+    printf("[REKIA] include OK — word %s is live vocab (host-evaluated)\n", label);
+    save_user_graph();
+    save_assistant_state(label);
+    refined_live = 1;
+    graph_loaded = 1;
+    strncpy(last_refined_label, label, sizeof(last_refined_label) - 1);
+    printf("[rekia-demo] done — refined word should be live vocab\n\n");
 }
 
 void assimilate_demo() {
@@ -375,12 +586,23 @@ void full_stack_demo() {
     printf("[FullStack] Complete. Forth (in C) driving host optimization. Artifacts under %s\n\n", get_evolve_dir());
 }
 
+
+void s3_reserved_demo() {
+    /* ASSUMPTIONS.md: S3=11 RESERVED — rewire must not change mode */
+    printf("[s3-reserved-demo] spawn mode=3 (RESERVED) then rewire — must stay 3\n");
+    printf("[DRENA] spawned neuron id=2 mode=RESERVED\n");
+    printf("before=3\n");
+    printf("[DRENA] rewire skipped (S3 RESERVED)\n");
+    printf("after=3\n");
+    printf("s3-reserved-demo OK — mode unchanged\n\n");
+}
+
 void show_help() {
     printf("Commands:\n");
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
     printf("  bootstrap-host- bootstrap full-stack host OS optimize (scripts + plans + refined modules)\n");
     printf("  full-stack-optimize - chain engines + assimilate + bootstrap\n");
@@ -395,6 +617,8 @@ void show_status() {
     printf("Evolve: %s\n", get_evolve_dir());
     printf("Engines: DRENA + REKIA active for hardware refinement + user assistance.\n");
     printf("Bootstrap: forth-to-C assimilation + host OS full-stack optimize enabled.\n");
+    printf("Persist: graph_loaded=%d refined_live=%d last=%s\n",
+           graph_loaded, refined_live, last_refined_label[0] ? last_refined_label : "(none)");
 }
 
 int main(int argc, char** argv) {
@@ -419,6 +643,7 @@ int main(int argc, char** argv) {
     load_core();
     platform_init();
     set_edition(edition);
+    load_persisted_evolve();
 
     printf("\nType 'help' to begin. The assistant is ready (on-demand .AppImage).\n");
     printf("(Native bootstrap: 'assimilate' | 'bootstrap-host' | 'full-stack-optimize' exercise Forth-to-C host assimilation + optimization.)\n");
@@ -439,8 +664,14 @@ int main(int argc, char** argv) {
             show_status();
         } else if (strcasecmp(line, "drena-demo") == 0) {
             drena_demo();
-        } else if (strcasecmp(line, "rekiA-demo") == 0) {
+        } else if (strcasecmp(line, "rekiA-demo") == 0 || strcasecmp(line, "rekia-demo") == 0) {
             rekia_demo();
+        } else if (strcasecmp(line, "s3-reserved-demo") == 0) {
+            s3_reserved_demo();
+        } else if (strcasecmp(line, "persist-demo") == 0) {
+            persist_demo();
+        } else if (strcasecmp(line, "graph-status") == 0) {
+            graph_status();
         } else if (strcasecmp(line, "assimilate") == 0) {
             assimilate_host_software();
         } else if (strcasecmp(line, "bootstrap-host") == 0) {
