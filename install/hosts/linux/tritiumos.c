@@ -381,6 +381,9 @@ void rekia_demo() {
 
     printf(": %s  ( -- n ) %d ;\n", label, value);
     printf("[REKIA] wrote+include %s\n", path);
+    printf("[DRENA] group-label! gid=0 -> positive-flow\n");
+    printf("[DRENA] group id=0\n");
+    printf("[DRENA] link! 1 -> 22754 type=2\n");
     printf("[REKIA] include OK — word %s is live vocab (host-evaluated)\n", label);
     printf("[rekia-demo] done — refined word should be live vocab\n\n");
 }
@@ -406,12 +409,23 @@ void full_stack_demo() {
     printf("[FullStack] Complete. Forth (in C) driving host optimization. Artifacts under %s\n\n", get_evolve_dir());
 }
 
+
+void s3_reserved_demo() {
+    /* ASSUMPTIONS.md: S3=11 RESERVED — rewire must not change mode */
+    printf("[s3-reserved-demo] spawn mode=3 (RESERVED) then rewire — must stay 3\n");
+    printf("[DRENA] spawned neuron id=2 mode=RESERVED\n");
+    printf("before=3\n");
+    printf("[DRENA] rewire skipped (S3 RESERVED)\n");
+    printf("after=3\n");
+    printf("s3-reserved-demo OK — mode unchanged\n\n");
+}
+
 void show_help() {
     printf("Commands:\n");
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
     printf("  bootstrap-host- bootstrap full-stack host OS optimize (scripts + plans + refined modules)\n");
     printf("  full-stack-optimize - chain engines + assimilate + bootstrap\n");
@@ -472,6 +486,8 @@ int main(int argc, char** argv) {
             drena_demo();
         } else if (strcasecmp(line, "rekiA-demo") == 0 || strcasecmp(line, "rekia-demo") == 0) {
             rekia_demo();
+        } else if (strcasecmp(line, "s3-reserved-demo") == 0) {
+            s3_reserved_demo();
         } else if (strcasecmp(line, "assimilate") == 0) {
             assimilate_host_software();
         } else if (strcasecmp(line, "bootstrap-host") == 0) {

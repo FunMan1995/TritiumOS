@@ -1,6 +1,5 @@
-\ R.E.K.I.A. — Pure-math refiner → runnable Forth (TritiumOS.txt §4)
-\ Acceptance: rekiA-to-forth writes evolve/forth/refined/<label>.fs then include.
-\ Hosts without file I/O implement platform-write-refined / platform-include-refined.
+\ R.E.K.I.A. — Pure-math refiner → runnable Forth (TritiumOS.txt §4 / docs/REKIA.md)
+\ rekiA-to-forth writes evolve/forth/refined/<label>.fs then include via host hooks.
 
 : contract-trit ( t influence -- t' )
   swap dup 0 = if nip exit then
@@ -11,28 +10,20 @@
 : contract-nibble ( nib influence -- nib' )
   >r trit-pair@
   r@ contract-trit swap r@ contract-trit swap
-  r> drop
-  trit-pair>nibble ;
+  r> drop trit-pair>nibble ;
 
 : extract-trit-signature ( n-addr -- s0 s1 s2 )
   neuron-header unpack-header drop ;
 
 : rekiA-extract ( n-addr -- s0 s1 s2 influence )
-  dup >r
-  r@ extract-trit-signature
-  r> neuron-link-count ;
+  dup >r r@ extract-trit-signature r> neuron-link-count ;
 
 : rekiA-one-step ( s0 s1 s2 influence -- s0' s1' s2' influence )
-  >r
-  r@ contract-nibble
-  r@ contract-nibble
-  r@ contract-nibble
-  r> ;
+  >r r@ contract-nibble r@ contract-nibble r@ contract-nibble r> ;
 
 : rekiA-contract ( s0 s1 s2 influence -- s0' s1' s2' )
   4 0 do rekiA-one-step loop drop ;
 
-\ Host hooks (no-ops in pure Forth; Linux C host performs real write+include)
 defer platform-write-refined
 defer platform-include-refined
 : (noop-write) 2drop 2drop ;
@@ -42,21 +33,23 @@ defer platform-include-refined
 
 create refined-src 160 allot
 create refined-path 96 allot
-create name-buf 32 allot
+create label-buf 32 allot
+variable _s0  variable _s1  variable _s2
 
-\ Append unsigned number as decimal digits onto counted string at addr
 : append-num ( n addr -- )
-  swap s>d <# #s #> ( addr c-addr u )
-  rot +place ;
+  swap s>d <# #s #> rot +place ;
+
+: rekiA-label-group ( s0 s1 s2 -- c-addr u )
+  + +
+  dup 0 = if drop s" stable-core" exit then
+  0 > if s" positive-flow" else s" negative-drift" then ;
 
 : rekiA-to-forth ( s0 s1 s2 id -- )
   >r
-  decode-trit swap decode-trit + swap decode-trit +   ( value )
-  \ path evolve/forth/refined/refined-<id>.fs
+  decode-trit swap decode-trit + swap decode-trit +
   s" evolve/forth/refined/refined-" refined-path place
   r@ refined-path append-num
   s" .fs" refined-path +place
-  \ source line
   s" : refined-" refined-src place
   r@ refined-src append-num
   s"  ( -- n ) " refined-src +place
@@ -73,9 +66,13 @@ create name-buf 32 allot
   r@ validate-neuron
   r@ rekiA-extract
   rekiA-contract
-  r@ neuron-id
+  _s2 ! _s1 ! _s0 !
+  _s0 @ _s1 @ _s2 @ rekiA-label-group
+  label-buf place
+  label-buf drena-group drop
+  _s0 @ _s1 @ _s2 @ r@ neuron-id
   rekiA-to-forth
-  ." [REKIA] refine complete" cr
+  ." [REKIA] refine complete (label+file)" cr
   r> drop ;
 
 : rekia-demo ( -- )
@@ -90,4 +87,13 @@ create name-buf 32 allot
 
 : rekiA-demo ( -- ) rekia-demo ;
 
+: s3-reserved-demo ( -- )
+  ." [s3-reserved-demo] spawn mode=3 (RESERVED) then rewire — must stay 3" cr
+  3 drena-spawn >r
+  r@ neuron-header header>mode ." before=" . cr
+  r@ drena-rewire
+  r@ neuron-header header>mode ." after=" . cr
+  r> drop ;
+
 ." R.E.K.I.A. refiner math engine loaded. Pure math -> Forth." cr
+

@@ -3,7 +3,7 @@
 **Status:** Shipper-ready spec (matches PR #2 tip / Research backlog)  
 **Canonical brief:** `TritiumOS.txt` §3  
 **Sources of truth (code):** `forth/trit.fs`, `forth/tritium/drena.fs`  
-**Open:** S3 mode `11` (RESERVED) — document only; do not invent behavior.
+**Policy:** S3 mode `11` (RESERVED) — see `docs/ASSUMPTIONS.md`; do not invent behavior.
 
 ## 1. Purpose
 
