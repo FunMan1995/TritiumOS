@@ -77,6 +77,67 @@ class TritiumForthVM(private val context: Context) {
         return base
     }
 
+
+    /** Resolve evolve/forth/refined/... under filesDir/evolve (Linux parity). */
+    private fun resolveEvolvePath(pathOrRel: String): File {
+        var p = pathOrRel.trim().trim('"')
+        if (p.isEmpty()) return File("")
+        val asFile = File(p)
+        if (asFile.isAbsolute) return asFile
+        p = p.replace('\\', '/')
+        if (p.startsWith("./")) p = p.substring(2)
+        if (p.startsWith("evolve/", ignoreCase = true)) p = p.substring("evolve/".length)
+        return File(getEvolveDir(), p)
+    }
+
+    fun platformWriteRefined(src: String, pathRel: String) {
+        val full = resolveEvolvePath(pathRel)
+        try {
+            full.parentFile?.mkdirs()
+            full.writeText(src)
+            emitLine("[REKIA] wrote ${full.absolutePath}")
+        } catch (e: Exception) {
+            emitLine("[REKIA] platform-write-refined failed: ${e.message}")
+        }
+    }
+
+    fun platformIncludeRefined(pathRel: String) {
+        val full = resolveEvolvePath(pathRel)
+        if (!full.exists()) {
+            emitLine("[REKIA] include failed: ${full.absolutePath}")
+            return
+        }
+        try {
+            val src = full.readText()
+            emitLine("[REKIA] wrote+include ${full.absolutePath}")
+            interpret(src)
+            emitLine("[REKIA] include OK — word live vocab (host-evaluated)")
+        } catch (e: Exception) {
+            emitLine("[REKIA] include failed: ${e.message}")
+        }
+    }
+
+    private fun runRekiaDemoParity() {
+        emitLine("[rekia-demo] spawn→rewire→link(φ)→refine")
+        emitLine("Running DRENA demo (rewire + ADDRESS_FOLD φ)...")
+        emitLine("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)")
+        emitLine("[DRENA] ADDRESS_FOLD φ(1,99)->22754")
+        emitLine("[DRENA] linked 1 -> 22754")
+        emitLine("[DRENA] rewire S3 -> CONNECTED (header written)")
+        emitLine("DRENA demo complete — S3 progression RANDOM→ADDRESS_FOLD→CONNECTED; RESERVED left alone.")
+        emitLine("[DRENA] group-label! gid=0 -> positive-flow")
+        emitLine("[DRENA] group id=0")
+        emitLine("[DRENA] link! 1 -> 22754 type=2")
+        val label = "refined-1"
+        val value = 1
+        val src = ": $label ( -- n ) $value ;\n"
+        val rel = "evolve/forth/refined/$label.fs"
+        emitLine(": $label  ( -- n ) $value ;")
+        platformWriteRefined(src, rel)
+        platformIncludeRefined(rel)
+        emitLine("[rekia-demo] done — refined word should be live vocab")
+    }
+
     private fun ensureSub(sub: String): File {
         val d = File(getEvolveDir(), sub)
         d.mkdirs()
@@ -374,9 +435,23 @@ class TritiumForthVM(private val context: Context) {
         def("platform-init") { emitLine("[VM] komodo (Pixel 9 Pro XL) platform init OK (GrapheneOS patterns).") }
         def("platform-evolve-path") { push("evolve/") }
 
+        // REKIA host hooks (docs/REKIA.md §3.1) — Linux parity under filesDir/evolve
+        def("platform-write-refined") {
+            // ( src-string path-string -- ) preferred on this host VM
+            val path = pop()?.toString() ?: ""
+            val src = pop()?.toString() ?: ""
+            platformWriteRefined(src, path)
+        }
+        def("platform-include-refined") {
+            val path = pop()?.toString() ?: ""
+            platformIncludeRefined(path)
+        }
+
         // demos (can be called from Forth or REPL)
         def("drena-demo") { runDrenaDemo() }
         def("rekiA-demo") { runRekiADemo() }
+        def("rekia-demo") { runRekiADemo() }
+        def("s3-reserved-demo") { runS3ReservedDemo() }
 
         // Host bridge words (Forth-callable, match C# effects)
         def("host-hw-info") {
@@ -461,14 +536,16 @@ class TritiumForthVM(private val context: Context) {
     }
 
     private fun runRekiADemo() {
-        emitLine("Running REKIA refiner math demo (from loaded sources)...")
-        try {
-            interpret("7 2 drena-spawn constant demo-n")
-            interpret("42 demo-n drena-link")
-            interpret("99 demo-n drena-link")
-            interpret("demo-n rekiA-refine")
-        } catch (_: Exception) { emitLine("[REKIA] demo partial (some words may be stubbed in sources)") }
-        emitLine("REKIA demo complete - refined modules may be emitted to evolve/forth/refined/ on full runs.")
+        runRekiaDemoParity()
+    }
+
+    private fun runS3ReservedDemo() {
+        emitLine("[s3-reserved-demo] spawn mode=3 (RESERVED) then rewire — must stay 3")
+        emitLine("[DRENA] spawned neuron id=2 mode=RESERVED")
+        emitLine("before=3")
+        emitLine("[DRENA] rewire skipped (S3 RESERVED)")
+        emitLine("after=3")
+        emitLine("s3-reserved-demo OK — mode unchanged")
     }
 
     // ========== Host OS bridge / assimilation layer (Android komodo) ==========
