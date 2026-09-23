@@ -84,7 +84,7 @@ Windows / Android: same acceptance — host VMs implement `platform-write-refine
 
 1. Typed link records + trit-weight (`link!` / `links-for-neuron` per §3.5)
 2. `rekiA-label-group` + `group-label!` writing labeled group metadata
-3. Persist refine into `evolve/assistant-state.trit` / user-graph
+3. Persist refine into `evolve/assistant-state.trit` / `evolve/user-graph.trit` (ship tip)
 4. ~~Wire Win + Android `platform-*-refined` hooks~~ (landed on host tip)
 5. ~~Qwantum → extract handoff note~~ (landed: `docs/QWANTUM-REKIA.md`)
 

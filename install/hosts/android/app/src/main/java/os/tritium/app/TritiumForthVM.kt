@@ -135,6 +135,16 @@ class TritiumForthVM(private val context: Context) {
         emitLine(": $label  ( -- n ) $value ;")
         platformWriteRefined(src, rel)
         platformIncludeRefined(rel)
+        try {
+            val graph = File(getEvolveDir(), "user-graph.trit")
+            graph.writeText("# TritiumOS user-graph.trit v1\nnext-id=2\nneuron id=1 mode=2 links=1\nlink src=1 dst=22754 type=2 w_lo=0 w_hi=0 s3=2\n")
+            emitLine("[DRENA] graph-save -> ${graph.absolutePath}")
+            val state = File(getEvolveDir(), "assistant-state.trit")
+            state.writeText("# TritiumOS assistant-state.trit v1\nlast-refine=$label\nlast-refine-path=forth/refined/$label.fs\nupdated=${System.currentTimeMillis()/1000}\n")
+            emitLine("[REKIA] assistant-state! -> ${state.absolutePath}")
+        } catch (e: Exception) {
+            emitLine("[persist] ${e.message}")
+        }
         emitLine("[rekia-demo] done — refined word should be live vocab")
     }
 

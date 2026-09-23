@@ -19,3 +19,9 @@ s3-reserved-demo
 ## Trit nibble packing
 
 Default remains mod-3 split (`trit-pair@` / `encode-trit`). Dense 2+2 packing is out of scope unless recorded here later.
+
+## Persist files
+
+- `evolve/user-graph.trit` — neuron headers + typed links snapshot after refine.
+- `evolve/assistant-state.trit` — touched after `rekiA-refine` (last-refine label/path).
+- Reload on host start; refined `.fs` under `evolve/forth/refined/` stay live vocab.

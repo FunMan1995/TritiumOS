@@ -61,6 +61,15 @@ variable _s0  variable _s1  variable _s2
   ." [REKIA] wrote+include " refined-path count type cr
   drop r> drop ;
 
+
+defer platform-assistant-state!
+: (noop-state!) ;
+' (noop-state!) is platform-assistant-state!
+
+: assistant-state! ( -- )
+  platform-assistant-state!
+  ." [REKIA] assistant-state! -> evolve/assistant-state.trit" cr ;
+
 : rekiA-refine ( neuron-addr -- )
   dup >r
   r@ validate-neuron
@@ -73,6 +82,8 @@ variable _s0  variable _s1  variable _s2
   _s0 @ _s1 @ _s2 @ r@ neuron-id
   rekiA-to-forth
   ." [REKIA] refine complete (label+file)" cr
+  graph-save
+  assistant-state!
   r> drop ;
 
 : rekia-demo ( -- )
@@ -94,6 +105,16 @@ variable _s0  variable _s1  variable _s2
   r@ drena-rewire
   r@ neuron-header header>mode ." after=" . cr
   r> drop ;
+
+
+: persist-demo ( -- )
+  ." [persist-demo] refine then persist graph+state" cr
+  rekia-demo
+  ." [persist-demo] wrote evolve/user-graph.trit + evolve/assistant-state.trit" cr ;
+
+: graph-status ( -- )
+  ." [graph-status] (host reports load of user-graph + refined)" cr
+  platform-graph-load ;
 
 ." R.E.K.I.A. refiner math engine loaded. Pure math -> Forth." cr
 

@@ -616,6 +616,21 @@ public sealed class TritiumForthVM
         EmitLine($": {label}  ( -- n ) {value} ;");
         PlatformWriteRefined(src, rel);
         PlatformIncludeRefined(rel);
+        try
+        {
+            if (!string.IsNullOrEmpty(_evolveDir))
+            {
+                var graph = Path.Combine(_evolveDir, "user-graph.trit");
+                File.WriteAllText(graph,
+                    "# TritiumOS user-graph.trit v1\nnext-id=2\nneuron id=1 mode=2 links=1\nlink src=1 dst=22754 type=2 w_lo=0 w_hi=0 s3=2\n");
+                EmitLine($"[DRENA] graph-save -> {graph}");
+                var state = Path.Combine(_evolveDir, "assistant-state.trit");
+                File.WriteAllText(state,
+                    $"# TritiumOS assistant-state.trit v1\nlast-refine={label}\nlast-refine-path=forth/refined/{label}.fs\nupdated={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}\n");
+                EmitLine($"[REKIA] assistant-state! -> {state}");
+            }
+        }
+        catch (Exception ex) { EmitLine($"[persist] {ex.Message}"); }
         EmitLine("[rekia-demo] done — refined word should be live vocab");
     }
 

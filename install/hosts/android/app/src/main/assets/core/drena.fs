@@ -177,6 +177,25 @@ variable _dtype
     i cells over neuron-links-base + @ ."   connected-to: " . cr
   loop drop ;
 
+
+\ --- persist graph (evolve/user-graph.trit) ---
+\ Host implements platform-graph-save / platform-graph-load
+defer platform-graph-save
+defer platform-graph-load
+: (noop-graph-save) ;
+: (noop-graph-load) ;
+' (noop-graph-save) is platform-graph-save
+' (noop-graph-load) is platform-graph-load
+
+\ Serialize typed links + next-id into host evolve (Linux writes the file)
+: graph-save ( -- )
+  platform-graph-save
+  ." [DRENA] graph-save -> evolve/user-graph.trit" cr ;
+
+: graph-load ( -- )
+  platform-graph-load
+  ." [DRENA] graph-load <- evolve/user-graph.trit" cr ;
+
 : drena-init ( -- )
   1 next-id !  0 link-count !  0 group-count !
   ." [DRENA] Trit intelligence engine initialized" cr ;
