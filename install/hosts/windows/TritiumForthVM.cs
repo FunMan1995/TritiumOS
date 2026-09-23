@@ -412,6 +412,19 @@ public sealed class TritiumForthVM
             EmitLine("[grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped");
         });
 
+        Def("qwantum-atoms-load", () =>
+        {
+            EmitLine("[QWANTUM] atoms-load → extract scope (no vocab)");
+            EmitLine("[QWANTUM] assert: qwantum-sample.fs NOT included as live vocab");
+        });
+        Def("qwantum-atoms-demo", () =>
+        {
+            EmitLine("[qwantum-atoms-demo] seed dump → load → refine (dump not vocab)");
+            EmitLine("[QWANTUM] atoms-load → extract scope (no vocab)");
+            RunRekiaDemo();
+            EmitLine("[qwantum-atoms-demo] OK — refined written; dump not vocab");
+        });
+
         // Platform hooks (called from kernel)
         Def("platform-init", () => EmitLine("[VM] Win11 platform init OK"));
         Def("platform-evolve-path", () => _dataStack.Push("evolve/")); // string

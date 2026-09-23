@@ -35,6 +35,14 @@ else
   mkdir -p "$APPDIR/usr/share/tritium.poly/core"
 fi
 
+echo "Bundling qwantum-dump fixture (sample01test) for atoms-load..."
+mkdir -p "$APPDIR/usr/share/tritium.poly/evolve/qwantum-dump"
+if [ -d "$ROOT/evolve/qwantum-dump/sample01test" ]; then
+  cp -a "$ROOT/evolve/qwantum-dump/sample01test" "$APPDIR/usr/share/tritium.poly/evolve/qwantum-dump/"
+else
+  echo "Warning: evolve/qwantum-dump/sample01test missing; host will embed seed."
+fi
+
 echo "Building native host (gcc -static for portability)..."
 if ! command -v gcc >/dev/null 2>&1; then
   echo "Error: gcc not found. Install build-essential."

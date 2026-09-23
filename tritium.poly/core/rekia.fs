@@ -15,8 +15,36 @@
 : extract-trit-signature ( n-addr -- s0 s1 s2 )
   neuron-header unpack-header drop ;
 
+\ --- Qwantum K-atoms → extract scope only (docs/QWANTUM-REKIA.md) ---
+\ Dumps feed influence into rekiA-extract; never include dump .fs as live vocab.
+variable qwantum-k-influence
+variable qwantum-k-loaded
+0 qwantum-k-influence !
+0 qwantum-k-loaded !
+
+defer platform-qwantum-atoms-load
+: (noop-qwantum-load) ;
+' (noop-qwantum-load) is platform-qwantum-atoms-load
+
+create qwantum-id-buf 48 allot
+
+: qwantum-default-id ( -- c-addr u ) s" sample01test" ;
+
+: qwantum-atoms-load ( -- )
+  platform-qwantum-atoms-load
+  1 qwantum-k-loaded !
+  ." [QWANTUM] atoms-load → extract scope (no vocab)" cr ;
+
+: qwantum-atoms-load-id ( c-addr u -- )
+  dup 0= if 2drop qwantum-default-id then
+  qwantum-id-buf place
+  qwantum-atoms-load ;
+
 : rekiA-extract ( n-addr -- s0 s1 s2 influence )
-  dup >r r@ extract-trit-signature r> neuron-link-count ;
+  dup >r r@ extract-trit-signature r> neuron-link-count
+  qwantum-k-loaded @ if
+    qwantum-k-influence @ +
+  then ;
 
 : rekiA-one-step ( s0 s1 s2 influence -- s0' s1' s2' influence )
   >r r@ contract-nibble r@ contract-nibble r@ contract-nibble r> ;
@@ -129,6 +157,18 @@ defer platform-assistant-state!
   r@ neuron-header header>mode ." after=" . cr
   r> drop r> drop
   ." [grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped" cr ;
+
+
+: qwantum-atoms-demo ( -- )
+  ." [qwantum-atoms-demo] seed dump → load → refine (dump not vocab)" cr
+  qwantum-atoms-load
+  0 drena-spawn >r
+  r@ drena-rewire
+  99 r@ drena-link
+  r@ rekiA-refine
+  r> drop
+  ." [qwantum-atoms-demo] OK — refined written; dump not vocab" cr
+  ." [qwantum-atoms-demo] assert: dump .fs was NOT included as vocab" cr ;
 
 : persist-demo ( -- )
   ." [persist-demo] refine then persist graph+state" cr

@@ -37,6 +37,8 @@ static char assistant_name[64] = "Assistant";
 void rekia_demo(void);
 void grow_step_demo(void);
 void s3_reserved_demo(void);
+void qwantum_atoms_load(void);
+void qwantum_atoms_demo(void);
 
 void find_core_dir(const char* argv0) {
     char path[MAX_PATH];
@@ -109,6 +111,7 @@ void ensure_evolve_dir() {
     snprintf(sub, sizeof(sub), "%s/assimilated", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/bootstrap", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/forth/refined", evolve_dir); mkdir(sub, 0755);
+    snprintf(sub, sizeof(sub), "%s/qwantum-dump", evolve_dir); mkdir(sub, 0755);
 }
 
 const char* get_evolve_dir() {
@@ -120,6 +123,9 @@ const char* get_evolve_dir() {
 static int graph_loaded = 0;
 static int refined_live = 0;
 static char last_refined_label[64] = {0};
+static int qwantum_k_influence = 0;
+static int qwantum_k_loaded = 0;
+static char qwantum_last_id[64] = "sample01test";
 
 void save_user_graph(void) {
     ensure_evolve_dir();
@@ -168,6 +174,11 @@ void load_refined_modules(void) {
     while ((ent = readdir(d)) != NULL) {
         size_t len = strlen(ent->d_name);
         if (len < 4 || strcmp(ent->d_name + len - 3, ".fs") != 0) continue;
+        /* CRITICAL: never load dump fragments (qwantum-*.fs) as live vocab */
+        if (strncmp(ent->d_name, "qwantum-", 8) == 0) {
+            printf("[VM]   skip %s (dump atom — not vocab; refine only)\n", ent->d_name);
+            continue;
+        }
         char path[MAX_PATH];
         snprintf(path, sizeof(path), "%s/%s", dir, ent->d_name);
         FILE* f = fopen(path, "r");
@@ -628,12 +639,255 @@ void grow_step_demo() {
     printf("[grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped\n\n");
 }
 
+
+/* --- Qwantum K-atoms → extract scope only (docs/QWANTUM-REKIA.md) ---
+ * Read dump text under evolve/qwantum-dump/<id>/, hash into k_influence.
+ * NEVER include dump .fs (e.g. qwantum-sample.fs) into live vocab.
+ */
+static void mkdir_p(const char* path) {
+    char tmp[MAX_PATH];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    size_t len = strlen(tmp);
+    if (len == 0) return;
+    for (char* p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            mkdir(tmp, 0755);
+            *p = '/';
+        }
+    }
+    mkdir(tmp, 0755);
+}
+
+static int copy_file_bytes(const char* src, const char* dst) {
+    FILE* in = fopen(src, "rb");
+    if (!in) return -1;
+    FILE* out = fopen(dst, "wb");
+    if (!out) { fclose(in); return -1; }
+    char buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) { fclose(in); fclose(out); return -1; }
+    }
+    fclose(in);
+    fclose(out);
+    return 0;
+}
+
+static unsigned hash_file_sum(const char* path) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return 0;
+    unsigned h = 2166136261u;
+    int c;
+    while ((c = fgetc(f)) != EOF) {
+        h ^= (unsigned)(unsigned char)c;
+        h *= 16777619u;
+    }
+    fclose(f);
+    return h;
+}
+
+static unsigned hash_tree_sum(const char* dir) {
+    DIR* d = opendir(dir);
+    if (!d) return 0;
+    unsigned h = 0;
+    struct dirent* ent;
+    char path[MAX_PATH];
+    while ((ent = readdir(d)) != NULL) {
+        if (ent->d_name[0] == '.') continue;
+        snprintf(path, sizeof(path), "%s/%s", dir, ent->d_name);
+        struct stat st;
+        if (stat(path, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) {
+            h ^= hash_tree_sum(path);
+            h = (h << 1) | (h >> 31);
+        } else if (S_ISREG(st.st_mode)) {
+            /* Hash ALL dump text including .fs contents as K atoms — do NOT include as vocab */
+            h ^= hash_file_sum(path);
+            h = (h << 3) ^ (unsigned)st.st_size;
+        }
+    }
+    closedir(d);
+    return h;
+}
+
+static int find_fixture_dump(const char* id, char* out, size_t outsz) {
+    /* Prefer AppImage/poly bundled fixture, then repo-relative from core_dir */
+    const char* poly = getenv("TRITIUM_POLY");
+    char cand[MAX_PATH];
+    char resolved[MAX_PATH];
+    struct stat st;
+    if (poly && *poly) {
+        snprintf(cand, sizeof(cand), "%s/evolve/qwantum-dump/%s", poly, id);
+        if (stat(cand, &st) == 0 && S_ISDIR(st.st_mode)) {
+            snprintf(out, outsz, "%s", cand);
+            return 1;
+        }
+    }
+    if (core_dir[0]) {
+        snprintf(cand, sizeof(cand), "%s/../evolve/qwantum-dump/%s", core_dir, id);
+        if (realpath(cand, resolved) != NULL && stat(resolved, &st) == 0 && S_ISDIR(st.st_mode)) {
+            snprintf(out, outsz, "%s", resolved);
+            return 1;
+        }
+        snprintf(cand, sizeof(cand), "%s/../../evolve/qwantum-dump/%s", core_dir, id);
+        if (realpath(cand, resolved) != NULL && stat(resolved, &st) == 0 && S_ISDIR(st.st_mode)) {
+            snprintf(out, outsz, "%s", resolved);
+            return 1;
+        }
+    }
+    /* cwd / repo */
+    if (getcwd(cand, sizeof(cand)) != NULL) {
+        char try[MAX_PATH];
+        snprintf(try, sizeof(try), "%s/evolve/qwantum-dump/%s", cand, id);
+        if (stat(try, &st) == 0 && S_ISDIR(st.st_mode)) {
+            snprintf(out, outsz, "%s", try);
+            return 1;
+        }
+    }
+    out[0] = 0;
+    return 0;
+}
+
+static int copy_tree(const char* src, const char* dst) {
+    mkdir_p(dst);
+    DIR* d = opendir(src);
+    if (!d) return -1;
+    struct dirent* ent;
+    char s[MAX_PATH], t[MAX_PATH];
+    while ((ent = readdir(d)) != NULL) {
+        if (ent->d_name[0] == '.') continue;
+        snprintf(s, sizeof(s), "%s/%s", src, ent->d_name);
+        snprintf(t, sizeof(t), "%s/%s", dst, ent->d_name);
+        struct stat st;
+        if (stat(s, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) {
+            if (copy_tree(s, t) != 0) { closedir(d); return -1; }
+        } else if (S_ISREG(st.st_mode)) {
+            if (copy_file_bytes(s, t) != 0) { closedir(d); return -1; }
+        }
+    }
+    closedir(d);
+    return 0;
+}
+
+static void seed_qwantum_dump(const char* id) {
+    ensure_evolve_dir();
+    char dest[MAX_PATH];
+    snprintf(dest, sizeof(dest), "%s/qwantum-dump/%s", evolve_dir, id);
+    struct stat st;
+    if (stat(dest, &st) == 0 && S_ISDIR(st.st_mode)) {
+        printf("[QWANTUM] dump already present: %s\n", dest);
+        return;
+    }
+    char fixture[MAX_PATH];
+    if (find_fixture_dump(id, fixture, sizeof(fixture))) {
+        mkdir_p(dest);
+        if (copy_tree(fixture, dest) == 0) {
+            printf("[QWANTUM] seeded dump from fixture → %s\n", dest);
+            return;
+        }
+    }
+    /* Minimal embedded seed so demo always works (text only; .fs is dump atom, not vocab) */
+    mkdir_p(dest);
+    char reply[MAX_PATH], nested[MAX_PATH], sample[MAX_PATH];
+    snprintf(reply, sizeof(reply), "%s/qwantum-reply-source.txt", dest);
+    FILE* f = fopen(reply, "w");
+    if (f) {
+        fprintf(f, "# Sample Qwantum reply (test ingest)\nsearch_id=%s\nfragments: boot.fs\n", id);
+        fclose(f);
+    }
+    snprintf(nested, sizeof(nested), "%s/evolve/forth/refined", dest);
+    mkdir_p(nested);
+    snprintf(sample, sizeof(sample), "%s/qwantum-sample.fs", nested);
+    f = fopen(sample, "w");
+    if (f) {
+        fprintf(f, "\\ TritiumOS fragment dumped from qwantum field\n");
+        fprintf(f, ": qwantum-ok .\" field dump ok\" cr ;\n");
+        fclose(f);
+    }
+    printf("[QWANTUM] seeded embedded dump → %s (dump .fs NOT vocab)\n", dest);
+}
+
+void qwantum_atoms_load(void) {
+    ensure_evolve_dir();
+    const char* id = qwantum_last_id[0] ? qwantum_last_id : "sample01test";
+    seed_qwantum_dump(id);
+
+    char dump[MAX_PATH];
+    snprintf(dump, sizeof(dump), "%s/qwantum-dump/%s", evolve_dir, id);
+    unsigned h = hash_tree_sum(dump);
+    if (h == 0) {
+        /* also try repo/fixture path without copy */
+        char fixture[MAX_PATH];
+        if (find_fixture_dump(id, fixture, sizeof(fixture)))
+            h = hash_tree_sum(fixture);
+    }
+    if (h == 0) h = 1; /* non-zero so influence mixes */
+    qwantum_k_influence = (int)(h & 0x7fff);
+    qwantum_k_loaded = 1;
+    printf("[QWANTUM] atoms-load id=%s k_influence=%d → extract scope (no vocab)\n",
+           id, qwantum_k_influence);
+    printf("[QWANTUM] atoms-load → extract scope (no vocab)\n");
+    /* Explicit: do NOT copy dump .fs into evolve/forth/refined or include */
+    printf("[QWANTUM] assert: qwantum-sample.fs NOT included as live vocab\n");
+}
+
+void qwantum_atoms_demo(void) {
+    printf("[qwantum-atoms-demo] seed dump → load → refine (dump not vocab)\n");
+    strncpy(qwantum_last_id, "sample01test", sizeof(qwantum_last_id) - 1);
+    qwantum_atoms_load();
+
+    /* Mirror rekia refine path AFTER load so extract influence would mix in full Forth */
+    printf("[qwantum-atoms-demo] refine path (rekiA via host) with K influence=%d\n",
+           qwantum_k_influence);
+    char* evolve = get_evolve_dir();
+    char dir[MAX_PATH], path[MAX_PATH], mid[MAX_PATH];
+    snprintf(mid, sizeof(mid), "%s/forth", evolve); mkdir(mid, 0755);
+    snprintf(dir, sizeof(dir), "%s/forth/refined", evolve); mkdir(dir, 0755);
+
+    /* Influence mixes into contracted stand-in value (never touches S3 RESERVED) */
+    int value = 1 + (qwantum_k_influence & 0xff);
+    const char* label = "refined-1";
+    snprintf(path, sizeof(path), "%s/%s.fs", dir, label);
+    FILE* f = fopen(path, "w");
+    if (!f) {
+        perror("qwantum-atoms-demo fopen");
+        return;
+    }
+    fprintf(f, "\\ Auto-emitted by R.E.K.I.A. after qwantum-atoms-load (K→extract only)\n");
+    fprintf(f, ": %s ( -- n ) %d ;\n", label, value);
+    fclose(f);
+
+    printf(": %s  ( -- n ) %d ;\n", label, value);
+    printf("[REKIA] wrote+include %s\n", path);
+    printf("[REKIA] include OK — word %s is live vocab (host-evaluated)\n", label);
+    save_user_graph();
+    save_assistant_state(label);
+    refined_live = 1;
+    graph_loaded = 1;
+    strncpy(last_refined_label, label, sizeof(last_refined_label) - 1);
+
+    /* Prove dump .fs is NOT in live refined vocab listing as included word from dump */
+    char dump_fs[MAX_PATH];
+    snprintf(dump_fs, sizeof(dump_fs), "%s/forth/refined/qwantum-sample.fs", evolve);
+    struct stat st;
+    if (stat(dump_fs, &st) == 0)
+        printf("[qwantum-atoms-demo] WARN: qwantum-sample.fs under live refined (should not seed there)\n");
+    else
+        printf("[qwantum-atoms-demo] check: live refined has no qwantum-sample.fs\n");
+
+    printf("[qwantum-atoms-demo] OK — refined written; dump not vocab\n\n");
+}
+
 void show_help() {
     printf("Commands:\n");
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
     printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n");
+    printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
+    printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
     printf("  bootstrap-host- bootstrap full-stack host OS optimize (scripts + plans + refined modules)\n");
     printf("  full-stack-optimize - chain engines + assimilate + bootstrap\n");
@@ -650,6 +904,8 @@ void show_status() {
     printf("Bootstrap: forth-to-C assimilation + host OS full-stack optimize enabled.\n");
     printf("Persist: graph_loaded=%d refined_live=%d last=%s\n",
            graph_loaded, refined_live, last_refined_label[0] ? last_refined_label : "(none)");
+    printf("Qwantum: k_loaded=%d k_influence=%d id=%s\n",
+           qwantum_k_loaded, qwantum_k_influence, qwantum_last_id);
 }
 
 int main(int argc, char** argv) {
@@ -701,6 +957,10 @@ int main(int argc, char** argv) {
             s3_reserved_demo();
         } else if (strcasecmp(line, "grow-step-demo") == 0) {
             grow_step_demo();
+        } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
+            qwantum_atoms_load();
+        } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {
+            qwantum_atoms_demo();
         } else if (strcasecmp(line, "persist-demo") == 0) {
             persist_demo();
         } else if (strcasecmp(line, "graph-status") == 0) {

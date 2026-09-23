@@ -115,7 +115,7 @@ sealed class MainForm : Form
         switch (cmd)
         {
             case "help":
-                Append("help | status | compute | compute-set | compute-test | core-path | rename | qwantum-search | qwantum-dump | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo" + Environment.NewLine);
+                Append("help | status | compute | compute-set | compute-test | core-path | rename | qwantum-search | qwantum-dump | qwantum-atoms-load | qwantum-atoms-demo | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo" + Environment.NewLine);
                 Append("assimilate | bootstrap-host | full-stack-optimize | host-info | load-refined" + Environment.NewLine);
                 Append("Any other input is sent to the TritiumForth VM (try '1 2 + .' or the demos)." + Environment.NewLine);
                 break;
@@ -168,9 +168,16 @@ sealed class MainForm : Form
             case "s3-reserved-demo":
                 Append(_vm?.Evaluate("s3-reserved-demo") ?? "VM not ready");
                 break;
-            case "grow-step-demo":
+                        case "grow-step-demo":
                 Append(_vm?.Evaluate("grow-step-demo") ?? "VM not ready");
                 break;
+            case "qwantum-atoms-load":
+                Append(_vm?.Evaluate("qwantum-atoms-load") ?? "VM not ready");
+                break;
+            case "qwantum-atoms-demo":
+                Append(_vm?.Evaluate("qwantum-atoms-demo") ?? "VM not ready");
+                break;
+
             case "assimilate":
                 Append(_vm?.Evaluate("assimilate") ?? "VM not ready");
                 LoadRefinedModules(); // pick up any newly emitted refined modules from the assimilation

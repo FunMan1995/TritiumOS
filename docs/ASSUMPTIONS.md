@@ -18,6 +18,9 @@ s3-reserved-demo
 
 grow-step-demo
 \ expect: spawn0→grow→step; RESERVED grow child-mode=3; step skipped; after=3
+
+qwantum-atoms-demo
+\ expect: OK — refined written; dump not vocab
 ```
 
 ## Trit nibble packing
@@ -29,3 +32,19 @@ Default remains mod-3 split (`trit-pair@` / `encode-trit`). Dense 2+2 packing is
 - `evolve/user-graph.trit` — neuron headers + typed links snapshot after refine.
 - `evolve/assistant-state.trit` — touched after `rekiA-refine` (last-refine label/path).
 - Reload on host start; refined `.fs` under `evolve/forth/refined/` stay live vocab.
+
+## Qwantum K-atoms (extract scope only)
+
+- Loader word `qwantum-atoms-load` hashes dump text under `evolve/qwantum-dump/<id>/` into `qwantum-k-influence` for `rekiA-extract` mixing only.
+- Dump `.fs` (e.g. `qwantum-sample.fs`) is **never** included as live vocab — refine owns emission (`rekiA-to-forth` → `evolve/forth/refined/refined-*.fs`).
+- Atoms-load must not touch S3=`11` RESERVED.
+- See `docs/QWANTUM-REKIA.md` §5.
+
+Smoke:
+
+```
+qwantum-atoms-demo
+\ expect: [qwantum-atoms-demo] OK — refined written; dump not vocab
+\ expect: [QWANTUM] atoms-load → extract scope (no vocab)
+```
+

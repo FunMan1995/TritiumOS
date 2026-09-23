@@ -1,6 +1,6 @@
 # Qwantum → R.E.K.I.A. handoff
 
-**Status:** Landed (Research follow-on item 5)  
+**Status:** Runtime tip (Research item 3 — `qwantum-atoms-load`; docs landed as follow-on 5)  
 **Companion:** `docs/QWANTUM.md` (ingest), `docs/REKIA.md` (refine → Forth)  
 **Canonical brief:** `TritiumOS.txt` §4 (R.E.K.I.A.), §14–§15 (Qwantum)
 
@@ -31,11 +31,12 @@ Qwantum dumps land **knowledge atoms** (K) into T₀; R.E.K.I.A. remains the onl
 
 ## 5. Acceptance (Test Lab)
 
-Docs tip only:
+Runtime tip (`qwantum-atoms-load`):
 
-1. `docs/QWANTUM-REKIA.md` present and linked from `docs/QWANTUM.md` and/or `docs/REKIA.md` (one-line cite is enough).
-2. Linux regression unchanged: `rekia-demo` + `s3-reserved-demo` still PASS after the docs tip.
-3. No behavior change required in Forth/hosts for this item.
+1. `qwantum-atoms-load` feeds dump text under `evolve/qwantum-dump/<id>/` into **`rekiA-extract` scope only** (K influence). Dump `.fs` must **not** be included as live vocab.
+2. `qwantum-atoms-demo` seeds fixture `sample01test` → load → refine; greppable: `[qwantum-atoms-demo] OK — refined written; dump not vocab` and `[QWANTUM] atoms-load → extract scope (no vocab)`.
+3. `rekiA-refine` still writes `evolve/forth/refined/refined-*.fs` via existing `rekiA-to-forth` path.
+4. Regression: `rekia-demo` green; `s3-reserved-demo` before=3 / after=3 (S3 RESERVED untouched by atoms-load).
 
 ## 6. Cite
 

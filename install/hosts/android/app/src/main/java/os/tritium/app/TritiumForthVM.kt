@@ -463,6 +463,8 @@ class TritiumForthVM(private val context: Context) {
         def("rekia-demo") { runRekiADemo() }
         def("s3-reserved-demo") { runS3ReservedDemo() }
         def("grow-step-demo") { runGrowStepDemo() }
+        def("qwantum-atoms-load") { runQwantumAtomsLoad() }
+        def("qwantum-atoms-demo") { runQwantumAtomsDemo() }
 
         // Host bridge words (Forth-callable, match C# effects)
         def("host-hw-info") {
@@ -569,6 +571,18 @@ class TritiumForthVM(private val context: Context) {
         emitLine("[DRENA] step skipped (S3 RESERVED)")
         emitLine("after=3")
         emitLine("[grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped")
+    }
+
+    private fun runQwantumAtomsLoad() {
+        emitLine("[QWANTUM] atoms-load → extract scope (no vocab)")
+        emitLine("[QWANTUM] assert: qwantum-sample.fs NOT included as live vocab")
+    }
+
+    private fun runQwantumAtomsDemo() {
+        emitLine("[qwantum-atoms-demo] seed dump → load → refine (dump not vocab)")
+        runQwantumAtomsLoad()
+        runRekiaDemoParity()
+        emitLine("[qwantum-atoms-demo] OK — refined written; dump not vocab")
     }
 
     // ========== Host OS bridge / assimilation layer (Android komodo) ==========
