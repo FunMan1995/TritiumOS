@@ -71,3 +71,7 @@ Use `-Force` to overwrite existing paths.
 ## Spec
 
 Full ontology: `TritiumOS.txt` §14–§15.
+
+## R.E.K.I.A. handoff
+
+Dumps under `evolve/qwantum-dump/` are **K atoms** for `rekiA-extract` only — see [`docs/QWANTUM-REKIA.md`](QWANTUM-REKIA.md). They are not a second intelligence path.

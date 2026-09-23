@@ -78,7 +78,7 @@ Windows / Android: same acceptance — host VMs implement `platform-write-refine
 - Opaque ML weights as source of truth
 - Inventing S3=`11` behavior
 - Full `label-group` / `group-label!` persistence (follow-on)
-- Qwantum dumps as a second intelligence path — dumps feed **atoms** into extract later; they do not replace R.E.K.I.A.
+- Qwantum dumps as a second intelligence path — dumps feed **atoms** into extract later; they do not replace R.E.K.I.A. See `docs/QWANTUM-REKIA.md`.
 
 ## 7. Follow-on ≤5 (after docs land)
 
@@ -86,7 +86,7 @@ Windows / Android: same acceptance — host VMs implement `platform-write-refine
 2. `rekiA-label-group` + `group-label!` writing labeled group metadata
 3. Persist refine into `evolve/assistant-state.trit` / user-graph
 4. ~~Wire Win + Android `platform-*-refined` hooks~~ (landed on host tip)
-5. Qwantum → extract handoff note (dump files as K atoms, not bypass)
+5. ~~Qwantum → extract handoff note~~ (landed: `docs/QWANTUM-REKIA.md`)
 
 ## 8. Cite
 
@@ -94,3 +94,4 @@ Windows / Android: same acceptance — host VMs implement `platform-write-refine
 - `docs/NEURON.md` (header / S3 / φ)
 - `docs/IMPLEMENTATION-GAPS.md` (historical gap ledger)
 - `docs/QWANTUM.md` (T∥ → T₀ ingest; complementary)
+- `docs/QWANTUM-REKIA.md` (dumps = K atoms for extract only)
