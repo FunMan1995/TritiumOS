@@ -13,6 +13,9 @@ Living list of packing and policy choices. Change only with an explicit product 
 ## Smoke (Test Lab)
 
 ```
+groups-demo
+\ expect: join members=1 then 2; prefix GROUP-demo/; graph has group/member lines
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -29,7 +32,7 @@ Default remains mod-3 split (`trit-pair@` / `encode-trit`). Dense 2+2 packing is
 
 ## Persist files
 
-- `evolve/user-graph.trit` — neuron headers + typed links snapshot after refine.
+- `evolve/user-graph.trit` — neuron headers + typed links snapshot after refine; also `group <gid> <label>` / `member <gid> <nid>` (v1-compatible; legacy `group gid=` still loads).
 - `evolve/assistant-state.trit` — touched after `rekiA-refine` (last-refine label/path).
 - Reload on host start; refined `.fs` under `evolve/forth/refined/` stay live vocab.
 

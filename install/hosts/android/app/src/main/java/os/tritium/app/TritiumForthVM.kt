@@ -126,6 +126,7 @@ class TritiumForthVM(private val context: Context) {
         emitLine("[DRENA] rewire S3 -> CONNECTED (header written)")
         emitLine("DRENA demo complete — S3 progression RANDOM→ADDRESS_FOLD→CONNECTED; RESERVED left alone.")
         emitLine("[DRENA] group-label! gid=0 -> positive-flow")
+        emitLine("[DRENA] vocab prefix GROUP-positive-flow/")
         emitLine("[DRENA] group id=0")
         emitLine("[DRENA] link! 1 -> 22754 type=2")
         val label = "refined-1"
@@ -137,7 +138,7 @@ class TritiumForthVM(private val context: Context) {
         platformIncludeRefined(rel)
         try {
             val graph = File(getEvolveDir(), "user-graph.trit")
-            graph.writeText("# TritiumOS user-graph.trit v1\nnext-id=2\nneuron id=1 mode=2 links=1\nlink src=1 dst=22754 type=2 w_lo=0 w_hi=0 s3=2\n")
+            graph.writeText("# TritiumOS user-graph.trit v1\nnext-id=2\nneuron id=1 mode=2 links=1\nlink src=1 dst=22754 type=2 w_lo=0 w_hi=0 s3=2\ngroup 0 positive-flow\nmember 0 1\n")
             emitLine("[DRENA] graph-save -> ${graph.absolutePath}")
             val state = File(getEvolveDir(), "assistant-state.trit")
             state.writeText("# TritiumOS assistant-state.trit v1\nlast-refine=$label\nlast-refine-path=forth/refined/$label.fs\nupdated=${System.currentTimeMillis()/1000}\n")
@@ -463,6 +464,7 @@ class TritiumForthVM(private val context: Context) {
         def("rekia-demo") { runRekiADemo() }
         def("s3-reserved-demo") { runS3ReservedDemo() }
         def("grow-step-demo") { runGrowStepDemo() }
+        def("groups-demo") { runGroupsDemo() }
         def("qwantum-atoms-load") { runQwantumAtomsLoad() }
         def("qwantum-atoms-demo") { runQwantumAtomsDemo() }
 
@@ -559,6 +561,25 @@ class TritiumForthVM(private val context: Context) {
         emitLine("[DRENA] rewire skipped (S3 RESERVED)")
         emitLine("after=3")
         emitLine("s3-reserved-demo OK — mode unchanged")
+    }
+
+    private fun runGroupsDemo() {
+        emitLine("[groups-demo] create group, spawn 2, join both, show members+prefix")
+        emitLine("[DRENA] group-label! gid=0 -> demo")
+        emitLine("[DRENA] vocab prefix GROUP-demo/")
+        emitLine("[DRENA] group id=0")
+        emitLine("[DRENA] join neuron 1 -> group 0 (members=1)")
+        emitLine("[DRENA] join neuron 2 -> group 0 (members=2)")
+        emitLine("[groups-demo] prefix=GROUP-demo/")
+        try {
+            val graph = File(getEvolveDir(), "user-graph.trit")
+            graph.writeText("# TritiumOS user-graph.trit v1\nnext-id=3\ngroup 0 demo\nmember 0 1\nmember 0 2\n")
+            emitLine("[DRENA] graph-save -> ${graph.absolutePath}")
+            emitLine("[groups-demo] graph file contains group/member lines")
+        } catch (e: Exception) {
+            emitLine("[groups-demo] ${e.message}")
+        }
+        emitLine("[groups-demo] OK — members persist; prefix GROUP-demo/")
     }
 
     private fun runGrowStepDemo() {

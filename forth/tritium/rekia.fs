@@ -170,6 +170,23 @@ defer platform-assistant-state!
   ." [qwantum-atoms-demo] OK — refined written; dump not vocab" cr
   ." [qwantum-atoms-demo] assert: dump .fs was NOT included as vocab" cr ;
 
+
+create (groups-demo-label) 4 c, char d c, char e c, char m c, char o c,
+
+: groups-demo ( -- )
+  ." [groups-demo] create group, spawn 2, join both, show members+prefix" cr
+  (groups-demo-label) drena-group >r   \ R: gid
+  0 drena-spawn                        \ n1
+  0 drena-spawn                        \ n1 n2
+  dup r@ drena-join                    \ join n2
+  swap r@ drena-join                   \ join n1
+  drop
+  r@ .group
+  r@ group-vocab-prefix ." [groups-demo] prefix=" type cr
+  graph-save
+  r> drop
+  ." [groups-demo] OK — members persist; prefix GROUP-demo/" cr ;
+
 : persist-demo ( -- )
   ." [persist-demo] refine then persist graph+state" cr
   rekia-demo

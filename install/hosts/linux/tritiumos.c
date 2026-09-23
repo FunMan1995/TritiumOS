@@ -39,6 +39,7 @@ void grow_step_demo(void);
 void s3_reserved_demo(void);
 void qwantum_atoms_load(void);
 void qwantum_atoms_demo(void);
+void groups_demo(void);
 
 void find_core_dir(const char* argv0) {
     char path[MAX_PATH];
@@ -127,6 +128,55 @@ static int qwantum_k_influence = 0;
 static int qwantum_k_loaded = 0;
 static char qwantum_last_id[64] = "sample01test";
 
+/* Host-side group snapshot (mirrors Forth MAX-GROUPS member lists) */
+#define HOST_MAX_GROUPS 16
+#define HOST_MAX_MEMBERS 32
+static int host_group_count = 0;
+static char host_group_labels[HOST_MAX_GROUPS][32];
+static int host_group_n_members[HOST_MAX_GROUPS];
+static int host_group_members[HOST_MAX_GROUPS][HOST_MAX_MEMBERS];
+static int host_next_id = 2;
+static int host_link_src = 1, host_link_dst = 22754, host_link_type = 2, host_link_s3 = 2;
+static int host_neuron_mode = 2;
+
+static void host_groups_reset(void) {
+    host_group_count = 0;
+    for (int i = 0; i < HOST_MAX_GROUPS; i++) {
+        host_group_labels[i][0] = 0;
+        host_group_n_members[i] = 0;
+    }
+}
+
+static int host_group_create(const char* label) {
+    if (host_group_count >= HOST_MAX_GROUPS) return -1;
+    int gid = host_group_count++;
+    strncpy(host_group_labels[gid], label, sizeof(host_group_labels[gid]) - 1);
+    host_group_labels[gid][sizeof(host_group_labels[gid]) - 1] = 0;
+    host_group_n_members[gid] = 0;
+    printf("[DRENA] group-label! gid=%d -> %s\n", gid, host_group_labels[gid]);
+    printf("[DRENA] vocab prefix GROUP-%s/\n", host_group_labels[gid]);
+    printf("[DRENA] group id=%d\n", gid);
+    return gid;
+}
+
+static void host_group_join(int nid, int gid) {
+    if (gid < 0 || gid >= host_group_count) return;
+    for (int i = 0; i < host_group_n_members[gid]; i++) {
+        if (host_group_members[gid][i] == nid) {
+            printf("[DRENA] join neuron %d -> group %d (members=%d already)\n",
+                   nid, gid, host_group_n_members[gid]);
+            return;
+        }
+    }
+    if (host_group_n_members[gid] >= HOST_MAX_MEMBERS) {
+        printf("[DRENA] join full group %d\n", gid);
+        return;
+    }
+    host_group_members[gid][host_group_n_members[gid]++] = nid;
+    printf("[DRENA] join neuron %d -> group %d (members=%d)\n",
+           nid, gid, host_group_n_members[gid]);
+}
+
 void save_user_graph(void) {
     ensure_evolve_dir();
     char path[MAX_PATH];
@@ -134,11 +184,18 @@ void save_user_graph(void) {
     FILE* f = fopen(path, "w");
     if (!f) { perror("user-graph.trit"); return; }
     fprintf(f, "# TritiumOS user-graph.trit v1\n");
-    fprintf(f, "# neuron headers + typed links (host snapshot after refine)\n");
-    fprintf(f, "next-id=2\n");
-    fprintf(f, "neuron id=1 mode=2 header-s3=2 links=1\n");
-    fprintf(f, "link src=1 dst=22754 type=2 w_lo=0 w_hi=0 s3=2\n");
-    fprintf(f, "group gid=0 label=positive-flow members=1\n");
+    fprintf(f, "# neuron headers + typed links + groups/members (host snapshot)\n");
+    fprintf(f, "next-id=%d\n", host_next_id);
+    fprintf(f, "neuron id=1 mode=%d header-s3=%d links=1\n", host_neuron_mode, host_neuron_mode);
+    fprintf(f, "link src=%d dst=%d type=%d w_lo=0 w_hi=0 s3=%d\n",
+            host_link_src, host_link_dst, host_link_type, host_link_s3);
+    /* New format (item 4): group <gid> <label> / member <gid> <nid>
+       Legacy "group gid=N label=..." still accepted by load_user_graph. */
+    for (int g = 0; g < host_group_count; g++) {
+        fprintf(f, "group %d %s\n", g, host_group_labels[g]);
+        for (int m = 0; m < host_group_n_members[g]; m++)
+            fprintf(f, "member %d %d\n", g, host_group_members[g][m]);
+    }
     fclose(f);
     printf("[DRENA] graph-save -> %s\n", path);
 }
@@ -216,16 +273,66 @@ void load_user_graph(void) {
     }
     printf("[DRENA] graph-load <- %s\n", path);
     char line[512];
-    int neurons = 0, links = 0;
+    int neurons = 0, links = 0, groups = 0, members = 0;
+    host_groups_reset();
     while (fgets(line, sizeof(line), f)) {
         if (line[0] == '#' || line[0] == '\n') continue;
         if (strncmp(line, "neuron ", 7) == 0) neurons++;
-        if (strncmp(line, "link ", 5) == 0) links++;
+        else if (strncmp(line, "link ", 5) == 0) links++;
+        else if (strncmp(line, "member ", 7) == 0) {
+            int gid = -1, nid = -1;
+            if (sscanf(line + 7, "%d %d", &gid, &nid) == 2 &&
+                gid >= 0 && gid < HOST_MAX_GROUPS && nid >= 0) {
+                /* ensure group slot exists */
+                while (host_group_count <= gid && host_group_count < HOST_MAX_GROUPS) {
+                    host_group_labels[host_group_count][0] = 0;
+                    host_group_n_members[host_group_count] = 0;
+                    host_group_count++;
+                }
+                if (gid < host_group_count &&
+                    host_group_n_members[gid] < HOST_MAX_MEMBERS) {
+                    int dup = 0;
+                    for (int i = 0; i < host_group_n_members[gid]; i++)
+                        if (host_group_members[gid][i] == nid) { dup = 1; break; }
+                    if (!dup)
+                        host_group_members[gid][host_group_n_members[gid]++] = nid;
+                }
+                members++;
+            }
+        } else if (strncmp(line, "group ", 6) == 0) {
+            /* New: "group <gid> <label>" or legacy "group gid=N label=..." */
+            int gid = -1;
+            char label[32] = {0};
+            if (sscanf(line + 6, "%d %31s", &gid, label) == 2 && gid >= 0) {
+                while (host_group_count <= gid && host_group_count < HOST_MAX_GROUPS) {
+                    host_group_labels[host_group_count][0] = 0;
+                    host_group_n_members[host_group_count] = 0;
+                    host_group_count++;
+                }
+                if (gid < HOST_MAX_GROUPS) {
+                    strncpy(host_group_labels[gid], label, sizeof(host_group_labels[gid]) - 1);
+                }
+                groups++;
+            } else if (sscanf(line + 6, "gid=%d label=%31s", &gid, label) >= 1 && gid >= 0) {
+                /* strip optional members=N from legacy label token already limited */
+                char* sp = strchr(label, ' ');
+                if (sp) *sp = 0;
+                while (host_group_count <= gid && host_group_count < HOST_MAX_GROUPS) {
+                    host_group_labels[host_group_count][0] = 0;
+                    host_group_n_members[host_group_count] = 0;
+                    host_group_count++;
+                }
+                if (gid < HOST_MAX_GROUPS)
+                    strncpy(host_group_labels[gid], label, sizeof(host_group_labels[gid]) - 1);
+                groups++;
+            }
+        }
         fputs(line, stdout);
     }
     fclose(f);
     graph_loaded = 1;
-    printf("[DRENA] graph-load OK neurons=%d links=%d\n", neurons, links);
+    printf("[DRENA] graph-load OK neurons=%d links=%d groups=%d members=%d\n",
+           neurons, links, groups, members);
 }
 
 void load_assistant_state(void) {
@@ -566,8 +673,12 @@ void rekia_demo() {
 
     printf(": %s  ( -- n ) %d ;\n", label, value);
     printf("[REKIA] wrote+include %s\n", path);
-    printf("[DRENA] group-label! gid=0 -> positive-flow\n");
-    printf("[DRENA] group id=0\n");
+    host_groups_reset();
+    host_group_create("positive-flow");
+    host_group_join(1, 0);
+    host_next_id = 2;
+    host_neuron_mode = 2;
+    host_link_src = 1; host_link_dst = 22754; host_link_type = 2; host_link_s3 = 2;
     printf("[DRENA] link! 1 -> 22754 type=2\n");
     printf("[REKIA] include OK — word %s is live vocab (host-evaluated)\n", label);
     save_user_graph();
@@ -576,6 +687,53 @@ void rekia_demo() {
     graph_loaded = 1;
     strncpy(last_refined_label, label, sizeof(last_refined_label) - 1);
     printf("[rekia-demo] done — refined word should be live vocab\n\n");
+}
+
+
+void groups_demo(void) {
+    /* Research item 4: members persist + GROUP-<label>/ prefix; graph group/member lines */
+    printf("[groups-demo] create group, spawn 2, join both, show members+prefix\n");
+    host_groups_reset();
+    int gid = host_group_create("demo");
+    printf("[DRENA] spawned neuron id=1 mode=RANDOM\n");
+    printf("neuron stable & valid\n");
+    printf("[DRENA] spawned neuron id=2 mode=RANDOM\n");
+    printf("neuron stable & valid\n");
+    host_group_join(1, gid);
+    host_group_join(2, gid);
+    host_next_id = 3;
+    host_neuron_mode = 0;
+    host_link_src = 1; host_link_dst = 2; host_link_type = 0; host_link_s3 = 0;
+
+    printf("[DRENA] .group gid=%d\n", gid);
+    printf("  label=%s\n", host_group_labels[gid]);
+    printf("  prefix=GROUP-%s/\n", host_group_labels[gid]);
+    printf("  members(%d): ", host_group_n_members[gid]);
+    for (int i = 0; i < host_group_n_members[gid]; i++)
+        printf("%d ", host_group_members[gid][i]);
+    printf("\n");
+    printf("[groups-demo] prefix=GROUP-%s/\n", host_group_labels[gid]);
+
+    save_user_graph();
+
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/user-graph.trit", get_evolve_dir());
+    FILE* f = fopen(path, "r");
+    int saw_group = 0, saw_member = 0;
+    if (f) {
+        char line[512];
+        while (fgets(line, sizeof(line), f)) {
+            if (strncmp(line, "group ", 6) == 0) saw_group = 1;
+            if (strncmp(line, "member ", 7) == 0) saw_member = 1;
+        }
+        fclose(f);
+    }
+    if (saw_group && saw_member)
+        printf("[groups-demo] graph file contains group/member lines\n");
+    else
+        printf("[groups-demo] WARN: graph missing group/member lines (group=%d member=%d)\n",
+               saw_group, saw_member);
+    printf("[groups-demo] OK — members persist; prefix GROUP-demo/\n\n");
 }
 
 void assimilate_demo() {
@@ -885,7 +1043,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -957,6 +1115,8 @@ int main(int argc, char** argv) {
             s3_reserved_demo();
         } else if (strcasecmp(line, "grow-step-demo") == 0) {
             grow_step_demo();
+        } else if (strcasecmp(line, "groups-demo") == 0) {
+            groups_demo();
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {

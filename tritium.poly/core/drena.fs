@@ -106,23 +106,56 @@ variable _lsrc  variable _ldst  variable _ltype  variable _lw
   ." w=(" r@ link-w-lo .trit ." ," r@ link-w-hi .trit ." )"
   ." s3=" r> link-s3@ . cr ;
 
-\ --- labeled groups ---
+\ --- labeled groups (members persist + GROUP-<label>/ prefix string) ---
 16 constant MAX-GROUPS
+32 constant MAX-MEMBERS
+48 constant VOCAB-PFX-SZ
 create group-labels  MAX-GROUPS 32 * allot
+create group-member-tbl  MAX-GROUPS MAX-MEMBERS * cells allot
+create group-n-members   MAX-GROUPS cells allot
+create group-vocab-prefixes  MAX-GROUPS VOCAB-PFX-SZ * allot
 variable group-count  0 group-count !
 variable _gid
+variable _nid
+variable _gpfxd  variable _gpca  variable _gpu
 
 : group-label-addr ( gid -- c-addr ) 32 * group-labels + ;
+: group-member-base ( gid -- addr ) MAX-MEMBERS * cells group-member-tbl + ;
+: group-member-count ( gid -- n ) cells group-n-members + @ ;
+: group-members ( gid -- addr count )
+  dup group-member-base swap group-member-count ;
+: group-vocab-prefix-addr ( gid -- c-addr ) VOCAB-PFX-SZ * group-vocab-prefixes + ;
+
+\ Build counted string GROUP-<label>/ (prefix only — not a full wordlist hierarchy)
+: group-set-vocab-prefix ( gid -- )
+  dup group-vocab-prefix-addr _gpfxd !
+  group-label-addr count  _gpu !  _gpca !
+  _gpu @ 7 + 47 min  _gpfxd @ c!
+  _gpfxd @ 1+
+  dup [char] G swap c! 1+
+  dup [char] R swap c! 1+
+  dup [char] O swap c! 1+
+  dup [char] U swap c! 1+
+  dup [char] P swap c! 1+
+  dup [char] - swap c! 1+
+  _gpca @ over _gpu @ cmove
+  _gpu @ +  [char] / swap c!
+  ." [DRENA] vocab prefix " _gpfxd @ count type cr ;
+
+: group-vocab-prefix ( gid -- c-addr u )
+  group-vocab-prefix-addr count ;
 
 : group-label! ( c-addr u gid -- )
   dup _gid !
   group-label-addr place
   ." [DRENA] group-label! gid=" _gid @ . ." -> "
-  _gid @ group-label-addr count type cr ;
+  _gid @ group-label-addr count type cr
+  _gid @ group-set-vocab-prefix ;
 
 : (drena-group) ( c-addr u -- group-id )
   group-count @ MAX-GROUPS >= if 2drop -1 exit then
   group-count @ >r
+  0 r@ cells group-n-members + !
   r@ group-label!
   1 group-count +!
   ." [DRENA] group id=" r@ . cr
@@ -131,8 +164,31 @@ variable _gid
 \ Accept counted-string address (label-addr -- group-id)
 : drena-group ( label-addr -- group-id ) count (drena-group) ;
 
+\ True if nid already in group's member list
+: (group-has-member?) ( nid gid -- f )
+  group-members 0 ?do
+    dup i cells + @  2 pick = if 2drop -1 unloop exit then
+  loop
+  2drop 0 ;
+
 : drena-join ( neuron group -- )
-  swap neuron-id ." [DRENA] join neuron " . ." -> group " . cr ;
+  swap neuron-id  _nid !  _gid !
+  _gid @ group-member-count MAX-MEMBERS >= if
+    ." [DRENA] join full group " _gid @ . cr exit then
+  _nid @ _gid @ (group-has-member?) if
+    ." [DRENA] join neuron " _nid @ . ." -> group " _gid @ .
+    ." (members=" _gid @ group-member-count . ." already)" cr exit then
+  _nid @  _gid @ group-member-base  _gid @ group-member-count cells +  !
+  1  _gid @ cells group-n-members +  +!
+  ." [DRENA] join neuron " _nid @ . ." -> group " _gid @ .
+  ." (members=" _gid @ group-member-count . ." )" cr ;
+
+: .group ( gid -- )
+  dup ." [DRENA] .group gid=" . cr
+  dup ."   label=" group-label-addr count type cr
+  dup ."   prefix=" group-vocab-prefix type cr
+  dup ."   members(" group-member-count . ." ): "
+  group-members 0 ?do dup i cells + @ . loop drop cr ;
 
 : drena-spawn ( variation -- neuron )
   next-id @ dup 1 next-id +!
@@ -228,6 +284,7 @@ defer platform-graph-load
 
 : drena-init ( -- )
   1 next-id !  0 link-count !  0 group-count !  0 last-grown !
+  MAX-GROUPS 0 ?do 0 i cells group-n-members + ! loop
   ." [DRENA] Trit intelligence engine initialized" cr ;
 
 drena-init

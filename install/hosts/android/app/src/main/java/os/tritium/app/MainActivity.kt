@@ -122,7 +122,7 @@ class MainActivity : AppCompatActivity() {
         if (line.isEmpty()) return
         append("> $line\n")
         when (line.lowercase().split(" ").first()) {
-            "help" -> append("help | status | compute | compute-set | about | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo | qwantum-atoms-load | qwantum-atoms-demo | assimilate | bootstrap-host | full-stack-optimize | host-hw-info | load-refined\nAny other input sent to TritiumForth VM (demos or raw Forth).\n" +
+            "help" -> append("help | status | compute | compute-set | about | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo | groups-demo | qwantum-atoms-load | qwantum-atoms-demo | assimilate | bootstrap-host | full-stack-optimize | host-hw-info | load-refined\nAny other input sent to TritiumForth VM (demos or raw Forth).\n" +
                 "assimilate = ingest software on this phone hardware into evolve/assimilated/\n" +
                 "full-stack-optimize = DRENA+REKIA + assimilate + emit host bootstrap plans + refined modules\n")
             "compute" -> append(formatCompute())
@@ -154,6 +154,7 @@ class MainActivity : AppCompatActivity() {
             "rekiA-demo", "rekia-demo" -> append(vm?.evaluate("rekia-demo") ?: "")
             "s3-reserved-demo" -> append(vm?.evaluate("s3-reserved-demo") ?: "")
             "grow-step-demo" -> append(vm?.evaluate("grow-step-demo") ?: "")
+            "groups-demo" -> append(vm?.evaluate("groups-demo") ?: "")
             "qwantum-atoms-load" -> append(vm?.evaluate("qwantum-atoms-load") ?: "")
             "qwantum-atoms-demo" -> append(vm?.evaluate("qwantum-atoms-demo") ?: "")
             "assimilate" -> {

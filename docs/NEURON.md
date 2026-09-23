@@ -95,8 +95,13 @@ Validation: `valid-header?`, `valid-neuron?`, `validate-neuron`.
 | `set-s3-mode` | `( mode n-addr -- )` | packs via `pack-neuron-header` |
 | `neuron-add-connection` | `( connected-id n-addr -- )` | append link |
 | `make-neuron` | `( id mode -- n-addr )` | allocate at HERE |
-| `drena-group` | `( label-addr -- group-id )` | labeled neural group |
-| `drena-join` | `( neuron group -- )` | assign neuron to group |
+| `drena-group` | `( label-addr -- group-id )` | labeled neural group; zeros member list |
+| `drena-join` | `( neuron group -- )` | **persists** neuron-id in group member list (skip if already member); prints `(members=M)` |
+| `group-members` | `( gid -- addr count )` | member table slice |
+| `group-vocab-prefix` | `( gid -- c-addr u )` | counted `GROUP-<label>/` prefix string (not a full wordlist) |
+| `.group` | `( gid -- )` | smoke: label, prefix, members |
+
+**Members persist:** `drena-join` appends to an in-memory member table (not print-only). `group-label!` / group create also sets `GROUP-<label>/` via `group-vocab-prefix`. Host `graph-save` writes `group <gid> <label>` and `member <gid> <nid>` into `evolve/user-graph.trit`.
 
 ## 7. Acceptance (Test Lab)
 
@@ -109,6 +114,6 @@ Validation: `valid-header?`, `valid-neuron?`, `validate-neuron`.
 ## 8. Follow-ons (not this tip)
 
 - Typed link records with trit-weight (`TritiumOS.txt` §3.5)
-- Labeled groups + `group-label!` / `GROUP-<label>/` namespaces
+- Full Forth wordlist hierarchy for `GROUP-<label>/` (prefix string + print shipped; hierarchy later)
 - 32 vs 64 edition id width
 - `docs/ASSUMPTIONS.md` if packing or S3=`11` is ever decided

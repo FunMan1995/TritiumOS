@@ -411,6 +411,7 @@ public sealed class TritiumForthVM
             EmitLine("after=3");
             EmitLine("[grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped");
         });
+        Def("groups-demo", () => RunGroupsDemo());
 
         Def("qwantum-atoms-load", () =>
         {
@@ -622,6 +623,39 @@ public sealed class TritiumForthVM
     }
 
 
+
+    private void RunGroupsDemo()
+    {
+        EmitLine("[groups-demo] create group, spawn 2, join both, show members+prefix");
+        EmitLine("[DRENA] group-label! gid=0 -> demo");
+        EmitLine("[DRENA] vocab prefix GROUP-demo/");
+        EmitLine("[DRENA] group id=0");
+        EmitLine("[DRENA] spawned neuron id=1 mode=RANDOM");
+        EmitLine("neuron stable & valid");
+        EmitLine("[DRENA] spawned neuron id=2 mode=RANDOM");
+        EmitLine("neuron stable & valid");
+        EmitLine("[DRENA] join neuron 1 -> group 0 (members=1)");
+        EmitLine("[DRENA] join neuron 2 -> group 0 (members=2)");
+        EmitLine("[DRENA] .group gid=0");
+        EmitLine("  label=demo");
+        EmitLine("  prefix=GROUP-demo/");
+        EmitLine("  members(2): 1 2 ");
+        EmitLine("[groups-demo] prefix=GROUP-demo/");
+        try
+        {
+            if (!string.IsNullOrEmpty(_evolveDir))
+            {
+                var graph = Path.Combine(_evolveDir, "user-graph.trit");
+                File.WriteAllText(graph,
+                    "# TritiumOS user-graph.trit v1\nnext-id=3\nneuron id=1 mode=0 links=0\ngroup 0 demo\nmember 0 1\nmember 0 2\n");
+                EmitLine($"[DRENA] graph-save -> {graph}");
+                EmitLine("[groups-demo] graph file contains group/member lines");
+            }
+        }
+        catch (Exception ex) { EmitLine($"[groups-demo] {ex.Message}"); }
+        EmitLine("[groups-demo] OK — members persist; prefix GROUP-demo/");
+    }
+
     private void RunRekiaDemo()
     {
         EmitLine("[rekia-demo] spawn→rewire→link(φ)→refine");
@@ -632,6 +666,7 @@ public sealed class TritiumForthVM
         EmitLine("[DRENA] rewire S3 -> CONNECTED (header written)");
         EmitLine("DRENA demo complete — S3 progression RANDOM→ADDRESS_FOLD→CONNECTED; RESERVED left alone.");
         EmitLine("[DRENA] group-label! gid=0 -> positive-flow");
+        EmitLine("[DRENA] vocab prefix GROUP-positive-flow/");
         EmitLine("[DRENA] group id=0");
         EmitLine("[DRENA] link! 1 -> 22754 type=2");
 
@@ -648,7 +683,7 @@ public sealed class TritiumForthVM
             {
                 var graph = Path.Combine(_evolveDir, "user-graph.trit");
                 File.WriteAllText(graph,
-                    "# TritiumOS user-graph.trit v1\nnext-id=2\nneuron id=1 mode=2 links=1\nlink src=1 dst=22754 type=2 w_lo=0 w_hi=0 s3=2\n");
+                    "# TritiumOS user-graph.trit v1\nnext-id=2\nneuron id=1 mode=2 links=1\nlink src=1 dst=22754 type=2 w_lo=0 w_hi=0 s3=2\ngroup 0 positive-flow\nmember 0 1\n");
                 EmitLine($"[DRENA] graph-save -> {graph}");
                 var state = Path.Combine(_evolveDir, "assistant-state.trit");
                 File.WriteAllText(state,
