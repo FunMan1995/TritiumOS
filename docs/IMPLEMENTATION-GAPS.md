@@ -45,13 +45,12 @@ These prevent any real "TritiumOS" behavior per the product definition.
 - **`group-link!`** (Forth + Linux SoT demo): typed `LINK-INTER` inter-group bridge; `group-link-demo` → `[group-link-demo] OK — inter-group bridge`.
 - **License slot-11 refuse stub**: `tools/tritium-license` + hardened `license/validator.ps1` register into `evolve/license-slots.json`; accepts slots 1..10; **refuses slot 11**; `status` prints `N/10`. No real crypto / master-verify yet — still Priority 0 for signing.
 
-5. **No collective queue / Assimilate / economy**
-   - `queue/`, `assimilate/`: only READMEs describing words.
-   - No `queue-local?`, `queue-enqueue!`, `queue-pull`, `queue-prove!`.
-   - No `assimilate-fragment`, `assimilate-merge!`, epoch, wallet (simti), contribution_score, ASIM display.
+5. **Collective queue / Assimilate / economy**
+   - **Queue stub landed (wave5 item 2, §5b.1):** `queue-local?` / `queue-enqueue!` / `queue-pull` / `queue-prove!` + `queue-demo` (Forth + Linux host); persist `evolve/queue/jobs.jsonl` local cue only — **no fleet crypto/network**.
+   - `assimilate/`: still README-level; no `assimilate-fragment`, `assimilate-merge!`, epoch, wallet (simti), contribution_score, ASIM display.
    - No `evolve/wallet/...` or puzzle state.
    - Quantum jobs log to `evolve/qwantum-jobs.log` (works), but no offload to queue when "not locally computable".
-   - **Needed (Phases 6-7):** At minimum, queue decision + stub merge that "credits" simti. Later real distributed proof.
+   - **Needed (Phases 6-7):** Wire queue → assimilate stub merge that "credits" simti. Later real distributed proof.
 
 6. **Graduation / L.I.N.E.O.S. / evolution persistence missing**
    - No `lineos-graduate`, no `evolve/graduation.json` thresholds (session count, graph density, refined cells, license, user confirm).

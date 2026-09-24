@@ -83,3 +83,6 @@ refs/grapheneos/**/build/
 
 # Runtime license slot registry (created by tritium-license / validator)
 evolve/license-slots.json
+
+# Runtime collective queue cue (created by queue-demo / queue-enqueue!)
+evolve/queue/

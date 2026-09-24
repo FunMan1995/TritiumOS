@@ -25,6 +25,9 @@ group-vocab-demo
 group-link-demo
 \ expect: [group-link-demo] OK — inter-group bridge
 
+queue-demo
+\ expect: [queue-demo] OK — local cue (evolve/queue/; no fleet crypto)
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -122,3 +125,9 @@ tools/tritium-license register dev11  # expect refuse slot 11
 tools/tritium-license status          # expect 10/10
 ```
 
+## Collective queue stub (§5b.1)
+
+- Local cue only: `queue-local?` / `queue-enqueue!` / `queue-pull` / `queue-prove!` + `queue-demo`.
+- Persist: `evolve/queue/jobs.jsonl` (JSON lines; job-id, submitter, payload, local-failed-why, proof-hash, status).
+- No fleet network, no real crypto / proof verification beyond stub score fold.
+- Forth: `forth/tritium/queue.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.

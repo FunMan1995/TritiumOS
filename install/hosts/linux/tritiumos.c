@@ -46,6 +46,11 @@ void group_vocab_demo(void);
 void group_link_demo(void);
 void license_status(void);
 void license_register(const char* device_id);
+void queue_demo(void);
+int queue_local_p(int job);
+int queue_enqueue(int job);
+int queue_pull(void);
+int queue_prove(int job, unsigned proof);
 void s0_assist(const char* query);
 void s0_assist_demo(void);
 void load_edition(void);
@@ -124,6 +129,7 @@ void ensure_evolve_dir() {
     snprintf(sub, sizeof(sub), "%s/bootstrap", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/forth/refined", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/qwantum-dump", evolve_dir); mkdir(sub, 0755);
+    snprintf(sub, sizeof(sub), "%s/queue", evolve_dir); mkdir(sub, 0755);
 }
 
 const char* get_evolve_dir() {
@@ -1124,6 +1130,182 @@ void license_register(const char* device_id) {
                n, LICENSE_MAX_SLOTS, device_id);
 }
 
+
+/* --- Collective queue stub (§5b.1) — local cue only; no fleet crypto --- */
+#define QUEUE_MAX_JOBS 32
+#define Q_PENDING 0
+#define Q_ACTIVE 1
+#define Q_PROVED 2
+#define Q_REWARDED 3
+#define Q_WHY_OOM 0
+#define Q_WHY_TIMEOUT 1
+#define Q_WHY_ED32 2
+#define Q_WHY_OPTIN 3
+
+typedef struct {
+    int job_id;
+    int submitter;
+    int payload;
+    int local_failed_why;
+    unsigned proof_hash;
+    int status;
+    int local_ok; /* queue-local? flag */
+} queue_job_t;
+
+static queue_job_t queue_jobs[QUEUE_MAX_JOBS];
+static int queue_count = 0;
+static int queue_next_id = 1;
+
+static const char* queue_status_name(int s) {
+    switch (s) {
+        case Q_PENDING: return "pending";
+        case Q_ACTIVE: return "active";
+        case Q_PROVED: return "proved";
+        case Q_REWARDED: return "rewarded";
+        default: return "?";
+    }
+}
+
+static const char* queue_jobs_path(void) {
+    static char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/queue/jobs.jsonl", get_evolve_dir());
+    return path;
+}
+
+static void queue_ensure_dir(void) {
+    ensure_evolve_dir();
+    char sub[MAX_PATH];
+    snprintf(sub, sizeof(sub), "%s/queue", get_evolve_dir());
+    mkdir(sub, 0755);
+}
+
+static int queue_find_idx(int job_id) {
+    for (int i = 0; i < queue_count; i++)
+        if (queue_jobs[i].job_id == job_id) return i;
+    return -1;
+}
+
+static void queue_persist(void) {
+    queue_ensure_dir();
+    FILE* f = fopen(queue_jobs_path(), "w");
+    if (!f) { perror("queue/jobs.jsonl"); return; }
+    for (int i = 0; i < queue_count; i++) {
+        queue_job_t* j = &queue_jobs[i];
+        fprintf(f,
+            "{\"job-id\":%d,\"submitter\":%d,\"payload\":%d,"
+            "\"local-failed-why\":%d,\"proof-hash\":\"%08x\","
+            "\"status\":\"%s\",\"local-ok\":%d}\n",
+            j->job_id, j->submitter, j->payload, j->local_failed_why,
+            j->proof_hash, queue_status_name(j->status), j->local_ok);
+    }
+    fclose(f);
+}
+
+static void queue_reset(void) {
+    queue_count = 0;
+    queue_next_id = 1;
+    memset(queue_jobs, 0, sizeof(queue_jobs));
+}
+
+/* queue-local? ( job -- flag ) */
+int queue_local_p(int job) {
+    int idx = queue_find_idx(job);
+    if (idx < 0) return 0;
+    return queue_jobs[idx].local_ok ? 1 : 0;
+}
+
+/* Mint a job onto the local cue; returns job-id or 0 on full. */
+static int queue_make(int submitter, int payload, int why, int local_ok) {
+    if (queue_count >= QUEUE_MAX_JOBS) {
+        printf("[QUEUE] enqueue full\n");
+        return 0;
+    }
+    queue_job_t* j = &queue_jobs[queue_count++];
+    j->job_id = queue_next_id++;
+    j->submitter = submitter;
+    j->payload = payload;
+    j->local_failed_why = why;
+    j->proof_hash = 0;
+    j->status = Q_PENDING;
+    j->local_ok = local_ok ? 1 : 0;
+    queue_persist();
+    printf("[QUEUE] enqueue! job=%d status=pending (local cue)\n", j->job_id);
+    return j->job_id;
+}
+
+/* queue-enqueue! ( job -- ) — re-mark existing, or mint from payload id */
+int queue_enqueue(int job) {
+    int idx = queue_find_idx(job);
+    if (idx >= 0) {
+        queue_jobs[idx].status = Q_PENDING;
+        queue_persist();
+        printf("[QUEUE] enqueue! job=%d status=pending (local cue)\n", job);
+        return job;
+    }
+    /* mint non-local stub: submitter=1, payload=job, why=OPTIN, local_ok=0 */
+    return queue_make(1, job, Q_WHY_OPTIN, 0);
+}
+
+/* queue-pull ( -- job|0 ) */
+int queue_pull(void) {
+    for (int i = 0; i < queue_count; i++) {
+        if (queue_jobs[i].status == Q_PENDING) {
+            queue_jobs[i].status = Q_ACTIVE;
+            queue_persist();
+            printf("[QUEUE] pull job=%d status=active\n", queue_jobs[i].job_id);
+            return queue_jobs[i].job_id;
+        }
+    }
+    printf("[QUEUE] pull empty\n");
+    return 0;
+}
+
+/* queue-prove! ( job proof -- score ) */
+int queue_prove(int job, unsigned proof) {
+    int idx = queue_find_idx(job);
+    if (idx < 0) {
+        printf("[QUEUE] prove! unknown job\n");
+        return 0;
+    }
+    if (queue_jobs[idx].status != Q_ACTIVE) {
+        printf("[QUEUE] prove! not active\n");
+        return 0;
+    }
+    queue_jobs[idx].proof_hash = proof;
+    queue_jobs[idx].status = Q_PROVED;
+    int score = (int)((proof ^ (unsigned)job) & 0xffffu);
+    if (score == 0) score = 1;
+    queue_persist();
+    printf("[QUEUE] prove! job=%d score=%d\n", job, score);
+    return score;
+}
+
+void queue_demo(void) {
+    printf("[queue-demo] enqueue non-local job (queue-local?=false), pull, prove\n");
+    queue_reset();
+    int job = queue_make(42, 99, Q_WHY_TIMEOUT, 0); /* force non-local */
+    if (!job) {
+        printf("[queue-demo] FAIL — enqueue\n\n");
+        return;
+    }
+    if (queue_local_p(job)) {
+        printf("[queue-demo] FAIL — expected queue-local? false\n\n");
+        return;
+    }
+    printf("[queue-demo] queue-local? = false (forced non-local)\n");
+    int pulled = queue_pull();
+    if (!pulled || pulled != job) {
+        printf("[queue-demo] FAIL — pull empty/mismatch\n\n");
+        return;
+    }
+    int score = queue_prove(job, 0xa5a5u);
+    if (score <= 0) {
+        printf("[queue-demo] FAIL — prove score\n\n");
+        return;
+    }
+    printf("[queue-demo] OK — local cue (evolve/queue/; no fleet crypto)\n\n");
+}
+
 void assimilate_demo() {
     printf("Running assimilate demo (Forth->native-C assimilation of host software)...\n");
     assimilate_host_software();
@@ -1500,7 +1682,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -1590,6 +1772,21 @@ int main(int argc, char** argv) {
             const char* arg = line + 17;
             while (*arg == ' ') arg++;
             license_register(arg);
+        } else if (strcasecmp(line, "queue-demo") == 0) {
+            queue_demo();
+        } else if (strncasecmp(line, "queue-local? ", 13) == 0) {
+            int job = atoi(line + 13);
+            printf("[QUEUE] queue-local? job=%d flag=%d\n", job, queue_local_p(job));
+        } else if (strncasecmp(line, "queue-enqueue! ", 15) == 0) {
+            int job = atoi(line + 15);
+            queue_enqueue(job);
+        } else if (strcasecmp(line, "queue-pull") == 0) {
+            int job = queue_pull();
+            if (!job) printf("[QUEUE] false\n");
+        } else if (strncasecmp(line, "queue-prove! ", 13) == 0) {
+            int job = 0; unsigned proof = 0;
+            sscanf(line + 13, "%d %u", &job, &proof);
+            queue_prove(job, proof);
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {
