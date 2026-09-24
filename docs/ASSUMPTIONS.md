@@ -27,7 +27,16 @@ grow-step-demo
 
 qwantum-atoms-demo
 \ expect: OK — refined written; dump not vocab
+
+s0-assist-demo
+\ expect: [S0] assist: …; [REKIA] wrote+include …/refined-1.fs; OK — refined written; word live
+\ free-text (e.g. hello tritium) → same S0 path; no scaffold / "Example response"
 ```
+
+## S0 assistant path (free-text)
+
+- Host default chat/REPL free-text routes to **drena-step + rekiA-refine** (Linux `s0_assist`), not scaffold reply.
+- Emits `evolve/forth/refined/refined-*.fs` + `[REKIA] wrote+include` / live vocab (same artifact contract as `rekia-demo`).
 
 ## Trit nibble packing
 

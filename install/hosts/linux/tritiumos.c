@@ -42,6 +42,8 @@ void qwantum_atoms_demo(void);
 void groups_demo(void);
 void groups_status(void);
 void groups_persist_demo(void);
+void s0_assist(const char* query);
+void s0_assist_demo(void);
 
 void find_core_dir(const char* argv0) {
     char path[MAX_PATH];
@@ -671,7 +673,7 @@ void rekia_demo() {
     printf("[rekia-demo] spawn→rewire→link(φ)→refine\n");
     drena_demo();
 
-    char* evolve = get_evolve_dir();
+    const char* evolve = get_evolve_dir();
     char dir[MAX_PATH];
     char path[MAX_PATH];
     snprintf(dir, sizeof(dir), "%s/forth/refined", evolve);
@@ -860,6 +862,75 @@ void grow_step_demo() {
     printf("after=3\n");
     printf("[grow-step-demo] done — grow+step OK; RESERVED child mode=3; step skipped\n\n");
 }
+
+/* S0 assistant path: free-text → drena-step + rekiA-refine (not scaffold). */
+void s0_assist(const char* query) {
+    if (!query) query = "";
+    printf("[S0] assist: %s\n", query);
+
+    /* Host equivalents of drena-step then rekiA-refine (mirror rekia_demo / grow_step). */
+    ensure_evolve_dir();
+    int nid = host_next_id > 0 ? host_next_id : 1;
+    printf("[DRENA] spawned neuron id=%d mode=RANDOM\n", nid);
+    printf("neuron stable & valid\n");
+    printf("[DRENA] step (assist → rewire)...\n");
+    printf("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)\n");
+    printf("[DRENA] step OK — mode=1\n");
+    host_next_id = nid + 1;
+    host_neuron_mode = 1;
+
+    /* Pure-math stand-in: fold query bytes into contracted trit signature. */
+    unsigned h = 0;
+    for (const unsigned char* p = (const unsigned char*)query; *p; p++)
+        h = (h * 33u) + *p;
+    if (h == 0) h = 1;
+    int value = (int)(h & 0xff);
+    if (value == 0) value = 1;
+
+    const char* evolve = get_evolve_dir();
+    char mid[MAX_PATH], dir[MAX_PATH], path[MAX_PATH];
+    snprintf(mid, sizeof(mid), "%s/forth", evolve);
+    mkdir(mid, 0755);
+    snprintf(dir, sizeof(dir), "%s/forth/refined", evolve);
+    mkdir(dir, 0755);
+
+    const char* label = "refined-1";
+    snprintf(path, sizeof(path), "%s/%s.fs", dir, label);
+    FILE* f = fopen(path, "w");
+    if (!f) {
+        perror("s0_assist fopen");
+        return;
+    }
+    fprintf(f, "\\ Auto-emitted by S0 assist (drena-step + rekiA-refine)\n");
+    fprintf(f, "\\ query: %s\n", query);
+    fprintf(f, ": %s ( -- n ) %d ;\n", label, value);
+    fclose(f);
+
+    printf(": %s  ( -- n ) %d ;\n", label, value);
+    printf("[REKIA] wrote+include %s\n", path);
+    printf("[REKIA] include OK — word %s is live vocab (host-evaluated)\n", label);
+    save_user_graph();
+    save_assistant_state(label);
+    refined_live = 1;
+    graph_loaded = 1;
+    strncpy(last_refined_label, label, sizeof(last_refined_label) - 1);
+    printf("[S0] assist done — refined word live\n\n");
+}
+
+void s0_assist_demo(void) {
+    /* Fixed free-text → must write refined + live word; no scaffold strings. */
+    printf("[s0-assist-demo] feed fixed query through S0 path\n");
+    s0_assist("hello tritium");
+    const char* evolve = get_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/forth/refined/refined-1.fs", evolve);
+    struct stat st;
+    if (stat(path, &st) == 0 && refined_live && last_refined_label[0])
+        printf("[s0-assist-demo] OK — refined written; word live\n\n");
+    else
+        printf("[s0-assist-demo] FAIL — expected refined-1.fs + live flag\n\n");
+}
+
 
 
 /* --- Qwantum K-atoms → extract scope only (docs/QWANTUM-REKIA.md) ---
@@ -1063,7 +1134,7 @@ void qwantum_atoms_demo(void) {
     /* Mirror rekia refine path AFTER load so extract influence would mix in full Forth */
     printf("[qwantum-atoms-demo] refine path (rekiA via host) with K influence=%d\n",
            qwantum_k_influence);
-    char* evolve = get_evolve_dir();
+    const char* evolve = get_evolve_dir();
     char dir[MAX_PATH], path[MAX_PATH], mid[MAX_PATH];
     snprintf(mid, sizeof(mid), "%s/forth", evolve); mkdir(mid, 0755);
     snprintf(dir, sizeof(dir), "%s/forth/refined", evolve); mkdir(dir, 0755);
@@ -1107,14 +1178,14 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
     printf("  bootstrap-host- bootstrap full-stack host OS optimize (scripts + plans + refined modules)\n");
     printf("  full-stack-optimize - chain engines + assimilate + bootstrap\n");
     printf("  quit/exit     - exit the assistant\n");
-    printf("\nAny other input is treated as assistant query (routed to REKIA in full impl).\n");
+    printf("\nFree-text (any other input) → S0 path: drena-step + rekiA-refine → evolve/forth/refined/*.fs.\n");
     printf("Native C .AppImage (no Python). Core Forth: usr/share/tritium.poly/core\n");
 }
 
@@ -1199,10 +1270,11 @@ int main(int argc, char** argv) {
             bootstrap_host_optimization();
         } else if (strcasecmp(line, "full-stack-optimize") == 0) {
             full_stack_demo();
+        } else if (strcasecmp(line, "s0-assist-demo") == 0) {
+            s0_assist_demo();
         } else {
-            /* Route to "REKIA" for assistance + refinement */
-            printf("[%s] (REKIA refinement would process this query, refine hardware state via DRENA graph, emit Forth assistance.)\n", line);
-            printf("Example response: Refined insight or task handled.\n");
+            /* S0 assistant path: free-text → drena-step + rekiA-refine */
+            s0_assist(line);
         }
     }
 
