@@ -73,7 +73,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 - MASTER.md, ~~ASSIMILATE.md~~ landed (see `docs/ASSIMILATE.md`), ~~QUEUE.md~~ landed (see `docs/QUEUE.md`)
 - ASSISTANT.md, LINEOS.md, INSTALL.md, LICENSE.md
 - ~~NEURON.md~~ / ~~REKIA.md~~ landed (see `docs/NEURON.md`, `docs/REKIA.md`); ~~DRENA.md~~ / ~~GROUPS.md~~ landed (see docs/)
-- ARCHITECTURE.md (or similar), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
+- ~~ARCHITECTURE.md~~ landed (see `docs/ARCHITECTURE.md`), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
 - Also referenced: NEURON.md in §3, docs for BUILD, QWANTUM, QD-COMPUTE (partial quantum docs exist).
 
 **Monorepo layout shortfalls:**
