@@ -26,10 +26,10 @@
   12 lshift swap 8 lshift or swap 4 lshift or or ;
 
 : unpack-header ( h -- s0 s1 s2 s3 )
-  dup $f and 
-  over  4 rshift $f and 
-  over  8 rshift $f and 
-  rot 12 rshift $f and ;
+  dup $f and
+  over 4 rshift $f and
+  rot dup 8 rshift $f and
+  swap 12 rshift $f and ;
 
 : s3-mode ( s3 -- m ) 3 and ;  \ 00 RANDOM, 01 FOLD, 10 CONNECTED, 11 RESERVED
 : random-mode ( -- 0 ) 0 ;

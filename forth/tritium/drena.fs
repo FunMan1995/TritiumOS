@@ -19,7 +19,7 @@
 
 \ === Header helpers (build on updated trit.fs) ===
 : header>s0 ( h -- s0 ) unpack-header drop drop drop ;  \ leaves bottom s0 after dropping s3 s2 s1
-: header>s3 ( h -- s3 ) unpack-header swap drop swap drop drop ;  \ isolates top s3
+: header>s3 ( h -- s3 ) unpack-header nip nip nip ;
 : header>mode ( h -- m ) header>s3 s3-mode ;
 
 : set-s3-mode ( mode n-addr -- )
