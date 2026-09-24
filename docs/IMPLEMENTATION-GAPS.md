@@ -41,21 +41,20 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Spec (Phase 5-6):** Master mints signed keys; installers reject unsigned / slot 11; status shows N/10; worker keys for queue.
    - `master-mint-license`, `master-mint-worker`, `master-verify` (Forth + host side).
 
-5. **No collective queue / Assimilate / economy**
-   - `queue/`, `assimilate/`: only READMEs describing words.
-   - No `queue-local?`, `queue-enqueue!`, `queue-pull`, `queue-prove!`.
-   - No `assimilate-fragment`, `assimilate-merge!`, epoch, wallet (simti), contribution_score, ASIM display.
-   - No `evolve/wallet/...` or puzzle state.
-   - Quantum jobs log to `evolve/qwantum-jobs.log` (works), but no offload to queue when "not locally computable".
-   - **Needed (Phases 6-7):** At minimum, queue decision + stub merge that "credits" simti. Later real distributed proof.
+### Wave4 items 4+5 (landed stub)
+- **`group-link!`** (Forth + Linux SoT demo): typed `LINK-INTER` inter-group bridge; `group-link-demo` → `[group-link-demo] OK — inter-group bridge`.
+- **License slot-11 refuse stub**: `tools/tritium-license` + hardened `license/validator.ps1` register into `evolve/license-slots.json`; accepts slots 1..10; **refuses slot 11**; `status` prints `N/10`. No real crypto / master-verify yet — still Priority 0 for signing.
 
-6. **Graduation / L.I.N.E.O.S. / evolution persistence missing**
-   - No `lineos-graduate`, no `evolve/graduation.json` thresholds (session count, graph density, refined cells, license, user confirm).
-   - No `evolve/user-graph.trit` (D.R.E.N.A. + R.E.K.I.A. state).
-   - No product_id switch in manifest/UI ("tritium" → "lineos"), no slogan-only on L.I.N.E.O.S. splash.
-   - No `become-lineos` command.
-   - Hosts write only name + edition; no graph/session.
-   - `lineos/graduate.txt` is just a note.
+5. **Collective queue / Assimilate / economy**
+   - **Queue stub landed (wave5 item 2, §5b.1):** `queue-local?` / `queue-enqueue!` / `queue-pull` / `queue-prove!` + `queue-demo` (Forth + Linux host); persist `evolve/queue/jobs.jsonl` local cue only — **no fleet crypto/network**.
+   - **Assimilate stub landed (wave5 item 3, §5b.2–5b.3):** `assimilate-epoch` / `assimilate-fragment` / `assimilate-merge!` / `assimilate-solved?` / `assimilate-balance` + `assimilate-demo` (Forth + Linux host); integer simti wallet, 1 ASIM = 10⁸ simti, stub pool 10⁶; persist `evolve/assimilate/` — **no real crypto/fleet**. Duplicate proof-hash → zero credit.
+   - Quantum jobs log to `evolve/qwantum-jobs.log` (works), but no offload to queue when "not locally computable".
+   - **Needed (Phases 6-7):** Wire queue-prove! → assimilate-merge! end-to-end; later real distributed proof + master epoch settlement.
+
+6. **Graduation / L.I.N.E.O.S. / evolution persistence**
+   - **Graduation stub landed (wave5 items 4+5, §1a.1):** `evolve/graduation.json` (+ `.example`); `lineos-graduate` / `lineos-graduate-demo` / `become-lineos` (Forth + Linux host); scaffold `product_id=lineos` under `evolve/` — **not** a production branding release. See `docs/LINEOS.md`.
+   - Graph persist exists (`evolve/user-graph.trit`); full fleet sync / irreversible UX confirm packs still later.
+   - Needed later: real splash/about branding pack; irreversible confirm UX; fleet session counts.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
 - Real first-run bootstrap of core (extract + start TritiumForth + engines) inside the .exe / .apk.
@@ -73,7 +72,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 **Missing docs/ (none of the architecture ones exist):**
 - MASTER.md, ASSIMILATE.md, QUEUE.md
 - ASSISTANT.md, LINEOS.md, INSTALL.md, LICENSE.md
-- NEURON.md (must document the 4x4-bit header + trit-pair@ mapping), REKIA.md, DRENA.md, GROUPS.md
+- ~~NEURON.md~~ / ~~REKIA.md~~ landed (see `docs/NEURON.md`, `docs/REKIA.md`); ~~DRENA.md~~ / ~~GROUPS.md~~ landed (see docs/)
 - ARCHITECTURE.md (or similar), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
 - Also referenced: NEURON.md in §3, docs for BUILD, QWANTUM, QD-COMPUTE (partial quantum docs exist).
 
@@ -89,7 +88,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 **Other spec items:**
 - `evolve/graduation.json` (configurable thresholds).
 - Full neuron record layout + linking data binary/Forth structures (append-only links.bin etc.).
-- `GROUP-<label>/` vocab namespaces.
+- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; full nested search-order / persist of member words still open).
 - Environment vars and Forth naming conventions (§8).
 - Open: S3 code `11` RESERVED + “D.R.E.N.A. with ______” continuation (document, do not invent).
 
@@ -123,7 +122,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 4. Wire UI default input through a `rekiA-refine` path that produces visible "refined reply" + updates a neuron count.
 5. Write the missing core docs (start with NEURON.md + DRENA.md + REKIA.md — they are referenced in spec itself).
 6. Implement basic master/license slot enforcement (even if still scaffold keys) so "slot 11 rejected" works.
-7. Add `evolve/graduation.json` + a `lineos-graduate` stub that flips manifest product_id and UI.
+7. ~~Add `evolve/graduation.json` + `lineos-graduate` stub~~ **landed (wave5 items 4+5)** — deepen branding packs / confirm UX later.
 8. Use `tools/qwantum-field.ps1` (or Qwantum Compute) to pull more complete Forth/engine fragments from the "parallel timeline" into the tree.
 
 ## How to Track
