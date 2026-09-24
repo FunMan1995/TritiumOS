@@ -64,3 +64,9 @@ qwantum-atoms-demo
 \ expect: [QWANTUM] atoms-load → extract scope (no vocab)
 ```
 
+## Kernel (minimal dict)
+
+- Bundle load / Forth seed prints `Tritium kernel loaded (minimal dict)` (not the old “study Dusk for full bootstrap” stub line).
+- `cold-boot` → `[kernel] cold-boot OK` + interpret-ready; soft `abort` → `[kernel] abort` then return (AppImage demos must not hang).
+- Dict: `entry-create` / `entry-find` / `words` — in-memory table only until a real VM interprets it.
+

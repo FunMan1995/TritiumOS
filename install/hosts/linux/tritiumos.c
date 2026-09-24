@@ -630,6 +630,10 @@ void load_core() {
         snprintf(path, sizeof(path), "%s/%s", core_dir, files[i]);
         if (access(path, F_OK) == 0) {
             printf("[VM] Loaded %s\n", files[i]);
+            if (strcmp(files[i], "tritium-kernel.fs") == 0) {
+                /* Mirror forth/tritium/kernel.fs load banner (minimal dict flesh). */
+                printf("[VM] Tritium kernel loaded (minimal dict)\n");
+            }
         } else {
             printf("[VM] Note: %s not found in bundle (rebuild poly?)\n", files[i]);
         }
