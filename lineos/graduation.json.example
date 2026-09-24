@@ -1,0 +1,11 @@
+{
+  "minSessions": 30,
+  "minNeurons": 8,
+  "minConnectedClusters": 1,
+  "minRefinedPerClass": 1,
+  "requireLicenseValid": true,
+  "requireUserConfirm": true,
+  "productIdBefore": "tritium",
+  "productIdAfter": "lineos",
+  "demoForceReady": false
+}
