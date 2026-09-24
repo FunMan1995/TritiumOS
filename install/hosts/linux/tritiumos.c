@@ -40,6 +40,8 @@ void s3_reserved_demo(void);
 void qwantum_atoms_load(void);
 void qwantum_atoms_demo(void);
 void groups_demo(void);
+void groups_status(void);
+void groups_persist_demo(void);
 
 void find_core_dir(const char* argv0) {
     char path[MAX_PATH];
@@ -333,6 +335,13 @@ void load_user_graph(void) {
     graph_loaded = 1;
     printf("[DRENA] graph-load OK neurons=%d links=%d groups=%d members=%d\n",
            neurons, links, groups, members);
+    /* Rebuild host vocab prefix prints so GROUP-<label>/ is visible after restart */
+    for (int g = 0; g < host_group_count; g++) {
+        if (!host_group_labels[g][0]) continue;
+        printf("[DRENA] restore group gid=%d label=%s members=%d\n",
+               g, host_group_labels[g], host_group_n_members[g]);
+        printf("[DRENA] vocab prefix GROUP-%s/\n", host_group_labels[g]);
+    }
 }
 
 void load_assistant_state(void) {
@@ -365,6 +374,21 @@ void load_persisted_evolve(void) {
         printf("[persist] empty evolve (first run or cleared)\n");
     else
         printf("[persist] partial: graph_loaded=%d refined_live=%d\n", graph_loaded, refined_live);
+    /* Wave3 item 1: groups/members restored into host_group_* on boot */
+    {
+        int total_members = 0;
+        for (int g = 0; g < host_group_count; g++)
+            total_members += host_group_n_members[g];
+        if (host_group_count > 0 && total_members > 0) {
+            printf("[persist] OK — groups + members present after restart members=%d",
+                   total_members);
+            for (int g = 0; g < host_group_count; g++) {
+                if (host_group_labels[g][0])
+                    printf(" GROUP-%s/", host_group_labels[g]);
+            }
+            printf("\n");
+        }
+    }
 }
 
 void graph_status(void) {
@@ -736,6 +760,46 @@ void groups_demo(void) {
     printf("[groups-demo] OK — members persist; prefix GROUP-demo/\n\n");
 }
 
+void groups_status(void) {
+    printf("[groups-status] host groups=%d\n", host_group_count);
+    for (int g = 0; g < host_group_count; g++) {
+        printf("  gid=%d label=%s prefix=GROUP-%s/ members(%d): ",
+               g,
+               host_group_labels[g][0] ? host_group_labels[g] : "(none)",
+               host_group_labels[g][0] ? host_group_labels[g] : "?",
+               host_group_n_members[g]);
+        for (int m = 0; m < host_group_n_members[g]; m++)
+            printf("%d ", host_group_members[g][m]);
+        printf("\n");
+    }
+    if (host_group_count == 0)
+        printf("  (no groups in host memory — run groups-demo or load graph)\n");
+}
+
+void groups_persist_demo(void) {
+    /* In-process restart surrogate: save via groups-demo, clear host, reload graph */
+    printf("[groups-persist-demo] seed groups-demo then reload user-graph (restart surrogate)\n");
+    groups_demo();
+    printf("[groups-persist-demo] clearing host_group_* and reloading evolve/user-graph.trit...\n");
+    host_groups_reset();
+    load_user_graph();
+    groups_status();
+    int total_members = 0;
+    int found_demo = 0;
+    for (int g = 0; g < host_group_count; g++) {
+        total_members += host_group_n_members[g];
+        if (strcmp(host_group_labels[g], "demo") == 0 && host_group_n_members[g] >= 2)
+            found_demo = 1;
+    }
+    if (found_demo) {
+        printf("[persist] OK — groups + members present after restart members=%d GROUP-demo/\n",
+               total_members);
+        printf("[groups-persist-demo] OK — GROUP-demo/ + members restored from graph\n\n");
+    } else {
+        printf("[groups-persist-demo] FAIL — expected GROUP-demo/ with >=2 members after reload\n\n");
+    }
+}
+
 void assimilate_demo() {
     printf("Running assimilate demo (Forth->native-C assimilation of host software)...\n");
     assimilate_host_software();
@@ -1043,7 +1107,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -1117,6 +1181,10 @@ int main(int argc, char** argv) {
             grow_step_demo();
         } else if (strcasecmp(line, "groups-demo") == 0) {
             groups_demo();
+        } else if (strcasecmp(line, "groups-status") == 0) {
+            groups_status();
+        } else if (strcasecmp(line, "groups-persist-demo") == 0) {
+            groups_persist_demo();
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {

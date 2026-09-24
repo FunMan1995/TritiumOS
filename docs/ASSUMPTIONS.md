@@ -16,6 +16,9 @@ Living list of packing and policy choices. Change only with an explicit product 
 groups-demo
 \ expect: join members=1 then 2; prefix GROUP-demo/; graph has group/member lines
 
+groups-persist-demo
+\ expect: [persist] OK — groups + members present after restart … GROUP-demo/
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -35,6 +38,7 @@ Default remains mod-3 split (`trit-pair@` / `encode-trit`). Dense 2+2 packing is
 - `evolve/user-graph.trit` — neuron headers + typed links snapshot after refine; also `group <gid> <label>` / `member <gid> <nid>` (v1-compatible; legacy `group gid=` still loads).
 - `evolve/assistant-state.trit` — touched after `rekiA-refine` (last-refine label/path).
 - Reload on host start; refined `.fs` under `evolve/forth/refined/` stay live vocab.
+- **Groups across AppImage restart:** `load_user_graph` on boot restores host labels + member lists and reprints `GROUP-<label>/` prefixes (Linux host is source of truth for demos).
 
 ## Qwantum K-atoms (extract scope only)
 

@@ -92,13 +92,15 @@ Smoke: `groups-demo` — join grows member count; graph shows `group` / `member`
 | `graph-save` | `( -- )` | Host `platform-graph-save` → `evolve/user-graph.trit` |
 | `graph-load` | `( -- )` | Host `platform-graph-load` |
 
+`user-graph.trit` lines `group <gid> <label>` / `member <gid> <nid>` are written on save and **restored on AppImage start** into host group tables (labels, member lists, `GROUP-<label>/` vocab prefix prints). Quit → restart keeps groups; smoke: `groups-persist-demo` or boot auto-check `[persist] OK — groups + members present after restart`.
+
 R.E.K.I.A. refine path also touches `evolve/assistant-state.trit` (see `REKIA.md` / persist tip).
 
-## 8. Acceptance (Test Lab — docs tip)
+## 8. Acceptance (Test Lab)
 
 1. `docs/DRENA.md` present; one-line cite from `docs/NEURON.md`.
-2. Linux regression unchanged: `rekia-demo`, `s3-reserved-demo`, `grow-step-demo`, `groups-demo`, `qwantum-atoms-demo` still PASS.
-3. No Forth behavior change required for this docs-only tip.
+2. Linux regression: `rekia-demo`, `s3-reserved-demo`, `grow-step-demo`, `groups-demo`, `qwantum-atoms-demo` still PASS.
+3. Restart: after `groups-demo` + quit, next AppImage boot restores members + `GROUP-<label>/` (`groups-persist-demo` / `[persist] OK — groups + members present after restart`).
 
 ## 9. Cite
 
