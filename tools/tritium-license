@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# tritium-license — device slot stub (TritiumOS.txt §5a.4)
+# Max 10 devices; refuses slot 11. No crypto — scaffold only.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SLOTS_FILE="${TRITIUM_LICENSE_SLOTS:-$ROOT/evolve/license-slots.json}"
+MAX_SLOTS=10
+
+usage() {
+  echo "Usage: tritium-license status | register <device-id> | clear"
+  echo "  status              print N/10 registered devices"
+  echo "  register <id>       register device into slots 1..10; refuses 11+"
+  echo "  clear               wipe evolve/license-slots.json (test helper)"
+  echo "Slots file: $SLOTS_FILE"
+}
+
+ensure_slots_file() {
+  mkdir -p "$(dirname "$SLOTS_FILE")"
+  if [[ ! -f "$SLOTS_FILE" ]]; then
+    printf '%s\n' '{
+  "maxSlots": 10,
+  "devices": []
+}' > "$SLOTS_FILE"
+  fi
+}
+
+# Print device ids one per line (python for reliable JSON)
+list_ids() {
+  ensure_slots_file
+  python3 - "$SLOTS_FILE" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path) as f:
+    data = json.load(f)
+for d in data.get("devices", []):
+    if isinstance(d, dict):
+        print(d.get("id", ""))
+    else:
+        print(d)
+PY
+}
+
+cmd_status() {
+  ensure_slots_file
+  mapfile -t ids < <(list_ids)
+  # drop empty
+  ids=("${ids[@]/}")
+  n=${#ids[@]}
+  echo "tritium-license status: ${n}/${MAX_SLOTS}"
+  echo "[license] status ${n}/${MAX_SLOTS}"
+  local i=1
+  for id in "${ids[@]}"; do
+    [[ -z "$id" ]] && continue
+    echo "  slot ${i}: ${id}"
+    i=$((i + 1))
+  done
+}
+
+cmd_register() {
+  local id="${1:-}"
+  if [[ -z "$id" ]]; then
+    echo "[license] ERROR: device id required" >&2
+    exit 2
+  fi
+  ensure_slots_file
+  python3 - "$SLOTS_FILE" "$id" "$MAX_SLOTS" <<'PY'
+import json, sys
+path, device_id, max_slots = sys.argv[1], sys.argv[2], int(sys.argv[3])
+with open(path) as f:
+    data = json.load(f)
+devices = data.get("devices") or []
+ids = []
+for d in devices:
+    if isinstance(d, dict):
+        ids.append(d.get("id", ""))
+    else:
+        ids.append(str(d))
+if device_id in ids:
+    slot = ids.index(device_id) + 1
+    print(f"[license] already registered slot {slot}/{max_slots} device={device_id}")
+    sys.exit(0)
+if len(ids) >= max_slots:
+    print(f"[license] ERROR: refuses slot 11 — max {max_slots} devices (§5a.4)")
+    print("[license] refuse slot 11")
+    sys.exit(1)
+ids.append(device_id)
+data["maxSlots"] = max_slots
+data["devices"] = [{"id": x, "slot": i + 1} for i, x in enumerate(ids)]
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+n = len(ids)
+print(f"[license] registered slot {n}/{max_slots} device={device_id}")
+PY
+}
+
+cmd_clear() {
+  ensure_slots_file
+  printf '%s\n' '{
+  "maxSlots": 10,
+  "devices": []
+}' > "$SLOTS_FILE"
+  echo "[license] cleared $SLOTS_FILE"
+}
+
+main() {
+  local cmd="${1:-}"
+  case "$cmd" in
+    status) cmd_status ;;
+    register)
+      shift || true
+      cmd_register "${1:-}"
+      ;;
+    clear) cmd_clear ;;
+    -h|--help|help|"") usage; [[ -n "$cmd" ]] || exit 2 ;;
+    *) echo "Unknown command: $cmd" >&2; usage; exit 2 ;;
+  esac
+}
+
+main "$@"
