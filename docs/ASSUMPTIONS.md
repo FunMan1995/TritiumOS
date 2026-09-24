@@ -28,6 +28,9 @@ grow-step-demo
 qwantum-atoms-demo
 \ expect: OK — refined written; dump not vocab
 
+edition-demo
+\ expect: OK — edition=… spawn works; id clamped on 32
+
 s0-assist-demo
 \ expect: [S0] assist: …; [REKIA] wrote+include …/refined-1.fs; OK — refined written; word live
 \ free-text (e.g. hello tritium) → same S0 path; no scaffold / "Example response"
@@ -46,6 +49,7 @@ Default remains mod-3 split (`trit-pair@` / `encode-trit`). Dense 2+2 packing is
 
 - `evolve/user-graph.trit` — neuron headers + typed links snapshot after refine; also `group <gid> <label>` / `member <gid> <nid>` (v1-compatible; legacy `group gid=` still loads).
 - `evolve/assistant-state.trit` — touched after `rekiA-refine` (last-refine label/path).
+- `evolve/edition.trit` — `edition=32|64`; host load on start / save on `set_edition`.
 - Reload on host start; refined `.fs` under `evolve/forth/refined/` stay live vocab.
 - **Groups across AppImage restart:** `load_user_graph` on boot restores host labels + member lists and reprints `GROUP-<label>/` prefixes (Linux host is source of truth for demos).
 
@@ -62,6 +66,27 @@ Smoke:
 qwantum-atoms-demo
 \ expect: [qwantum-atoms-demo] OK — refined written; dump not vocab
 \ expect: [QWANTUM] atoms-load → extract scope (no vocab)
+```
+
+
+## Edition id width (32 / 64)
+
+- Persist: `evolve/edition.trit` holds `edition=32` or `edition=64` (Linux host reads on boot, writes on `set_edition`).
+- Kernel: `ARCH` / `edition@` / `32bit?` / `64bit?` / `set-edition` (`forth/tritium/kernel.fs`).
+- D.R.E.N.A.: `id-width` / `id-mask` / `id-clamp` — 32-bit edition masks neuron ids and `next-id` with `$ffffffff and`; 64-bit keeps the full cell.
+- Default remains **64** when unset (`cold-boot` / host).
+- Trit packing and S3 policy are edition-independent (`TritiumOS.txt` § Editions).
+
+Smoke:
+
+```
+status
+\ expect: edition=64-bit (default)
+
+edition-demo
+\ expect: [edition-demo] OK — edition=… spawn id=… ; spawning works
+
+\ optional: edition 32 → edition-demo → spawn still OK; edition 64 restores default
 ```
 
 ## Kernel (minimal dict)

@@ -3,7 +3,7 @@
 **Status:** Shipper-ready spec (matches PR #10 tip / Research item 5)  
 **Canonical brief:** `TritiumOS.txt` §3, §5  
 **Sources of truth (code):** `forth/tritium/drena.fs`  
-**Companions:** `docs/NEURON.md` (header / trit / S3), `docs/REKIA.md` (refine → Forth), `docs/ASSUMPTIONS.md` (S3=`11`), `docs/QWANTUM-REKIA.md` (K atoms)
+**Companions:** `docs/NEURON.md` (header / trit / S3), `docs/GROUPS.md` (labeled groups + persist), `docs/REKIA.md` (refine → Forth), `docs/ASSUMPTIONS.md` (S3=`11`), `docs/QWANTUM-REKIA.md` (K atoms)
 
 ## 1. Purpose
 
@@ -81,7 +81,7 @@ Global link table (separate from embedded connection list):
 | `group-members` | `( gid -- addr count )` | |
 | `group-vocab-prefix` | `( gid -- c-addr u )` | `GROUP-<label>/` prefix string |
 
-`GROUP-<label>/` is a **prefix string**, not a full Forth wordlist hierarchy (yet).
+`GROUP-<label>/` is a **prefix string**, not a full Forth wordlist hierarchy (yet). Full group word table, persist lines, and restart restore: [`docs/GROUPS.md`](GROUPS.md) (PR #12 / DRENA §6–7).
 
 Smoke: `groups-demo` — join grows member count; graph shows `group` / `member` lines.
 
@@ -105,5 +105,5 @@ R.E.K.I.A. refine path also touches `evolve/assistant-state.trit` (see `REKIA.md
 ## 9. Cite
 
 - `TritiumOS.txt` §§3, 5
-- `docs/NEURON.md`, `docs/REKIA.md`, `docs/ASSUMPTIONS.md`, `docs/QWANTUM-REKIA.md`
+- `docs/NEURON.md`, `docs/GROUPS.md`, `docs/REKIA.md`, `docs/ASSUMPTIONS.md`, `docs/QWANTUM-REKIA.md`
 - `forth/tritium/drena.fs` (PR #10 tip)

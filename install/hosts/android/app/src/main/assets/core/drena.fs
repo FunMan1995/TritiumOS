@@ -190,13 +190,20 @@ variable _gpfxd  variable _gpca  variable _gpu
   dup ."   members(" group-member-count . ." ): "
   group-members 0 ?do dup i cells + @ . loop drop cr ;
 
+\ Edition id width (wave3 item 5): 32 → $ffffffff mask; 64 → full cell
+\ Depends on kernel edition@ / 32bit? (loaded before drena).
+: id-width ( -- bits ) 32bit? if 32 else 64 then ;
+: id-mask ( -- mask ) 32bit? if $ffffffff else -1 then ;
+: id-clamp ( n -- n' ) id-mask and ;
+
 : drena-spawn ( variation -- neuron )
-  next-id @ dup 1 next-id +!
+  next-id @ id-clamp dup 1+ id-clamp next-id !
   swap make-neuron
   dup validate-neuron
   dup last-grown !
   dup ." [DRENA] spawned neuron id=" neuron-id
-  ." mode=" dup neuron-header header>mode mode-name cr ;
+  ." mode=" dup neuron-header header>mode mode-name
+  ." (id-width=" id-width . ." )" cr ;
 
 variable _dtype
 : drena-link ( src-neuron dst-id -- )

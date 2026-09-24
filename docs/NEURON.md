@@ -6,6 +6,7 @@
 **Policy:** S3 mode `11` (RESERVED) — see `docs/ASSUMPTIONS.md`; do not invent behavior.
 
 **Engine ops:** see [`docs/DRENA.md`](DRENA.md) (spawn/link/rewire/grow/step, groups, persist).
+**Labeled groups:** see [`docs/GROUPS.md`](GROUPS.md) (`drena-group` / join / `GROUP-<label>/` / persist).
 
 
 ## 1. Purpose
@@ -75,7 +76,7 @@ When `drena-link` runs with source S3 mode = ADDRESS_FOLD, it prints
 
 ## 5. Neuron record (current Forth layout)
 
-Cell-based (32/64-friendly); edition width for ids is future work.
+Cell-based (32/64-friendly); neuron / next-id width follows `edition@` via `id-width` / `id-clamp` (32 → `$ffffffff and`; 64 → full cell). See `docs/ASSUMPTIONS.md`.
 
 | Offset | Field | Accessor |
 |--------|-------|----------|
@@ -118,5 +119,4 @@ Validation: `valid-header?`, `valid-neuron?`, `validate-neuron`.
 
 - Typed link records with trit-weight (`TritiumOS.txt` §3.5)
 - Full Forth wordlist hierarchy for `GROUP-<label>/` (prefix string + print shipped; hierarchy later)
-- 32 vs 64 edition id width
 - `docs/ASSUMPTIONS.md` if packing or S3=`11` is ever decided

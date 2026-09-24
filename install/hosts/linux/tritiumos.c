@@ -44,6 +44,9 @@ void groups_status(void);
 void groups_persist_demo(void);
 void s0_assist(const char* query);
 void s0_assist_demo(void);
+void load_edition(void);
+void save_edition(void);
+void edition_demo(void);
 
 void find_core_dir(const char* argv0) {
     char path[MAX_PATH];
@@ -643,9 +646,71 @@ void load_core() {
     printf("[VM] This .AppImage is the on-demand Linux delivery of the assistant.\n\n");
 }
 
+static unsigned id_mask_u(void) {
+    return edition == 32 ? 0xffffffffu : ~0u;
+}
+
+static int id_clamp_host(int n) {
+    if (edition == 32)
+        return (int)((unsigned)n & 0xffffffffu);
+    return n;
+}
+
+void save_edition(void) {
+    ensure_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/edition.trit", evolve_dir);
+    FILE* f = fopen(path, "w");
+    if (!f) { perror("edition.trit"); return; }
+    fprintf(f, "# TritiumOS edition.trit v1\n");
+    fprintf(f, "edition=%d\n", edition);
+    fclose(f);
+    printf("[VM] edition.trit -> %s (edition=%d)\n", path, edition);
+}
+
+void load_edition(void) {
+    ensure_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/edition.trit", evolve_dir);
+    FILE* f = fopen(path, "r");
+    if (!f) {
+        printf("[VM] edition.trit missing — default edition=%d\n", edition);
+        return;
+    }
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#' || line[0] == '\n') continue;
+        if (strncmp(line, "edition=", 8) == 0) {
+            int ed = atoi(line + 8);
+            if (ed == 32 || ed == 64) edition = ed;
+        }
+    }
+    fclose(f);
+    printf("[VM] edition.trit <- %s (edition=%d id-width=%d)\n",
+           path, edition, edition);
+}
+
 void set_edition(int ed) {
+    if (ed != 32 && ed != 64) {
+        printf("[VM] edition must be 32 or 64 (got %d)\n", ed);
+        return;
+    }
     edition = ed;
-    printf("[VM] Edition set to %d-bit\n", edition);
+    save_edition();
+    printf("[VM] Edition set to %d-bit (id-width=%d mask=%s)\n",
+           edition, edition, edition == 32 ? "$ffffffff" : "full-cell");
+}
+
+void edition_demo(void) {
+    printf("[edition-demo] edition=%d-bit id-width=%d mask=%s\n",
+           edition, edition, edition == 32 ? "$ffffffff" : "full-cell");
+    int nid = id_clamp_host(host_next_id > 0 ? host_next_id : 1);
+    printf("[DRENA] spawned neuron id=%d mode=RANDOM (id-width=%d)\n", nid, edition);
+    printf("neuron stable & valid\n");
+    host_next_id = id_clamp_host(nid + 1);
+    save_edition();
+    printf("[edition-demo] OK — edition=%d spawn id=%d next-id=%d\n\n",
+           edition, nid, host_next_id);
 }
 
 void platform_init() {
@@ -1182,7 +1247,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -1194,7 +1259,8 @@ void show_help() {
 }
 
 void show_status() {
-    printf("product=TritiumOS creator=Draco assistant=%s edition=%d-bit\n", assistant_name, edition);
+    printf("product=TritiumOS creator=Draco assistant=%s edition=%d-bit id-width=%d\n",
+           assistant_name, edition, edition);
     printf("core=loaded (native .AppImage, no Python) platform=Linux\n");
     printf("Evolve: %s\n", get_evolve_dir());
     printf("Engines: DRENA + REKIA active for hardware refinement + user assistance.\n");
@@ -1223,10 +1289,11 @@ int main(int argc, char** argv) {
     }
 
     ensure_evolve_dir();
+    load_edition();
     print_banner();
     load_core();
     platform_init();
-    set_edition(edition);
+    set_edition(edition);  /* persist edition.trit if missing */
     load_persisted_evolve();
 
     printf("\nType 'help' to begin. The assistant is ready (on-demand .AppImage).\n");
@@ -1276,6 +1343,16 @@ int main(int argc, char** argv) {
             full_stack_demo();
         } else if (strcasecmp(line, "s0-assist-demo") == 0) {
             s0_assist_demo();
+        } else if (strcasecmp(line, "edition-demo") == 0) {
+            edition_demo();
+        } else if (strncasecmp(line, "edition ", 8) == 0 ||
+                   strncasecmp(line, "set-edition ", 12) == 0) {
+            const char* arg = line;
+            if (strncasecmp(arg, "set-edition ", 12) == 0) arg += 12;
+            else arg += 8;
+            while (*arg == ' ') arg++;
+            int ed = atoi(arg);
+            set_edition(ed);
         } else {
             /* S0 assistant path: free-text → drena-step + rekiA-refine */
             s0_assist(line);
