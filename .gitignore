@@ -76,3 +76,10 @@ tools/test-*.log
 
 # Large generated or cache
 refs/grapheneos/**/build/
+
+# .NET build outputs
+**/bin/
+**/obj/
+
+# Runtime license slot registry (created by tritium-license / validator)
+evolve/license-slots.json
