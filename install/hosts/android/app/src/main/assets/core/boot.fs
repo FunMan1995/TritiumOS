@@ -7,4 +7,5 @@ include drena.fs
 include rekia.fs
 include queue.fs
 include assimilate.fs
+include lineos.fs
 ." boot ok — run rekia-demo for smoke" cr

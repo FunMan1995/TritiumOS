@@ -53,6 +53,9 @@ int queue_pull(void);
 int queue_prove(int job, unsigned proof);
 /* Assimilate stub (§5b.2–5b.3) — local wallet/epoch; no crypto */
 void assimilate_demo(void);
+void lineos_graduate(int demo_force);
+void lineos_graduate_demo(void);
+void become_lineos(void);
 int assimilate_epoch(void);
 int assimilate_fragment(int group, int links);
 int assimilate_merge(int frag, unsigned proof);
@@ -1475,6 +1478,248 @@ void assimilate_demo(void) {
     printf("[assimilate-demo] OK — simti credited (evolve/assimilate/; no crypto)\n\n");
 }
 
+
+/* --- L.I.N.E.O.S. graduation stub (§1a.1) — scaffold only; no production branding --- */
+#define GRAD_SLOGAN "The line tread between madness and genius."
+
+typedef struct {
+    int minSessions;
+    int minNeurons;
+    int minConnectedClusters;
+    int minRefinedPerClass;
+    int requireLicenseValid;
+    int requireUserConfirm;
+    char productIdBefore[32];
+    char productIdAfter[32];
+    int demoForceReady;
+} graduation_cfg_t;
+
+static graduation_cfg_t grad_cfg = {
+    30, 8, 1, 1, 1, 1, "tritium", "lineos", 0
+};
+
+/* Stub metrics (demo / become-lineos can force) */
+static int grad_sessions = 0;
+static int grad_neurons = 0;
+static int grad_clusters = 0;
+static int grad_refined = 0;
+static int grad_license_ok = 0;
+static int grad_confirm = 0;
+static int grad_become = 0;
+static int grad_product_is_lineos = 0;
+static int grad_host_flag_lineos = 0;
+
+static void grad_defaults(graduation_cfg_t* c) {
+    c->minSessions = 30;
+    c->minNeurons = 8;
+    c->minConnectedClusters = 1;
+    c->minRefinedPerClass = 1;
+    c->requireLicenseValid = 1;
+    c->requireUserConfirm = 1;
+    strncpy(c->productIdBefore, "tritium", sizeof(c->productIdBefore) - 1);
+    strncpy(c->productIdAfter, "lineos", sizeof(c->productIdAfter) - 1);
+    c->demoForceReady = 0;
+}
+
+static int grad_json_int(const char* buf, const char* key, int def) {
+    char pat[64];
+    snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char* p = strstr(buf, pat);
+    if (!p) return def;
+    p = strchr(p + strlen(pat), ':');
+    if (!p) return def;
+    p++;
+    while (*p == ' ' || *p == '\t') p++;
+    if (strncmp(p, "true", 4) == 0) return 1;
+    if (strncmp(p, "false", 5) == 0) return 0;
+    return atoi(p);
+}
+
+static void grad_json_str(const char* buf, const char* key, char* out, size_t outsz, const char* def) {
+    char pat[64];
+    snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char* p = strstr(buf, pat);
+    if (!p) { snprintf(out, outsz, "%s", def); return; }
+    p = strchr(p + strlen(pat), ':');
+    if (!p) { snprintf(out, outsz, "%s", def); return; }
+    p++;
+    while (*p == ' ' || *p == '\t') p++;
+    if (*p != '"') { snprintf(out, outsz, "%s", def); return; }
+    p++;
+    size_t i = 0;
+    while (*p && *p != '"' && i + 1 < outsz) out[i++] = *p++;
+    out[i] = 0;
+}
+
+static void grad_write_defaults(const char* path) {
+    FILE* f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f,
+        "{\n"
+        "  \"minSessions\": 30,\n"
+        "  \"minNeurons\": 8,\n"
+        "  \"minConnectedClusters\": 1,\n"
+        "  \"minRefinedPerClass\": 1,\n"
+        "  \"requireLicenseValid\": true,\n"
+        "  \"requireUserConfirm\": true,\n"
+        "  \"productIdBefore\": \"tritium\",\n"
+        "  \"productIdAfter\": \"lineos\",\n"
+        "  \"demoForceReady\": false\n"
+        "}\n");
+    fclose(f);
+}
+
+static void grad_load_cfg(void) {
+    ensure_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/graduation.json", get_evolve_dir());
+    FILE* f = fopen(path, "r");
+    if (!f) {
+        grad_write_defaults(path);
+        grad_defaults(&grad_cfg);
+        printf("[LINEOS] created evolve/graduation.json with defaults (§1a.1)\n");
+        return;
+    }
+    char buf[2048];
+    size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+    fclose(f);
+    buf[n] = 0;
+    grad_defaults(&grad_cfg);
+    grad_cfg.minSessions = grad_json_int(buf, "minSessions", 30);
+    grad_cfg.minNeurons = grad_json_int(buf, "minNeurons", 8);
+    grad_cfg.minConnectedClusters = grad_json_int(buf, "minConnectedClusters", 1);
+    grad_cfg.minRefinedPerClass = grad_json_int(buf, "minRefinedPerClass", 1);
+    grad_cfg.requireLicenseValid = grad_json_int(buf, "requireLicenseValid", 1);
+    grad_cfg.requireUserConfirm = grad_json_int(buf, "requireUserConfirm", 1);
+    grad_cfg.demoForceReady = grad_json_int(buf, "demoForceReady", 0);
+    grad_json_str(buf, "productIdBefore", grad_cfg.productIdBefore,
+                  sizeof(grad_cfg.productIdBefore), "tritium");
+    grad_json_str(buf, "productIdAfter", grad_cfg.productIdAfter,
+                  sizeof(grad_cfg.productIdAfter), "lineos");
+}
+
+static int grad_license_valid_now(void) {
+    char devices[LICENSE_MAX_SLOTS + 2][64];
+    int n = license_load_count(devices, LICENSE_MAX_SLOTS + 2);
+    if (n > LICENSE_MAX_SLOTS) return 0;
+    return n >= 1 && n <= LICENSE_MAX_SLOTS;
+}
+
+static void grad_scaffold_flip(void) {
+    ensure_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/lineos-host-flag.trit", get_evolve_dir());
+    FILE* f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "# Scaffold host flag — TritiumOS.txt §1a.1\n");
+        fprintf(f, "product_name=L.I.N.E.O.S.\n");
+        fprintf(f, "product_id=%s\n", grad_cfg.productIdAfter);
+        fprintf(f, "edition=%d\n", edition);
+        fprintf(f, "slogan=%s\n", GRAD_SLOGAN);
+        fprintf(f, "origin_badge=tritium\n");
+        fprintf(f, "scaffold=1\n");
+        fprintf(f, "note=NOT a production branding release\n");
+        fclose(f);
+    }
+    snprintf(path, sizeof(path), "%s/lineos-manifest-scaffold.json", get_evolve_dir());
+    f = fopen(path, "w");
+    if (f) {
+        fprintf(f,
+            "{\n"
+            "  \"product_id\": \"%s\",\n"
+            "  \"product_name\": \"L.I.N.E.O.S.\",\n"
+            "  \"productIdBefore\": \"%s\",\n"
+            "  \"edition\": %d,\n"
+            "  \"slogan\": \"%s\",\n"
+            "  \"origin_badge\": \"tritium\",\n"
+            "  \"scaffold\": true,\n"
+            "  \"cite\": \"TritiumOS.txt §1a.1\"\n"
+            "}\n",
+            grad_cfg.productIdAfter, grad_cfg.productIdBefore, edition, GRAD_SLOGAN);
+        fclose(f);
+    }
+    grad_product_is_lineos = 1;
+    grad_host_flag_lineos = 1;
+    printf("[LINEOS] UI product name → L.I.N.E.O.S.\n");
+    printf("[LINEOS] slogan: %s\n", GRAD_SLOGAN);
+    printf("[LINEOS] scaffold product_id → %s (preserve edition=%d-bit)\n",
+           grad_cfg.productIdAfter, edition);
+    printf("[LINEOS] wrote evolve/lineos-manifest-scaffold.json + lineos-host-flag.trit\n");
+    printf("[LINEOS] graduate OK — scaffold only (not a production release)\n");
+}
+
+void become_lineos(void) {
+    grad_become = 1;
+    grad_confirm = 1;
+    printf("[LINEOS] become-lineos — confirm flag set (§1a.1)\n");
+}
+
+void lineos_graduate(int demo_force) {
+    grad_load_cfg();
+    printf("[LINEOS] lineos-graduate — TritiumOS.txt §1a.1 gates\n");
+
+    if (demo_force || grad_cfg.demoForceReady) {
+        printf("[LINEOS] demoForceReady — forcing stub metrics ready (smoke)\n");
+        grad_sessions = grad_cfg.minSessions;
+        grad_neurons = grad_cfg.minNeurons;
+        grad_clusters = grad_cfg.minConnectedClusters;
+        grad_refined = grad_cfg.minRefinedPerClass;
+        grad_license_ok = 1;
+        grad_confirm = 1;
+    } else {
+        if (refined_live) grad_refined = grad_cfg.minRefinedPerClass;
+        if (graph_loaded) {
+            if (grad_neurons < 1) grad_neurons = 1;
+            if (host_neuron_mode == 2 && grad_clusters < 1) grad_clusters = 1;
+        }
+        grad_license_ok = grad_license_valid_now();
+    }
+
+    int g1 = (grad_sessions >= grad_cfg.minSessions) || grad_become;
+    int g2 = (grad_neurons >= grad_cfg.minNeurons) &&
+             (grad_clusters >= grad_cfg.minConnectedClusters);
+    int g3 = (grad_refined >= grad_cfg.minRefinedPerClass);
+    int g4 = grad_cfg.requireLicenseValid ? grad_license_ok : 1;
+    int g5 = grad_cfg.requireUserConfirm ? grad_confirm : 1;
+
+    printf("[LINEOS] gate sessions/become: %s (sessions=%d/%d become=%d)\n",
+           g1 ? "PASS" : "FAIL", grad_sessions, grad_cfg.minSessions, grad_become);
+    printf("[LINEOS] gate neurons+clusters: %s (neurons=%d/%d clusters=%d/%d)\n",
+           g2 ? "PASS" : "FAIL", grad_neurons, grad_cfg.minNeurons,
+           grad_clusters, grad_cfg.minConnectedClusters);
+    printf("[LINEOS] gate refined/class: %s (refined=%d/%d)\n",
+           g3 ? "PASS" : "FAIL", grad_refined, grad_cfg.minRefinedPerClass);
+    printf("[LINEOS] gate license: %s\n", g4 ? "PASS" : "FAIL");
+    printf("[LINEOS] gate confirm: %s\n", g5 ? "PASS" : "FAIL");
+
+    if (g1 && g2 && g3 && g4 && g5) {
+        grad_scaffold_flip();
+    } else {
+        printf("[LINEOS] graduate blocked — gates incomplete\n");
+    }
+}
+
+void lineos_graduate_demo(void) {
+    printf("[lineos-graduate-demo] force-ready → scaffold product_id=lineos (§1a.1)\n");
+    grad_product_is_lineos = 0;
+    grad_host_flag_lineos = 0;
+    grad_become = 0;
+    {
+        char devices[LICENSE_MAX_SLOTS + 2][64];
+        int n = license_load_count(devices, LICENSE_MAX_SLOTS + 2);
+        if (n == 0) {
+            strncpy(devices[0], "lineos-demo-device", 63);
+            license_save(devices, 1);
+        }
+    }
+    lineos_graduate(1);
+    if (grad_product_is_lineos && grad_host_flag_lineos) {
+        printf("[lineos-graduate-demo] OK\n\n");
+    } else {
+        printf("[lineos-graduate-demo] FAIL\n\n");
+    }
+}
+
 void bootstrap_demo() {
     printf("Running bootstrap-host demo (full-stack host OS optimization from refined intelligence)...\n");
     bootstrap_host_optimization();
@@ -1845,7 +2090,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -1857,7 +2102,8 @@ void show_help() {
 }
 
 void show_status() {
-    printf("product=TritiumOS creator=Draco assistant=%s edition=%d-bit id-width=%d\n",
+    printf("product=%s creator=Draco assistant=%s edition=%d-bit id-width=%d\n",
+           grad_host_flag_lineos ? "L.I.N.E.O.S." : "TritiumOS",
            assistant_name, edition, edition);
     printf("core=loaded (native .AppImage, no Python) platform=Linux\n");
     printf("Evolve: %s\n", get_evolve_dir());
@@ -1966,6 +2212,12 @@ int main(int argc, char** argv) {
             assimilate_balance();
         } else if (strcasecmp(line, "assimilate-solved?") == 0) {
             printf("[ASSIMILATE] flag=%d\n", assimilate_solved_p());
+        } else if (strcasecmp(line, "lineos-graduate-demo") == 0) {
+            lineos_graduate_demo();
+        } else if (strcasecmp(line, "lineos-graduate") == 0) {
+            lineos_graduate(0);
+        } else if (strcasecmp(line, "become-lineos") == 0) {
+            become_lineos();
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {

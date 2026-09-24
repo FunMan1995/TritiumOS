@@ -89,3 +89,8 @@ evolve/queue/
 
 # Runtime assimilate puzzle/wallet (created by assimilate-demo / assimilate-merge!)
 evolve/assimilate/
+
+# Runtime graduation thresholds (created by lineos-graduate; keep .example)
+evolve/graduation.json
+evolve/lineos-host-flag.trit
+evolve/lineos-manifest-scaffold.json

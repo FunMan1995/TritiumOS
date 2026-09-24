@@ -31,6 +31,9 @@ queue-demo
 assimilate-demo
 \ expect: [assimilate-demo] OK — simti credited (evolve/assimilate/; no crypto)
 
+lineos-graduate-demo
+\ expect: [lineos-graduate-demo] OK
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -144,3 +147,11 @@ tools/tritium-license status          # expect 10/10
 - Forth: `forth/tritium/assimilate.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.
 - May call after `queue-prove!` conceptually; `assimilate-demo` stands alone.
 
+## L.I.N.E.O.S. graduation stub (§1a.1)
+
+- Thresholds: `evolve/graduation.json` (runtime create with defaults) + committed `evolve/graduation.json.example` / `lineos/graduation.json.example`.
+- Words/CLI: `lineos-graduate` / `lineos-graduate-demo` / `become-lineos`.
+- On success (scaffold only): host flag → **L.I.N.E.O.S.**; write `evolve/lineos-manifest-scaffold.json` with `product_id=lineos`; preserve edition; slogan printed. **Not** a production branding release.
+- Demo: `demoForceReady` / force-ready path so smoke PASSes without 30 sessions; prints each gate PASS/FAIL; greppable `[lineos-graduate-demo] OK`.
+- Forth: `forth/tritium/lineos.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.
+- Cite: `docs/LINEOS.md`, `TritiumOS.txt` §1a.1.

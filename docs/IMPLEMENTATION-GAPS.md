@@ -51,13 +51,10 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - Quantum jobs log to `evolve/qwantum-jobs.log` (works), but no offload to queue when "not locally computable".
    - **Needed (Phases 6-7):** Wire queue-prove! → assimilate-merge! end-to-end; later real distributed proof + master epoch settlement.
 
-6. **Graduation / L.I.N.E.O.S. / evolution persistence missing**
-   - No `lineos-graduate`, no `evolve/graduation.json` thresholds (session count, graph density, refined cells, license, user confirm).
-   - No `evolve/user-graph.trit` (D.R.E.N.A. + R.E.K.I.A. state).
-   - No product_id switch in manifest/UI ("tritium" → "lineos"), no slogan-only on L.I.N.E.O.S. splash.
-   - No `become-lineos` command.
-   - Hosts write only name + edition; no graph/session.
-   - `lineos/graduate.txt` is just a note.
+6. **Graduation / L.I.N.E.O.S. / evolution persistence**
+   - **Graduation stub landed (wave5 items 4+5, §1a.1):** `evolve/graduation.json` (+ `.example`); `lineos-graduate` / `lineos-graduate-demo` / `become-lineos` (Forth + Linux host); scaffold `product_id=lineos` under `evolve/` — **not** a production branding release. See `docs/LINEOS.md`.
+   - Graph persist exists (`evolve/user-graph.trit`); full fleet sync / irreversible UX confirm packs still later.
+   - Needed later: real splash/about branding pack; irreversible confirm UX; fleet session counts.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
 - Real first-run bootstrap of core (extract + start TritiumForth + engines) inside the .exe / .apk.
@@ -125,7 +122,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 4. Wire UI default input through a `rekiA-refine` path that produces visible "refined reply" + updates a neuron count.
 5. Write the missing core docs (start with NEURON.md + DRENA.md + REKIA.md — they are referenced in spec itself).
 6. Implement basic master/license slot enforcement (even if still scaffold keys) so "slot 11 rejected" works.
-7. Add `evolve/graduation.json` + a `lineos-graduate` stub that flips manifest product_id and UI.
+7. ~~Add `evolve/graduation.json` + `lineos-graduate` stub~~ **landed (wave5 items 4+5)** — deepen branding packs / confirm UX later.
 8. Use `tools/qwantum-field.ps1` (or Qwantum Compute) to pull more complete Forth/engine fragments from the "parallel timeline" into the tree.
 
 ## How to Track
