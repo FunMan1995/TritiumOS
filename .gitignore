@@ -76,3 +76,16 @@ tools/test-*.log
 
 # Large generated or cache
 refs/grapheneos/**/build/
+
+# .NET build outputs
+**/bin/
+**/obj/
+
+# Runtime license slot registry (created by tritium-license / validator)
+evolve/license-slots.json
+
+# Runtime collective queue cue (created by queue-demo / queue-enqueue!)
+evolve/queue/
+
+# Runtime assimilate puzzle/wallet (created by assimilate-demo / assimilate-merge!)
+evolve/assimilate/
