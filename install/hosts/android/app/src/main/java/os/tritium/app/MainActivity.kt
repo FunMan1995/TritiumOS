@@ -122,7 +122,7 @@ class MainActivity : AppCompatActivity() {
         if (line.isEmpty()) return
         append("> $line\n")
         when (line.lowercase().split(" ").first()) {
-            "help" -> append("help | status | compute | compute-set | about | load-core | drena-demo | rekiA-demo | assimilate | bootstrap-host | full-stack-optimize | host-hw-info | load-refined\nAny other input sent to TritiumForth VM (demos or raw Forth).\n" +
+            "help" -> append("help | status | compute | compute-set | about | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo | groups-demo | s0-assist-demo | qwantum-atoms-load | qwantum-atoms-demo | assimilate | bootstrap-host | full-stack-optimize | host-hw-info | load-refined\nFree-text → S0 path (drena-step + rekiA-refine → wrote+include refined-1.fs); Forth/demos also accepted by VM.\n" +
                 "assimilate = ingest software on this phone hardware into evolve/assimilated/\n" +
                 "full-stack-optimize = DRENA+REKIA + assimilate + emit host bootstrap plans + refined modules\n")
             "compute" -> append(formatCompute())
@@ -151,7 +151,12 @@ class MainActivity : AppCompatActivity() {
             ).show()
             "load-core" -> append(vm?.evaluate("load-core") ?: "")
             "drena-demo" -> append(vm?.evaluate("drena-demo") ?: "")
-            "rekiA-demo" -> append(vm?.evaluate("rekiA-demo") ?: "")
+            "rekiA-demo", "rekia-demo" -> append(vm?.evaluate("rekia-demo") ?: "")
+            "s3-reserved-demo" -> append(vm?.evaluate("s3-reserved-demo") ?: "")
+            "grow-step-demo" -> append(vm?.evaluate("grow-step-demo") ?: "")
+            "groups-demo" -> append(vm?.evaluate("groups-demo") ?: "")
+            "qwantum-atoms-load" -> append(vm?.evaluate("qwantum-atoms-load") ?: "")
+            "qwantum-atoms-demo" -> append(vm?.evaluate("qwantum-atoms-demo") ?: "")
             "assimilate" -> {
                 append(vm?.evaluate("assimilate") ?: "")
                 loadRefinedModules()  // auto-activate any emitted refined .fs
@@ -165,8 +170,13 @@ class MainActivity : AppCompatActivity() {
                 loadRefinedModules()
             }
             "host-hw-info" -> append(vm?.evaluate("host-hw-info") ?: "")
+            "s0-assist-demo" -> append(vm?.s0AssistDemo() ?: "VM not ready\n")
             "load-refined" -> loadRefinedModules()
-            else -> append(vm?.evaluate(line) ?: "[$assistantName] scaffold — connect R.E.K.I.A. next.\n")
+            else -> {
+                // Free-text → real S0 assist (Linux s0_assist). No parity-print-only stub.
+                if (vm != null) append(vm!!.s0Assist(line))
+                else append("VM not ready\n")
+            }
         }
     }
 
@@ -197,13 +207,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 val src = mod.readText()
                 append("[VM]   include ${mod.name}\n")
-                // In a full VM: vm?.evaluate(src) or Interpret
-                // For current Android stub: log the head so user sees the emitted intelligence is active
-                append("    [head] ${src.take(120).replace("\n", " ")}...\n")
-                // Also feed a bit to the VM if it can handle simple words
-                if (src.contains("host-assimilated")) {
-                    append(vm?.evaluate("host-assimilated") ?: "")
-                }
+                append(vm?.evaluate(src) ?: "")
             } catch (e: Exception) {
                 append("[VM]   Failed ${mod.name}: ${e.message}\n")
             }
