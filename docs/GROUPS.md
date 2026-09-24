@@ -1,6 +1,6 @@
 # GROUPS — Labeled neural groups
 
-**Status:** Shipper-ready spec (wave3 item **3**; matches PR #10/#12 groups + persist)  
+**Status:** Shipper-ready spec (wave3 item **3** + wave4 item **2** searchable vocab unit)  
 **Canonical brief:** `TritiumOS.txt` §3.4–3.5, §5  
 **Sources of truth (code):** `forth/tritium/drena.fs` (group words); Linux host `install/hosts/linux/tritiumos.c` (graph lines + restart restore)  
 **Companions:** `docs/DRENA.md` §6–7 (topology owner), `docs/REKIA.md` (`rekiA-label-group`), `docs/ASSUMPTIONS.md` (persist format), `docs/NEURON.md`
@@ -9,7 +9,7 @@
 
 A **labeled neural group** clusters neurons under a human/machine label. Groups are D.R.E.N.A. structure: membership, prefix string, and persist. They are **not** refined Forth emitters — R.E.K.I.A. may suggest a label (`rekiA-label-group`) then hand off to `drena-group` / `group-label!`.
 
-Groups are the unit of assistant context (which cluster is active) and the seed of Forth vocabulary namespaces via the `GROUP-<label>/` **prefix string**. Full wordlist hierarchy / Dusk units are later work (kernel flesh does not yet mount groups as dict units).
+Groups are the unit of assistant context (which cluster is active) and a Forth vocabulary namespace: `GROUP-<label>/` is a **searchable vocab unit** (Dusk-style), not prefix-only. The prefix string remains for display/persist; the kernel mounts a findable wordlist keyed by that name under the group id (D.R.E.N.A. + kernel `ENTRY-GIDS`).
 
 ## 2. Caps (current)
 
@@ -29,19 +29,23 @@ Groups are the unit of assistant context (which cluster is active) and the seed 
 | `drena-join` | `( neuron group -- )` | Append `neuron-id`; skip dups; capacity-checked |
 | `group-members` | `( gid -- addr count )` | Member id table slice |
 | `group-vocab-prefix` | `( gid -- c-addr u )` | `GROUP-<label>/` counted string |
+| `group-register-vocab-unit` | `( gid -- )` | Mount prefix as searchable dict entry |
+| `group-vocab-add` | `( c-addr u gid -- )` | Register a word under the group unit |
+| `group-find` | `( c-addr u gid -- i )` | Scoped find (`group-entry-find`) |
 | `.group` | `( gid -- )` | Debug: label, prefix, member list |
 
 Create path accepts a **counted-string address** (`drena-group`); rename uses explicit `( c-addr u gid )`.
 
-## 4. `GROUP-<label>/` prefix
+## 4. `GROUP-<label>/` searchable vocab unit
 
 Format: literal `GROUP-` + label bytes + `/`.
 
-- Built by `group-set-vocab-prefix` whenever the label is set.
-- **Prefix string only** — not a nested Forth wordlist / search order yet.
-- Visible after AppImage restart via host restore (`groups-status` / `groups-persist-demo`).
+- Built by `group-set-vocab-prefix` whenever the label is set (display/persist prefix string kept).
+- **Also a searchable vocab unit** (Dusk-style): `group-register-vocab-unit` mounts the name in the kernel dict with `ENTRY-GIDS` = gid.
+- Words under the group (`group-vocab-add` / refined labels) are findable via `group-find` / `group-entry-find` — scoped, not only the flat global dict.
+- Visible after AppImage restart via host restore (`groups-status` / `groups-persist-demo`); host re-registers the unit name on load.
 
-Smoke expects: label `demo` → prefix `GROUP-demo/`.
+Smoke expects: label `demo` → prefix `GROUP-demo/`; `group-vocab-demo` → `[group-vocab-demo] OK — find under GROUP-demo/`.
 
 ## 5. Persist (`evolve/user-graph.trit`)
 
@@ -75,11 +79,12 @@ Labeling semantics live in `docs/REKIA.md`; group **storage and topology** stay 
 
 Wave3 **5** wires `edition.trit` → DRENA id/cell width so group and neuron ids match the chosen edition. GROUPS.md does not change when only width plumbing lands; member/join/persist contracts stay the same.
 
-## 8. Acceptance (Test Lab — docs tip)
+## 8. Acceptance (Test Lab)
 
 1. `docs/GROUPS.md` present; cite from `docs/DRENA.md` §6 (one-line pointer OK).
-2. Linux suite still green: `groups-demo`, `groups-persist-demo`, `rekia-demo`, `s3-reserved-demo`, `grow-step-demo`, `qwantum-atoms-demo`, `s0-assist-demo`.
-3. Docs-only portion: no Forth behavior change required for GROUPS.md alone. Edition-width code is item **5** on the same tip branch.
+2. Linux suite still green: `groups-demo`, `groups-persist-demo`, `group-vocab-demo`, `rekia-demo`, `s3-reserved-demo`, `grow-step-demo`, `qwantum-atoms-demo`, `s0-assist-demo`, `edition-demo`.
+3. `group-vocab-demo` greps: `[group-vocab-demo] OK — find under GROUP-demo/`.
+4. Wave4 item **2**: `GROUP-<label>/` is a searchable vocab unit (not prefix-only).
 
 ## 9. Cite
 

@@ -19,6 +19,9 @@ groups-demo
 groups-persist-demo
 \ expect: [persist] OK — groups + members present after restart … GROUP-demo/
 
+group-vocab-demo
+\ expect: [group-vocab-demo] OK — find under GROUP-demo/
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -51,7 +54,8 @@ Default remains mod-3 split (`trit-pair@` / `encode-trit`). Dense 2+2 packing is
 - `evolve/assistant-state.trit` — touched after `rekiA-refine` (last-refine label/path).
 - `evolve/edition.trit` — `edition=32|64`; host load on start / save on `set_edition`.
 - Reload on host start; refined `.fs` under `evolve/forth/refined/` stay live vocab.
-- **Groups across AppImage restart:** `load_user_graph` on boot restores host labels + member lists and reprints `GROUP-<label>/` prefixes (Linux host is source of truth for demos).
+- **Groups across AppImage restart:** `load_user_graph` on boot restores host labels + member lists, reprints `GROUP-<label>/` prefixes, and re-registers each as a searchable vocab unit (Linux host is source of truth for demos).
+- **Group vocab unit:** `GROUP-<label>/` is findable via `group-find` / host `host_group_entry_find` under that gid (wave4 item 2; Dusk-style), not prefix-only.
 
 ## Qwantum K-atoms (extract scope only)
 
@@ -93,5 +97,5 @@ edition-demo
 
 - Bundle load / Forth seed prints `Tritium kernel loaded (minimal dict)` (not the old “study Dusk for full bootstrap” stub line).
 - `cold-boot` → `[kernel] cold-boot OK` + interpret-ready; soft `abort` → `[kernel] abort` then return (AppImage demos must not hang).
-- Dict: `entry-create` / `entry-find` / `words` — in-memory table only until a real VM interprets it.
+- Dict: `entry-create` / `entry-find` / `words` — in-memory table; `ENTRY-GIDS` + `group-entry-find` / `group-entry-create` scope words under a group (wave4 item 2).
 

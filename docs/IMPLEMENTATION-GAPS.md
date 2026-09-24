@@ -89,7 +89,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 **Other spec items:**
 - `evolve/graduation.json` (configurable thresholds).
 - Full neuron record layout + linking data binary/Forth structures (append-only links.bin etc.).
-- `GROUP-<label>/` vocab namespaces.
+- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; full nested search-order / persist of member words still open).
 - Environment vars and Forth naming conventions (§8).
 - Open: S3 code `11` RESERVED + “D.R.E.N.A. with ______” continuation (document, do not invent).
 

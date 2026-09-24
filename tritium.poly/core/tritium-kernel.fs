@@ -53,10 +53,12 @@ NAMELEN cell + constant ENTRY-BYTES
 
 create ENTRY-NAMES  MAX-ENTRIES NAMELEN * allot
 create ENTRY-IDS    MAX-ENTRIES cells allot
+create ENTRY-GIDS   MAX-ENTRIES cells allot   \ -1 = global/flat; >=0 = group-scoped (Dusk-style unit)
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
 : entry-id[]   ( i -- addr )   cells ENTRY-IDS + ;
+: entry-gid[]  ( i -- addr )   cells ENTRY-GIDS + ;
 
 : entry-name-clear ( i -- )
   entry-name[] NAMELEN bl fill ;
@@ -64,7 +66,8 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : dict-reset ( -- )
   0 ENTRY-COUNT !
   MAX-ENTRIES 0 do i entry-name-clear loop
-  MAX-ENTRIES 0 do 0 i entry-id[] ! loop ;
+  MAX-ENTRIES 0 do 0 i entry-id[] ! loop
+  MAX-ENTRIES 0 do -1 i entry-gid[] ! loop ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -112,6 +115,7 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
   ENTRY-COUNT @ >r
   ( c-addr u ) r@ entry-name!
   r@ 1+ r@ entry-id[] !        \ simple id = 1-based index
+  -1 r@ entry-gid[] !          \ global / flat
   1 ENTRY-COUNT +!
   r> drop
   ." [kernel] created #" ENTRY-COUNT @ . cr ;
@@ -122,6 +126,38 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
   ENTRY-COUNT @ 0 ?do
     i entry-name[] NAMELEN name-trim type space
   loop cr ;
+
+\ group-entry-find ( c-addr u gid -- i )  scoped find; -1 if missing
+\ Only matches entries whose ENTRY-GIDS slot equals gid (Dusk-style unit search).
+: group-entry-find ( c-addr u gid -- i )
+  >r
+  ENTRY-COUNT @ 0 ?do
+    i entry-gid[] @ r@ = if
+      2dup i entry-name= if 2drop r> drop i unloop exit then
+    then
+  loop
+  2drop r> drop -1 ;
+
+\ group-entry-create ( c-addr u gid -- i )
+\ Create (or return existing) name under group gid. Returns index or -1 if full.
+variable _gec-gid
+: group-entry-create ( c-addr u gid -- i )
+  _gec-gid !
+  2dup _gec-gid @ group-entry-find dup 0< 0= if
+    nip nip
+    ." [kernel] group-entry exists #" dup . cr exit
+  then drop
+  ENTRY-COUNT @ MAX-ENTRIES >= if
+    2drop ." [kernel] dict full" cr -1 exit
+  then
+  ENTRY-COUNT @ >r
+  ( c-addr u ) r@ entry-name!
+  r@ 1+ r@ entry-id[] !
+  _gec-gid @ r@ entry-gid[] !
+  1 ENTRY-COUNT +!
+  ." [kernel] group-entry #" r@ . ." gid=" _gec-gid @ . cr
+  r> ;
+
 : words ( -- ) .words ;
 
 \ === Trit + neuron primitives (Tritium-specific, Phase 2) ===
@@ -170,7 +206,7 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Minimal interpret loop + findentry (kernel.txt)
-\ - Layer units for groups (drena-group etc.)
+\ - Group-scoped entries via ENTRY-GIDS + group-entry-find (wave4 item 2)
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

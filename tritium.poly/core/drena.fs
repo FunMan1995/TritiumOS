@@ -106,7 +106,7 @@ variable _lsrc  variable _ldst  variable _ltype  variable _lw
   ." w=(" r@ link-w-lo .trit ." ," r@ link-w-hi .trit ." )"
   ." s3=" r> link-s3@ . cr ;
 
-\ --- labeled groups (members persist + GROUP-<label>/ prefix string) ---
+\ --- labeled groups (members + GROUP-<label>/ searchable vocab unit) ---
 16 constant MAX-GROUPS
 32 constant MAX-MEMBERS
 48 constant VOCAB-PFX-SZ
@@ -126,9 +126,16 @@ variable _gpfxd  variable _gpca  variable _gpu
   dup group-member-base swap group-member-count ;
 : group-vocab-prefix-addr ( gid -- c-addr ) VOCAB-PFX-SZ * group-vocab-prefixes + ;
 
-\ Build counted string GROUP-<label>/ (prefix only — not a full wordlist hierarchy)
+\ Build counted string GROUP-<label>/ and mount as searchable vocab unit (Dusk-style).
+\ Keeps the prefix string for display/persist; also registers it in the kernel dict under gid.
+: group-register-vocab-unit ( gid -- )
+  dup >r
+  group-vocab-prefix r@ group-entry-create drop
+  ." [DRENA] vocab unit " r> group-vocab-prefix type ."  (searchable)" cr ;
+
 : group-set-vocab-prefix ( gid -- )
   dup group-vocab-prefix-addr _gpfxd !
+  dup >r
   group-label-addr count  _gpu !  _gpca !
   _gpu @ 7 + 47 min  _gpfxd @ c!
   _gpfxd @ 1+
@@ -140,10 +147,22 @@ variable _gpfxd  variable _gpca  variable _gpu
   dup [char] - swap c! 1+
   _gpca @ over _gpu @ cmove
   _gpu @ +  [char] / swap c!
-  ." [DRENA] vocab prefix " _gpfxd @ count type cr ;
+  ." [DRENA] vocab prefix " _gpfxd @ count type cr
+  r> group-register-vocab-unit ;
 
 : group-vocab-prefix ( gid -- c-addr u )
   group-vocab-prefix-addr count ;
+
+\ group-vocab-add ( c-addr u gid -- )  register a word under the group's vocab unit
+: group-vocab-add ( c-addr u gid -- )
+  dup >r
+  group-entry-create dup 0< if
+    drop r> drop ." [DRENA] group-vocab-add failed" cr exit
+  then
+  ." [DRENA] group-vocab-add #" . ." under gid=" r> . cr ;
+
+\ group-find ( c-addr u gid -- i )  scoped find under GROUP-<label>/ unit
+: group-find ( c-addr u gid -- i ) group-entry-find ;
 
 : group-label! ( c-addr u gid -- )
   dup _gid !

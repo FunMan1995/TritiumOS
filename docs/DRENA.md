@@ -79,9 +79,10 @@ Global link table (separate from embedded connection list):
 | `group-label!` | `( c-addr u gid -- )` | Set label$; builds vocab prefix |
 | `drena-join` | `( neuron group -- )` | Persist member id (no dups; capacity-checked) |
 | `group-members` | `( gid -- addr count )` | |
-| `group-vocab-prefix` | `( gid -- c-addr u )` | `GROUP-<label>/` prefix string |
+| `group-vocab-prefix` | `( gid -- c-addr u )` | `GROUP-<label>/` prefix + unit key |
+| `group-vocab-add` / `group-find` | scoped word under gid | See GROUPS.md |
 
-`GROUP-<label>/` is a **prefix string**, not a full Forth wordlist hierarchy (yet). Full group word table, persist lines, and restart restore: [`docs/GROUPS.md`](GROUPS.md) (PR #12 / DRENA §6–7).
+`GROUP-<label>/` is a **searchable vocab unit** (Dusk-style; wave4 item 2), not prefix-only. Prefix string kept for display/persist; kernel mounts a findable wordlist under the gid. Details: [`docs/GROUPS.md`](GROUPS.md).
 
 Smoke: `groups-demo` — join grows member count; graph shows `group` / `member` lines.
 

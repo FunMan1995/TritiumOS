@@ -171,6 +171,24 @@ defer platform-assistant-state!
   ." [qwantum-atoms-demo] assert: dump .fs was NOT included as vocab" cr ;
 
 
+
+create (gvd-label) 4 c, char d c, char e c, char m c, char o c,
+create (gvd-word)  6 c, char j c, char o c, char i c, char n c, char e c, char d c,
+
+\ group-vocab-demo: GROUP-<label>/ is a searchable vocab unit (wave4 item 2)
+: group-vocab-demo ( -- )
+  ." [group-vocab-demo] create GROUP-demo/ unit + word; scoped find" cr
+  (gvd-label) drena-group >r          \ R: gid
+  (gvd-word) count r@ group-vocab-add
+  (gvd-word) count r@ group-find dup 0< if
+    drop
+    ." [group-vocab-demo] FAIL — find under GROUP-demo/" cr
+  else
+    ." [group-vocab-demo] found #" . ." under GROUP-demo/" cr
+    ." [group-vocab-demo] OK — find under GROUP-demo/" cr
+  then
+  r> drop ;
+
 create (groups-demo-label) 4 c, char d c, char e c, char m c, char o c,
 
 : groups-demo ( -- )
@@ -183,6 +201,11 @@ create (groups-demo-label) 4 c, char d c, char e c, char m c, char o c,
   drop
   r@ .group
   r@ group-vocab-prefix ." [groups-demo] prefix=" type cr
+  \ vocab unit already mounted by drena-group; add a sample word under it
+  s" joined" r@ group-vocab-add
+  s" joined" r@ group-find 0< 0= if
+    ." [groups-demo] scoped find OK under GROUP-demo/" cr
+  then
   graph-save
   r> drop
   ." [groups-demo] OK — members persist; prefix GROUP-demo/" cr ;

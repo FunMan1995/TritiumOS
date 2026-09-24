@@ -65,7 +65,7 @@ Non-exhaustive; keep demos green every tip:
 | free-text | S0 assist path (§3) |
 | `s0-assist-demo` | Fixed free-text smoke |
 | `rekia-demo` / `rekiA-demo` | Engine refine without chat wrapper |
-| `groups-demo` / `groups-persist-demo` / `groups-status` | Labeled groups |
+| `groups-demo` / `groups-persist-demo` / `groups-status` / `group-vocab-demo` | Labeled groups + searchable vocab unit |
 | `grow-step-demo` / `s3-reserved-demo` | DRENA S3 policy |
 | `qwantum-atoms-demo` | K-atoms extract-only |
 | `edition-demo` | 32/64 → DRENA width |
@@ -88,7 +88,7 @@ Boot loads assistant-state + user-graph + refined includes so live words and gro
 - Does not treat Qwantum dump `.fs` as live vocab (`QWANTUM-REKIA.md`)
 - Does not auto-advance S3=`11` RESERVED (`ASSUMPTIONS.md`)
 - Does not mint license slots or Assimilate currency (later waves)
-- Does not replace Dusk kernel dict units (wave4 **2** promotes `GROUP-<label>/` beyond prefix string)
+- Wave4 **2**: `GROUP-<label>/` is a searchable vocab unit (`group-vocab-demo`); see `GROUPS.md`
 
 ## 7. Acceptance (Test Lab — docs tip)
 

@@ -42,6 +42,7 @@ void qwantum_atoms_demo(void);
 void groups_demo(void);
 void groups_status(void);
 void groups_persist_demo(void);
+void group_vocab_demo(void);
 void s0_assist(const char* query);
 void s0_assist_demo(void);
 void load_edition(void);
@@ -146,12 +147,63 @@ static int host_next_id = 2;
 static int host_link_src = 1, host_link_dst = 22754, host_link_type = 2, host_link_s3 = 2;
 static int host_neuron_mode = 2;
 
+/* Host-side group vocab unit (mirrors kernel ENTRY-GIDS + group-entry-find) */
+#define HOST_MAX_GENTRIES 32
+#define HOST_NAMELEN 16
+static int host_entry_count = 0;
+static char host_entry_names[HOST_MAX_GENTRIES][HOST_NAMELEN];
+static int host_entry_gids[HOST_MAX_GENTRIES];
+
+static void host_dict_reset(void) {
+    host_entry_count = 0;
+    for (int i = 0; i < HOST_MAX_GENTRIES; i++) {
+        host_entry_names[i][0] = 0;
+        host_entry_gids[i] = -1;
+    }
+}
+
+static int host_group_entry_find(const char* name, int gid) {
+    for (int i = 0; i < host_entry_count; i++) {
+        if (host_entry_gids[i] == gid && strcmp(host_entry_names[i], name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+static int host_group_entry_create(const char* name, int gid) {
+    int ex = host_group_entry_find(name, gid);
+    if (ex >= 0) {
+        printf("[kernel] group-entry exists #%d\n", ex);
+        return ex;
+    }
+    if (host_entry_count >= HOST_MAX_GENTRIES) {
+        printf("[kernel] dict full\n");
+        return -1;
+    }
+    int i = host_entry_count++;
+    strncpy(host_entry_names[i], name, HOST_NAMELEN - 1);
+    host_entry_names[i][HOST_NAMELEN - 1] = 0;
+    host_entry_gids[i] = gid;
+    printf("[kernel] group-entry #%d gid=%d\n", i, gid);
+    return i;
+}
+
+static void host_group_vocab_add(const char* name, int gid) {
+    int i = host_group_entry_create(name, gid);
+    if (i < 0)
+        printf("[DRENA] group-vocab-add failed\n");
+    else
+        printf("[DRENA] group-vocab-add #%d under gid=%d\n", i, gid);
+}
+
 static void host_groups_reset(void) {
     host_group_count = 0;
     for (int i = 0; i < HOST_MAX_GROUPS; i++) {
         host_group_labels[i][0] = 0;
         host_group_n_members[i] = 0;
     }
+    /* vocab table is session-scoped; reset with groups for clean demos */
+    host_dict_reset();
 }
 
 static int host_group_create(const char* label) {
@@ -162,6 +214,12 @@ static int host_group_create(const char* label) {
     host_group_n_members[gid] = 0;
     printf("[DRENA] group-label! gid=%d -> %s\n", gid, host_group_labels[gid]);
     printf("[DRENA] vocab prefix GROUP-%s/\n", host_group_labels[gid]);
+    {
+        char unit[48];
+        snprintf(unit, sizeof(unit), "GROUP-%s/", host_group_labels[gid]);
+        host_group_entry_create(unit, gid);
+        printf("[DRENA] vocab unit %s (searchable)\n", unit);
+    }
     printf("[DRENA] group id=%d\n", gid);
     return gid;
 }
@@ -340,12 +398,18 @@ void load_user_graph(void) {
     graph_loaded = 1;
     printf("[DRENA] graph-load OK neurons=%d links=%d groups=%d members=%d\n",
            neurons, links, groups, members);
-    /* Rebuild host vocab prefix prints so GROUP-<label>/ is visible after restart */
+    /* Rebuild vocab prefix + searchable unit so GROUP-<label>/ is findable after restart */
     for (int g = 0; g < host_group_count; g++) {
         if (!host_group_labels[g][0]) continue;
         printf("[DRENA] restore group gid=%d label=%s members=%d\n",
                g, host_group_labels[g], host_group_n_members[g]);
         printf("[DRENA] vocab prefix GROUP-%s/\n", host_group_labels[g]);
+        {
+            char unit[48];
+            snprintf(unit, sizeof(unit), "GROUP-%s/", host_group_labels[g]);
+            host_group_entry_create(unit, g);
+            printf("[DRENA] vocab unit %s (searchable)\n", unit);
+        }
     }
 }
 
@@ -808,6 +872,9 @@ void groups_demo(void) {
         printf("%d ", host_group_members[gid][i]);
     printf("\n");
     printf("[groups-demo] prefix=GROUP-%s/\n", host_group_labels[gid]);
+    host_group_vocab_add("joined", gid);
+    if (host_group_entry_find("joined", gid) >= 0)
+        printf("[groups-demo] scoped find OK under GROUP-demo/\n");
 
     save_user_graph();
 
@@ -869,6 +936,21 @@ void groups_persist_demo(void) {
     } else {
         printf("[groups-persist-demo] FAIL — expected GROUP-demo/ with >=2 members after reload\n\n");
     }
+}
+
+void group_vocab_demo(void) {
+    /* wave4 item 2: GROUP-<label>/ searchable vocab unit (Dusk-style) */
+    printf("[group-vocab-demo] create GROUP-demo/ unit + word; scoped find\n");
+    host_groups_reset();
+    int gid = host_group_create("demo");
+    host_group_vocab_add("joined", gid);
+    int idx = host_group_entry_find("joined", gid);
+    if (idx < 0) {
+        printf("[group-vocab-demo] FAIL — find under GROUP-demo/\n\n");
+        return;
+    }
+    printf("[group-vocab-demo] found #%d under GROUP-demo/\n", idx);
+    printf("[group-vocab-demo] OK — find under GROUP-demo/\n\n");
 }
 
 void assimilate_demo() {
@@ -1247,7 +1329,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -1327,6 +1409,8 @@ int main(int argc, char** argv) {
             groups_status();
         } else if (strcasecmp(line, "groups-persist-demo") == 0) {
             groups_persist_demo();
+        } else if (strcasecmp(line, "group-vocab-demo") == 0) {
+            group_vocab_demo();
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {
