@@ -202,6 +202,31 @@ variable _gpfxd  variable _gpca  variable _gpu
   ." [DRENA] join neuron " _nid @ . ." -> group " _gid @ .
   ." (members=" _gid @ group-member-count . ." )" cr ;
 
+
+\ group-link! ( group-a group-b -- )  inter-group bridge via LINK-INTER
+\ Prefer representative members (first nid of each group). If a group has no
+\ members yet, store a marked group-id edge: src/dst = $80000000 | gid so the
+\ links table clearly flags a group-group bridge (TritiumOS.txt §3.5).
+variable _gla  variable _glb
+
+: (group-rep-or-marker) ( gid -- id )
+  dup group-member-count 0> if
+    group-member-base @
+  else
+    $80000000 or
+  then ;
+
+: group-link! ( group-a group-b -- )
+  _glb !  _gla !
+  _gla @ 0< _gla @ group-count @ >= or
+  _glb @ 0< _glb @ group-count @ >= or or if
+    ." [DRENA] group-link! bad gid" cr exit then
+  _gla @ (group-rep-or-marker)
+  _glb @ (group-rep-or-marker)
+  LINK-INTER 4 link!
+  ." [DRENA] group-link! " _gla @ . ." <-> " _glb @ .
+  ." type=" LINK-INTER . ." (LINK-INTER)" cr ;
+
 : .group ( gid -- )
   dup ." [DRENA] .group gid=" . cr
   dup ."   label=" group-label-addr count type cr

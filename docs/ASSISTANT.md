@@ -22,7 +22,7 @@ Division of labor:
 
 Priority-1 hosts (Win / Android / Linux AppImage) share the same wizard shape:
 
-1. License key (scaffold OK until wave4 **5** slot-11 enforce)
+1. License key + slot registry (wave4 **5**: slot-11 refuse stub via tritium-license / validator.ps1)
 2. Name assistant → `evolve/assistant-name.trit`
 3. Edition 32/64 → `evolve/edition.trit` (DRENA id/cell width; see wave3 **5**)
 

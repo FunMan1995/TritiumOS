@@ -68,6 +68,7 @@ Global link table (separate from embedded connection list):
 | Word | Stack | Notes |
 |------|-------|-------|
 | `link!` | `( src dst type w -- )` | Append; w often neutral nibble encoding |
+| `group-link!` | `( group-a group-b -- )` | Inter-group bridge: `LINK-INTER` via rep members (or marked gid edge) |
 | `link@` | `( idx -- rec )` | |
 | `links-for-neuron` | `( neuron -- addr count )` | |
 
@@ -85,6 +86,8 @@ Global link table (separate from embedded connection list):
 `GROUP-<label>/` is a **searchable vocab unit** (Dusk-style; wave4 item 2), not prefix-only. Prefix string kept for display/persist; kernel mounts a findable wordlist under the gid. Details: [`docs/GROUPS.md`](GROUPS.md).
 
 Smoke: `groups-demo` — join grows member count; graph shows `group` / `member` lines.
+
+Smoke: `group-link-demo` — two groups + `group-link!` → `[group-link-demo] OK — inter-group bridge` (wave4 item **4**).
 
 ## 7. Persist
 

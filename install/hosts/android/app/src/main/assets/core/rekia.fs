@@ -210,6 +210,27 @@ create (groups-demo-label) 4 c, char d c, char e c, char m c, char o c,
   r> drop
   ." [groups-demo] OK — members persist; prefix GROUP-demo/" cr ;
 
+
+create (gla-label) 5 c, char a c, char l c, char p c, char h c, char a c,
+create (glb-label) 4 c, char b c, char e c, char t c, char a c,
+variable _gld-a  variable _gld-b
+
+\ group-link-demo: two groups + group-link! → LINK-INTER present (wave4 item 4)
+: group-link-demo ( -- )
+  ." [group-link-demo] two groups + group-link! inter bridge" cr
+  (gla-label) drena-group _gld-a !
+  (glb-label) drena-group _gld-b !
+  0 drena-spawn _gld-a @ drena-join
+  0 drena-spawn _gld-b @ drena-join
+  _gld-a @ _gld-b @ group-link!
+  link-count @ 0 ?do
+    i link-rec link-type@ LINK-INTER = if
+      ." [group-link-demo] OK — inter-group bridge" cr
+      unloop exit
+    then
+  loop
+  ." [group-link-demo] FAIL — no LINK-INTER" cr ;
+
 : persist-demo ( -- )
   ." [persist-demo] refine then persist graph+state" cr
   rekia-demo

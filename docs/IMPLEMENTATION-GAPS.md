@@ -41,6 +41,10 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Spec (Phase 5-6):** Master mints signed keys; installers reject unsigned / slot 11; status shows N/10; worker keys for queue.
    - `master-mint-license`, `master-mint-worker`, `master-verify` (Forth + host side).
 
+### Wave4 items 4+5 (landed stub)
+- **`group-link!`** (Forth + Linux SoT demo): typed `LINK-INTER` inter-group bridge; `group-link-demo` → `[group-link-demo] OK — inter-group bridge`.
+- **License slot-11 refuse stub**: `tools/tritium-license` + hardened `license/validator.ps1` register into `evolve/license-slots.json`; accepts slots 1..10; **refuses slot 11**; `status` prints `N/10`. No real crypto / master-verify yet — still Priority 0 for signing.
+
 5. **No collective queue / Assimilate / economy**
    - `queue/`, `assimilate/`: only READMEs describing words.
    - No `queue-local?`, `queue-enqueue!`, `queue-pull`, `queue-prove!`.

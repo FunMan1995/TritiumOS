@@ -22,6 +22,9 @@ groups-persist-demo
 group-vocab-demo
 \ expect: [group-vocab-demo] OK — find under GROUP-demo/
 
+group-link-demo
+\ expect: [group-link-demo] OK — inter-group bridge
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -100,4 +103,22 @@ edition-demo
 - Bundle load / Forth seed prints `Tritium kernel loaded (minimal dict)` (not the old “study Dusk for full bootstrap” stub line).
 - `cold-boot` → `[kernel] cold-boot OK` + interpret-ready; soft `abort` → `[kernel] abort` then return (AppImage demos must not hang).
 - Dict: `entry-create` / `entry-find` / `words` — in-memory table; `ENTRY-GIDS` + `group-entry-find` / `group-entry-create` scope words under a group (wave4 item 2).
+
+## Shared license slots (§5a.4)
+
+- Max **10** active device registrations per shared license key (`TritiumOS.txt` §5a.4).
+- Registry: `evolve/license-slots.json` (created if missing; runtime — not committed).
+- **Installer / CLI refuses slot 11** (and any registration when already 10/10).
+- CLI: `tools/tritium-license status` → prints `N/10`; `register <device-id>` registers or refuses.
+- Scaffold only (no crypto / master-verify yet); `license/validator.ps1` mirrors the same slot gate.
+- Linux host REPL: `license-status`, `license-register <id>` (optional; same refuse-11 contract).
+
+Smoke:
+
+```
+tools/tritium-license clear
+tools/tritium-license register dev1   # … through dev10
+tools/tritium-license register dev11  # expect refuse slot 11
+tools/tritium-license status          # expect 10/10
+```
 

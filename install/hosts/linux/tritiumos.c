@@ -43,6 +43,9 @@ void groups_demo(void);
 void groups_status(void);
 void groups_persist_demo(void);
 void group_vocab_demo(void);
+void group_link_demo(void);
+void license_status(void);
+void license_register(const char* device_id);
 void s0_assist(const char* query);
 void s0_assist_demo(void);
 void load_edition(void);
@@ -147,6 +150,18 @@ static int host_next_id = 2;
 static int host_link_src = 1, host_link_dst = 22754, host_link_type = 2, host_link_s3 = 2;
 static int host_neuron_mode = 2;
 
+/* Host typed-link table (mirrors Forth links[] / LINK-INTER) */
+#define HOST_MAX_LINKS 64
+#define HOST_LINK_INTRA 0
+#define HOST_LINK_INTER 1
+#define HOST_LINK_FOLD_PHI 2
+#define HOST_LINK_RANDOM 3
+static int host_link_count = 0;
+static int host_links_src[HOST_MAX_LINKS];
+static int host_links_dst[HOST_MAX_LINKS];
+static int host_links_type[HOST_MAX_LINKS];
+static int host_links_s3[HOST_MAX_LINKS];
+
 /* Host-side group vocab unit (mirrors kernel ENTRY-GIDS + group-entry-find) */
 #define HOST_MAX_GENTRIES 32
 #define HOST_NAMELEN 16
@@ -240,6 +255,49 @@ static void host_group_join(int nid, int gid) {
     host_group_members[gid][host_group_n_members[gid]++] = nid;
     printf("[DRENA] join neuron %d -> group %d (members=%d)\n",
            nid, gid, host_group_n_members[gid]);
+}
+
+static void host_links_reset(void) {
+    host_link_count = 0;
+}
+
+static int host_link_append(int src, int dst, int type, int s3) {
+    if (host_link_count >= HOST_MAX_LINKS) {
+        printf("[DRENA] link! full\n");
+        return -1;
+    }
+    int i = host_link_count++;
+    host_links_src[i] = src;
+    host_links_dst[i] = dst;
+    host_links_type[i] = type;
+    host_links_s3[i] = s3;
+    /* keep legacy single-slot fields in sync with last link */
+    host_link_src = src;
+    host_link_dst = dst;
+    host_link_type = type;
+    host_link_s3 = s3;
+    printf("[DRENA] link! %d -> %d type=%d\n", src, dst, type);
+    return i;
+}
+
+/* group-link! ( group-a group-b -- ): LINK-INTER bridge via representative members */
+static void host_group_link(int ga, int gb) {
+    if (ga < 0 || ga >= host_group_count || gb < 0 || gb >= host_group_count) {
+        printf("[DRENA] group-link! bad gid\n");
+        return;
+    }
+    int src, dst;
+    if (host_group_n_members[ga] > 0)
+        src = host_group_members[ga][0];
+    else
+        src = (int)(0x80000000u | (unsigned)ga);
+    if (host_group_n_members[gb] > 0)
+        dst = host_group_members[gb][0];
+    else
+        dst = (int)(0x80000000u | (unsigned)gb);
+    host_link_append(src, dst, HOST_LINK_INTER, 0);
+    printf("[DRENA] group-link! %d <-> %d type=%d (LINK-INTER)\n",
+           ga, gb, HOST_LINK_INTER);
 }
 
 void save_user_graph(void) {
@@ -953,6 +1011,119 @@ void group_vocab_demo(void) {
     printf("[group-vocab-demo] OK — find under GROUP-demo/\n\n");
 }
 
+void group_link_demo(void) {
+    /* wave4 item 4: group-link! inter-group bridge (LINK-INTER) */
+    printf("[group-link-demo] two groups + group-link! inter bridge\n");
+    host_groups_reset();
+    host_links_reset();
+    int ga = host_group_create("alpha");
+    int gb = host_group_create("beta");
+    printf("[DRENA] spawned neuron id=1 mode=RANDOM\n");
+    printf("neuron stable & valid\n");
+    host_group_join(1, ga);
+    printf("[DRENA] spawned neuron id=2 mode=RANDOM\n");
+    printf("neuron stable & valid\n");
+    host_group_join(2, gb);
+    host_next_id = 3;
+    host_group_link(ga, gb);
+    int found = 0;
+    for (int i = 0; i < host_link_count; i++) {
+        if (host_links_type[i] == HOST_LINK_INTER) { found = 1; break; }
+    }
+    if (found)
+        printf("[group-link-demo] OK — inter-group bridge\n\n");
+    else
+        printf("[group-link-demo] FAIL — no LINK-INTER\n\n");
+}
+
+/* --- License slot stub (TritiumOS.txt §5a.4): max 10; refuse slot 11 --- */
+#define LICENSE_MAX_SLOTS 10
+
+static const char* license_slots_path(void) {
+    static char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/license-slots.json", get_evolve_dir());
+    return path;
+}
+
+static int license_load_count(char devices[][64], int maxn) {
+    FILE* f = fopen(license_slots_path(), "r");
+    if (!f) return 0;
+    char buf[4096];
+    size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+    fclose(f);
+    buf[n] = 0;
+    int count = 0;
+    /* naive parse: look for "id": "..." entries */
+    char* p = buf;
+    while (count < maxn && (p = strstr(p, "\"id\"")) != NULL) {
+        p += 4;
+        while (*p && *p != '"') p++;
+        if (*p != '"') break;
+        p++;
+        char* end = strchr(p, '"');
+        if (!end) break;
+        size_t len = (size_t)(end - p);
+        if (len >= 64) len = 63;
+        memcpy(devices[count], p, len);
+        devices[count][len] = 0;
+        count++;
+        p = end + 1;
+    }
+    return count;
+}
+
+static int license_save(char devices[][64], int count) {
+    ensure_evolve_dir();
+    FILE* f = fopen(license_slots_path(), "w");
+    if (!f) { perror("license-slots.json"); return -1; }
+    fprintf(f, "{\n  \"maxSlots\": %d,\n  \"devices\": [\n", LICENSE_MAX_SLOTS);
+    for (int i = 0; i < count; i++) {
+        fprintf(f, "    {\"id\": \"%s\", \"slot\": %d}%s\n",
+                devices[i], i + 1, (i + 1 < count) ? "," : "");
+    }
+    fprintf(f, "  ]\n}\n");
+    fclose(f);
+    return 0;
+}
+
+void license_status(void) {
+    char devices[LICENSE_MAX_SLOTS + 2][64];
+    int n = license_load_count(devices, LICENSE_MAX_SLOTS + 2);
+    if (n > LICENSE_MAX_SLOTS) n = LICENSE_MAX_SLOTS;
+    printf("[license] status %d/%d\n", n, LICENSE_MAX_SLOTS);
+    printf("tritium-license status: %d/%d\n", n, LICENSE_MAX_SLOTS);
+    for (int i = 0; i < n; i++)
+        printf("  slot %d: %s\n", i + 1, devices[i]);
+}
+
+void license_register(const char* device_id) {
+    if (!device_id || !*device_id) {
+        printf("[license] ERROR: device id required\n");
+        return;
+    }
+    char devices[LICENSE_MAX_SLOTS + 2][64];
+    int n = license_load_count(devices, LICENSE_MAX_SLOTS + 2);
+    for (int i = 0; i < n && i < LICENSE_MAX_SLOTS; i++) {
+        if (strcmp(devices[i], device_id) == 0) {
+            printf("[license] already registered slot %d/%d device=%s\n",
+                   i + 1, LICENSE_MAX_SLOTS, device_id);
+            return;
+        }
+    }
+    if (n >= LICENSE_MAX_SLOTS) {
+        printf("[license] ERROR: refuses slot 11 — max %d devices (§5a.4)\n",
+               LICENSE_MAX_SLOTS);
+        printf("[license] refuse slot 11\n");
+        return;
+    }
+    strncpy(devices[n], device_id, 63);
+    devices[n][63] = 0;
+    n++;
+    if (license_save(devices, n) == 0)
+        printf("[license] registered slot %d/%d device=%s\n",
+               n, LICENSE_MAX_SLOTS, device_id);
+}
+
 void assimilate_demo() {
     printf("Running assimilate demo (Forth->native-C assimilation of host software)...\n");
     assimilate_host_software();
@@ -1329,7 +1500,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -1411,6 +1582,14 @@ int main(int argc, char** argv) {
             groups_persist_demo();
         } else if (strcasecmp(line, "group-vocab-demo") == 0) {
             group_vocab_demo();
+        } else if (strcasecmp(line, "group-link-demo") == 0) {
+            group_link_demo();
+        } else if (strcasecmp(line, "license-status") == 0) {
+            license_status();
+        } else if (strncasecmp(line, "license-register ", 17) == 0) {
+            const char* arg = line + 17;
+            while (*arg == ' ') arg++;
+            license_register(arg);
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {

@@ -1,6 +1,6 @@
 # GROUPS — Labeled neural groups
 
-**Status:** Shipper-ready spec (wave3 item **3** + wave4 item **2** searchable vocab unit)  
+**Status:** Shipper-ready spec (wave3 item **3** + wave4 items **2** vocab unit + **4** `group-link!`)  
 **Canonical brief:** `TritiumOS.txt` §3.4–3.5, §5  
 **Sources of truth (code):** `forth/tritium/drena.fs` (group words); Linux host `install/hosts/linux/tritiumos.c` (graph lines + restart restore)  
 **Companions:** `docs/DRENA.md` §6–7 (topology owner), `docs/REKIA.md` (`rekiA-label-group`), `docs/ASSUMPTIONS.md` (persist format), `docs/NEURON.md`
@@ -33,6 +33,7 @@ Groups are the unit of assistant context (which cluster is active) and a Forth v
 | `group-vocab-add` | `( c-addr u gid -- )` | Register a word under the group unit |
 | `group-find` | `( c-addr u gid -- i )` | Scoped find (`group-entry-find`) |
 | `.group` | `( gid -- )` | Debug: label, prefix, member list |
+| `group-link!` | `( group-a group-b -- )` | Inter-group bridge (`LINK-INTER` typed record) |
 
 Create path accepts a **counted-string address** (`drena-group`); rename uses explicit `( c-addr u gid )`.
 
@@ -46,6 +47,15 @@ Format: literal `GROUP-` + label bytes + `/`.
 - Visible after AppImage restart via host restore (`groups-status` / `groups-persist-demo`); host re-registers the unit name on load.
 
 Smoke expects: label `demo` → prefix `GROUP-demo/`; `group-vocab-demo` → `[group-vocab-demo] OK — find under GROUP-demo/`.
+
+
+## Inter-group bridge (`group-link!`)
+
+Stack: `( group-a group-b -- )` — cite `TritiumOS.txt` §3.5.
+
+Creates a typed `LINK-INTER` record in the global links table via existing `link!`. Prefer bridge through representative members (first nid of each group). If a group has no members, store a marked group-id edge (`$80000000 | gid`) so the table clearly flags a group–group link.
+
+Smoke: `group-link-demo` → `[group-link-demo] OK — inter-group bridge` (Linux host SoT).
 
 ## 5. Persist (`evolve/user-graph.trit`)
 
@@ -85,6 +95,7 @@ Wave3 **5** wires `edition.trit` → DRENA id/cell width so group and neuron ids
 2. Linux suite still green: `groups-demo`, `groups-persist-demo`, `group-vocab-demo`, `rekia-demo`, `s3-reserved-demo`, `grow-step-demo`, `qwantum-atoms-demo`, `s0-assist-demo`, `edition-demo`.
 3. `group-vocab-demo` greps: `[group-vocab-demo] OK — find under GROUP-demo/`.
 4. Wave4 item **2**: `GROUP-<label>/` is a searchable vocab unit (not prefix-only).
+5. Wave4 item **4**: `group-link-demo` greps `[group-link-demo] OK — inter-group bridge`.
 
 ## 9. Cite
 
