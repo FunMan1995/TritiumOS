@@ -147,6 +147,7 @@ tools/tritium-license status          # expect 10/10
 - Duplicate proof-hash → zero credit (anti-gaming stub). No real crypto / fleet / master settlement.
 - Forth: `forth/tritium/assimilate.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.
 - May call after `queue-prove!` conceptually; `assimilate-demo` stands alone.
+- Cite: `docs/ASSIMILATE.md`, `TritiumOS.txt` §5b.2–5b.3.
 
 ## L.I.N.E.O.S. graduation stub (§1a.1)
 
