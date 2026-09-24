@@ -76,3 +76,7 @@ tools/test-*.log
 
 # Large generated or cache
 refs/grapheneos/**/build/
+
+# .NET build outputs
+**/bin/
+**/obj/
