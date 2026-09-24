@@ -122,3 +122,15 @@ This gives Tritium a battle-tested, collapse-resilient, high power-density Forth
 Slogan remains: *The line tread between madness and genius.*
 
 Update: Clone the refs, read the design/kernel/dict docs, then implement the base following the "minimal kernel + build up" pattern.
+
+## Kernel flesh (wave3) — minimal dict
+
+`forth/tritium/kernel.fs` (mirrored as `tritium.poly/core/tritium-kernel.fs` + Android assets) now has a **tiny in-memory name table** inspired by Dusk `fs/mem/dict.fs` (ENTRYSZ / words ideas, not a full linked dict):
+
+- `MAX-ENTRIES` / `NAMELEN` / `ENTRY-NAMES` + `ENTRY-IDS`
+- `entry-create` / `entry-find` / `.words` (`words`) with stack effects in comments
+- Soft `abort` sets `'soft-error`, clears known SYSVARS, prints `[kernel] abort`, **returns** (no stub loop)
+- `cold-boot` zeros SYSVARS, `dict-reset`, default edition if unset, prints `[kernel] cold-boot OK` + interpret-ready — does **not** call unfinished stub abort
+- Load banner: `Tritium kernel loaded (minimal dict).`
+
+See also `docs/ASSUMPTIONS.md` smoke notes.

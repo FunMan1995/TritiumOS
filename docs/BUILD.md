@@ -9,6 +9,13 @@
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
+### Linux (.AppImage)
+
+- `gcc` (static link)
+- `file`
+- `python3` (Pillow recommended for logo JPG→PNG)
+- Network once for appimagetool if not installed; packaging uses `APPIMAGE_EXTRACT_AND_RUN=1` (no FUSE required)
+
 ### Android (.apk)
 
 - JDK 17+
@@ -40,7 +47,7 @@ bash tools/build-linux.sh
 |--------|--------|
 | `build-windows.ps1` | `dist/TritiumOS.exe` |
 | `build-android.ps1` | `dist/TritiumOS.apk` |
-| `build-poly.ps1` | `dist/tritium.poly.zip` |
+| `build-poly.ps1` / `build-poly.sh` | `dist/tritium.poly.zip` |
 | `build-linux.sh` | `dist/TritiumOS.AppImage` (and AppDir) |
 
 ## First run (both hosts)
@@ -139,3 +146,16 @@ The builds now produce artifacts that support the core architecture ("all curren
 - **AV exclusion is mandatory** for these features on Windows (see the build script output, the Win11 README, and SYSTEM-DESIGN-INITIAL-PLATFORMS.md for details). The exception you added for the project folder enables this.
 
 See `install/hosts/windows/Program.cs` (LoadRefined + command wiring) and the host impls for the concrete bridges.
+
+### Host REKIA hooks (Win / Android / Linux)
+
+Deferred Forth words `platform-write-refined` / `platform-include-refined` (`docs/REKIA.md` §3.1) write and include under each host’s evolve dir:
+
+| Host | Evolve root | Artifact |
+|------|-------------|----------|
+| Linux | `~/.tritiumos/evolve` | `forth/refined/refined-<id>.fs` |
+| Windows | `%LocalAppData%/TritiumOS/evolve` | same relative path |
+| Android | `filesDir/evolve` | same relative path |
+
+Smoke: `rekia-demo` then confirm artifact on disk; `s3-reserved-demo` for S3=`11` leave-alone.
+

@@ -73,7 +73,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 **Missing docs/ (none of the architecture ones exist):**
 - MASTER.md, ASSIMILATE.md, QUEUE.md
 - ASSISTANT.md, LINEOS.md, INSTALL.md, LICENSE.md
-- NEURON.md (must document the 4x4-bit header + trit-pair@ mapping), REKIA.md, DRENA.md, GROUPS.md
+- ~~NEURON.md~~ / ~~REKIA.md~~ landed (see `docs/NEURON.md`, `docs/REKIA.md`); ~~DRENA.md~~ / ~~GROUPS.md~~ landed (see docs/)
 - ARCHITECTURE.md (or similar), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
 - Also referenced: NEURON.md in §3, docs for BUILD, QWANTUM, QD-COMPUTE (partial quantum docs exist).
 
@@ -89,7 +89,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 **Other spec items:**
 - `evolve/graduation.json` (configurable thresholds).
 - Full neuron record layout + linking data binary/Forth structures (append-only links.bin etc.).
-- `GROUP-<label>/` vocab namespaces.
+- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; full nested search-order / persist of member words still open).
 - Environment vars and Forth naming conventions (§8).
 - Open: S3 code `11` RESERVED + “D.R.E.N.A. with ______” continuation (document, do not invent).
 
