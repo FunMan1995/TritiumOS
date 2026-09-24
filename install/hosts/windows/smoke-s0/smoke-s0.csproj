@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TritiumOS.Smoke</RootNamespace>
+    <AssemblyName>s0-assist-smoke</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\TritiumForthVM.cs" Link="TritiumForthVM.cs" />
+  </ItemGroup>
+</Project>
