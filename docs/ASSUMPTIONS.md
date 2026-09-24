@@ -137,6 +137,7 @@ tools/tritium-license status          # expect 10/10
 - Persist: `evolve/queue/jobs.jsonl` (JSON lines; job-id, submitter, payload, local-failed-why, proof-hash, status).
 - No fleet network, no real crypto / proof verification beyond stub score fold.
 - Forth: `forth/tritium/queue.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.
+- Cite: `docs/QUEUE.md`, `TritiumOS.txt` §5b.1.
 
 ## Assimilate stub (§5b.2–5b.3)
 

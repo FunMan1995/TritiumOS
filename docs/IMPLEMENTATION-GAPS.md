@@ -46,7 +46,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
 - **License slot-11 refuse stub**: `tools/tritium-license` + hardened `license/validator.ps1` register into `evolve/license-slots.json`; accepts slots 1..10; **refuses slot 11**; `status` prints `N/10`. No real crypto / master-verify yet — still Priority 0 for signing.
 
 5. **Collective queue / Assimilate / economy**
-   - **Queue stub landed (wave5 item 2, §5b.1):** `queue-local?` / `queue-enqueue!` / `queue-pull` / `queue-prove!` + `queue-demo` (Forth + Linux host); persist `evolve/queue/jobs.jsonl` local cue only — **no fleet crypto/network**.
+   - **Queue stub landed (wave5 item 2, §5b.1):** `queue-local?` / `queue-enqueue!` / `queue-pull` / `queue-prove!` + `queue-demo` (Forth + Linux host); persist `evolve/queue/jobs.jsonl` local cue only — **no fleet crypto/network**. See `docs/QUEUE.md`.
    - **Assimilate stub landed (wave5 item 3, §5b.2–5b.3):** `assimilate-epoch` / `assimilate-fragment` / `assimilate-merge!` / `assimilate-solved?` / `assimilate-balance` + `assimilate-demo` (Forth + Linux host); integer simti wallet, 1 ASIM = 10⁸ simti, stub pool 10⁶; persist `evolve/assimilate/` — **no real crypto/fleet**. Duplicate proof-hash → zero credit.
    - Quantum jobs log to `evolve/qwantum-jobs.log` (works), but no offload to queue when "not locally computable".
    - **Needed (Phases 6-7):** Wire queue-prove! → assimilate-merge! end-to-end; later real distributed proof + master epoch settlement.
@@ -70,7 +70,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
 All of these are called out explicitly in `TritiumOS.txt`:
 
 **Missing docs/ (none of the architecture ones exist):**
-- MASTER.md, ASSIMILATE.md, QUEUE.md
+- MASTER.md, ASSIMILATE.md, ~~QUEUE.md~~ landed (see `docs/QUEUE.md`)
 - ASSISTANT.md, LINEOS.md, INSTALL.md, LICENSE.md
 - ~~NEURON.md~~ / ~~REKIA.md~~ landed (see `docs/NEURON.md`, `docs/REKIA.md`); ~~DRENA.md~~ / ~~GROUPS.md~~ landed (see docs/)
 - ARCHITECTURE.md (or similar), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
