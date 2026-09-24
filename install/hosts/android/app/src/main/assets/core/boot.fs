@@ -6,4 +6,5 @@ include tritium-kernel.fs
 include drena.fs
 include rekia.fs
 include queue.fs
+include assimilate.fs
 ." boot ok — run rekia-demo for smoke" cr

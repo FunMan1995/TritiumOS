@@ -86,3 +86,6 @@ evolve/license-slots.json
 
 # Runtime collective queue cue (created by queue-demo / queue-enqueue!)
 evolve/queue/
+
+# Runtime assimilate puzzle/wallet (created by assimilate-demo / assimilate-merge!)
+evolve/assimilate/

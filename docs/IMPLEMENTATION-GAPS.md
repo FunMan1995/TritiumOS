@@ -47,10 +47,9 @@ These prevent any real "TritiumOS" behavior per the product definition.
 
 5. **Collective queue / Assimilate / economy**
    - **Queue stub landed (wave5 item 2, §5b.1):** `queue-local?` / `queue-enqueue!` / `queue-pull` / `queue-prove!` + `queue-demo` (Forth + Linux host); persist `evolve/queue/jobs.jsonl` local cue only — **no fleet crypto/network**.
-   - `assimilate/`: still README-level; no `assimilate-fragment`, `assimilate-merge!`, epoch, wallet (simti), contribution_score, ASIM display.
-   - No `evolve/wallet/...` or puzzle state.
+   - **Assimilate stub landed (wave5 item 3, §5b.2–5b.3):** `assimilate-epoch` / `assimilate-fragment` / `assimilate-merge!` / `assimilate-solved?` / `assimilate-balance` + `assimilate-demo` (Forth + Linux host); integer simti wallet, 1 ASIM = 10⁸ simti, stub pool 10⁶; persist `evolve/assimilate/` — **no real crypto/fleet**. Duplicate proof-hash → zero credit.
    - Quantum jobs log to `evolve/qwantum-jobs.log` (works), but no offload to queue when "not locally computable".
-   - **Needed (Phases 6-7):** Wire queue → assimilate stub merge that "credits" simti. Later real distributed proof.
+   - **Needed (Phases 6-7):** Wire queue-prove! → assimilate-merge! end-to-end; later real distributed proof + master epoch settlement.
 
 6. **Graduation / L.I.N.E.O.S. / evolution persistence missing**
    - No `lineos-graduate`, no `evolve/graduation.json` thresholds (session count, graph density, refined cells, license, user confirm).

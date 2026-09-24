@@ -28,6 +28,9 @@ group-link-demo
 queue-demo
 \ expect: [queue-demo] OK — local cue (evolve/queue/; no fleet crypto)
 
+assimilate-demo
+\ expect: [assimilate-demo] OK — simti credited (evolve/assimilate/; no crypto)
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -131,3 +134,13 @@ tools/tritium-license status          # expect 10/10
 - Persist: `evolve/queue/jobs.jsonl` (JSON lines; job-id, submitter, payload, local-failed-why, proof-hash, status).
 - No fleet network, no real crypto / proof verification beyond stub score fold.
 - Forth: `forth/tritium/queue.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.
+
+## Assimilate stub (§5b.2–5b.3)
+
+- Collective neural puzzle stub: `assimilate-epoch` / `assimilate-fragment` / `assimilate-merge!` / `assimilate-solved?` / `assimilate-balance` + `assimilate-demo`.
+- Currency: balances as integer **simti**; **1 ASIM = 10⁸ simti**; stub epoch pool **10⁶ simti**.
+- On merge with Δε improvement → credit local wallet under `evolve/assimilate/` (puzzle.state + wallet/).
+- Duplicate proof-hash → zero credit (anti-gaming stub). No real crypto / fleet / master settlement.
+- Forth: `forth/tritium/assimilate.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.
+- May call after `queue-prove!` conceptually; `assimilate-demo` stands alone.
+

@@ -51,6 +51,13 @@ int queue_local_p(int job);
 int queue_enqueue(int job);
 int queue_pull(void);
 int queue_prove(int job, unsigned proof);
+/* Assimilate stub (§5b.2–5b.3) — local wallet/epoch; no crypto */
+void assimilate_demo(void);
+int assimilate_epoch(void);
+int assimilate_fragment(int group, int links);
+int assimilate_merge(int frag, unsigned proof);
+int assimilate_solved_p(void);
+void assimilate_balance(void);
 void s0_assist(const char* query);
 void s0_assist_demo(void);
 void load_edition(void);
@@ -130,6 +137,8 @@ void ensure_evolve_dir() {
     snprintf(sub, sizeof(sub), "%s/forth/refined", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/qwantum-dump", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/queue", evolve_dir); mkdir(sub, 0755);
+    snprintf(sub, sizeof(sub), "%s/assimilate", evolve_dir); mkdir(sub, 0755);
+    snprintf(sub, sizeof(sub), "%s/assimilate/wallet", evolve_dir); mkdir(sub, 0755);
 }
 
 const char* get_evolve_dir() {
@@ -755,7 +764,7 @@ void load_core() {
      * For now, simulate loading the engines (sources are bundled for the "soul").
      * See refs/duskos/posix/vm.c for a C-based Forth VM example to extend this.
      */
-    const char* files[] = {"trit.fs", "tritium-kernel.fs", "drena.fs", "rekia.fs", NULL};
+    const char* files[] = {"trit.fs", "tritium-kernel.fs", "drena.fs", "rekia.fs", "queue.fs", "assimilate.fs", NULL};
     for (int i = 0; files[i]; i++) {
         char path[MAX_PATH];
         snprintf(path, sizeof(path), "%s/%s", core_dir, files[i]);
@@ -1306,10 +1315,164 @@ void queue_demo(void) {
     printf("[queue-demo] OK — local cue (evolve/queue/; no fleet crypto)\n\n");
 }
 
-void assimilate_demo() {
-    printf("Running assimilate demo (Forth->native-C assimilation of host software)...\n");
-    assimilate_host_software();
-    printf("Assimilate demo complete. See %s/assimilated/\n\n", get_evolve_dir());
+/* --- Assimilate stub (§5b.2–5b.3) — simti/ASIM local wallet; no crypto/fleet --- */
+#define SIMTI_PER_ASIM 100000000ULL
+#define ASIM_STUB_POOL 1000000ULL
+#define ASIM_SOLVE_EPS 10
+#define ASIM_PROOF_MAX 16
+
+static unsigned long long asim_epoch_id = 1;
+static int asim_epsilon = 1000;
+static unsigned long long asim_wallet = 0;   /* simti */
+static unsigned long long asim_pool = ASIM_STUB_POOL;
+static int asim_frag_next = 1;
+static unsigned asim_proofs[ASIM_PROOF_MAX];
+static int asim_proof_n = 0;
+
+static int asim_proof_seen(unsigned proof) {
+    for (int i = 0; i < asim_proof_n; i++)
+        if (asim_proofs[i] == proof) return 1;
+    return 0;
+}
+
+static void asim_proof_remember(unsigned proof) {
+    if (asim_proof_n >= ASIM_PROOF_MAX) return;
+    asim_proofs[asim_proof_n++] = proof;
+}
+
+static void asim_ensure_dir(void) {
+    ensure_evolve_dir();
+    char sub[MAX_PATH];
+    snprintf(sub, sizeof(sub), "%s/assimilate", get_evolve_dir());
+    mkdir(sub, 0755);
+    snprintf(sub, sizeof(sub), "%s/assimilate/wallet", get_evolve_dir());
+    mkdir(sub, 0755);
+}
+
+static void asim_persist(void) {
+    asim_ensure_dir();
+    char path[MAX_PATH];
+    /* puzzle/epoch state */
+    snprintf(path, sizeof(path), "%s/assimilate/puzzle.state", get_evolve_dir());
+    FILE* f = fopen(path, "w");
+    if (f) {
+        fprintf(f,
+            "epoch=%llu\nepsilon=%d\npool_simti=%llu\nfrag_next=%d\n"
+            "note=stub §5b.2–5b.3 no crypto\n",
+            asim_epoch_id, asim_epsilon, asim_pool, asim_frag_next);
+        fclose(f);
+    }
+    /* local wallet (device-id = local) */
+    snprintf(path, sizeof(path), "%s/assimilate/wallet/local.trit", get_evolve_dir());
+    f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "device=local\nbalance_simti=%llu\nepoch=%llu\n",
+                asim_wallet, asim_epoch_id);
+        fclose(f);
+    }
+    /* json mirror for greppable tooling */
+    snprintf(path, sizeof(path), "%s/assimilate/wallet.json", get_evolve_dir());
+    f = fopen(path, "w");
+    if (f) {
+        fprintf(f,
+            "{\"epoch\":%llu,\"epsilon\":%d,\"pool_simti\":%llu,"
+            "\"balance_simti\":%llu,\"asim\":%llu,\"simti_rem\":%llu}\n",
+            asim_epoch_id, asim_epsilon, asim_pool, asim_wallet,
+            asim_wallet / SIMTI_PER_ASIM, asim_wallet % SIMTI_PER_ASIM);
+        fclose(f);
+    }
+}
+
+static void asim_reset(void) {
+    asim_epoch_id = 1;
+    asim_epsilon = 1000;
+    asim_wallet = 0;
+    asim_pool = ASIM_STUB_POOL;
+    asim_frag_next = 1;
+    asim_proof_n = 0;
+    memset(asim_proofs, 0, sizeof(asim_proofs));
+}
+
+int assimilate_epoch(void) {
+    return (int)asim_epoch_id;
+}
+
+/* assimilate-fragment ( group links -- frag ) */
+int assimilate_fragment(int group, int links) {
+    int frag = (group ^ links ^ asim_frag_next);
+    asim_frag_next++;
+    printf("[ASSIMILATE] fragment=%d (group⊕links stub)\n", frag);
+    return frag;
+}
+
+/* assimilate-merge! ( frag proof -- delta-epsilon ) */
+int assimilate_merge(int frag, unsigned proof) {
+    if (asim_proof_seen(proof)) {
+        printf("[ASSIMILATE] merge! duplicate proof-hash → delta=0 credit=0\n");
+        asim_persist();
+        return 0;
+    }
+    int eps_before = asim_epsilon;
+    int delta = (int)(((unsigned)frag ^ proof) & 0x3fu) + 1;
+    asim_proof_remember(proof);
+    asim_epsilon = eps_before - delta;
+    if (asim_epsilon < 0) asim_epsilon = 0;
+
+    unsigned long long credit = 0;
+    if (delta > 0) {
+        unsigned long long denom = (unsigned long long)delta + (unsigned long long)eps_before;
+        if (denom == 0) denom = 1;
+        credit = (asim_pool * (unsigned long long)delta) / denom;
+        if (credit > asim_pool) credit = asim_pool;
+    }
+    asim_wallet += credit;
+    if (asim_pool >= credit) asim_pool -= credit; else asim_pool = 0;
+
+    printf("[ASSIMILATE] merge! delta-eps=%d credit-simti=%llu\n", delta, credit);
+    asim_persist();
+    return delta;
+}
+
+/* assimilate-solved? ( -- flag ) */
+int assimilate_solved_p(void) {
+    if (asim_epsilon <= ASIM_SOLVE_EPS) {
+        printf("[ASSIMILATE] solved? true (eps=%d) → new epoch\n", asim_epsilon);
+        asim_epoch_id++;
+        asim_epsilon = 1000;
+        asim_pool = ASIM_STUB_POOL;
+        asim_proof_n = 0;
+        memset(asim_proofs, 0, sizeof(asim_proofs));
+        asim_persist();
+        return 1;
+    }
+    printf("[ASSIMILATE] solved? false eps=%d\n", asim_epsilon);
+    return 0;
+}
+
+void assimilate_balance(void) {
+    unsigned long long asim = asim_wallet / SIMTI_PER_ASIM;
+    unsigned long long rem = asim_wallet % SIMTI_PER_ASIM;
+    printf("[ASSIMILATE] balance epoch=%llu ASIM=%llu simti=%llu\n",
+           asim_epoch_id, asim, rem);
+}
+
+void assimilate_demo(void) {
+    printf("[assimilate-demo] fragment → merge → credit (simti; no crypto)\n");
+    asim_reset();
+    int frag = assimilate_fragment(7, 3);
+    int delta = assimilate_merge(frag, 0xc0ffeeu);
+    if (delta <= 0 || asim_wallet == 0) {
+        printf("[assimilate-demo] FAIL — expected simti credit\n\n");
+        return;
+    }
+    /* duplicate proof → zero */
+    int dup = assimilate_merge(frag, 0xc0ffeeu);
+    if (dup != 0) {
+        printf("[assimilate-demo] FAIL — duplicate should yield 0\n\n");
+        return;
+    }
+    assimilate_balance();
+    printf("[assimilate-demo] OK — simti credited (evolve/assimilate/; no crypto)\n\n");
 }
 
 void bootstrap_demo() {
@@ -1682,7 +1845,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -1787,6 +1950,22 @@ int main(int argc, char** argv) {
             int job = 0; unsigned proof = 0;
             sscanf(line + 13, "%d %u", &job, &proof);
             queue_prove(job, proof);
+        } else if (strcasecmp(line, "assimilate-demo") == 0) {
+            assimilate_demo();
+        } else if (strcasecmp(line, "assimilate-epoch") == 0) {
+            printf("[ASSIMILATE] epoch=%d\n", assimilate_epoch());
+        } else if (strncasecmp(line, "assimilate-fragment ", 20) == 0) {
+            int g = 0, l = 0;
+            sscanf(line + 20, "%d %d", &g, &l);
+            assimilate_fragment(g, l);
+        } else if (strncasecmp(line, "assimilate-merge! ", 18) == 0) {
+            int frag = 0; unsigned proof = 0;
+            sscanf(line + 18, "%d %u", &frag, &proof);
+            assimilate_merge(frag, proof);
+        } else if (strcasecmp(line, "assimilate-balance") == 0) {
+            assimilate_balance();
+        } else if (strcasecmp(line, "assimilate-solved?") == 0) {
+            printf("[ASSIMILATE] flag=%d\n", assimilate_solved_p());
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {
