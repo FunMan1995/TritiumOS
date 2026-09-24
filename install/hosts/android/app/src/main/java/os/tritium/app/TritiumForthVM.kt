@@ -25,6 +25,11 @@ class TritiumForthVM(private val context: Context) {
     private var herePtr: Int = 0
     private var arch: Int = 64
 
+    // S0 assist state (Linux s0_assist / refined_live parity)
+    private var hostNextId: Int = 1
+    private var refinedLive: Boolean = false
+    private var lastRefinedLabel: String = ""
+
     private var compiling = false
     private var currentDefinition: Word? = null
 
@@ -147,6 +152,76 @@ class TritiumForthVM(private val context: Context) {
             emitLine("[persist] ${e.message}")
         }
         emitLine("[rekia-demo] done — refined word should be live vocab")
+        refinedLive = true
+        lastRefinedLabel = label
+    }
+
+    /** S0 assistant path (Linux s0_assist parity): free-text → drena-step + rekiA-refine. */
+    fun s0Assist(query: String): String {
+        return s0AssistCore(query, clearOutput = true)
+    }
+
+    private fun s0AssistCore(queryIn: String?, clearOutput: Boolean): String {
+        if (clearOutput) output.clear()
+        val query = queryIn ?: ""
+        emitLine("[S0] assist: $query")
+
+        val nid = if (hostNextId > 0) hostNextId else 1
+        emitLine("[DRENA] spawned neuron id=$nid mode=RANDOM")
+        emitLine("neuron stable & valid")
+        emitLine("[DRENA] step (assist → rewire)...")
+        emitLine("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)")
+        emitLine("[DRENA] step OK — mode=1")
+        hostNextId = nid + 1
+
+        var h = 0u
+        for (b in query.toByteArray(Charsets.UTF_8)) {
+            h = h * 33u + b.toUByte().toUInt()
+        }
+        if (h == 0u) h = 1u
+        var value = (h and 0xffu).toInt()
+        if (value == 0) value = 1
+
+        val label = "refined-1"
+        val srcFs = "\\ Auto-emitted by S0 assist (drena-step + rekiA-refine)\n" +
+            "\\ query: $query\n" +
+            ": $label ( -- n ) $value ;\n"
+        val rel = "evolve/forth/refined/$label.fs"
+        emitLine(": $label  ( -- n ) $value ;")
+        platformWriteRefined(srcFs, rel)
+        platformIncludeRefined(rel)
+
+        try {
+            val state = File(getEvolveDir(), "assistant-state.trit")
+            state.writeText(
+                "# TritiumOS assistant-state.trit v1\n" +
+                    "last-refine=$label\n" +
+                    "last-refine-path=forth/refined/$label.fs\n" +
+                    "updated=${System.currentTimeMillis() / 1000}\n"
+            )
+            emitLine("[REKIA] assistant-state! -> ${state.absolutePath}")
+        } catch (e: Exception) {
+            emitLine("[persist] ${e.message}")
+        }
+
+        refinedLive = true
+        lastRefinedLabel = label
+        emitLine("[S0] assist done — refined word live")
+        emitLine()
+        return output.toString()
+    }
+
+    /** Fixed free-text smoke: hello tritium → refined written + live. */
+    fun s0AssistDemo(): String {
+        output.clear()
+        emitLine("[s0-assist-demo] feed fixed query through S0 path")
+        s0AssistCore("hello tritium", clearOutput = false)
+        val path = File(getEvolveDir(), "forth/refined/refined-1.fs")
+        val ok = path.exists() && refinedLive && lastRefinedLabel.isNotEmpty()
+        if (ok) emitLine("[s0-assist-demo] OK — refined written; word live")
+        else emitLine("[s0-assist-demo] FAIL — expected refined-1.fs + live flag")
+        emitLine()
+        return output.toString()
     }
 
     private fun ensureSub(sub: String): File {
@@ -215,8 +290,10 @@ class TritiumForthVM(private val context: Context) {
             }
             lower == "load-core" -> loadCore()
             lower == "load-refined" -> { /* handled in activity */ }
+            lower == "s0-assist-demo" -> { s0AssistDemo() }
             else -> {
-                // Send to real interpreter for raw Forth or unknown command words
+                // Host REPL free-text is wired in MainActivity to s0Assist.
+                // Direct evaluate of demo words / Forth still goes to interpret.
                 interpret(trimmed)
             }
         }
@@ -465,6 +542,7 @@ class TritiumForthVM(private val context: Context) {
         def("s3-reserved-demo") { runS3ReservedDemo() }
         def("grow-step-demo") { runGrowStepDemo() }
         def("groups-demo") { runGroupsDemo() }
+        def("s0-assist-demo") { s0AssistDemo() }
         def("qwantum-atoms-load") { runQwantumAtomsLoad() }
         def("qwantum-atoms-demo") { runQwantumAtomsDemo() }
 

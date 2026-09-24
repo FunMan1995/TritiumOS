@@ -41,8 +41,10 @@ s0-assist-demo
 
 ## S0 assistant path (free-text)
 
-- Host default chat/REPL free-text routes to **drena-step + rekiA-refine** (Linux `s0_assist`), not scaffold reply.
+- Host default chat/REPL free-text routes to **drena-step + rekiA-refine** (Linux `s0_assist`; Win `S0Assist`; Android `s0Assist`), not scaffold / "Example response" / parity-print-only stubs.
 - Emits `evolve/forth/refined/refined-*.fs` + `[REKIA] wrote+include` / live vocab (same artifact contract as `rekia-demo`).
+- Demo grep (all Priority-1 hosts): `[s0-assist-demo] OK — refined written; word live`
+- Headless Win twin smoke (no WinForms): `dotnet run --project install/hosts/windows/smoke-s0`
 
 ## Trit nibble packing
 

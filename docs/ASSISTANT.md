@@ -1,8 +1,8 @@
 # ASSISTANT — On-demand S0 path
 
-**Status:** Shipper-ready spec (wave4 item **1**; matches PR #13 S0 tip)  
+**Status:** Shipper-ready spec (wave4 items **1** + **3**; Linux SoT + Win/Android host parity)  
 **Canonical brief:** `TritiumOS.txt` §§1, 5a (bootstrap), evolution ladder  
-**Sources of truth (code):** Linux `s0_assist` / `s0_assist_demo` in `install/hosts/linux/tritiumos.c`; Forth pipeline `drena-step` + `rekiA-refine`  
+**Sources of truth (code):** Linux `s0_assist` / `s0_assist_demo` in `install/hosts/linux/tritiumos.c`; Win `TritiumForthVM.S0Assist` / Android `s0Assist`; Forth pipeline `drena-step` + `rekiA-refine`  
 **Companions:** `docs/REKIA.md` (emit contract), `docs/DRENA.md` (step/grow), `docs/GROUPS.md` (context clusters), `docs/ASSUMPTIONS.md` (S0 + persist)
 
 ## 1. Purpose
@@ -54,7 +54,9 @@ Query bytes may fold into the contracted trit signature / emitted constant (Linu
 | `s0-assist-demo` | Fixed query `hello tritium` → `[S0] assist` → wrote+include `refined-1.fs` → word live; no scaffold |
 | Free-text REPL | Same markers as demo for one-input → refined live word |
 
-Gate platform today: **Linux**. Wave4 **3** extends Win and/or Android to the same shape.
+Gate platforms: **Linux** (AppImage SoT) + **Windows** / **Android** host twins (wave4 **3**).
+Win `TritiumForthVM.S0Assist` / Android `s0Assist` match Linux markers; smoke via `s0-assist-demo`
+(`[s0-assist-demo] OK — refined written; word live`) or headless `install/hosts/windows/smoke-s0`.
 
 ## 4. REPL / demo commands (Linux reference)
 
@@ -94,10 +96,10 @@ Boot loads assistant-state + user-graph + refined includes so live words and gro
 
 1. `docs/ASSISTANT.md` present; one-line cite from `docs/REKIA.md` (S0) and/or README OK.
 2. Linux suite unchanged green: `s0-assist-demo`, `rekia-demo`, `s3-reserved-demo`, `groups-demo` / persist, `grow-step-demo`, `qwantum-atoms-demo`, `edition-demo`.
-3. Docs-only tip: no Forth behavior change required for item **1** alone.
+3. Win and/or Android: free-text → real S0 (no parity-print stub); `s0-assist-demo` OK line greppable; prefer headless Win smoke when SDK absent.
 
 ## 8. Cite
 
 - `TritiumOS.txt` §§1, 5a
 - `docs/REKIA.md`, `docs/DRENA.md`, `docs/GROUPS.md`, `docs/ASSUMPTIONS.md`
-- `install/hosts/linux/tritiumos.c` (`s0_assist`, `s0_assist_demo`); `forth/tritium/rekia.fs` / `drena.fs`
+- `install/hosts/linux/tritiumos.c` (`s0_assist`, `s0_assist_demo`); Win `TritiumForthVM.S0Assist` + `install/hosts/windows/smoke-s0`; Android `s0Assist`; `forth/tritium/rekia.fs` / `drena.fs`

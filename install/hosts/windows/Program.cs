@@ -115,9 +115,9 @@ sealed class MainForm : Form
         switch (cmd)
         {
             case "help":
-                Append("help | status | compute | compute-set | compute-test | core-path | rename | qwantum-search | qwantum-dump | qwantum-atoms-load | qwantum-atoms-demo | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo | groups-demo" + Environment.NewLine);
+                Append("help | status | compute | compute-set | compute-test | core-path | rename | qwantum-search | qwantum-dump | qwantum-atoms-load | qwantum-atoms-demo | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo | groups-demo | s0-assist-demo" + Environment.NewLine);
                 Append("assimilate | bootstrap-host | full-stack-optimize | host-info | load-refined" + Environment.NewLine);
-                Append("Free-text → S0 path (drena-step + rekiA-refine); Forth/demos also accepted by VM." + Environment.NewLine);
+                Append("Free-text → S0 path (drena-step + rekiA-refine → wrote+include refined-1.fs); Forth/demos also accepted by VM." + Environment.NewLine);
                 break;
             case "compute":
                 Append(FormatCompute() + Environment.NewLine);
@@ -198,23 +198,18 @@ sealed class MainForm : Form
             case "host-info":
                 Append(_vm?.Evaluate("host-hw-info . cr host-evolve-dir . cr") ?? "VM not ready");
                 break;
+            case "s0-assist-demo":
+                if (_vm != null) _vm.S0AssistDemo();
+                else Append("VM not ready" + Environment.NewLine);
+                break;
             case "load-refined":
                 LoadRefinedModules();
                 break;
             default:
-                // Route unknown input (and normal Forth) to the VM
-                if (_vm != null)
-                {
-                    var result = _vm.Evaluate(line);
-                    if (!string.IsNullOrEmpty(result))
-                        Append(result);
-                }
-                else
-                {
-                    // S0 parity (Linux s0_assist): free-text → drena-step + rekiA-refine
-                    Append($"[S0] assist: {line}" + Environment.NewLine);
-                    Append("[S0] Win hook: drena-step + rekiA-refine (parity print; Linux AppImage is source of truth)" + Environment.NewLine);
-                }
+                // Free-text → real S0 assist (Linux s0_assist): drena-step + rekiA-refine → wrote+include.
+                // Forbidden: scaffold / "Example response" / parity-print-only stubs.
+                if (_vm != null) _vm.S0Assist(line);
+                else Append("VM not ready" + Environment.NewLine);
                 break;
         }
     }

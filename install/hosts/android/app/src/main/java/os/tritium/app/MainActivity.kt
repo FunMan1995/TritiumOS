@@ -122,7 +122,7 @@ class MainActivity : AppCompatActivity() {
         if (line.isEmpty()) return
         append("> $line\n")
         when (line.lowercase().split(" ").first()) {
-            "help" -> append("help | status | compute | compute-set | about | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo | groups-demo | qwantum-atoms-load | qwantum-atoms-demo | assimilate | bootstrap-host | full-stack-optimize | host-hw-info | load-refined\nFree-text → S0 path (drena-step + rekiA-refine); Forth/demos also accepted by VM.\n" +
+            "help" -> append("help | status | compute | compute-set | about | load-core | drena-demo | rekiA-demo | rekia-demo | s3-reserved-demo | grow-step-demo | groups-demo | s0-assist-demo | qwantum-atoms-load | qwantum-atoms-demo | assimilate | bootstrap-host | full-stack-optimize | host-hw-info | load-refined\nFree-text → S0 path (drena-step + rekiA-refine → wrote+include refined-1.fs); Forth/demos also accepted by VM.\n" +
                 "assimilate = ingest software on this phone hardware into evolve/assimilated/\n" +
                 "full-stack-optimize = DRENA+REKIA + assimilate + emit host bootstrap plans + refined modules\n")
             "compute" -> append(formatCompute())
@@ -170,15 +170,12 @@ class MainActivity : AppCompatActivity() {
                 loadRefinedModules()
             }
             "host-hw-info" -> append(vm?.evaluate("host-hw-info") ?: "")
+            "s0-assist-demo" -> append(vm?.s0AssistDemo() ?: "VM not ready\n")
             "load-refined" -> loadRefinedModules()
             else -> {
-                val r = vm?.evaluate(line)
-                if (r != null) append(r)
-                else {
-                    // S0 parity (Linux s0_assist): free-text → drena-step + rekiA-refine
-                    append("[S0] assist: $line\n")
-                    append("[S0] Android hook: drena-step + rekiA-refine (parity print; Linux AppImage is source of truth)\n")
-                }
+                // Free-text → real S0 assist (Linux s0_assist). No parity-print-only stub.
+                if (vm != null) append(vm!!.s0Assist(line))
+                else append("VM not ready\n")
             }
         }
     }
