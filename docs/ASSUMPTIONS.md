@@ -34,6 +34,9 @@ assimilate-demo
 lineos-graduate-demo
 \ expect: [lineos-graduate-demo] OK
 
+tritium-integrate-demo
+\ expect: [tritium-integrate-demo] OK
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -157,3 +160,11 @@ tools/tritium-license status          # expect 10/10
 - Demo: `demoForceReady` / force-ready path so smoke PASSes without 30 sessions; prints each gate PASS/FAIL; greppable `[lineos-graduate-demo] OK`.
 - Forth: `forth/tritium/lineos.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.
 - Cite: `docs/LINEOS.md`, `TritiumOS.txt` §1a.1.
+
+## tritium-integrate stub (§5a.2 / Phase 8)
+
+- Scaffold from `install/hosts/_template/` → prefer demo path `evolve/integrate/<platform>/` (gitignored; do not mutate `install/hosts/` in CI).
+- Require free device slot (reuse license helpers); refuse when 10/10 or slot 11 — cite §5a.4 / `LICENSE.md`.
+- Surfaces: Linux host C SoT + CLI `tools/tritium-integrate`; Forth `forth/tritium/integrate.fs` (+ poly / Android mirrors).
+- Demo: force free-slot path → greppable `[tritium-integrate-demo] OK`.
+- Cite: `docs/INTEGRATE.md`, `docs/INSTALL.md`, `TritiumOS.txt` §5a.2 / Phase 8.

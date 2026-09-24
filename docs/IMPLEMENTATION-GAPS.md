@@ -56,10 +56,15 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - Graph persist exists (`evolve/user-graph.trit`); full fleet sync / irreversible UX confirm packs still later.
    - Needed later: real splash/about branding pack; irreversible confirm UX; fleet session counts.
 
+7. **Integrate / install docs (wave6 items 4+5)**
+   - **Integrate stub landed:** `tritium-integrate` / `tritium-integrate-demo` (Linux host + CLI + Forth); scaffold from `_template` → `evolve/integrate/<platform>/`; slot gate via license helpers. See `docs/INTEGRATE.md`.
+   - **INSTALL.md landed:** bootstrap / host install checklist. See `docs/INSTALL.md`.
+   - Needed later: real cross-host evolve sync; production packaging for new OS adapters.
+
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
 - Real first-run bootstrap of core (extract + start TritiumForth + engines) inside the .exe / .apk.
 - `dist/TritiumOS.exe` + `.apk` that actually boot the Forth core (currently the builds succeed for the UI shell only).
-- `tritium-integrate` tool (from `_template`) + documented API for new hosts.
+- ~~`tritium-integrate` tool (from `_template`)~~ **landed (wave6 items 4+5):** CLI `tools/tritium-integrate` + Linux host SoT + Forth stub; scaffold → `evolve/integrate/<platform>/`; refuse 10/10. See `docs/INTEGRATE.md` / `docs/INSTALL.md`.
 - `evolve/assistant-state.trit` + basic task/reminder/note hooks.
 - Linux: .AppImage as the end product for the on-demand assistant (see BUILD.md + tools/build-linux.sh + install/hosts/linux/TritiumOS.py). Full project vision: on-demand intelligent assistant that full-stack refines the hardware (DRENA/REKIA) and assists the user. GrapheneOS refs for komodo, but Linux is portable app.
 - Assets folder (`/assets` with branding JPGs referenced from manifest + builds). Loose JPGs at root today.
@@ -71,9 +76,9 @@ All of these are called out explicitly in `TritiumOS.txt`:
 
 **Missing docs/ (none of the architecture ones exist):**
 - MASTER.md, ~~ASSIMILATE.md~~ landed (see `docs/ASSIMILATE.md`), ~~QUEUE.md~~ landed (see `docs/QUEUE.md`)
-- ASSISTANT.md, LINEOS.md, INSTALL.md, LICENSE.md
+- ASSISTANT.md, LINEOS.md, ~~INSTALL.md~~ landed (see `docs/INSTALL.md`), LICENSE.md
 - ~~NEURON.md~~ / ~~REKIA.md~~ landed (see `docs/NEURON.md`, `docs/REKIA.md`); ~~DRENA.md~~ / ~~GROUPS.md~~ landed (see docs/)
-- ~~ARCHITECTURE.md~~ landed (see `docs/ARCHITECTURE.md`), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
+- ~~ARCHITECTURE.md~~ landed (see `docs/ARCHITECTURE.md`), ~~INTEGRATE.md~~ landed (see `docs/INTEGRATE.md`), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
 - Also referenced: NEURON.md in §3, docs for BUILD, QWANTUM, QD-COMPUTE (partial quantum docs exist).
 
 **Monorepo layout shortfalls:**
@@ -157,7 +162,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 - Real master/license (crypto sign, device slots, validator called from hosts, slot 11 reject).
 - Queue + Assimilate (enqueue, prove, fragment/merge, simti wallet, contribution math).
 - Graduation (lineos-graduate, thresholds in evolve/graduation.json, product_id flip, L.I.N.E.O.S. branding).
-- tritium-integrate tool + userland.
+- ~~tritium-integrate tool~~ stub landed (wave6 **4+5**; userland deepen later). See `docs/INTEGRATE.md`.
 - Full neuron/linking data (weights, types, R.E.K.I.A. cache per neuron record).
 - Labeled groups + neural linking data queryable (intra/inter).
 - More docs (the long list of MISSING .md files).

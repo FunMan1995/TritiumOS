@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# tritium-integrate — post-bootstrap host scaffold stub (TritiumOS.txt §5a.2 / Phase 8)
+# Copies install/hosts/_template/ → evolve/integrate/<platform>/ (demo path; gitignored).
+# Requires a free license slot (reuses tools/tritium-license helpers). Scaffold only.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LICENSE_CLI="$ROOT/tools/tritium-license"
+TEMPLATE="$ROOT/install/hosts/_template"
+SLOTS_FILE="${TRITIUM_LICENSE_SLOTS:-$ROOT/evolve/license-slots.json}"
+MAX_SLOTS=10
+# Prefer repo evolve/ for CI smoke (gitignored); override with TRITIUM_INTEGRATE_ROOT
+INTEGRATE_ROOT="${TRITIUM_INTEGRATE_ROOT:-$ROOT/evolve/integrate}"
+
+usage() {
+  echo "Usage: tritium-integrate <platform> | tritium-integrate-demo | refuse-smoke"
+  echo "  <platform>             scaffold from _template → evolve/integrate/<platform>/"
+  echo "  demo | tritium-integrate-demo"
+  echo "                         force free-slot path; platform=demo → greppable OK"
+  echo "  refuse-smoke           fill 10 slots then expect refuse (§5a.4)"
+  echo "Slots: $SLOTS_FILE"
+  echo "Out:   $INTEGRATE_ROOT/<platform>/"
+}
+
+slot_count() {
+  TRITIUM_LICENSE_SLOTS="$SLOTS_FILE" "$LICENSE_CLI" status 2>/dev/null \
+    | awk '/^tritium-license status:/{print $3}' | cut -d/ -f1
+}
+
+ensure_free_slot() {
+  local n
+  n="$(slot_count)"
+  n="${n:-0}"
+  if [[ "$n" -ge "$MAX_SLOTS" ]]; then
+    echo "[tritium-integrate] refuse — no free license slot (§5a.4)"
+    echo "[tritium-integrate] refuse — LICENSE.md / TritiumOS.txt §5a.4 (10/10 or slot 11)"
+    return 1
+  fi
+  return 0
+}
+
+copy_template() {
+  local platform="$1"
+  local dest="$INTEGRATE_ROOT/$platform"
+  mkdir -p "$dest"
+  if [[ -d "$TEMPLATE" ]]; then
+    # Copy template files (do not recurse into nested hosts)
+    cp -a "$TEMPLATE/." "$dest/"
+  else
+    printf '%s\n' 'Post-bootstrap platform integrate template (embedded fallback).' > "$dest/README.txt"
+    printf '%s\n' 'tritium-integrate checklist: free license slot → copy _template → evolve/integrate/<platform>/ → markers (§5a.2 / Phase 8).' > "$dest/INTEGRATE.txt"
+  fi
+  printf '%s\n' "platform=$platform from=_template" > "$dest/INTEGRATE.marker"
+  echo "[tritium-integrate] platform=$platform from=_template"
+  echo "[tritium-integrate] scaffold → $dest (§5a.2 / Phase 8)"
+}
+
+register_device() {
+  local platform="$1"
+  local id="integrate-${platform}"
+  TRITIUM_LICENSE_SLOTS="$SLOTS_FILE" "$LICENSE_CLI" register "$id" || true
+}
+
+cmd_integrate() {
+  local platform="${1:-}"
+  if [[ -z "$platform" ]]; then
+    echo "[tritium-integrate] FAIL — platform required" >&2
+    usage
+    return 2
+  fi
+  # sanitize: no path separators
+  if [[ "$platform" == *"/"* || "$platform" == *".."* ]]; then
+    echo "[tritium-integrate] FAIL — invalid platform name" >&2
+    return 2
+  fi
+  if ! ensure_free_slot; then
+    return 1
+  fi
+  copy_template "$platform"
+  register_device "$platform"
+  echo "[tritium-integrate] OK — scaffolded $platform"
+  return 0
+}
+
+cmd_demo() {
+  # Force free-slot path: clear slots so smoke never hits 10/10
+  TRITIUM_LICENSE_SLOTS="$SLOTS_FILE" "$LICENSE_CLI" clear >/dev/null
+  echo "[tritium-integrate-demo] force free-slot path → platform=demo (§5a.2 / Phase 8)"
+  if cmd_integrate "demo"; then
+    if [[ -f "$INTEGRATE_ROOT/demo/INTEGRATE.marker" ]] || [[ -f "$INTEGRATE_ROOT/demo/README.txt" ]]; then
+      echo "[tritium-integrate-demo] OK"
+      return 0
+    fi
+  fi
+  echo "[tritium-integrate-demo] FAIL"
+  return 1
+}
+
+cmd_refuse_smoke() {
+  TRITIUM_LICENSE_SLOTS="$SLOTS_FILE" "$LICENSE_CLI" clear >/dev/null
+  local i
+  for i in $(seq 1 "$MAX_SLOTS"); do
+    TRITIUM_LICENSE_SLOTS="$SLOTS_FILE" "$LICENSE_CLI" register "fill$i" >/dev/null
+  done
+  echo "[tritium-integrate] refuse-smoke: slots 10/10 — expecting refuse"
+  if cmd_integrate "stub"; then
+    echo "[tritium-integrate] FAIL — expected refuse when 10/10"
+    return 1
+  fi
+  echo "[tritium-integrate] refuse-smoke OK"
+  return 0
+}
+
+main() {
+  local cmd="${1:-}"
+  case "$cmd" in
+    ""|-h|--help|help) usage; exit 2 ;;
+    demo|tritium-integrate-demo)
+      cmd_demo; exit $?
+      ;;
+    refuse-smoke)
+      cmd_refuse_smoke; exit $?
+      ;;
+    *)
+      cmd_integrate "$cmd"; exit $?
+      ;;
+  esac
+}
+
+main "$@"

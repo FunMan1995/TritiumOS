@@ -94,3 +94,6 @@ evolve/assimilate/
 evolve/graduation.json
 evolve/lineos-host-flag.trit
 evolve/lineos-manifest-scaffold.json
+
+# Runtime tritium-integrate scaffold (demo path; keep install/hosts/_template)
+evolve/integrate/

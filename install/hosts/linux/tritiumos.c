@@ -56,6 +56,8 @@ void assimilate_demo(void);
 void lineos_graduate(int demo_force);
 void lineos_graduate_demo(void);
 void become_lineos(void);
+void tritium_integrate(const char* platform);
+void tritium_integrate_demo(void);
 int assimilate_epoch(void);
 int assimilate_fragment(int group, int links);
 int assimilate_merge(int frag, unsigned proof);
@@ -142,6 +144,7 @@ void ensure_evolve_dir() {
     snprintf(sub, sizeof(sub), "%s/queue", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/assimilate", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/assimilate/wallet", evolve_dir); mkdir(sub, 0755);
+    snprintf(sub, sizeof(sub), "%s/integrate", evolve_dir); mkdir(sub, 0755);
 }
 
 const char* get_evolve_dir() {
@@ -1720,6 +1723,155 @@ void lineos_graduate_demo(void) {
     }
 }
 
+/* --- tritium-integrate stub (§5a.2 / Phase 8) — scaffold from _template --- */
+static int integrate_find_template(char* out, size_t outsz) {
+    /* Prefer repo install/hosts/_template next to tritium.poly/core */
+    char cand[MAX_PATH];
+    if (core_dir[0]) {
+        snprintf(cand, sizeof(cand), "%s/../../install/hosts/_template/README.txt", core_dir);
+        struct stat st;
+        if (stat(cand, &st) == 0) {
+            snprintf(out, outsz, "%s/../../install/hosts/_template", core_dir);
+            return 1;
+        }
+        snprintf(cand, sizeof(cand), "%s/../../../install/hosts/_template/README.txt", core_dir);
+        if (stat(cand, &st) == 0) {
+            snprintf(out, outsz, "%s/../../../install/hosts/_template", core_dir);
+            return 1;
+        }
+    }
+    /* Walk up from cwd */
+    char path[MAX_PATH];
+    if (!getcwd(path, sizeof(path))) return 0;
+    for (int depth = 0; depth < 8; depth++) {
+        snprintf(cand, sizeof(cand), "%s/install/hosts/_template/README.txt", path);
+        struct stat st;
+        if (stat(cand, &st) == 0) {
+            snprintf(out, outsz, "%s/install/hosts/_template", path);
+            return 1;
+        }
+        char* slash = strrchr(path, '/');
+        if (!slash || slash == path) break;
+        *slash = 0;
+    }
+    return 0;
+}
+
+static int integrate_copy_file(const char* src, const char* dst) {
+    FILE* in = fopen(src, "rb");
+    if (!in) return -1;
+    FILE* out = fopen(dst, "wb");
+    if (!out) { fclose(in); return -1; }
+    char buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) { fclose(in); fclose(out); return -1; }
+    }
+    fclose(in);
+    fclose(out);
+    return 0;
+}
+
+static int integrate_scaffold(const char* platform) {
+    char dest[MAX_PATH], tmpl[MAX_PATH], src[MAX_PATH], dst[MAX_PATH];
+    const char* evolve = get_evolve_dir();
+    snprintf(dest, sizeof(dest), "%s/integrate/%s", evolve, platform);
+    mkdir(dest, 0755);
+
+    int have_tmpl = integrate_find_template(tmpl, sizeof(tmpl));
+    if (have_tmpl) {
+        snprintf(src, sizeof(src), "%s/README.txt", tmpl);
+        snprintf(dst, sizeof(dst), "%s/README.txt", dest);
+        integrate_copy_file(src, dst);
+        snprintf(src, sizeof(src), "%s/INTEGRATE.txt", tmpl);
+        snprintf(dst, sizeof(dst), "%s/INTEGRATE.txt", dest);
+        if (integrate_copy_file(src, dst) != 0) {
+            FILE* f = fopen(dst, "w");
+            if (f) {
+                fprintf(f, "tritium-integrate checklist: free license slot → copy _template → evolve/integrate/<platform>/ → markers (§5a.2 / Phase 8).\n");
+                fclose(f);
+            }
+        }
+    } else {
+        snprintf(dst, sizeof(dst), "%s/README.txt", dest);
+        FILE* f = fopen(dst, "w");
+        if (f) {
+            fprintf(f, "Post-bootstrap platform integrate template (embedded fallback).\n");
+            fclose(f);
+        }
+        snprintf(dst, sizeof(dst), "%s/INTEGRATE.txt", dest);
+        f = fopen(dst, "w");
+        if (f) {
+            fprintf(f, "tritium-integrate checklist: free license slot → copy _template → evolve/integrate/<platform>/ → markers (§5a.2 / Phase 8).\n");
+            fclose(f);
+        }
+    }
+    snprintf(dst, sizeof(dst), "%s/INTEGRATE.marker", dest);
+    FILE* mf = fopen(dst, "w");
+    if (mf) {
+        fprintf(mf, "platform=%s from=_template\n", platform);
+        fclose(mf);
+    }
+    printf("[tritium-integrate] platform=%s from=_template\n", platform);
+    printf("[tritium-integrate] scaffold → %s (§5a.2 / Phase 8)\n", dest);
+    return 0;
+}
+
+void tritium_integrate(const char* platform) {
+    if (!platform || !*platform) {
+        printf("[tritium-integrate] FAIL — platform required\n");
+        return;
+    }
+    /* sanitize: reject path separators */
+    for (const char* p = platform; *p; p++) {
+        if (*p == '/' || *p == '\\') {
+            printf("[tritium-integrate] FAIL — invalid platform name\n");
+            return;
+        }
+    }
+    char devices[LICENSE_MAX_SLOTS + 2][64];
+    int n = license_load_count(devices, LICENSE_MAX_SLOTS + 2);
+    if (n >= LICENSE_MAX_SLOTS) {
+        printf("[tritium-integrate] refuse — no free license slot (§5a.4)\n");
+        printf("[tritium-integrate] refuse — LICENSE.md / TritiumOS.txt §5a.4 (10/10 or slot 11)\n");
+        return;
+    }
+    if (integrate_scaffold(platform) != 0) {
+        printf("[tritium-integrate] FAIL — scaffold\n");
+        return;
+    }
+    /* bind identity: register integrate-<platform> if new */
+    char id[80];
+    snprintf(id, sizeof(id), "integrate-%s", platform);
+    license_register(id);
+    printf("[tritium-integrate] OK — scaffolded %s\n", platform);
+}
+
+void tritium_integrate_demo(void) {
+    printf("[tritium-integrate-demo] force free-slot path → platform=demo (§5a.2 / Phase 8)\n");
+    /* Force free-slot: wipe registry so smoke never hits 10/10 */
+    {
+        ensure_evolve_dir();
+        FILE* f = fopen(license_slots_path(), "w");
+        if (f) {
+            fprintf(f, "{\n  \"maxSlots\": %d,\n  \"devices\": [\n  ]\n}\n", LICENSE_MAX_SLOTS);
+            fclose(f);
+        }
+    }
+    tritium_integrate("demo");
+    {
+        char marker[MAX_PATH];
+        snprintf(marker, sizeof(marker), "%s/integrate/demo/INTEGRATE.marker", get_evolve_dir());
+        struct stat st;
+        if (stat(marker, &st) == 0) {
+            printf("[tritium-integrate-demo] OK\n\n");
+        } else {
+            printf("[tritium-integrate-demo] FAIL\n\n");
+        }
+    }
+}
+
+
 void bootstrap_demo() {
     printf("Running bootstrap-host demo (full-stack host OS optimization from refined intelligence)...\n");
     bootstrap_host_optimization();
@@ -2090,7 +2242,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -2218,6 +2370,14 @@ int main(int argc, char** argv) {
             lineos_graduate(0);
         } else if (strcasecmp(line, "become-lineos") == 0) {
             become_lineos();
+        } else if (strcasecmp(line, "tritium-integrate-demo") == 0) {
+            tritium_integrate_demo();
+        } else if (strncasecmp(line, "tritium-integrate ", 18) == 0) {
+            const char* arg = line + 18;
+            while (*arg == ' ') arg++;
+            tritium_integrate(arg);
+        } else if (strcasecmp(line, "tritium-integrate") == 0) {
+            printf("[tritium-integrate] FAIL — platform required\n");
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {

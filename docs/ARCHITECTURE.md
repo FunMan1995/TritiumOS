@@ -23,6 +23,7 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 │  kernel.fs · trit math     │   │  user-graph · assistant-*  │
 │  drena.fs · rekia.fs       │   │  edition · license-slots   │
 │  queue · assimilate · lineos│   │  queue/ · assimilate/      │
+│  · integrate               │   │  integrate/ (demo)       │
 │                            │   │  forth/refined/*.fs        │
 │  D.R.E.N.A. = structure    │   │  graduation.json           │
 │  R.E.K.I.A. = refine→Forth │   └────────────────────────────┘
@@ -56,16 +57,17 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 | License slots | `LICENSE.md` |
 | Queue / Assimilate | `QUEUE.md`, `ASSIMILATE.md` |
 | Graduation | `LINEOS.md` |
+| Install / Integrate | `INSTALL.md`, `INTEGRATE.md` |
 | Build / platforms | `BUILD.md`, `SYSTEM-DESIGN-INITIAL-PLATFORMS.md` |
 | Gaps (living) | `IMPLEMENTATION-GAPS.md` |
 
-Wave6 **4+5** add `tritium-integrate` + `INSTALL.md` (host scaffold / bootstrap checklist).
+Wave6 **4+5** landed: `tritium-integrate` stub + `INSTALL.md` / `INTEGRATE.md` (host scaffold / bootstrap checklist).
 
 ## 5. Repo layout (as-built vs target)
 
 | Path | Role |
 |------|------|
-| `forth/tritium/` | kernel, drena, rekia, queue, assimilate, lineos |
+| `forth/tritium/` | kernel, drena, rekia, queue, assimilate, lineos, integrate |
 | `tritium.poly/` | Bundle core + manifest |
 | `install/hosts/{windows,android,linux,_template}` | Host bridges |
 | `tools/` | build-*, tritium-license, qwantum, tests |
@@ -74,7 +76,7 @@ Wave6 **4+5** add `tritium-integrate` + `INSTALL.md` (host scaffold / bootstrap 
 | `refs/` | DuskOS / CollapseOS / GrapheneOS references |
 | `docs/` | Specs (this file + §4) |
 
-Target layout in `TritiumOS.txt` §7 still lists top-level `/drena` `/rekia` `/boot` `/userland` — engines today live under `forth/tritium/` (+ stubs); integrate/userland is wave6 **4**.
+Target layout in `TritiumOS.txt` §7 still lists top-level `/drena` `/rekia` `/boot` `/userland` — engines today live under `forth/tritium/` (+ stubs); `tritium-integrate` stub landed (wave6 **4**); deeper userland later.
 
 ## 6. Non-goals (this doc)
 
