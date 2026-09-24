@@ -29,6 +29,7 @@ Demo entry point: `rekia-demo` / `rekiA-demo`
 (spawn → rewire → link → rewire → refine).
 
 **S0 host path:** free-text chat routes to `drena-step` + `rekiA-refine` (Linux `s0_assist` / `s0-assist-demo`); same emit + include contract as §4.
+Assistant contract: see [`docs/ASSISTANT.md`](ASSISTANT.md).
 
 ## 3. Word stack effects
 
