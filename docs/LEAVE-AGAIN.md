@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave12 item **4**)
 **Canonical brief:** Dusk `LEAVE` / `AGAIN` compile (thin stub); `docs/BEGIN-UNTIL.md` (wave11 **1**), `docs/DO-LOOP.md` (wave12 **1**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `control.fs` / `loop.fs`); Linux host REPL
-**Companions:** `docs/BEGIN-UNTIL.md` (thin amend this tip), `docs/DO-LOOP.md` (thin amend this tip), `docs/CONTROL.md`, `docs/COMMENT-PARSE.md` (wave12 **3**)
+**Companions:** `docs/BEGIN-UNTIL.md` (thin amend this tip), `docs/DO-LOOP.md` (thin amend this tip), `docs/CONTROL.md`, `docs/COMMENT-PARSE.md` (wave12 **3**), `docs/UNLOOP-J.md` (wave14 **2**)
 **Base tip SHA:** `daa326e` (wave12 tip3 CLOSED / #54) / full `daa326e8296dbe47987160b5028168af10e4debf`
 
 ## 1. Purpose
@@ -13,7 +13,7 @@
 - `LEAVE` — mark an early-exit on an open BEGIN or DO frame (no branch XT, no token skip).
 - `AGAIN` — close a BEGIN-style infinite-loop stub (compile shape of UNTIL-always-false / unconditional back-branch).
 
-Print greppable markers and smoke via **`leave-demo`**. Not a runtime leave/jump, not a WHILE/REPEAT rewrite.
+Print greppable markers and smoke via **`leave-demo`**. Not a runtime leave/jump, not a WHILE/REPEAT rewrite. `UNLOOP` (pop DO frame without LOOP step) / `J` (outer-index) → `docs/UNLOOP-J.md` (wave14 **2**); distinct from `LEAVE` which marks and does not pop.
 
 ## 2. Words / Surfaces
 
@@ -43,7 +43,7 @@ Host note: bind `LEAVE` / `AGAIN` on Linux REPL; Forth mirrors `control-leave` /
 - Legal only when BEGIN loop-depth > 0 **or** do-loop depth > 0. Else `[leave] FAIL` reason=unbalanced (demo must avoid).
 - Target: if do-depth > 0, mark the DO frame (ANS-shaped); else mark the open BEGIN frame. If both are open, prefer DO. Print that family's current depth.
 - Optional suffix `frame=begin` or `frame=do` (preferred; lab may ignore it).
-- **Does not pop** either depth. **Does not** compile or execute a branch XT, skip body tokens, or jump. Optional host flag `leave-pending` on the marked frame is fine; `UNTIL` / `LOOP` / `+LOOP` / `AGAIN` **ignore** it for control flow this tip (they still only balance depth as today).
+- **Does not pop** either depth. **Does not** compile or execute a branch XT, skip body tokens, or jump. Optional host flag `leave-pending` on the marked frame is fine; `UNTIL` / `LOOP` / `+LOOP` / `AGAIN` **ignore** it for control flow this tip (they still only balance depth as today). Contrast: `UNLOOP` **pops** one DO frame without LOOP step — `docs/UNLOOP-J.md` (wave14 **2**).
 
 **`AGAIN`:**
 
@@ -98,6 +98,7 @@ Streams A and C are required (LEAVE + AGAIN). Stream B is required too so both f
 
 - Real runtime `LEAVE` / jump / branch XT / token skip
 - WHILE / REPEAT rewrite (those stubs stay as in `BEGIN-UNTIL`)
+- `UNLOOP` / `J` stubs: see `docs/UNLOOP-J.md` (wave14 **2**)
 - Docs cites pass (wave12 **5**)
 - Real crypto / network fleet
 - Full Win/Android Forth VM (CONTRACT acceptable)
@@ -112,7 +113,7 @@ Streams A and C are required (LEAVE + AGAIN). Stream B is required too so both f
 
 ## 9. Cite
 
-- `docs/BEGIN-UNTIL.md` (wave11 **1**), `docs/DO-LOOP.md` (wave12 **1**), `docs/CONTROL.md` (wave10 **2**), `docs/COMMENT-PARSE.md` (wave12 **3**)
+- `docs/BEGIN-UNTIL.md` (wave11 **1**), `docs/DO-LOOP.md` (wave12 **1**), `docs/CONTROL.md` (wave10 **2**), `docs/COMMENT-PARSE.md` (wave12 **3**), `docs/UNLOOP-J.md` (wave14 **2**)
 - `forth/tritium/kernel.fs`
 - Dusk `LEAVE` / `AGAIN` (stub only)
 - Base tip: `daa326e` / `daa326e8296dbe47987160b5028168af10e4debf`

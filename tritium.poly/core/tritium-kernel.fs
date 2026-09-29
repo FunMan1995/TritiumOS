@@ -81,6 +81,7 @@ variable _loop-depth  \ open BEGIN count
 \ do-loop stub (wave12 item 1) — sibling of BEGIN loop-depth; no XT patching
 variable _do-loop-depth  \ open DO count
 variable _do-loop-index  \ stub index for I (start value)
+variable _do-loop-outer  \ enclosing-frame index stub for J (wave14 item 2)
 \ case-stack stub (wave13 item 2) — sibling of cs; balance-only CASE/OF
 variable _case-depth  \ open CASE count
 \ CREATE/DOES> stub (wave13 item 3) — latest CREATE index; no XT child body
@@ -111,6 +112,7 @@ $1000 _here !   \ stub base 0x1000
   0 _loop-depth !
   0 _do-loop-depth !
   0 _do-loop-index !
+  0 _do-loop-outer !
   0 _case-depth !
   -1 _create-latest !
   $1000 _here ! ;
@@ -721,6 +723,9 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
 
 \ control-do ( limit start -- )  +1 do-loop; stash start as I index
 : control-do ( limit start -- )
+  _do-loop-depth @ 0> if
+    _do-loop-index @ _do-loop-outer !
+  then
   _do-loop-index !
   drop
   1 _do-loop-depth +!
@@ -817,6 +822,48 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
     ." [leave-demo] FAIL" cr exit
   then
   ." [leave-demo] OK" cr ;
+
+\ === UNLOOP / J stubs (wave14 item 2) ===
+\ UNLOOP pops one DO frame (unlike LEAVE mark-only); no LOOP step/re-exec.
+\ J prints outer-index stub when do-depth ≥ 2; depth unchanged.
+\ Marker namespace: [do-loop] (same family as DO/LOOP/I). Demo banner: [unloop-demo].
+\ Forth mirrors: control-unloop / control-j (host binds UNLOOP/J).
+
+\ control-unloop ( -- )  pop one DO frame; print post-pop depth
+: control-unloop ( -- )
+  _do-loop-depth @ 0= if
+    ." [do-loop] FAIL reason=unbalanced" cr exit
+  then
+  -1 _do-loop-depth +!
+  ." [do-loop] UNLOOP depth=" _do-loop-depth @ . cr ;
+
+\ control-j ( -- )  outer-index stub; require depth ≥ 2; no depth change
+: control-j ( -- )
+  _do-loop-depth @ 2 < if
+    ." [do-loop] FAIL reason=no-outer" cr exit
+  then
+  ." [do-loop] J index=" _do-loop-outer @ . cr ;
+
+\ unloop-demo ( -- )  DO…UNLOOP + nested DO…J…LOOP…LOOP → OK
+: unloop-demo ( -- )
+  ." [unloop-demo] dict-reset + DO…UNLOOP + DO…DO…J…LOOP…LOOP" cr
+  dict-reset
+  \ Stream A: DO … UNLOOP (no LOOP)
+  10 0 control-do
+  control-unloop
+  do-loop-depth 0<> if
+    ." [unloop-demo] FAIL" cr exit
+  then
+  \ Stream B: nested DO + J + LOOP closers
+  10 0 control-do
+  5 1 control-do
+  control-j
+  control-loop
+  control-loop
+  do-loop-depth 0<> if
+    ." [unloop-demo] FAIL" cr exit
+  then
+  ." [unloop-demo] OK" cr ;
 
 \ words-demo ( -- )  dict-reset → entry-create alpha+beta → WORDS → count≥2 → OK
 \ wave11 item 3 / docs/WORDS-VOCAB.md
@@ -1268,6 +1315,7 @@ create (sl-hi) 2 c, char h c, char i c,
 \ - CREATE/DOES> defining-word stubs (wave13 item 3) — landed
 \ - S" / ." / .( string-lit stubs + string-demo (wave13 item 4) — landed
 \ - HERE/ALLOT pointer stubs + allot-demo (wave14 item 1) — landed
+\ - UNLOOP/J stubs + unloop-demo (wave14 item 2) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

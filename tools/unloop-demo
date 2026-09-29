@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# unloop-demo — Lab smoke for UNLOOP/J stubs (wave14 item 2 / docs/UNLOOP-J.md)
+# Mirrors forth/tritium/kernel.fs unloop-demo + Linux host unloop_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: unloop-demo"
+  echo "  dict-reset → DO…UNLOOP → nested DO…J…LOOP…LOOP → do-loop-depth 0"
+  echo "  Markers: [do-loop] UNLOOP/J → [unloop-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[unloop-demo] FAIL"
+  exit 1
+}
+
+DO_LOOP_DEPTH=0
+DO_LOOP_INDEX=0
+DO_LOOP_OUTER=0
+
+dict_reset() {
+  DO_LOOP_DEPTH=0
+  DO_LOOP_INDEX=0
+  DO_LOOP_OUTER=0
+}
+
+do_loop_depth() {
+  echo "$DO_LOOP_DEPTH"
+}
+
+control_do() {
+  local limit=${1:-0}
+  local start=${2:-0}
+  if [[ "$DO_LOOP_DEPTH" -gt 0 ]]; then
+    DO_LOOP_OUTER=$DO_LOOP_INDEX
+  fi
+  DO_LOOP_INDEX=$start
+  DO_LOOP_DEPTH=$((DO_LOOP_DEPTH + 1))
+  echo "[do-loop] DO depth=$DO_LOOP_DEPTH index=$DO_LOOP_INDEX"
+}
+
+control_loop() {
+  if [[ "$DO_LOOP_DEPTH" -eq 0 ]]; then
+    echo "[do-loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  DO_LOOP_DEPTH=$((DO_LOOP_DEPTH - 1))
+  echo "[do-loop] LOOP depth=$DO_LOOP_DEPTH"
+}
+
+control_unloop() {
+  if [[ "$DO_LOOP_DEPTH" -eq 0 ]]; then
+    echo "[do-loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  DO_LOOP_DEPTH=$((DO_LOOP_DEPTH - 1))
+  echo "[do-loop] UNLOOP depth=$DO_LOOP_DEPTH"
+}
+
+control_j() {
+  if [[ "$DO_LOOP_DEPTH" -lt 2 ]]; then
+    echo "[do-loop] FAIL reason=no-outer"
+    return 1
+  fi
+  echo "[do-loop] J index=$DO_LOOP_OUTER"
+}
+
+echo "[unloop-demo] dict-reset + DO…UNLOOP + DO…DO…J…LOOP…LOOP"
+dict_reset
+
+# Stream A: DO … UNLOOP (no LOOP)
+control_do 10 0
+control_unloop
+[[ "$(do_loop_depth)" -eq 0 ]] || fail
+
+# Stream B: nested DO + J + LOOP closers
+control_do 10 0
+control_do 5 1
+control_j
+control_loop
+control_loop
+[[ "$(do_loop_depth)" -eq 0 ]] || fail
+
+echo "[unloop-demo] OK"
+exit 0
