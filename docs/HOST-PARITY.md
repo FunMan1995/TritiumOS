@@ -2,7 +2,7 @@
 
 **Status:** Shipper-ready stub spec (wave8 item **4**)  
 **Canonical brief:** Priority-1 hosts; Linux demos are Lab source of truth  
-**Companions:** `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/FLEET.md`, `docs/MASTER.md`, `docs/LINEOS-BRAND.md`, `docs/GROUPS-NESTED.md`, `docs/INTERPRET.md`, `docs/USERLAND.md`
+**Companions:** `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/FLEET.md`, `docs/MASTER.md`, `docs/LINEOS-BRAND.md`, `docs/GROUPS-NESTED.md`, `docs/INTERPRET.md`, `docs/USERLAND.md`, `docs/HOST-BOOT.md`
 
 ## 1. Purpose
 
@@ -40,6 +40,7 @@ group-vocab-persist-demo …
 interpret-demo …
 userland-demo …
 lineos-confirm-demo …
+host-boot-demo …   # wave10 item 1; see docs/HOST-BOOT.md
 ```
 
 Minimum for PASS: file present on Win + Android paths; every listed demo has a status; Linux suite still green.

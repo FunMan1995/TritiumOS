@@ -9,3 +9,4 @@ group-vocab-persist-demo CONTRACT
 interpret-demo CONTRACT
 userland-demo CONTRACT
 lineos-confirm-demo CONTRACT
+host-boot-demo CONTRACT

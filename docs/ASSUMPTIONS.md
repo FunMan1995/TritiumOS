@@ -262,3 +262,9 @@ tools/tritium-license status          # expect 10/10
 - Non-goals: porting all Forth demos to C#/Kotlin; requiring emulator/SDK in CI; changing Linux SoT.
 - Cite: `docs/HOST-PARITY.md`, `docs/BUILD.md`, `docs/INSTALL.md`, `docs/SYSTEM-DESIGN-INITIAL-PLATFORMS.md`.
 
+### Host-boot load-order (wave10 item 1)
+- Markers: `[host-boot] core-dir` / `order` / `file=… OK|MISSING` / `sources-loaded` / optional `words=` → `[host-boot-demo] OK`.
+- Surfaces: `tools/host-boot-demo` + Linux host `host-boot-demo` / `host-boot-report`; Win/Android CONTRACT via `HOST-PARITY.txt`.
+- Cite: `docs/HOST-BOOT.md`, `tritium.poly/core/boot.fs`, `docs/HOST-PARITY.md`.
+
+

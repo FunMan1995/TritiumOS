@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# host-boot-demo — assert poly/core load-order files present (wave10 item 1 / docs/HOST-BOOT.md)
+# Linux SoT: resolve core dir, print markers, require all §2 files OK.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Canonical order after boot.fs (docs/HOST-BOOT.md §2)
+CORE_FILES=(
+  trit.fs
+  tritium-kernel.fs
+  drena.fs
+  rekia.fs
+  queue.fs
+  assimilate.fs
+  lineos.fs
+  integrate.fs
+  master.fs
+  fleet.fs
+)
+
+usage() {
+  echo "Usage: host-boot-demo"
+  echo "  Resolve tritium.poly/core; assert boot.fs + §2 load-order files present"
+  echo "  Markers: [host-boot] core-dir / order / file=… / sources-loaded / words= → [host-boot-demo] OK"
+  echo "Root: $ROOT (override core with TRITIUM_CORE)"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+resolve_core_dir() {
+  local cand
+  if [[ -n "${TRITIUM_CORE:-}" && -f "${TRITIUM_CORE}/boot.fs" ]]; then
+    echo "$TRITIUM_CORE"
+    return 0
+  fi
+  if [[ -f "$ROOT/tritium.poly/core/boot.fs" ]]; then
+    echo "$ROOT/tritium.poly/core"
+    return 0
+  fi
+  if [[ -n "${APPDIR:-}" && -f "${APPDIR}/usr/share/tritium.poly/core/boot.fs" ]]; then
+    echo "${APPDIR}/usr/share/tritium.poly/core"
+    return 0
+  fi
+  # Walk up from cwd (dev / AppDir share layouts)
+  cand="$(pwd)"
+  for _ in 1 2 3 4 5 6; do
+    if [[ -f "$cand/tritium.poly/core/boot.fs" ]]; then
+      echo "$cand/tritium.poly/core"
+      return 0
+    fi
+    if [[ -f "$cand/usr/share/tritium.poly/core/boot.fs" ]]; then
+      echo "$cand/usr/share/tritium.poly/core"
+      return 0
+    fi
+    if [[ -f "$cand/boot.fs" && -f "$cand/trit.fs" ]]; then
+      echo "$cand"
+      return 0
+    fi
+    local parent
+    parent="$(dirname "$cand")"
+    [[ "$parent" == "$cand" ]] && break
+    cand="$parent"
+  done
+  return 1
+}
+
+if ! CORE_DIR="$(resolve_core_dir)"; then
+  echo "[host-boot] core-dir=MISSING" >&2
+  echo "[host-boot-demo] FAIL"
+  exit 1
+fi
+
+# Normalize to absolute path when possible
+if command -v realpath >/dev/null 2>&1; then
+  CORE_DIR="$(realpath "$CORE_DIR")"
+elif [[ -d "$CORE_DIR" ]]; then
+  CORE_DIR="$(cd "$CORE_DIR" && pwd)"
+fi
+
+echo "[host-boot] core-dir=$CORE_DIR"
+echo "[host-boot] order: trit → kernel → drena → rekia → queue → assimilate → lineos → integrate → master → fleet"
+
+fail=0
+ok_count=0
+
+if [[ -f "$CORE_DIR/boot.fs" ]]; then
+  echo "[host-boot] file=boot.fs OK"
+  ok_count=$((ok_count + 1))
+else
+  echo "[host-boot] file=boot.fs MISSING"
+  fail=1
+fi
+
+for f in "${CORE_FILES[@]}"; do
+  if [[ -f "$CORE_DIR/$f" ]]; then
+    echo "[host-boot] file=$f OK"
+    ok_count=$((ok_count + 1))
+  else
+    echo "[host-boot] file=$f MISSING"
+    fail=1
+  fi
+done
+
+# sources-loaded = §2 list length (10 after boot); boot itself reported separately
+# Spec: sources-loaded files= matches list length (the §2 files after boot)
+n_section2=${#CORE_FILES[@]}
+echo "[host-boot] sources-loaded files=$n_section2"
+
+# Optional stub word count: lines starting with ':' in core *.fs
+words=0
+if command -v rg >/dev/null 2>&1; then
+  words="$(rg -c --no-filename '^\s*:' "$CORE_DIR"/*.fs 2>/dev/null | awk '{s+=$1} END{print s+0}')" || words=0
+else
+  words="$(grep -h -c '^\s*:' "$CORE_DIR"/*.fs 2>/dev/null | awk '{s+=$1} END{print s+0}')" || words=0
+fi
+echo "[host-boot] words=$words"
+
+if [[ "$fail" -ne 0 ]]; then
+  echo "[host-boot-demo] FAIL"
+  exit 1
+fi
+
+# Require boot + all §2 present (ok_count == 1 + n_section2)
+if [[ "$ok_count" -ne $((1 + n_section2)) ]]; then
+  echo "[host-boot-demo] FAIL"
+  exit 1
+fi
+
+echo "[host-boot-demo] OK"
+exit 0
