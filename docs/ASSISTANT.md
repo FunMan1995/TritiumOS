@@ -1,9 +1,9 @@
 # ASSISTANT — On-demand S0 path
 
-**Status:** Shipper-ready spec (wave4 items **1** + **3**; Linux SoT + Win/Android host parity)  
+**Status:** Shipper-ready spec (wave4 **1**+**3**; thin amend wave9 **3** assistant-state)  
 **Canonical brief:** `TritiumOS.txt` §§1, 5a (bootstrap), evolution ladder  
 **Sources of truth (code):** Linux `s0_assist` / `s0_assist_demo` in `install/hosts/linux/tritiumos.c`; Win `TritiumForthVM.S0Assist` / Android `s0Assist`; Forth pipeline `drena-step` + `rekiA-refine`  
-**Companions:** `docs/REKIA.md` (emit contract), `docs/DRENA.md` (step/grow), `docs/GROUPS.md` (context clusters), `docs/ASSUMPTIONS.md` (S0 + persist)
+**Companions:** `docs/REKIA.md`, `docs/DRENA.md`, `docs/GROUPS.md`, `docs/ASSUMPTIONS.md`, `docs/ASSISTANT-STATE.md` (wave9 **3**)
 
 ## 1. Purpose
 
@@ -66,6 +66,7 @@ Non-exhaustive; keep demos green every tip:
 |---------|------|
 | free-text | S0 assist path (§3) |
 | `s0-assist-demo` | Fixed free-text smoke |
+| `assistant-state-demo` | Persist v2 hooks (wave9 **3**; see `ASSISTANT-STATE.md`) |
 | `rekia-demo` / `rekiA-demo` | Engine refine without chat wrapper |
 | `groups-demo` / `groups-persist-demo` / `groups-status` / `group-vocab-demo` | Labeled groups + searchable vocab unit |
 | `grow-step-demo` / `s3-reserved-demo` | DRENA S3 policy |
@@ -78,12 +79,12 @@ Non-exhaustive; keep demos green every tip:
 | File | Role |
 |------|------|
 | `evolve/assistant-name.trit` | User-chosen name (first-run) |
-| `evolve/assistant-state.trit` | Post-refine snapshot (assistant=, last refined label/path) |
+| `evolve/assistant-state.trit` | v2 snapshot: assistant/edition/last-refine + task/reminder/note hooks — see `ASSISTANT-STATE.md` (wave9 **3**) |
 | `evolve/user-graph.trit` | DRENA graph + `group`/`member` lines |
 | `evolve/edition.trit` | `edition=32\|64` |
 | `evolve/forth/refined/*.fs` | Live refined words (R.E.K.I.A. emit only) |
 
-Boot loads assistant-state + user-graph + refined includes so live words and groups survive restart (Linux AppImage is gate SoT for demos).
+Boot loads assistant-state + user-graph + refined includes so live words and groups survive restart (Linux AppImage is gate SoT for demos). Smoke: `assistant-state-demo`.
 
 ## 6. What the assistant does *not* do
 
@@ -95,7 +96,7 @@ Boot loads assistant-state + user-graph + refined includes so live words and gro
 ## 7. Acceptance (Test Lab — docs tip)
 
 1. `docs/ASSISTANT.md` present; one-line cite from `docs/REKIA.md` (S0) and/or README OK.
-2. Linux suite unchanged green: `s0-assist-demo`, `rekia-demo`, `s3-reserved-demo`, `groups-demo` / persist, `grow-step-demo`, `qwantum-atoms-demo`, `edition-demo`.
+2. Linux suite green: `s0-assist-demo`, `assistant-state-demo` (wave9 **3**), `rekia-demo`, `s3-reserved-demo`, `groups-demo` / persist, `grow-step-demo`, `qwantum-atoms-demo`, `edition-demo`.
 3. Win and/or Android: free-text → real S0 (no parity-print stub); `s0-assist-demo` OK line greppable; prefer headless Win smoke when SDK absent.
 
 ## 8. Cite

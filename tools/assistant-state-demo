@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# assistant-state-demo — Lab smoke for assistant-state.trit v2 (wave9 item 3)
+# Mirrors Linux host assistant_state_demo: write ≥1 task/reminder/note → save → clear → load.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+STATE_DIR="${TMPDIR:-/tmp}/tritium-assistant-state-demo-$$"
+STATE="$STATE_DIR/assistant-state.trit"
+
+usage() {
+  echo "Usage: assistant-state-demo"
+  echo "  Write ≥1 task/reminder/note → save v2 → clear memory → load → assert counts"
+  echo "  Markers: [assistant-state] save/load → [assistant-state-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[assistant-state-demo] FAIL"
+  rm -rf "$STATE_DIR"
+  exit 1
+}
+
+cleanup() { rm -rf "$STATE_DIR"; }
+trap cleanup EXIT
+
+mkdir -p "$STATE_DIR"
+
+# --- in-memory stub (cleared between save and load) ---
+TASKS=()
+REMINDERS=()
+NOTES=()
+ASSISTANT="Assistant"
+EDITION=64
+UPDATED=0
+NEURON_COUNT=0
+LAST_REFINE=""
+
+save_v2() {
+  UPDATED=$(date +%s)
+  {
+    echo "# TritiumOS assistant-state.trit v2"
+    echo "assistant=$ASSISTANT"
+    echo "edition=$EDITION"
+    if [[ -n "$LAST_REFINE" ]]; then
+      echo "last-refine=$LAST_REFINE"
+      echo "last-refine-path=forth/refined/${LAST_REFINE}.fs"
+    fi
+    echo "updated=$UPDATED"
+    echo "neuron-count=$NEURON_COUNT"
+    local t
+    for t in "${TASKS[@]+"${TASKS[@]}"}"; do echo "task=$t"; done
+    for t in "${REMINDERS[@]+"${REMINDERS[@]}"}"; do echo "reminder=$t"; done
+    for t in "${NOTES[@]+"${NOTES[@]}"}"; do echo "note=$t"; done
+  } > "$STATE"
+  echo "[assistant-state] save v2 path=$STATE"
+}
+
+load_v2() {
+  TASKS=()
+  REMINDERS=()
+  NOTES=()
+  [[ -f "$STATE" ]] || fail
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      task=*) TASKS+=("${line#task=}") ;;
+      reminder=*) REMINDERS+=("${line#reminder=}") ;;
+      note=*) NOTES+=("${line#note=}") ;;
+      last-refine=*) LAST_REFINE="${line#last-refine=}" ;;
+      assistant=*) ASSISTANT="${line#assistant=}" ;;
+      edition=*) EDITION="${line#edition=}" ;;
+      neuron-count=*) NEURON_COUNT="${line#neuron-count=}" ;;
+    esac
+  done < "$STATE"
+  echo "[assistant-state] load ok tasks=${#TASKS[@]} reminders=${#REMINDERS[@]} notes=${#NOTES[@]}"
+}
+
+echo "[assistant-state-demo] write≥1 task/reminder/note → save v2 → clear → load"
+
+TASKS=("1|smoke-task")
+REMINDERS=("1|1700000000|smoke-reminder")
+NOTES=("1|smoke-note")
+(( ${#TASKS[@]} >= 1 && ${#REMINDERS[@]} >= 1 && ${#NOTES[@]} >= 1 )) || fail
+
+save_v2
+head -1 "$STATE" | grep -q 'v2' || fail
+grep -q '^task=1|smoke-task$' "$STATE" || fail
+grep -q '^reminder=1|1700000000|smoke-reminder$' "$STATE" || fail
+grep -q '^note=1|smoke-note$' "$STATE" || fail
+
+# clear memory
+TASKS=()
+REMINDERS=()
+NOTES=()
+(( ${#TASKS[@]} == 0 && ${#REMINDERS[@]} == 0 && ${#NOTES[@]} == 0 )) || fail
+
+load_v2
+(( ${#TASKS[@]} >= 1 && ${#REMINDERS[@]} >= 1 && ${#NOTES[@]} >= 1 )) || fail
+[[ "${TASKS[0]}" == "1|smoke-task" ]] || fail
+[[ "${REMINDERS[0]}" == "1|1700000000|smoke-reminder" ]] || fail
+[[ "${NOTES[0]}" == "1|smoke-note" ]] || fail
+
+echo "[assistant-state-demo] OK"
+exit 0

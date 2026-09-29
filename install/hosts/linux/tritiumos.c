@@ -82,6 +82,14 @@ void userland_demo(void);
 void host_parity_demo(void);
 void trit_math_demo(void);
 void economy_wire_demo(void);
+/* assistant-state v2 hooks (wave9 item 3) */
+void assistant_task_set(int id, const char* text);
+void assistant_reminder_set(int id, const char* when, const char* text);
+void assistant_note_set(int id, const char* text);
+void assistant_state_bang(void);
+void assistant_state_at(void);
+void assistant_state_demo(void);
+void clear_assistant_hooks(void);
 int queue_reward(int job);
 int assimilate_epoch(void);
 int assimilate_fragment(int group, int links);
@@ -187,6 +195,21 @@ static char last_refined_label[64] = {0};
 static int qwantum_k_influence = 0;
 static int qwantum_k_loaded = 0;
 static char qwantum_last_id[64] = "sample01test";
+
+/* --- assistant-state v2 hooks (task / reminder / note; cap 8 each) --- */
+#define ASSIST_MAX_HOOKS 8
+#define ASSIST_TEXT_LEN 128
+#define ASSIST_WHEN_LEN 64
+static int assist_task_count = 0;
+static int assist_task_ids[ASSIST_MAX_HOOKS];
+static char assist_task_text[ASSIST_MAX_HOOKS][ASSIST_TEXT_LEN];
+static int assist_reminder_count = 0;
+static int assist_reminder_ids[ASSIST_MAX_HOOKS];
+static char assist_reminder_when[ASSIST_MAX_HOOKS][ASSIST_WHEN_LEN];
+static char assist_reminder_text[ASSIST_MAX_HOOKS][ASSIST_TEXT_LEN];
+static int assist_note_count = 0;
+static int assist_note_ids[ASSIST_MAX_HOOKS];
+static char assist_note_text[ASSIST_MAX_HOOKS][ASSIST_TEXT_LEN];
 
 /* Host-side group snapshot (mirrors Forth MAX-GROUPS member lists) */
 #define HOST_MAX_GROUPS 16
@@ -550,6 +573,89 @@ void save_user_graph(void) {
     printf("[DRENA] graph-save -> %s\n", path);
 }
 
+void clear_assistant_hooks(void) {
+    assist_task_count = 0;
+    assist_reminder_count = 0;
+    assist_note_count = 0;
+    for (int i = 0; i < ASSIST_MAX_HOOKS; i++) {
+        assist_task_ids[i] = 0;
+        assist_task_text[i][0] = 0;
+        assist_reminder_ids[i] = 0;
+        assist_reminder_when[i][0] = 0;
+        assist_reminder_text[i][0] = 0;
+        assist_note_ids[i] = 0;
+        assist_note_text[i][0] = 0;
+    }
+}
+
+void assistant_task_set(int id, const char* text) {
+    if (!text) text = "";
+    for (int i = 0; i < assist_task_count; i++) {
+        if (assist_task_ids[i] == id) {
+            strncpy(assist_task_text[i], text, ASSIST_TEXT_LEN - 1);
+            assist_task_text[i][ASSIST_TEXT_LEN - 1] = 0;
+            printf("[assistant-state] task! id=%d\n", id);
+            return;
+        }
+    }
+    if (assist_task_count >= ASSIST_MAX_HOOKS) {
+        printf("[assistant-state] task! refuse — cap %d\n", ASSIST_MAX_HOOKS);
+        return;
+    }
+    int i = assist_task_count++;
+    assist_task_ids[i] = id;
+    strncpy(assist_task_text[i], text, ASSIST_TEXT_LEN - 1);
+    assist_task_text[i][ASSIST_TEXT_LEN - 1] = 0;
+    printf("[assistant-state] task! id=%d\n", id);
+}
+
+void assistant_reminder_set(int id, const char* when, const char* text) {
+    if (!when) when = "0";
+    if (!text) text = "";
+    for (int i = 0; i < assist_reminder_count; i++) {
+        if (assist_reminder_ids[i] == id) {
+            strncpy(assist_reminder_when[i], when, ASSIST_WHEN_LEN - 1);
+            assist_reminder_when[i][ASSIST_WHEN_LEN - 1] = 0;
+            strncpy(assist_reminder_text[i], text, ASSIST_TEXT_LEN - 1);
+            assist_reminder_text[i][ASSIST_TEXT_LEN - 1] = 0;
+            printf("[assistant-state] reminder! id=%d\n", id);
+            return;
+        }
+    }
+    if (assist_reminder_count >= ASSIST_MAX_HOOKS) {
+        printf("[assistant-state] reminder! refuse — cap %d\n", ASSIST_MAX_HOOKS);
+        return;
+    }
+    int i = assist_reminder_count++;
+    assist_reminder_ids[i] = id;
+    strncpy(assist_reminder_when[i], when, ASSIST_WHEN_LEN - 1);
+    assist_reminder_when[i][ASSIST_WHEN_LEN - 1] = 0;
+    strncpy(assist_reminder_text[i], text, ASSIST_TEXT_LEN - 1);
+    assist_reminder_text[i][ASSIST_TEXT_LEN - 1] = 0;
+    printf("[assistant-state] reminder! id=%d\n", id);
+}
+
+void assistant_note_set(int id, const char* text) {
+    if (!text) text = "";
+    for (int i = 0; i < assist_note_count; i++) {
+        if (assist_note_ids[i] == id) {
+            strncpy(assist_note_text[i], text, ASSIST_TEXT_LEN - 1);
+            assist_note_text[i][ASSIST_TEXT_LEN - 1] = 0;
+            printf("[assistant-state] note! id=%d\n", id);
+            return;
+        }
+    }
+    if (assist_note_count >= ASSIST_MAX_HOOKS) {
+        printf("[assistant-state] note! refuse — cap %d\n", ASSIST_MAX_HOOKS);
+        return;
+    }
+    int i = assist_note_count++;
+    assist_note_ids[i] = id;
+    strncpy(assist_note_text[i], text, ASSIST_TEXT_LEN - 1);
+    assist_note_text[i][ASSIST_TEXT_LEN - 1] = 0;
+    printf("[assistant-state] note! id=%d\n", id);
+}
+
 void save_assistant_state(const char* refined_label) {
     ensure_evolve_dir();
     char path[MAX_PATH];
@@ -557,17 +663,36 @@ void save_assistant_state(const char* refined_label) {
     time_t now = time(NULL);
     FILE* f = fopen(path, "w");
     if (!f) { perror("assistant-state.trit"); return; }
-    fprintf(f, "# TritiumOS assistant-state.trit v1\n");
+    fprintf(f, "# TritiumOS assistant-state.trit v2\n");
     fprintf(f, "assistant=%s\n", assistant_name);
     fprintf(f, "edition=%d\n", edition);
     if (refined_label && *refined_label) {
         fprintf(f, "last-refine=%s\n", refined_label);
         fprintf(f, "last-refine-path=forth/refined/%s.fs\n", refined_label);
         strncpy(last_refined_label, refined_label, sizeof(last_refined_label) - 1);
+        last_refined_label[sizeof(last_refined_label) - 1] = 0;
+    } else if (last_refined_label[0]) {
+        fprintf(f, "last-refine=%s\n", last_refined_label);
+        fprintf(f, "last-refine-path=forth/refined/%s.fs\n", last_refined_label);
     }
     fprintf(f, "updated=%ld\n", (long)now);
+    /* stub neuron-count (0 if unknown) */
+    int ncount = (host_next_id > 1) ? (host_next_id - 1) : 0;
+    fprintf(f, "neuron-count=%d\n", ncount);
+    for (int i = 0; i < assist_task_count; i++)
+        fprintf(f, "task=%d|%s\n", assist_task_ids[i], assist_task_text[i]);
+    for (int i = 0; i < assist_reminder_count; i++)
+        fprintf(f, "reminder=%d|%s|%s\n",
+                assist_reminder_ids[i], assist_reminder_when[i], assist_reminder_text[i]);
+    for (int i = 0; i < assist_note_count; i++)
+        fprintf(f, "note=%d|%s\n", assist_note_ids[i], assist_note_text[i]);
     fclose(f);
+    printf("[assistant-state] save v2 path=%s\n", path);
     printf("[REKIA] assistant-state! -> %s\n", path);
+}
+
+void assistant_state_bang(void) {
+    save_assistant_state(NULL);
 }
 
 void load_refined_modules(void) {
@@ -719,16 +844,120 @@ void load_assistant_state(void) {
     FILE* f = fopen(path, "r");
     if (!f) return;
     printf("[REKIA] assistant-state load <- %s\n", path);
+    clear_assistant_hooks();
     char line[512];
     while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "last-refine=", 12) == 0) {
-            char* v = line + 12;
-            v[strcspn(v, "\n")] = 0;
-            strncpy(last_refined_label, v, sizeof(last_refined_label) - 1);
-        }
+        line[strcspn(line, "\n")] = 0;
         fputs(line, stdout);
+        fputc('\n', stdout);
+        if (line[0] == '#' || line[0] == 0)
+            continue;
+        if (strncmp(line, "last-refine=", 12) == 0) {
+            strncpy(last_refined_label, line + 12, sizeof(last_refined_label) - 1);
+            last_refined_label[sizeof(last_refined_label) - 1] = 0;
+        } else if (strncmp(line, "task=", 5) == 0) {
+            char buf[512];
+            strncpy(buf, line + 5, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = 0;
+            char* bar = strchr(buf, '|');
+            if (bar && assist_task_count < ASSIST_MAX_HOOKS) {
+                *bar = 0;
+                int i = assist_task_count++;
+                assist_task_ids[i] = atoi(buf);
+                strncpy(assist_task_text[i], bar + 1, ASSIST_TEXT_LEN - 1);
+                assist_task_text[i][ASSIST_TEXT_LEN - 1] = 0;
+            }
+        } else if (strncmp(line, "reminder=", 9) == 0) {
+            char buf[512];
+            strncpy(buf, line + 9, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = 0;
+            char* bar1 = strchr(buf, '|');
+            if (bar1 && assist_reminder_count < ASSIST_MAX_HOOKS) {
+                *bar1 = 0;
+                char* bar2 = strchr(bar1 + 1, '|');
+                int i = assist_reminder_count++;
+                assist_reminder_ids[i] = atoi(buf);
+                if (bar2) {
+                    *bar2 = 0;
+                    strncpy(assist_reminder_when[i], bar1 + 1, ASSIST_WHEN_LEN - 1);
+                    assist_reminder_when[i][ASSIST_WHEN_LEN - 1] = 0;
+                    strncpy(assist_reminder_text[i], bar2 + 1, ASSIST_TEXT_LEN - 1);
+                    assist_reminder_text[i][ASSIST_TEXT_LEN - 1] = 0;
+                } else {
+                    strncpy(assist_reminder_when[i], bar1 + 1, ASSIST_WHEN_LEN - 1);
+                    assist_reminder_when[i][ASSIST_WHEN_LEN - 1] = 0;
+                    assist_reminder_text[i][0] = 0;
+                }
+            }
+        } else if (strncmp(line, "note=", 5) == 0) {
+            char buf[512];
+            strncpy(buf, line + 5, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = 0;
+            char* bar = strchr(buf, '|');
+            if (bar && assist_note_count < ASSIST_MAX_HOOKS) {
+                *bar = 0;
+                int i = assist_note_count++;
+                assist_note_ids[i] = atoi(buf);
+                strncpy(assist_note_text[i], bar + 1, ASSIST_TEXT_LEN - 1);
+                assist_note_text[i][ASSIST_TEXT_LEN - 1] = 0;
+            }
+        }
     }
     fclose(f);
+    printf("[assistant-state] load ok tasks=%d reminders=%d notes=%d\n",
+           assist_task_count, assist_reminder_count, assist_note_count);
+}
+
+void assistant_state_at(void) {
+    load_assistant_state();
+}
+
+void assistant_state_demo(void) {
+    ensure_evolve_dir();
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/assistant-state.trit", evolve_dir);
+    printf("[assistant-state-demo] write≥1 task/reminder/note → save v2 → clear → load\n");
+    clear_assistant_hooks();
+    unlink(path);
+    assistant_task_set(1, "smoke-task");
+    assistant_reminder_set(1, "1700000000", "smoke-reminder");
+    assistant_note_set(1, "smoke-note");
+    if (assist_task_count < 1 || assist_reminder_count < 1 || assist_note_count < 1) {
+        printf("[assistant-state-demo] FAIL\n\n");
+        return;
+    }
+    assistant_state_bang();
+    /* assert file present + v2 header */
+    FILE* f = fopen(path, "r");
+    if (!f) {
+        printf("[assistant-state-demo] FAIL\n\n");
+        return;
+    }
+    char hdr[128] = {0};
+    if (!fgets(hdr, sizeof(hdr), f) || strstr(hdr, "v2") == NULL) {
+        fclose(f);
+        printf("[assistant-state-demo] FAIL\n\n");
+        return;
+    }
+    fclose(f);
+    /* clear memory then reload */
+    clear_assistant_hooks();
+    if (assist_task_count != 0 || assist_reminder_count != 0 || assist_note_count != 0) {
+        printf("[assistant-state-demo] FAIL\n\n");
+        return;
+    }
+    assistant_state_at();
+    if (assist_task_count < 1 || assist_reminder_count < 1 || assist_note_count < 1) {
+        printf("[assistant-state-demo] FAIL\n\n");
+        return;
+    }
+    if (strcmp(assist_task_text[0], "smoke-task") != 0 ||
+        strcmp(assist_reminder_text[0], "smoke-reminder") != 0 ||
+        strcmp(assist_note_text[0], "smoke-note") != 0) {
+        printf("[assistant-state-demo] FAIL\n\n");
+        return;
+    }
+    printf("[assistant-state-demo] OK\n\n");
 }
 
 void load_persisted_evolve(void) {
@@ -3551,7 +3780,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  : <name> - create-only stub (entry into dict; no body)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  : <name> - create-only stub (entry into dict; no body)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n  assistant-state-demo - v2 task/reminder/note persist → greppable OK\n  assistant-state! / assistant-state@ - save/load evolve/assistant-state.trit v2\n  assistant-task! / assistant-reminder! / assistant-note! - upsert hooks\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -3745,6 +3974,47 @@ int main(int argc, char** argv) {
         } else if (strcasecmp(line, "economy-wire-demo") == 0 ||
                    strcasecmp(line, "queue-assim-demo") == 0) {
             economy_wire_demo();
+        } else if (strcasecmp(line, "assistant-state-demo") == 0) {
+            assistant_state_demo();
+        } else if (strcasecmp(line, "assistant-state!") == 0) {
+            assistant_state_bang();
+        } else if (strcasecmp(line, "assistant-state@") == 0) {
+            assistant_state_at();
+        } else if (strncasecmp(line, "assistant-task! ", 16) == 0) {
+            int id = 0;
+            char textbuf[ASSIST_TEXT_LEN] = {0};
+            const char* p = line + 16;
+            while (*p == ' ') p++;
+            id = atoi(p);
+            while (*p && *p != ' ') p++;
+            while (*p == ' ') p++;
+            strncpy(textbuf, p, ASSIST_TEXT_LEN - 1);
+            assistant_task_set(id, textbuf);
+        } else if (strncasecmp(line, "assistant-reminder! ", 20) == 0) {
+            int id = 0;
+            char whenbuf[ASSIST_WHEN_LEN] = {0};
+            char textbuf[ASSIST_TEXT_LEN] = {0};
+            const char* p = line + 20;
+            while (*p == ' ') p++;
+            id = atoi(p);
+            while (*p && *p != ' ') p++;
+            while (*p == ' ') p++;
+            size_t wi = 0;
+            while (*p && *p != ' ' && wi + 1 < ASSIST_WHEN_LEN) whenbuf[wi++] = *p++;
+            whenbuf[wi] = 0;
+            while (*p == ' ') p++;
+            strncpy(textbuf, p, ASSIST_TEXT_LEN - 1);
+            assistant_reminder_set(id, whenbuf, textbuf);
+        } else if (strncasecmp(line, "assistant-note! ", 16) == 0) {
+            int id = 0;
+            char textbuf[ASSIST_TEXT_LEN] = {0};
+            const char* p = line + 16;
+            while (*p == ' ') p++;
+            id = atoi(p);
+            while (*p && *p != ' ') p++;
+            while (*p == ' ') p++;
+            strncpy(textbuf, p, ASSIST_TEXT_LEN - 1);
+            assistant_note_set(id, textbuf);
         } else if (strncasecmp(line, "queue-reward! ", 14) == 0) {
             int job = atoi(line + 14);
             queue_reward(job);
