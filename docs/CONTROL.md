@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave10 item **2**)
 **Canonical brief:** Dusk control compile (thin stub); `docs/COLON.md` (wave9 **4**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `control.fs`); Linux host REPL
-**Companions:** `docs/COLON.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/KERNEL.md`
+**Companions:** `docs/COLON.md` (thin amend wave10 **2**), `docs/INTERPRET.md`, `docs/KERNEL.md`, `docs/BEGIN-UNTIL.md` (wave11 **1**)
 
 ## 1. Purpose
 
@@ -28,7 +28,7 @@ Host note: may bind `IF`/`THEN`/`ELSE` on Linux REPL; Forth mirrors `control-if`
 - **Balance only:** each `IF` +1 cs; each `THEN` −1; `ELSE` requires open `IF` and does not change depth.
 - Unbalanced `THEN` / `ELSE` → `[control] FAIL` reason=unbalanced (demo must avoid this).
 - Flag path (optional): if a numeric flag is on data stack at `IF`, print `taken=1` when nonzero else `taken=0` — **no** requirement to skip tokens this tip (skip can be a no-op print).
-- No real forward/back branch patching, no `BEGIN`/`UNTIL`/`DO`/`LOOP`.
+- No real forward/back branch patching. Loop stubs (`BEGIN`/`UNTIL`/`WHILE`/`REPEAT`) → `docs/BEGIN-UNTIL.md` (wave11 **1**). `DO`/`LOOP` still out.
 
 ## 4. Markers
 
@@ -61,7 +61,7 @@ Lab greps `[control-demo] OK` plus at least one each of `IF` / `THEN` (ELSE pref
 ## 7. Non-goals
 
 - Real compile-time branch resolution / XT lists
-- `BEGIN`/`UNTIL`/`WHILE`/`REPEAT` / `DO`/`LOOP`
+- `DO`/`LOOP`/`+LOOP` — `BEGIN`/`UNTIL`/`WHILE`/`REPEAT` stubs: see `docs/BEGIN-UNTIL.md` (wave11 **1**)
 - Address-fold / refined-boot (wave10 **3–4**)
 - Full Win/Android Forth VM
 
@@ -77,3 +77,4 @@ Lab greps `[control-demo] OK` plus at least one each of `IF` / `THEN` (ELSE pref
 - `docs/COLON.md`, `docs/INTERPRET.md`, `docs/KERNEL.md`
 - `forth/tritium/kernel.fs`
 - Dusk control words (stub only)
+- `docs/BEGIN-UNTIL.md` (wave11 **1**)

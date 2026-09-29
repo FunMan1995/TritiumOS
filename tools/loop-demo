@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# loop-demo — Lab smoke for BEGIN/UNTIL/WHILE/REPEAT loop stubs (wave11 item 1 / docs/BEGIN-UNTIL.md)
+# Mirrors forth/tritium/kernel.fs loop-demo + Linux host loop_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: loop-demo"
+  echo "  dict-reset → BEGIN…UNTIL → BEGIN…WHILE…REPEAT → loop-depth 0"
+  echo "  Markers: [loop] BEGIN/UNTIL/WHILE/REPEAT → [loop-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[loop-demo] FAIL"
+  exit 1
+}
+
+LOOP_DEPTH=0
+
+dict_reset() {
+  LOOP_DEPTH=0
+}
+
+loop_cs_depth() {
+  echo "$LOOP_DEPTH"
+}
+
+control_begin() {
+  LOOP_DEPTH=$((LOOP_DEPTH + 1))
+  echo "[loop] BEGIN depth=$LOOP_DEPTH"
+}
+
+control_until() {
+  local flag=${1:-0}
+  if [[ "$LOOP_DEPTH" -eq 0 ]]; then
+    echo "[loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  LOOP_DEPTH=$((LOOP_DEPTH - 1))
+  if [[ "$flag" -ne 0 ]]; then
+    echo "[loop] UNTIL again=1"
+  else
+    echo "[loop] UNTIL again=0"
+  fi
+}
+
+control_while() {
+  local flag=${1:-0}
+  if [[ "$LOOP_DEPTH" -eq 0 ]]; then
+    echo "[loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  if [[ "$flag" -ne 0 ]]; then
+    echo "[loop] WHILE cont=1"
+  else
+    echo "[loop] WHILE cont=0"
+  fi
+}
+
+control_repeat() {
+  if [[ "$LOOP_DEPTH" -eq 0 ]]; then
+    echo "[loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  LOOP_DEPTH=$((LOOP_DEPTH - 1))
+  echo "[loop] REPEAT"
+}
+
+echo "[loop-demo] dict-reset + BEGIN…UNTIL + BEGIN…WHILE…REPEAT"
+dict_reset
+
+control_begin
+control_until 0
+[[ "$(loop_cs_depth)" -eq 0 ]] || fail
+
+control_begin
+control_while 1
+control_repeat
+[[ "$(loop_cs_depth)" -eq 0 ]] || fail
+
+echo "[loop-demo] OK"
+exit 0

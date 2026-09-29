@@ -70,6 +70,8 @@ variable _colon-toks   \ body tokens accumulated
 \ control-stack stub (wave10 item 2) — depth only; no XT patching
 variable _cs-depth     \ open IF count
 variable _cs-side      \ 0=IF side; 1=ELSE side (stub flip)
+\ loop-stack stub (wave11 item 1) — sibling of cs; no XT patching
+variable _loop-depth  \ open BEGIN count
 
 
 : entry-name-clear ( i -- )
@@ -86,7 +88,8 @@ variable _cs-side      \ 0=IF side; 1=ELSE side (stub flip)
   -1 _colon-idx !
   0 _colon-toks !
   0 _cs-depth !
-  0 _cs-side ! ;
+  0 _cs-side !
+  0 _loop-depth ! ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -448,7 +451,7 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
   ." [colon-demo] OK" cr ;
 
 \ === control IF/THEN/ELSE stubs (wave10 item 2) ===
-\ Balance-only cs depth; no branch XT patching / BEGIN / DO.
+\ Balance-only cs depth; no branch XT patching. Loop stubs → BEGIN-UNTIL (wave11).
 \ Forth mirrors are control-if / control-then / control-else (host binds IF/THEN/ELSE).
 
 : control-cs-depth ( -- n ) _cs-depth @ ;
@@ -500,14 +503,76 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
   then
   ." [control-demo] OK" cr ;
 
+
+\ === loop BEGIN/UNTIL/WHILE/REPEAT stubs (wave11 item 1) ===
+\ Sibling loop-depth; no back-branch XT / DO/LOOP.
+\ Forth mirrors are control-begin / control-until / control-while / control-repeat
+\ (host binds BEGIN/UNTIL/WHILE/REPEAT).
+
+: loop-cs-depth ( -- n ) _loop-depth @ ;
+
+\ control-begin ( -- )  +1 loop; print [loop] BEGIN depth=<n>
+: control-begin ( -- )
+  1 _loop-depth +!
+  ." [loop] BEGIN depth=" _loop-depth @ . cr ;
+
+\ control-until ( flag -- )  -1 loop; print again=0|1
+: control-until ( flag -- )
+  _loop-depth @ 0= if
+    ." [loop] FAIL reason=unbalanced" cr exit
+  then
+  -1 _loop-depth +!
+  0= if
+    ." [loop] UNTIL again=0" cr
+  else
+    ." [loop] UNTIL again=1" cr
+  then ;
+
+\ control-while ( flag -- )  mid-loop gate; depth unchanged
+: control-while ( flag -- )
+  _loop-depth @ 0= if
+    ." [loop] FAIL reason=unbalanced" cr exit
+  then
+  0= if
+    ." [loop] WHILE cont=0" cr
+  else
+    ." [loop] WHILE cont=1" cr
+  then ;
+
+\ control-repeat ( -- )  close WHILE-loop; -1 loop
+: control-repeat ( -- )
+  _loop-depth @ 0= if
+    ." [loop] FAIL reason=unbalanced" cr exit
+  then
+  -1 _loop-depth +!
+  ." [loop] REPEAT" cr ;
+
+\ loop-demo ( -- )  BEGIN…UNTIL + BEGIN…WHILE…REPEAT → OK
+: loop-demo ( -- )
+  ." [loop-demo] dict-reset + BEGIN…UNTIL + BEGIN…WHILE…REPEAT" cr
+  dict-reset
+  control-begin
+  0 control-until
+  loop-cs-depth 0<> if
+    ." [loop-demo] FAIL" cr exit
+  then
+  control-begin
+  1 control-while
+  control-repeat
+  loop-cs-depth 0<> if
+    ." [loop-demo] FAIL" cr exit
+  then
+  ." [loop-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
-\ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE stubs)
+\ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop stubs)
 \ - Group-scoped entries via ENTRY-GIDS + group-entry-find (wave4 item 2) — landed
 \ - findentry / find aliases + interpret-token stub (wave7 item 5) — landed
 \ - interpret loop deepen + : create-only (wave8 item 1) — landed
 \ - colon body/marker stub (wave9 item 4) — landed
 \ - IF/THEN/ELSE control stubs (wave10 item 2) — landed
+\ - BEGIN/UNTIL/WHILE/REPEAT loop stubs (wave11 item 1) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
