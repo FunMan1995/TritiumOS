@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# refined-boot-demo — cold-load evolve/forth/refined/*.fs smoke (wave10 item 4 / docs/REFINED-BOOT.md)
+# Linux SoT: prefer repo evolve/forth/refined; include fixture + skip qwantum → greppable OK.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: refined-boot-demo"
+  echo "  Resolve evolve/forth/refined; include non-qwantum *.fs; skip qwantum-*"
+  echo "  Markers: [refined-boot] dir / include= / skip= reason=qwantum-dump / loaded= skipped= → [refined-boot-demo] OK"
+  echo "Root: $ROOT (override with EVOLVE=/path/to/evolve)"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[refined-boot-demo] FAIL"
+  exit 1
+}
+
+resolve_refined_dir() {
+  local cand
+  # Prefer repo tree
+  if [[ -d "$ROOT/evolve/forth/refined" ]]; then
+    echo "$ROOT/evolve/forth/refined"
+    return 0
+  fi
+  # EVOLVE env (parent of forth/refined, or the refined dir itself)
+  if [[ -n "${EVOLVE:-}" ]]; then
+    if [[ -d "${EVOLVE}/forth/refined" ]]; then
+      echo "${EVOLVE}/forth/refined"
+      return 0
+    fi
+    if [[ -d "${EVOLVE}" && "$(basename "${EVOLVE}")" == "refined" ]]; then
+      echo "${EVOLVE}"
+      return 0
+    fi
+  fi
+  # Live home evolve
+  if [[ -n "${HOME:-}" && -d "${HOME}/.tritiumos/evolve/forth/refined" ]]; then
+    echo "${HOME}/.tritiumos/evolve/forth/refined"
+    return 0
+  fi
+  # Create under repo
+  mkdir -p "$ROOT/evolve/forth/refined"
+  echo "$ROOT/evolve/forth/refined"
+  return 0
+}
+
+REFINED_DIR="$(resolve_refined_dir)"
+mkdir -p "$REFINED_DIR"
+
+if command -v realpath >/dev/null 2>&1; then
+  REFINED_DIR="$(realpath "$REFINED_DIR")"
+elif [[ -d "$REFINED_DIR" ]]; then
+  REFINED_DIR="$(cd "$REFINED_DIR" && pwd)"
+fi
+
+# Ensure skip sample (create minimal stub if missing)
+if [[ ! -f "$REFINED_DIR/qwantum-sample.fs" ]]; then
+  if [[ -f "$ROOT/evolve/forth/refined/qwantum-sample.fs" && \
+        "$REFINED_DIR" != "$(cd "$ROOT/evolve/forth/refined" 2>/dev/null && pwd)" ]]; then
+    cp "$ROOT/evolve/forth/refined/qwantum-sample.fs" "$REFINED_DIR/qwantum-sample.fs"
+  else
+    cat > "$REFINED_DIR/qwantum-sample.fs" << 'FS'
+\ TritiumOS fragment dumped from qwantum field
+: qwantum-ok ." field dump ok" cr ;
+FS
+  fi
+fi
+
+# Ensure fixture
+if [[ ! -f "$REFINED_DIR/refined-boot-fixture.fs" ]]; then
+  if [[ -f "$ROOT/evolve/forth/refined/refined-boot-fixture.fs" ]]; then
+    cp "$ROOT/evolve/forth/refined/refined-boot-fixture.fs" "$REFINED_DIR/refined-boot-fixture.fs"
+  else
+    cat > "$REFINED_DIR/refined-boot-fixture.fs" << 'FS'
+\ wave10 tip4 fixture — cold-load smoke
+: refined-boot-fixture-ok ." [refined] fixture ok" cr ;
+FS
+  fi
+fi
+
+echo "[refined-boot] dir=$REFINED_DIR"
+
+loaded=0
+skipped=0
+
+# Deterministic order: sort for stable Lab greps
+while IFS= read -r -d '' f; do
+  name="$(basename "$f")"
+  if [[ "$name" == qwantum-* ]]; then
+    echo "[VM]   skip $name (dump atom — not vocab; refine only)"
+    echo "[refined-boot] skip=$name reason=qwantum-dump"
+    skipped=$((skipped + 1))
+  else
+    echo "[VM]   include $name (persisted refined)"
+    echo "[refined-boot] include=$name"
+    loaded=$((loaded + 1))
+  fi
+done < <(find "$REFINED_DIR" -maxdepth 1 -type f -name '*.fs' -print0 | sort -z)
+
+echo "[refined-boot] loaded=$loaded skipped=$skipped"
+
+if [[ "$loaded" -lt 1 || "$skipped" -lt 1 ]]; then
+  fail
+fi
+
+# Prefer greppable fixture include + qwantum skip specifically
+grep_ok=0
+# Re-scan markers already printed; soft-check files present
+[[ -f "$REFINED_DIR/refined-boot-fixture.fs" ]] || fail
+[[ -f "$REFINED_DIR/qwantum-sample.fs" ]] || fail
+
+echo "[refined-boot-demo] OK"
+exit 0

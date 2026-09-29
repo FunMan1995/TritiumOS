@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave10 item **1**)
 **Canonical brief:** `TritiumOS.txt` Phase 1 / Priority-1 hosts; `tritium.poly/core/boot.fs`
 **Sources of truth (code):** `tritium.poly/core/boot.fs` (+ mirrored `forth/`); Linux `install/hosts/linux/tritiumos.c`; Win/Android parity contracts
-**Companions:** `docs/HOST-PARITY.md`, `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`
+**Companions:** `docs/HOST-PARITY.md`, `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/REFINED-BOOT.md` (wave10 **4**)
 
 ## 1. Purpose
 
@@ -25,7 +25,7 @@ boot.fs
   → fleet.fs
 ```
 
-Shipper must keep `tritium.poly/core/boot.fs` includes aligned with this list (additions only via later tips). Refining `evolve/forth/refined/*.fs` is **wave10 tip 4** (refined-boot), not this tip.
+Shipper must keep `tritium.poly/core/boot.fs` includes aligned with this list (additions only via later tips). Cold-load of `evolve/forth/refined/*.fs` is **`docs/REFINED-BOOT.md`** (wave10 **4**).
 
 ## 3. Policy
 
@@ -72,7 +72,7 @@ Prior demos stay green. No requirement to *execute* Forth in Win/Android this ti
 ## 7. Non-goals
 
 - Embedding pForth / full C# or Kotlin token VM (later wave)
-- Auto-including refined modules (wave10 **4**)
+- Auto-including refined modules — see `docs/REFINED-BOOT.md` (wave10 **4**)
 - Control-flow / address-fold (wave10 **2–3**)
 - Changing `boot.fs` semantics beyond include-list alignment
 

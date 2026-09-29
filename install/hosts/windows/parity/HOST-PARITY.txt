@@ -10,3 +10,4 @@ interpret-demo CONTRACT
 userland-demo CONTRACT
 lineos-confirm-demo CONTRACT
 host-boot-demo CONTRACT
+refined-boot-demo CONTRACT

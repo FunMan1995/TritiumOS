@@ -16,6 +16,7 @@ REQUIRED_DEMOS=(
   userland-demo
   lineos-confirm-demo
   host-boot-demo
+  refined-boot-demo
 )
 
 usage() {
