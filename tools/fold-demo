@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# fold-demo — Lab smoke for phi-fold / fold-target goldens (wave10 item 3 / docs/ADDRESS-FOLD.md)
+# Mirrors forth/tritium/drena.fs fold-demo + Linux host fold_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: fold-demo"
+  echo "  Assert phi-fold / fold-target goldens (rounds=1)"
+  echo "  Markers: [fold] phi/target → [fold-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[fold-demo] FAIL"
+  exit 1
+}
+
+PHI_FOLD_ROUNDS=1
+LAST_FOLD_INFLUENCE=0
+LAST_FOLD_TARGET=0
+
+phi_fold() {
+  local a=$1 b=$2
+  local x=$(( a ^ b ))
+  local r=$PHI_FOLD_ROUNDS
+  if (( r < 1 )); then r=1; fi
+  local i
+  for (( i=0; i<r; i++ )); do
+    x=$(( x ^ (x << 13) ))
+    x=$(( x ^ (x >> 7) ))
+  done
+  x=$(( x & 0x7fff ))
+  LAST_FOLD_INFLUENCE=$x
+}
+
+fold_target() {
+  local src=$1 cand=$2
+  phi_fold "$src" "$cand"
+  local influ=$LAST_FOLD_INFLUENCE
+  echo "[fold] phi a=$src b=$cand influence=$influ"
+  local target=$influ
+  if (( target < 1 )); then target=1; fi
+  LAST_FOLD_TARGET=$target
+  echo "[fold] target src=$src cand=$cand -> $target"
+}
+
+assert_row() {
+  local src=$1 cand=$2 want_influ=$3 want_tgt=$4
+  fold_target "$src" "$cand"
+  [[ "$LAST_FOLD_INFLUENCE" == "$want_influ" && "$LAST_FOLD_TARGET" == "$want_tgt" ]] || fail
+}
+
+echo "[fold-demo] golden vectors rounds=1"
+PHI_FOLD_ROUNDS=1
+
+assert_row 1 2 24771 24771
+assert_row 7 11 780 780
+assert_row 100 100 0 1
+
+echo "[fold-demo] OK"
+exit 0

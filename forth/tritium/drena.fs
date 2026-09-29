@@ -48,10 +48,55 @@ variable last-grown  0 last-grown !  \ addr of last spawn/grow (for drena-step)
   2dup neuron-link-count cells swap neuron-links-base + !
   dup neuron-link-count 1+ swap 2 cells + ! ;
 
+\ === address-fold deepen (wave10 item 3 / docs/ADDRESS-FOLD.md) ===
+\ Keep rounds=1 mix compatible with prior drena-link / grow-step goldens.
+
+variable phi-fold-rounds
+1 phi-fold-rounds !
+variable last-fold-influence
+0 last-fold-influence !
+variable last-fold-target
+0 last-fold-target !
+variable _fold-src
+variable _fold-cand
+
+\ phi-fold ( addr addr' -- influence )
+\   xor → (x^=x<<13; x^=x>>7) × rounds → x&=$7fff
 : phi-fold ( addr addr' -- influence )
-  xor dup 13 lshift xor dup 7 rshift xor $7fff and ;
+  xor
+  phi-fold-rounds @ 1 max 0 ?do
+    dup 13 lshift xor dup 7 rshift xor
+  loop
+  $7fff and
+  dup last-fold-influence ! ;
+
+\ phi-fold3 ( a b c -- influence ) = phi-fold(phi-fold(a,b),c)
+: phi-fold3 ( a b c -- influence )
+  >r phi-fold r> phi-fold ;
+
+\ fold-target ( src-id candidate -- target )  deterministic; target ≥ 1
 : fold-target ( src-id candidate -- target )
-  2dup phi-fold nip 1 max ;
+  _fold-cand !  _fold-src !
+  _fold-src @ _fold-cand @ phi-fold
+  ." [fold] phi a=" _fold-src @ . ." b=" _fold-cand @ . ." influence=" dup . cr
+  1 max
+  dup last-fold-target !
+  ." [fold] target src=" _fold-src @ . ." cand=" _fold-cand @ . ." -> " dup . cr ;
+
+\ fold-demo ( -- )  golden vectors rounds=1 → [fold-demo] OK
+: fold-demo ( -- )
+  ." [fold-demo] golden vectors rounds=1" cr
+  1 phi-fold-rounds !
+  1 2 fold-target
+  dup 24771 <> last-fold-influence @ 24771 <> or if
+    ." [fold-demo] FAIL" cr drop exit then drop
+  7 11 fold-target
+  dup 780 <> last-fold-influence @ 780 <> or if
+    ." [fold-demo] FAIL" cr drop exit then drop
+  100 100 fold-target
+  dup 1 <> last-fold-influence @ 0 <> or if
+    ." [fold-demo] FAIL" cr drop exit then drop
+  ." [fold-demo] OK" cr ;
 
 0 constant LINK-INTRA
 1 constant LINK-INTER
@@ -426,6 +471,7 @@ defer platform-graph-load
 
 : drena-init ( -- )
   1 next-id !  0 link-count !  0 group-count !  0 last-grown !
+  1 phi-fold-rounds !  0 last-fold-influence !  0 last-fold-target !
   MAX-GROUPS 0 ?do 0 i cells group-n-members + ! loop
   ." [DRENA] Trit intelligence engine initialized" cr ;
 

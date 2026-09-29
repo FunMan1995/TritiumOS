@@ -1,14 +1,9 @@
 # Neuron encoding — TritiumOS
 
-**Status:** Shipper-ready spec (matches PR #2 tip / Research backlog)  
-**Canonical brief:** `TritiumOS.txt` §3  
-**Sources of truth (code):** `forth/trit.fs`, `forth/tritium/drena.fs`  
-**Policy:** S3 mode `11` (RESERVED) — see `docs/ASSUMPTIONS.md`; do not invent behavior.
-
-**Engine ops:** see [`docs/DRENA.md`](DRENA.md) (spawn/link/rewire/grow/step, groups, persist).
-**Labeled groups:** see [`docs/GROUPS.md`](GROUPS.md) (`drena-group` / join / `GROUP-<label>/` / persist).
-**Trit-math Lab smoke:** see [`docs/TRIT-MATH.md`](TRIT-MATH.md) (`trit+` clamp + `trit-math-demo`).
-
+**Status:** Shipper-ready spec (matches PR #2 tip / Research backlog)
+**Canonical brief:** `TritiumOS.txt` §3
+**Sources of truth (code):** `forth/trit.fs`, `forth/tritium/drena.fs`
+**Open:** S3 mode `11` (RESERVED) — document only; do not invent behavior.
 
 ## 1. Purpose
 
@@ -67,17 +62,20 @@ Progression (D.R.E.N.A.): `RANDOM → ADDRESS_FOLD → CONNECTED` via `drena-rew
 
 ### 4.1 φ fold (ADDRESS_FOLD)
 
+Deepen + demo: **`docs/ADDRESS-FOLD.md`** (wave10 **3**).
+
 | Word | Stack | Notes |
 |------|-------|-------|
-| `phi-fold` | `( addr addr' -- influence )` | Pure-math mix |
+| `phi-fold` | `( addr addr' -- influence )` | Pure-math mix (+ optional rounds) |
 | `fold-target` | `( src-id candidate -- target )` | Deterministic remap, target ≥ 1 |
+| `fold-demo` | `( -- )` | Golden vectors / markers |
 
-When `drena-link` runs with source S3 mode = ADDRESS_FOLD, it prints  
-`[DRENA] ADDRESS_FOLD φ(src,dst)->target` and stores the folded target.
+When `drena-link` runs with source S3 mode = ADDRESS_FOLD, it prints
+`[DRENA] ADDRESS_FOLD φ(src,dst)->target` (and optional `[fold]` lines) and stores the folded target.
 
 ## 5. Neuron record (current Forth layout)
 
-Cell-based (32/64-friendly); neuron / next-id width follows `edition@` via `id-width` / `id-clamp` (32 → `$ffffffff and`; 64 → full cell). See `docs/ASSUMPTIONS.md`.
+Cell-based (32/64-friendly); edition width for ids is future work.
 
 | Offset | Field | Accessor |
 |--------|-------|----------|
@@ -92,21 +90,14 @@ Validation: `valid-header?`, `valid-neuron?`, `validate-neuron`.
 
 | Word | Stack | Notes |
 |------|-------|-------|
-| `drena-spawn` | `( variation -- neuron )` | variation = initial S3 mode; sets `last-grown` |
-| `drena-grow` | `( parent -- child )` | child inherits parent S3; link parent→child; never rewire / never advance RESERVED |
-| `drena-step` | `( -- )` | one tick: no neuron→spawn0; RESERVED→skip; CONNECTED(mode≥2)→grow; else rewire `last-grown` |
+| `drena-spawn` | `( variation -- neuron )` | variation = initial S3 mode |
 | `drena-link` | `( src-neuron dst-id -- )` | fold if mode=1 |
 | `drena-rewire` | `( neuron -- )` | writes advanced S3 into header |
 | `set-s3-mode` | `( mode n-addr -- )` | packs via `pack-neuron-header` |
 | `neuron-add-connection` | `( connected-id n-addr -- )` | append link |
 | `make-neuron` | `( id mode -- n-addr )` | allocate at HERE |
-| `drena-group` | `( label-addr -- group-id )` | labeled neural group; zeros member list |
-| `drena-join` | `( neuron group -- )` | **persists** neuron-id in group member list (skip if already member); prints `(members=M)` |
-| `group-members` | `( gid -- addr count )` | member table slice |
-| `group-vocab-prefix` | `( gid -- c-addr u )` | counted `GROUP-<label>/` prefix string (not a full wordlist) |
-| `.group` | `( gid -- )` | smoke: label, prefix, members |
-
-**Members persist:** `drena-join` appends to an in-memory member table (not print-only). `group-label!` / group create also sets `GROUP-<label>/` via `group-vocab-prefix`. Host `graph-save` writes `group <gid> <label>` and `member <gid> <nid>` into `evolve/user-graph.trit`.
+| `drena-group` | `( label-addr -- group-id )` | stub / extend later |
+| `drena-join` | `( neuron group -- )` | stub / extend later |
 
 ## 7. Acceptance (Test Lab)
 
@@ -119,5 +110,6 @@ Validation: `valid-header?`, `valid-neuron?`, `validate-neuron`.
 ## 8. Follow-ons (not this tip)
 
 - Typed link records with trit-weight (`TritiumOS.txt` §3.5)
-- Full Forth wordlist hierarchy for `GROUP-<label>/` (prefix string + print shipped; hierarchy later)
+- Labeled groups + `group-label!` / `GROUP-<label>/` namespaces
+- 32 vs 64 edition id width
 - `docs/ASSUMPTIONS.md` if packing or S3=`11` is ever decided

@@ -1,9 +1,9 @@
 # D.R.E.N.A. — Dynamic Recursive Evolving Neural Architecture
 
-**Status:** Shipper-ready spec (matches PR #10 tip / Research item 5)  
-**Canonical brief:** `TritiumOS.txt` §3, §5  
-**Sources of truth (code):** `forth/tritium/drena.fs`  
-**Companions:** `docs/NEURON.md` (header / trit / S3), `docs/GROUPS.md` (labeled groups + persist), `docs/REKIA.md` (refine → Forth), `docs/ASSUMPTIONS.md` (S3=`11`), `docs/QWANTUM-REKIA.md` (K atoms)
+**Status:** Shipper-ready spec (matches PR #10 tip / Research item 5)
+**Canonical brief:** `TritiumOS.txt` §3, §5
+**Sources of truth (code):** `forth/tritium/drena.fs`
+**Companions:** `docs/NEURON.md` (header / trit / S3), `docs/REKIA.md` (refine → Forth), `docs/ASSUMPTIONS.md` (S3=`11`), `docs/QWANTUM-REKIA.md` (K atoms), `docs/ADDRESS-FOLD.md` (wave10 **3**)
 
 ## 1. Purpose
 
@@ -38,8 +38,8 @@ Cell-based layout (see also `NEURON.md` §5):
 
 | Word | Stack | Notes |
 |------|-------|-------|
-| `phi-fold` | `( addr addr' -- influence )` | Pure-math mix |
-| `fold-target` | `( src-id candidate -- target )` | Deterministic, target ≥ 1 |
+| `phi-fold` | `( addr addr' -- influence )` | Pure-math mix — deepen + `fold-demo`: `ADDRESS-FOLD.md` |
+| `fold-target` | `( src-id candidate -- target )` | Deterministic, target ≥ 1 — see `ADDRESS-FOLD.md` |
 | `drena-rewire` | `( neuron -- )` | 0→1→2 only; skip if RESERVED or already CONNECTED |
 
 ## 4. Spawn / link / grow / step
@@ -68,7 +68,6 @@ Global link table (separate from embedded connection list):
 | Word | Stack | Notes |
 |------|-------|-------|
 | `link!` | `( src dst type w -- )` | Append; w often neutral nibble encoding |
-| `group-link!` | `( group-a group-b -- )` | Inter-group bridge: `LINK-INTER` via rep members (or marked gid edge) |
 | `link@` | `( idx -- rec )` | |
 | `links-for-neuron` | `( neuron -- addr count )` | |
 
@@ -80,14 +79,11 @@ Global link table (separate from embedded connection list):
 | `group-label!` | `( c-addr u gid -- )` | Set label$; builds vocab prefix |
 | `drena-join` | `( neuron group -- )` | Persist member id (no dups; capacity-checked) |
 | `group-members` | `( gid -- addr count )` | |
-| `group-vocab-prefix` | `( gid -- c-addr u )` | `GROUP-<label>/` prefix + unit key |
-| `group-vocab-add` / `group-find` | scoped word under gid | See GROUPS.md |
+| `group-vocab-prefix` | `( gid -- c-addr u )` | `GROUP-<label>/` prefix string |
 
-`GROUP-<label>/` is a **searchable vocab unit** (Dusk-style; wave4 item 2), not prefix-only. Prefix string kept for display/persist; kernel mounts a findable wordlist under the gid. Details: [`docs/GROUPS.md`](GROUPS.md).
+`GROUP-<label>/` is a **prefix string**, not a full Forth wordlist hierarchy (yet).
 
 Smoke: `groups-demo` — join grows member count; graph shows `group` / `member` lines.
-
-Smoke: `group-link-demo` — two groups + `group-link!` → `[group-link-demo] OK — inter-group bridge` (wave4 item **4**).
 
 ## 7. Persist
 
@@ -96,18 +92,16 @@ Smoke: `group-link-demo` — two groups + `group-link!` → `[group-link-demo] O
 | `graph-save` | `( -- )` | Host `platform-graph-save` → `evolve/user-graph.trit` |
 | `graph-load` | `( -- )` | Host `platform-graph-load` |
 
-`user-graph.trit` lines `group <gid> <label>` / `member <gid> <nid>` are written on save and **restored on AppImage start** into host group tables (labels, member lists, `GROUP-<label>/` vocab prefix prints). Quit → restart keeps groups; smoke: `groups-persist-demo` or boot auto-check `[persist] OK — groups + members present after restart`.
-
 R.E.K.I.A. refine path also touches `evolve/assistant-state.trit` (see `REKIA.md` / persist tip).
 
-## 8. Acceptance (Test Lab)
+## 8. Acceptance (Test Lab — docs tip)
 
 1. `docs/DRENA.md` present; one-line cite from `docs/NEURON.md`.
-2. Linux regression: `rekia-demo`, `s3-reserved-demo`, `grow-step-demo`, `groups-demo`, `qwantum-atoms-demo` still PASS.
-3. Restart: after `groups-demo` + quit, next AppImage boot restores members + `GROUP-<label>/` (`groups-persist-demo` / `[persist] OK — groups + members present after restart`).
+2. Linux regression unchanged: `rekia-demo`, `s3-reserved-demo`, `grow-step-demo`, `groups-demo`, `qwantum-atoms-demo` still PASS.
+3. No Forth behavior change required for this docs-only tip.
 
 ## 9. Cite
 
 - `TritiumOS.txt` §§3, 5
-- `docs/NEURON.md`, `docs/GROUPS.md`, `docs/REKIA.md`, `docs/ASSUMPTIONS.md`, `docs/QWANTUM-REKIA.md`
+- `docs/NEURON.md`, `docs/REKIA.md`, `docs/ASSUMPTIONS.md`, `docs/QWANTUM-REKIA.md`
 - `forth/tritium/drena.fs` (PR #10 tip)

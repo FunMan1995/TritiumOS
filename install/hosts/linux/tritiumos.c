@@ -50,6 +50,7 @@ void kernel_demo(void);
 void interpret_demo(void);
 void colon_demo(void);
 void control_demo(void);
+void fold_demo(void);
 void license_status(void);
 void license_register(const char* device_id);
 void queue_demo(void);
@@ -1418,6 +1419,62 @@ void platform_init() {
     printf("[VM] (GrapheneOS refs available for hardware insights if extending low-level).\n");
 }
 
+
+/* --- address-fold deepen (wave10 item 3 / docs/ADDRESS-FOLD.md) --- */
+static int host_phi_fold_rounds = 1;
+static unsigned host_last_fold_influence = 0;
+static unsigned host_last_fold_target = 0;
+
+static unsigned host_phi_fold(unsigned a, unsigned b) {
+    unsigned x = a ^ b;
+    int rounds = host_phi_fold_rounds < 1 ? 1 : host_phi_fold_rounds;
+    int i;
+    for (i = 0; i < rounds; i++) {
+        x ^= x << 13;
+        x ^= x >> 7;
+    }
+    x &= 0x7fff;
+    host_last_fold_influence = x;
+    return x;
+}
+
+static unsigned host_phi_fold3(unsigned a, unsigned b, unsigned c) {
+    return host_phi_fold(host_phi_fold(a, b), c);
+}
+
+static unsigned host_fold_target(unsigned src, unsigned cand) {
+    unsigned influ = host_phi_fold(src, cand);
+    unsigned target = influ ? influ : 1;
+    host_last_fold_target = target;
+    printf("[fold] phi a=%u b=%u influence=%u\n", src, cand, influ);
+    printf("[fold] target src=%u cand=%u -> %u\n", src, cand, target);
+    return target;
+}
+
+void fold_demo(void) {
+    unsigned t;
+    printf("[fold-demo] golden vectors rounds=1\n");
+    host_phi_fold_rounds = 1;
+    t = host_fold_target(1, 2);
+    if (host_last_fold_influence != 24771 || t != 24771) {
+        printf("[fold-demo] FAIL\n\n");
+        return;
+    }
+    t = host_fold_target(7, 11);
+    if (host_last_fold_influence != 780 || t != 780) {
+        printf("[fold-demo] FAIL\n\n");
+        return;
+    }
+    t = host_fold_target(100, 100);
+    if (host_last_fold_influence != 0 || t != 1) {
+        printf("[fold-demo] FAIL\n\n");
+        return;
+    }
+        /* optional phi-fold3 stub: multi-hop mix (a,b,c) */
+    (void)host_phi_fold3(1, 2, 0);
+printf("[fold-demo] OK\n\n");
+}
+
 void drena_demo() {
     /* Mirrors forth drena-spawn / drena-rewire / ADDRESS_FOLD φ / drena-link */
     printf("Running DRENA demo (rewire + ADDRESS_FOLD φ)...\n");
@@ -1426,11 +1483,7 @@ void drena_demo() {
     printf("[DRENA] rewire S3 -> ADDRESS_FOLD (header written)\n");
     /* φ(addr,addr') = mix; deterministic target pick when S3=ADDRESS_FOLD */
     unsigned src = 1, cand = 99;
-    unsigned influence = src ^ cand;
-    influence ^= influence << 13;
-    influence ^= influence >> 7;
-    influence &= 0x7fff;
-    unsigned target = influence ? influence : 1;
+    unsigned target = host_fold_target(src, cand);
     printf("[DRENA] ADDRESS_FOLD φ(%u,%u)->%u\n", src, cand, target);
     printf("[DRENA] linked %u -> %u\n", src, target);
     printf("[DRENA] rewire S3 -> CONNECTED (header written)\n");
@@ -4104,7 +4157,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  colon-demo - : body ; marker stub + run body\n  control-demo - IF/THEN/ELSE cs-depth stubs → greppable OK\n  IF [0|1] / THEN / ELSE - control stubs (aliases control-if/then/else)\n  : <name> [body…] ; - colon-def body/marker stub (wave9)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  host-boot / host-boot-report - poly/core load-order markers (wave10)\n  host-boot-demo - assert boot.fs + §2 core files present → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n  assistant-state-demo - v2 task/reminder/note persist → greppable OK\n  assistant-state! / assistant-state@ - save/load evolve/assistant-state.trit v2\n  assistant-task! / assistant-reminder! / assistant-note! - upsert hooks\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  colon-demo - : body ; marker stub + run body\n  control-demo - IF/THEN/ELSE cs-depth stubs → greppable OK\n  fold-demo - phi-fold / fold-target goldens → greppable OK\n  IF [0|1] / THEN / ELSE - control stubs (aliases control-if/then/else)\n  : <name> [body…] ; - colon-def body/marker stub (wave9)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  host-boot / host-boot-report - poly/core load-order markers (wave10)\n  host-boot-demo - assert boot.fs + §2 core files present → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n  assistant-state-demo - v2 task/reminder/note persist → greppable OK\n  assistant-state! / assistant-state@ - save/load evolve/assistant-state.trit v2\n  assistant-task! / assistant-reminder! / assistant-note! - upsert hooks\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -4201,6 +4254,8 @@ int main(int argc, char** argv) {
             colon_demo();
         } else if (strcasecmp(line, "control-demo") == 0) {
             control_demo();
+        } else if (strcasecmp(line, "fold-demo") == 0) {
+            fold_demo();
         } else if (strcasecmp(line, "control-cs-depth") == 0) {
             printf("[control] cs-depth=%d\n", host_control_cs_depth());
         } else if (strcasecmp(line, "ELSE") == 0 ||
