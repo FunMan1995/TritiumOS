@@ -103,3 +103,6 @@ evolve/master/
 
 # Runtime fleet evolve-sync blob (export/import stub; never commit)
 evolve/fleet/
+
+# Runtime LINEOS brand markers (splash/about; created by graduate / brand-demo)
+evolve/lineos/

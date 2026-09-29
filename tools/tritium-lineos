@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+# tritium-lineos — LINEOS splash/about brand markers stub (TritiumOS.txt §1a.1 / docs/LINEOS-BRAND.md)
+# Writes evolve/lineos/{brand.json,SPLASH.txt,ABOUT.txt}; no production assets / store rebrand.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+EVOLVE_ROOT="${TRITIUM_EVOLVE_ROOT:-$ROOT/evolve}"
+LINEOS_ROOT="${TRITIUM_LINEOS_ROOT:-$EVOLVE_ROOT/lineos}"
+FLAG_FILE="${TRITIUM_LINEOS_FLAG:-$EVOLVE_ROOT/lineos-host-flag.trit}"
+MANIFEST_FILE="${TRITIUM_LINEOS_MANIFEST:-$EVOLVE_ROOT/lineos-manifest-scaffold.json}"
+EDITION_FILE="${TRITIUM_EDITION_FILE:-$EVOLVE_ROOT/edition.trit}"
+ASSISTANT_FILE="${TRITIUM_ASSISTANT_FILE:-$EVOLVE_ROOT/assistant-name.trit}"
+
+PRODUCT_NAME="L.I.N.E.O.S."
+PRODUCT_ID="lineos"
+SLOGAN="The line tread between madness and genius."
+ORIGIN="TritiumOS by Draco"
+
+usage() {
+  echo "Usage: tritium-lineos splash | about | brand-demo | graduate-markers | status"
+  echo "  splash             print splash if graduated; else refuse (§1a.1)"
+  echo "  about              print about (slogan if graduated)"
+  echo "  brand-demo         force graduated markers → assert → [lineos-brand-demo] OK"
+  echo "  graduate-markers   write brand markers (called after successful graduate)"
+  echo "  status             show graduated? + marker paths"
+  echo "Out: $LINEOS_ROOT (gitignored)"
+}
+
+current_edition() {
+  if [[ -n "${TRITIUM_EDITION:-}" ]]; then
+    printf '%s' "$TRITIUM_EDITION"
+    return 0
+  fi
+  if [[ -f "$EDITION_FILE" ]]; then
+    local ed
+    ed="$(sed -n 's/^edition=//p' "$EDITION_FILE" | head -1 | tr -d ' \t\r\n')"
+    if [[ "$ed" == "32" || "$ed" == "64" ]]; then
+      printf '%s' "$ed"
+      return 0
+    fi
+  fi
+  printf '64'
+}
+
+assistant_name() {
+  if [[ -f "$ASSISTANT_FILE" ]]; then
+    local n
+    n="$(sed -n 's/^name=//p' "$ASSISTANT_FILE" | head -1 | tr -d '\r')"
+    if [[ -n "$n" ]]; then
+      printf '%s' "$n"
+      return 0
+    fi
+  fi
+  printf 'assistant'
+}
+
+is_graduated() {
+  if [[ "${TRITIUM_LINEOS_GRADUATED:-}" == "1" ]]; then
+    return 0
+  fi
+  if [[ -f "$LINEOS_ROOT/brand.json" ]]; then
+    python3 - "$LINEOS_ROOT/brand.json" <<'PY' 2>/dev/null
+import json, sys
+with open(sys.argv[1]) as f:
+    d = json.load(f)
+sys.exit(0 if d.get("graduated") and d.get("productId") == "lineos" else 1)
+PY
+    return $?
+  fi
+  if [[ -f "$FLAG_FILE" ]] && grep -q 'product_id=lineos' "$FLAG_FILE" 2>/dev/null; then
+    return 0
+  fi
+  if [[ -f "$MANIFEST_FILE" ]] && grep -q '"product_id": "lineos"' "$MANIFEST_FILE" 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+write_brand_markers() {
+  local edition="${1:-$(current_edition)}"
+  mkdir -p "$LINEOS_ROOT"
+  python3 - "$LINEOS_ROOT/brand.json" "$PRODUCT_NAME" "$PRODUCT_ID" "$SLOGAN" "$ORIGIN" "$edition" <<'PY'
+import json, sys
+path, name, pid, slogan, origin, edition = sys.argv[1:7]
+data = {
+    "productName": name,
+    "productId": pid,
+    "slogan": slogan,
+    "originBadge": origin,
+    "edition": int(edition),
+    "graduated": True,
+}
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+  cat > "$LINEOS_ROOT/SPLASH.txt" <<SPLASH
+$PRODUCT_NAME
+$SLOGAN
+$ORIGIN (edition=$edition)
+SPLASH
+  local aname
+  aname="$(assistant_name)"
+  cat > "$LINEOS_ROOT/ABOUT.txt" <<ABOUT
+$PRODUCT_NAME
+$aname — $PRODUCT_NAME
+$SLOGAN
+$ORIGIN (edition=$edition)
+ABOUT
+  echo "[LINEOS] splash: $PRODUCT_NAME"
+  echo "[LINEOS] slogan: $SLOGAN"
+  echo "[LINEOS] origin: $ORIGIN (edition=$edition)"
+  echo "[LINEOS] brand markers → evolve/lineos/ (brand.json SPLASH.txt ABOUT.txt)"
+}
+
+cmd_splash() {
+  if is_graduated; then
+    local edition
+    edition="$(current_edition)"
+    if [[ -f "$LINEOS_ROOT/brand.json" ]]; then
+      edition="$(python3 - "$LINEOS_ROOT/brand.json" <<'PY'
+import json, sys
+print(json.load(open(sys.argv[1])).get("edition", 64))
+PY
+)"
+    fi
+    echo "[LINEOS] splash: $PRODUCT_NAME"
+    echo "[LINEOS] slogan: $SLOGAN"
+    echo "[LINEOS] origin: $ORIGIN (edition=$edition)"
+    return 0
+  fi
+  echo "[LINEOS] refuse — not graduated (§1a.1)"
+  return 1
+}
+
+cmd_about() {
+  local aname edition
+  aname="$(assistant_name)"
+  edition="$(current_edition)"
+  if is_graduated; then
+    if [[ -f "$LINEOS_ROOT/brand.json" ]]; then
+      edition="$(python3 - "$LINEOS_ROOT/brand.json" <<'PY'
+import json, sys
+print(json.load(open(sys.argv[1])).get("edition", 64))
+PY
+)"
+    fi
+    echo "[LINEOS] about: $PRODUCT_NAME"
+    echo "[LINEOS] about: $aname — $PRODUCT_NAME"
+    echo "[LINEOS] slogan: $SLOGAN"
+    echo "[LINEOS] origin: $ORIGIN (edition=$edition)"
+    return 0
+  fi
+  echo "[LINEOS] about: $aname — powered by TritiumOS"
+  return 0
+}
+
+cmd_brand_demo() {
+  echo "[lineos-brand-demo] force-ready → brand markers (§1a.1 / docs/LINEOS-BRAND.md)"
+  local edition
+  edition="$(current_edition)"
+  write_brand_markers "$edition"
+
+  # Assert slogan + productName + edition present
+  local ok=1
+  if [[ ! -f "$LINEOS_ROOT/brand.json" ]]; then
+    echo "[lineos-brand-demo] FAIL — missing brand.json" >&2
+    ok=0
+  else
+    python3 - "$LINEOS_ROOT/brand.json" "$SLOGAN" "$PRODUCT_NAME" "$edition" <<'PY' || ok=0
+import json, sys
+path, slogan, name, edition = sys.argv[1:5]
+d = json.load(open(path))
+assert d.get("slogan") == slogan, d.get("slogan")
+assert d.get("productName") == name, d.get("productName")
+assert int(d.get("edition")) == int(edition), d.get("edition")
+assert d.get("graduated") is True
+assert d.get("productId") == "lineos"
+print("[lineos-brand-demo] assert brand.json OK")
+PY
+  fi
+  if ! grep -q "$SLOGAN" "$LINEOS_ROOT/SPLASH.txt" 2>/dev/null; then
+    echo "[lineos-brand-demo] FAIL — SPLASH.txt missing slogan" >&2
+    ok=0
+  fi
+  if ! grep -q "$PRODUCT_NAME" "$LINEOS_ROOT/ABOUT.txt" 2>/dev/null; then
+    echo "[lineos-brand-demo] FAIL — ABOUT.txt missing productName" >&2
+    ok=0
+  fi
+  if [[ "$ok" -eq 1 ]]; then
+    echo "[lineos-brand-demo] OK"
+    return 0
+  fi
+  echo "[lineos-brand-demo] FAIL"
+  return 1
+}
+
+cmd_status() {
+  local ed
+  ed="$(current_edition)"
+  if is_graduated; then
+    echo "[LINEOS] status: graduated=true edition=$ed markers=$LINEOS_ROOT"
+  else
+    echo "[LINEOS] status: graduated=false edition=$ed"
+  fi
+}
+
+main() {
+  local cmd="${1:-}"
+  case "$cmd" in
+    splash) shift; cmd_splash "$@" ;;
+    about) shift; cmd_about "$@" ;;
+    brand-demo|brand_demo) shift; cmd_brand_demo "$@" ;;
+    graduate-markers|graduate_markers) shift; write_brand_markers "$(current_edition)" ;;
+    status) shift; cmd_status "$@" ;;
+    -h|--help|help|"") usage; [[ -n "$cmd" ]] || exit 2 ;;
+    *) echo "Unknown command: $cmd" >&2; usage; exit 2 ;;
+  esac
+}
+
+main "$@"

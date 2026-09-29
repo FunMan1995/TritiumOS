@@ -53,14 +53,16 @@ These prevent any real "TritiumOS" behavior per the product definition.
 
 6. **Graduation / L.I.N.E.O.S. / evolution persistence**
    - **Graduation stub landed (wave5 items 4+5, §1a.1):** `evolve/graduation.json` (+ `.example`); `lineos-graduate` / `lineos-graduate-demo` / `become-lineos` (Forth + Linux host); scaffold `product_id=lineos` under `evolve/` — **not** a production branding release. See `docs/LINEOS.md`.
+   - **LINEOS brand markers stub landed (wave7 item 3):** `lineos-splash` / `lineos-about` / `lineos-brand-demo` + `evolve/lineos/` markers; CLI `tools/tritium-lineos`. See `docs/LINEOS-BRAND.md`. Marker/demo only — **not** production assets / store rebrand.
    - Graph persist exists (`evolve/user-graph.trit`); local fleet export/import stub landed (wave7 **2**); networked sync / irreversible UX confirm packs still later.
-   - Needed later: real splash/about branding pack; irreversible confirm UX; fleet session counts / network sync.
+   - Needed later: real splash/about branding pack (assets); irreversible confirm UX; fleet session counts / network sync.
 
 7. **Integrate / install docs (wave6 items 4+5)** / **Master stub (wave7 item 1)** / **Fleet stub (wave7 item 2)**
    - **Integrate stub landed:** `tritium-integrate` / `tritium-integrate-demo` (Linux host + CLI + Forth); scaffold from `_template` → `evolve/integrate/<platform>/`; slot gate via license helpers. See `docs/INTEGRATE.md`.
    - **INSTALL.md landed:** bootstrap / host install checklist. See `docs/INSTALL.md`.
    - **Master mint/verify stub landed (wave7 item 1):** `docs/MASTER.md` + `tools/tritium-master` + host/Forth; `[master-demo] OK`. Format-only — no crypto.
    - **Fleet evolve-sync stub landed (wave7 item 2):** `docs/FLEET.md` + `tools/tritium-fleet` + host/Forth; `[fleet-demo] OK`. Same-key local only — no network.
+   - **LINEOS brand stub landed (wave7 item 3):** `docs/LINEOS-BRAND.md` + `tools/tritium-lineos` + host/Forth; `[lineos-brand-demo] OK`. Markers only — no production branding.
    - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
@@ -129,7 +131,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 4. Wire UI default input through a `rekiA-refine` path that produces visible "refined reply" + updates a neuron count.
 5. Write the missing core docs (start with NEURON.md + DRENA.md + REKIA.md — they are referenced in spec itself).
 6. Implement basic master/license slot enforcement (even if still scaffold keys) so "slot 11 rejected" works.
-7. ~~Add `evolve/graduation.json` + `lineos-graduate` stub~~ **landed (wave5 items 4+5)** — deepen branding packs / confirm UX later.
+7. ~~Add `evolve/graduation.json` + `lineos-graduate` stub~~ **landed (wave5 items 4+5)**; ~~splash/about brand markers stub~~ **landed (wave7 item 3)** — deepen asset packs / confirm UX later.
 8. Use `tools/qwantum-field.ps1` (or Qwantum Compute) to pull more complete Forth/engine fragments from the "parallel timeline" into the tree.
 
 ## How to Track

@@ -56,6 +56,9 @@ void assimilate_demo(void);
 void lineos_graduate(int demo_force);
 void lineos_graduate_demo(void);
 void become_lineos(void);
+void lineos_splash(void);
+void lineos_about(void);
+void lineos_brand_demo(void);
 void tritium_integrate(const char* platform);
 void tritium_integrate_demo(void);
 /* Master mint/verify scaffold (§5a.5) — format-only; no crypto */
@@ -156,6 +159,7 @@ void ensure_evolve_dir() {
     snprintf(sub, sizeof(sub), "%s/integrate", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/master", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/fleet", evolve_dir); mkdir(sub, 0755);
+    snprintf(sub, sizeof(sub), "%s/lineos", evolve_dir); mkdir(sub, 0755);
 }
 
 const char* get_evolve_dir() {
@@ -1654,11 +1658,50 @@ static void grad_scaffold_flip(void) {
     }
     grad_product_is_lineos = 1;
     grad_host_flag_lineos = 1;
+    /* Brand markers stub (wave7 item 3 / docs/LINEOS-BRAND.md) */
+    {
+        char brand_dir[MAX_PATH];
+        snprintf(brand_dir, sizeof(brand_dir), "%s/lineos", get_evolve_dir());
+        mkdir(brand_dir, 0755);
+        snprintf(path, sizeof(path), "%s/brand.json", brand_dir);
+        f = fopen(path, "w");
+        if (f) {
+            fprintf(f,
+                "{\n"
+                "  \"productName\": \"L.I.N.E.O.S.\",\n"
+                "  \"productId\": \"lineos\",\n"
+                "  \"slogan\": \"%s\",\n"
+                "  \"originBadge\": \"TritiumOS by Draco\",\n"
+                "  \"edition\": %d,\n"
+                "  \"graduated\": true\n"
+                "}\n",
+                GRAD_SLOGAN, edition);
+            fclose(f);
+        }
+        snprintf(path, sizeof(path), "%s/SPLASH.txt", brand_dir);
+        f = fopen(path, "w");
+        if (f) {
+            fprintf(f, "L.I.N.E.O.S.\n%s\nTritiumOS by Draco (edition=%d)\n",
+                    GRAD_SLOGAN, edition);
+            fclose(f);
+        }
+        snprintf(path, sizeof(path), "%s/ABOUT.txt", brand_dir);
+        f = fopen(path, "w");
+        if (f) {
+            fprintf(f, "L.I.N.E.O.S.\n%s — L.I.N.E.O.S.\n%s\nTritiumOS by Draco (edition=%d)\n",
+                    assistant_name[0] ? assistant_name : "assistant",
+                    GRAD_SLOGAN, edition);
+            fclose(f);
+        }
+    }
     printf("[LINEOS] UI product name → L.I.N.E.O.S.\n");
+    printf("[LINEOS] splash: L.I.N.E.O.S.\n");
     printf("[LINEOS] slogan: %s\n", GRAD_SLOGAN);
+    printf("[LINEOS] origin: TritiumOS by Draco (edition=%d)\n", edition);
     printf("[LINEOS] scaffold product_id → %s (preserve edition=%d-bit)\n",
            grad_cfg.productIdAfter, edition);
     printf("[LINEOS] wrote evolve/lineos-manifest-scaffold.json + lineos-host-flag.trit\n");
+    printf("[LINEOS] brand markers → evolve/lineos/ (brand.json SPLASH.txt ABOUT.txt)\n");
     printf("[LINEOS] graduate OK — scaffold only (not a production release)\n");
 }
 
@@ -1731,6 +1774,132 @@ void lineos_graduate_demo(void) {
         printf("[lineos-graduate-demo] OK\n\n");
     } else {
         printf("[lineos-graduate-demo] FAIL\n\n");
+    }
+}
+
+/* --- LINEOS brand markers stub (wave7 item 3 / docs/LINEOS-BRAND.md) --- */
+static int lineos_graduated_now(void) {
+    if (grad_product_is_lineos || grad_host_flag_lineos) return 1;
+    {
+        char path[MAX_PATH];
+        snprintf(path, sizeof(path), "%s/lineos/brand.json", get_evolve_dir());
+        FILE* f = fopen(path, "r");
+        if (f) {
+            char buf[512];
+            size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+            fclose(f);
+            buf[n] = 0;
+            if (strstr(buf, "\"graduated\": true") && strstr(buf, "\"productId\": \"lineos\""))
+                return 1;
+        }
+    }
+    {
+        char path[MAX_PATH];
+        snprintf(path, sizeof(path), "%s/lineos-host-flag.trit", get_evolve_dir());
+        FILE* f = fopen(path, "r");
+        if (f) {
+            char buf[512];
+            size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+            fclose(f);
+            buf[n] = 0;
+            if (strstr(buf, "product_id=lineos")) return 1;
+        }
+    }
+    return 0;
+}
+
+void lineos_splash(void) {
+    if (!lineos_graduated_now()) {
+        printf("[LINEOS] refuse — not graduated (§1a.1)\n");
+        return;
+    }
+    printf("[LINEOS] splash: L.I.N.E.O.S.\n");
+    printf("[LINEOS] slogan: %s\n", GRAD_SLOGAN);
+    printf("[LINEOS] origin: TritiumOS by Draco (edition=%d)\n", edition);
+}
+
+void lineos_about(void) {
+    const char* aname = assistant_name[0] ? assistant_name : "assistant";
+    if (!lineos_graduated_now()) {
+        printf("[LINEOS] about: %s — powered by TritiumOS\n", aname);
+        return;
+    }
+    printf("[LINEOS] about: L.I.N.E.O.S.\n");
+    printf("[LINEOS] about: %s — L.I.N.E.O.S.\n", aname);
+    printf("[LINEOS] slogan: %s\n", GRAD_SLOGAN);
+    printf("[LINEOS] origin: TritiumOS by Draco (edition=%d)\n", edition);
+}
+
+void lineos_brand_demo(void) {
+    char path[MAX_PATH], brand_dir[MAX_PATH];
+    FILE* f;
+    int ok = 1;
+    printf("[lineos-brand-demo] force-ready → brand markers (§1a.1 / docs/LINEOS-BRAND.md)\n");
+    /* Force graduated state + write markers (demo may force-ready) */
+    grad_product_is_lineos = 1;
+    grad_host_flag_lineos = 1;
+    ensure_evolve_dir();
+    snprintf(brand_dir, sizeof(brand_dir), "%s/lineos", get_evolve_dir());
+    mkdir(brand_dir, 0755);
+    snprintf(path, sizeof(path), "%s/brand.json", brand_dir);
+    f = fopen(path, "w");
+    if (!f) {
+        printf("[lineos-brand-demo] FAIL — cannot write brand.json\n\n");
+        return;
+    }
+    fprintf(f,
+        "{\n"
+        "  \"productName\": \"L.I.N.E.O.S.\",\n"
+        "  \"productId\": \"lineos\",\n"
+        "  \"slogan\": \"%s\",\n"
+        "  \"originBadge\": \"TritiumOS by Draco\",\n"
+        "  \"edition\": %d,\n"
+        "  \"graduated\": true\n"
+        "}\n",
+        GRAD_SLOGAN, edition);
+    fclose(f);
+    snprintf(path, sizeof(path), "%s/SPLASH.txt", brand_dir);
+    f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "L.I.N.E.O.S.\n%s\nTritiumOS by Draco (edition=%d)\n",
+                GRAD_SLOGAN, edition);
+        fclose(f);
+    } else ok = 0;
+    snprintf(path, sizeof(path), "%s/ABOUT.txt", brand_dir);
+    f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "L.I.N.E.O.S.\n%s — L.I.N.E.O.S.\n%s\nTritiumOS by Draco (edition=%d)\n",
+                assistant_name[0] ? assistant_name : "assistant",
+                GRAD_SLOGAN, edition);
+        fclose(f);
+    } else ok = 0;
+
+    /* Assert slogan + productName + edition */
+    snprintf(path, sizeof(path), "%s/brand.json", brand_dir);
+    f = fopen(path, "r");
+    if (!f) {
+        ok = 0;
+    } else {
+        char buf[1024];
+        size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+        fclose(f);
+        buf[n] = 0;
+        if (!strstr(buf, "\"productName\": \"L.I.N.E.O.S.\"")) ok = 0;
+        if (!strstr(buf, GRAD_SLOGAN)) ok = 0;
+        {
+            char edbuf[32];
+            snprintf(edbuf, sizeof(edbuf), "\"edition\": %d", edition);
+            if (!strstr(buf, edbuf)) ok = 0;
+        }
+        if (!strstr(buf, "\"graduated\": true")) ok = 0;
+    }
+    printf("[LINEOS] splash: L.I.N.E.O.S.\n");
+    printf("[LINEOS] slogan: %s\n", GRAD_SLOGAN);
+    printf("[LINEOS] origin: TritiumOS by Draco (edition=%d)\n", edition);
+    if (ok) {
+        printf("[lineos-brand-demo] OK\n\n");
+    } else {
+        printf("[lineos-brand-demo] FAIL\n\n");
     }
 }
 
@@ -2561,7 +2730,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -2689,6 +2858,12 @@ int main(int argc, char** argv) {
             lineos_graduate(0);
         } else if (strcasecmp(line, "become-lineos") == 0) {
             become_lineos();
+        } else if (strcasecmp(line, "lineos-splash") == 0) {
+            lineos_splash();
+        } else if (strcasecmp(line, "lineos-about") == 0) {
+            lineos_about();
+        } else if (strcasecmp(line, "lineos-brand-demo") == 0) {
+            lineos_brand_demo();
         } else if (strcasecmp(line, "tritium-integrate-demo") == 0) {
             tritium_integrate_demo();
         } else if (strncasecmp(line, "tritium-integrate ", 18) == 0) {

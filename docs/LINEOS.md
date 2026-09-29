@@ -3,7 +3,7 @@
 **Status:** Shipper-ready spec (wave5 items **4+5**; stub thresholds + `lineos-graduate`)  
 **Canonical brief:** `TritiumOS.txt` §1a / §1a.1, Phase 9  
 **Sources of truth (code):** `evolve/graduation.json`; `lineos-graduate` stub (host and/or Forth); `lineos/graduate.txt`  
-**Companions:** `docs/ASSISTANT.md` (S0), `docs/LICENSE.md` (slots), `docs/DRENA.md` / `docs/REKIA.md` (graph + refine gates)
+**Companions:** `docs/ASSISTANT.md` (S0), `docs/LICENSE.md` (slots), `docs/DRENA.md` / `docs/REKIA.md` (graph + refine gates), `docs/LINEOS-BRAND.md` (splash/about markers stub)
 
 ## 1. Purpose
 

@@ -5,3 +5,7 @@ Stub (wave5 items 4+5): evolve/graduation.json (+ .example); lineos-graduate /
 lineos-graduate-demo / become-lineos (Linux host SoT + Forth mirror).
 Scaffold only: product_id → lineos under evolve/; preserve edition; no production branding flip.
 Smoke: lineos-graduate-demo → [lineos-graduate-demo] OK
+
+Brand markers stub (wave7 item 3): evolve/lineos/{brand.json,SPLASH.txt,ABOUT.txt}
+written on graduate success; surfaces lineos-splash / lineos-about / lineos-brand-demo.
+See docs/LINEOS-BRAND.md. Smoke: lineos-brand-demo → [lineos-brand-demo] OK

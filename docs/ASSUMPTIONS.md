@@ -43,6 +43,9 @@ master-demo
 fleet-demo
 \ expect: [fleet-demo] OK
 
+lineos-brand-demo
+\ expect: [lineos-brand-demo] OK — slogan + L.I.N.E.O.S. + edition markers
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -165,6 +168,7 @@ tools/tritium-license status          # expect 10/10
 - On success (scaffold only): host flag → **L.I.N.E.O.S.**; write `evolve/lineos-manifest-scaffold.json` with `product_id=lineos`; preserve edition; slogan printed. **Not** a production branding release.
 - Demo: `demoForceReady` / force-ready path so smoke PASSes without 30 sessions; prints each gate PASS/FAIL; greppable `[lineos-graduate-demo] OK`.
 - Forth: `forth/tritium/lineos.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.
+- Brand markers (wave7 item **3**): `evolve/lineos/{brand.json,SPLASH.txt,ABOUT.txt}` on graduate success; surfaces `lineos-splash` (refuse if not graduated), `lineos-about`, `lineos-brand-demo` → `[lineos-brand-demo] OK`. Slogan *The line tread between madness and genius.*; product `L.I.N.E.O.S.`; origin `TritiumOS by Draco`; preserve edition 32/64. CLI `tools/tritium-lineos`. See `docs/LINEOS-BRAND.md`. No production assets / store rebrand.
 - Cite: `docs/LINEOS.md`, `TritiumOS.txt` §1a.1.
 
 ## tritium-integrate stub (§5a.2 / Phase 8)
