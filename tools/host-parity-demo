@@ -33,6 +33,7 @@ REQUIRED_DEMOS=(
   pick-demo
   fill-demo
   imm-demo
+  defer-demo
 )
 
 usage() {

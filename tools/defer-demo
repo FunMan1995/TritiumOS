@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+# defer-demo — Lab smoke for DEFER/IS/ACTION-OF stubs (wave16 item 1 / docs/DEFER-IS.md)
+# Mirrors forth/tritium/kernel.fs defer-demo + Linux host defer_demo.
+# Name + bind mark only — not a real XT vector table; do NOT execute bound XT.
+# Forth mirrors: defer-create / is-bind / action-of-xt (do not redefine rekia defer/is).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: defer-demo"
+  echo "  dict-reset → DEFER name → IS → ACTION-OF → [defer-demo] OK"
+  echo "  Markers: [defer] DEFER/IS/ACTION-OF name= → [defer-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[defer-demo] FAIL"
+  exit 1
+}
+
+# --- tiny dict stub (mirrors create-demo + deferred bind) ---
+declare -a NAMES=()
+declare -a DEFER_P=()
+declare -a DEFER_XT=()
+declare -a DEFER_ACT=()
+LATEST=-1
+LAST_IDX=-1
+
+dict_reset() {
+  NAMES=()
+  DEFER_P=()
+  DEFER_XT=()
+  DEFER_ACT=()
+  LATEST=-1
+  LAST_IDX=-1
+}
+
+entry_find() {
+  local name=$1 i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      LAST_IDX=$i
+      return 0
+    fi
+  done
+  LAST_IDX=-1
+  return 1
+}
+
+entry_create() {
+  local name=$1
+  if entry_find "$name"; then
+    echo "[kernel] entry exists #$LAST_IDX"
+    return 0
+  fi
+  LAST_IDX=${#NAMES[@]}
+  NAMES+=("$name")
+  DEFER_P+=(0)
+  DEFER_XT+=(0)
+  DEFER_ACT+=("")
+  echo "[kernel] created #$LAST_IDX"
+}
+
+defer_create() {
+  local name=${1:-}
+  if [[ -z "$name" ]]; then
+    echo "[defer] FAIL reason=miss"
+    return 1
+  fi
+  entry_create "$name"
+  local idx=$LAST_IDX
+  [[ "$idx" -ge 0 ]] || return 1
+  DEFER_P[$idx]=1
+  DEFER_XT[$idx]=0
+  DEFER_ACT[$idx]=""
+  LATEST=$idx
+  echo "[defer] DEFER name=$name"
+}
+
+is_bind() {
+  local name=${1:-}
+  local xt=${2:-1}
+  if [[ -z "$name" ]]; then
+    echo "[defer] FAIL reason=miss"
+    return 1
+  fi
+  if ! entry_find "$name"; then
+    echo "[defer] FAIL reason=miss"
+    return 1
+  fi
+  local idx=$LAST_IDX
+  if [[ "${DEFER_P[$idx]}" -ne 1 ]]; then
+    echo "[defer] FAIL reason=miss"
+    return 1
+  fi
+  DEFER_XT[$idx]=$xt
+  DEFER_ACT[$idx]="bound"
+  echo "[defer] IS name=$name xt=${DEFER_XT[$idx]} action=${DEFER_ACT[$idx]}"
+}
+
+action_of_xt() {
+  local name=${1:-}
+  if [[ -z "$name" ]]; then
+    echo "[defer] FAIL reason=miss"
+    return 1
+  fi
+  if ! entry_find "$name"; then
+    echo "[defer] FAIL reason=miss"
+    return 1
+  fi
+  local idx=$LAST_IDX
+  if [[ "${DEFER_P[$idx]}" -ne 1 ]]; then
+    echo "[defer] FAIL reason=miss"
+    return 1
+  fi
+  echo "[defer] ACTION-OF name=$name xt=${DEFER_XT[$idx]} action=${DEFER_ACT[$idx]}"
+}
+
+words() {
+  local n=${#NAMES[@]}
+  printf '[kernel] words (%d): ' "$n"
+  local name
+  for name in "${NAMES[@]}"; do
+    printf '%s ' "$name"
+  done
+  printf '\n'
+}
+
+echo "[defer-demo] dict-reset + DEFER widget + IS + ACTION-OF"
+dict_reset
+
+# 1) DEFER known name
+defer_create widget || fail
+entry_find widget || fail
+[[ "${DEFER_P[$LAST_IDX]}" -eq 1 ]] || fail
+
+# 2) IS bind stub (no XT execute)
+is_bind widget 1 || fail
+[[ "${DEFER_XT[$LAST_IDX]}" -eq 1 ]] || fail
+[[ "${DEFER_ACT[$LAST_IDX]}" == "bound" ]] || fail
+
+# 3) ACTION-OF query
+action_of_xt widget || fail
+
+out="$(words)"
+echo "$out"
+echo "$out" | grep -q 'widget' || fail
+
+# Happy path must not emit miss FAIL
+echo "[defer-demo] OK"
+exit 0

@@ -28,3 +28,4 @@ cell-demo CONTRACT
 pick-demo CONTRACT
 fill-demo CONTRACT
 imm-demo CONTRACT
+defer-demo CONTRACT

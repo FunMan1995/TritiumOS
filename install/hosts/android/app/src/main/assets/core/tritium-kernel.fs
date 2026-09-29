@@ -62,6 +62,9 @@ create ENTRY-DOES?  MAX-ENTRIES cells allot   \ 1 = DOES> stub marked (wave13 it
 create ENTRY-CELLS2 MAX-ENTRIES cells allot   \ 2VARIABLE/2CONSTANT hi stub cell (wave14 item 3)
 create ENTRY-2CELL? MAX-ENTRIES cells allot   \ 1 = 2VARIABLE/2CONSTANT stub (wave14 item 3)
 create ENTRY-IMM?   MAX-ENTRIES cells allot   \ 1 = IMMEDIATE bit set (wave15 item 4)
+create ENTRY-DEFER? MAX-ENTRIES cells allot   \ 1 = deferred-word stub (wave16 item 1)
+create ENTRY-DEFER-XT MAX-ENTRIES cells allot \ stub xt id (0 = unbound; not executable)
+create ENTRY-DEFER-ACT MAX-ENTRIES NAMELEN * allot \ stub action name (blank = unbound)
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
@@ -75,6 +78,9 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : entry-cell2[]  ( i -- addr ) cells ENTRY-CELLS2 + ;
 : entry-2cell?[] ( i -- addr ) cells ENTRY-2CELL? + ;
 : entry-imm?[]   ( i -- addr ) cells ENTRY-IMM? + ;
+: entry-defer?[] ( i -- addr ) cells ENTRY-DEFER? + ;
+: entry-defer-xt[] ( i -- addr ) cells ENTRY-DEFER-XT + ;
+: entry-defer-act[] ( i -- c-addr ) NAMELEN * ENTRY-DEFER-ACT + ;
 \ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
@@ -117,6 +123,9 @@ variable _catch-depth  \ open CATCH frame count
   MAX-ENTRIES 0 do 0 i entry-cell2[] ! loop
   MAX-ENTRIES 0 do 0 i entry-2cell?[] ! loop
   MAX-ENTRIES 0 do 0 i entry-imm?[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-defer?[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-defer-xt[] ! loop
+  MAX-ENTRIES 0 do i entry-defer-act[] NAMELEN bl fill loop
   0 _colon-def !
   -1 _colon-idx !
   0 _colon-toks !
@@ -188,6 +197,9 @@ variable _catch-depth  \ open CATCH frame count
   0 r@ entry-2cell?[] !        \ not a 2-cell stub by default
   0 r@ entry-does?[] !         \ CREATE/DOES> stub clear
   0 r@ entry-imm?[] !          \ IMMEDIATE bit clear
+  0 r@ entry-defer?[] !        \ deferred stub clear
+  0 r@ entry-defer-xt[] !      \ stub xt unbound
+  r@ entry-defer-act[] NAMELEN bl fill
   1 ENTRY-COUNT +!
   ." [kernel] created #" r@ . cr
   r> ;
@@ -1754,6 +1766,112 @@ create (td-boom) 4 c, char b c, char o c, char o c, char m c,
   ." [throw-demo] OK" cr ;
 
 
+\ === DEFER / IS / ACTION-OF deferred-word stubs (wave16 item 1) ===
+\ Prefer greppable markers; name + bind mark only. No XT vector / executing bound XT.
+\ Forth mirrors: defer-create / is-bind / action-of-xt
+\ Do NOT redefine rekia live defer / is platform hooks.
+
+create (df-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t c,
+create (df-bound) 5 c, char b c, char o c, char u c, char n c, char d c,
+
+\ defer-act! ( c-addr u i -- )  store stub action name into entry i
+: defer-act! ( c-addr u i -- )
+  >r r@ entry-defer-act[] NAMELEN bl fill
+  NAMELEN min
+  r> entry-defer-act[] swap cmove ;
+
+\ defer-create-from ( c-addr u -- i )  named deferred entry; unbound
+: defer-create-from ( c-addr u -- i )
+  2dup entry-create-from dup 0< if nip nip exit then
+  >r
+  1 r@ entry-defer?[] !
+  0 r@ entry-defer-xt[] !
+  r@ entry-defer-act[] NAMELEN bl fill
+  r@ _latest !
+  ." [defer] DEFER name=" type cr
+  r> ;
+
+\ defer-create ( "name" -- )  parse + DEFER stub
+: defer-create ( "name" -- )
+  bl word count defer-create-from drop ;
+
+\ is-bind-from ( c-addr u -- )  bind default stub action/xt to deferred name
+: is-bind-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [defer] FAIL reason=miss" cr exit
+  then
+  dup entry-defer?[] @ 0= if
+    drop 2drop
+    ." [defer] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  1 r@ entry-defer-xt[] !
+  (df-bound) count r@ defer-act!
+  ." [defer] IS name=" r@ entry-name[] NAMELEN name-trim type
+  ."  xt=" r@ entry-defer-xt[] @ .
+  ." action=" r@ entry-defer-act[] NAMELEN name-trim type cr
+  r> drop ;
+
+\ is-bind-xt-from ( xt c-addr u -- )  bind stub xt id + default action
+: is-bind-xt-from ( xt c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop drop
+    ." [defer] FAIL reason=miss" cr exit
+  then
+  dup entry-defer?[] @ 0= if
+    drop 2drop drop
+    ." [defer] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ( xt ) r@ entry-defer-xt[] !
+  (df-bound) count r@ defer-act!
+  ." [defer] IS name=" r@ entry-name[] NAMELEN name-trim type
+  ."  xt=" r@ entry-defer-xt[] @ .
+  ." action=" r@ entry-defer-act[] NAMELEN name-trim type cr
+  r> drop ;
+
+\ is-bind ( "name" -- )  parse + IS stub (default xt=1 action=bound)
+: is-bind ( "name" -- )
+  bl word count is-bind-from ;
+
+\ action-of-xt-from ( c-addr u -- )  query/print bound stub; no XT execute
+: action-of-xt-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [defer] FAIL reason=miss" cr exit
+  then
+  dup entry-defer?[] @ 0= if
+    drop 2drop
+    ." [defer] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [defer] ACTION-OF name=" r@ entry-name[] NAMELEN name-trim type
+  ."  xt=" r@ entry-defer-xt[] @ .
+  ." action=" r@ entry-defer-act[] NAMELEN name-trim type cr
+  r> drop ;
+
+\ action-of-xt ( "name" -- )  parse + ACTION-OF stub
+: action-of-xt ( "name" -- )
+  bl word count action-of-xt-from ;
+
+\ defer-demo ( -- )  dict-reset → DEFER widget → IS → ACTION-OF → OK
+: defer-demo ( -- )
+  ." [defer-demo] dict-reset + DEFER widget + IS + ACTION-OF" cr
+  dict-reset
+  (df-widget) count defer-create-from drop
+  (df-widget) count entry-find 0< if
+    ." [defer-demo] FAIL" cr exit
+  then
+  (df-widget) count is-bind-from
+  (df-widget) count action-of-xt-from
+  WORDS
+  (df-widget) count entry-find 0< if
+    ." [defer-demo] FAIL" cr exit
+  then
+  ." [defer-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -1780,6 +1898,7 @@ create (td-boom) 4 c, char b c, char o c, char o c, char m c,
 \ - PICK/ROLL/DEPTH/?DUP stubs + pick-demo (wave15 item 2) — landed
 \ - FILL/ERASE/MOVE/CMOVE stubs + fill-demo (wave15 item 3) — landed
 \ - IMMEDIATE/POSTPONE stubs + imm-demo (wave15 item 4) — landed
+\ - DEFER/IS/ACTION-OF stubs + defer-demo (wave16 item 1) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
