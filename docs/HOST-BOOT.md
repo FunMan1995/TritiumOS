@@ -1,13 +1,15 @@
 # HOST-BOOT — Core load-order markers (toward Forth VM)
 
-**Status:** Shipper-ready stub spec (wave10 item **1**)
+**Status:** Shipper-ready stub spec (wave10 item **1**; thin amend wave17 **3** EVALUATE-INCLUDE)
 **Canonical brief:** `TritiumOS.txt` Phase 1 / Priority-1 hosts; `tritium.poly/core/boot.fs`
 **Sources of truth (code):** `tritium.poly/core/boot.fs` (+ mirrored `forth/`); Linux `install/hosts/linux/tritiumos.c`; Win/Android parity contracts
-**Companions:** `docs/HOST-PARITY.md`, `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/REFINED-BOOT.md` (wave10 **4**)
+**Companions:** `docs/HOST-PARITY.md`, `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/REFINED-BOOT.md` (wave10 **4**), `docs/EVALUATE-INCLUDE.md` (wave17 **3**)
 
 ## 1. Purpose
 
 Hosts still lack a full embedded Forth VM. This tip lands **greppable boot markers**: declare the poly/core **load order**, report **sources present** + a stub **word/file count**, and smoke via **`host-boot-demo`**. Linux is SoT. Win/Android may be **CONTRACT** (parity file) — not a C#/Kotlin VM rewrite this tip.
+
+Wave17 **3** (`EVALUATE-INCLUDE.md`): Forth-surface `INCLUDE` / `include-mark` is an **echo marker only** — it must **not** redefine poly/core `boot.fs` host `include` load-order or semantics.
 
 ## 2. Canonical load order (`boot.fs`)
 
@@ -25,7 +27,7 @@ boot.fs
   → fleet.fs
 ```
 
-Shipper must keep `tritium.poly/core/boot.fs` includes aligned with this list (additions only via later tips). Cold-load of `evolve/forth/refined/*.fs` is **`docs/REFINED-BOOT.md`** (wave10 **4**).
+Shipper must keep `tritium.poly/core/boot.fs` includes aligned with this list (additions only via later tips). Cold-load of `evolve/forth/refined/*.fs` is **`docs/REFINED-BOOT.md`** (wave10 **4**). Forth `EVALUATE` / `INCLUDE` mark-only echo is **`docs/EVALUATE-INCLUDE.md`** (wave17 **3**) — does not change this include list.
 
 ## 3. Policy
 
@@ -73,13 +75,14 @@ Prior demos stay green. No requirement to *execute* Forth in Win/Android this ti
 
 - Embedding pForth / full C# or Kotlin token VM (later wave)
 - Auto-including refined modules — see `docs/REFINED-BOOT.md` (wave10 **4**)
+- Forth `EVALUATE` / `INCLUDE` mark-only echo — see `docs/EVALUATE-INCLUDE.md` (wave17 **3**); must **not** redefine host boot `include` / this load order
 - Control-flow / address-fold (wave10 **2–3**)
 - Changing `boot.fs` semantics beyond include-list alignment
 
 ## 8. Acceptance (Test Lab)
 
-1. `docs/HOST-BOOT.md` present (Research byte-copy OK).
-2. Linux: `host-boot-demo` → OK (markers §5); all §2 core files present.
+1. `docs/HOST-BOOT.md` present (Research byte-copy OK); wave17 **3**: `EVALUATE-INCLUDE.md` + thin amend (host boot include list retained).
+2. Linux: `host-boot-demo` → OK (markers §5); all §2 core files present. Wave17 **3**: `eval-demo` → OK (mark-only echo; does not redefine host include).
 3. Win/Android: CONTRACT acceptable; if parity file used, `host-boot-demo` listed.
 4. Regression green (wave9 demos).
 5. No merge.
@@ -88,4 +91,6 @@ Prior demos stay green. No requirement to *execute* Forth in Win/Android this ti
 
 - `tritium.poly/core/boot.fs`
 - `docs/HOST-PARITY.md`, `docs/INSTALL.md`, `docs/BUILD.md`
+- `docs/EVALUATE-INCLUDE.md` (wave17 **3**)
+- `docs/REFINED-BOOT.md` (wave10 **4**)
 - `install/hosts/linux/tritiumos.c` (core path resolve)

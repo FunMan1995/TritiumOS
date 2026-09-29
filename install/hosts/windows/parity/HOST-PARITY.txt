@@ -34,3 +34,4 @@ buffer-demo CONTRACT
 exit-demo CONTRACT
 synonym-demo CONTRACT
 parse-demo CONTRACT
+eval-demo CONTRACT

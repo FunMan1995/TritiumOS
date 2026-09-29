@@ -2228,6 +2228,34 @@ create (pd-tok) 5 c, char a c, char l c, char p c, char h c, char a c,
   ." [parse-demo] OK" cr ;
 
 
+\ === EVALUATE / INCLUDE mark-only echo markers (wave17 item 3) ===
+\ Prefer greppable markers; mark-only nested-interpret / include echo.
+\ NOT a real file / nested-interpret VM. Do NOT redefine poly/core include
+\ or load_refined_modules / refined-boot include markers.
+\ Forth mirrors: evaluate-mark / include-mark (host may bind EVALUATE / INCLUDE).
+
+\ Demo fixtures echoed by markers (demo avoids miss FAIL)
+create (ev-src) 2 c, char h c, char i c,
+create (inc-name) 16 c, char e c, char v c, char a c, char l c, char - c, char d c, char e c, char m c, char o c, char - c, char f c, char i c, char x c, char t c, char u c, char r c, char e c,
+
+\ evaluate-mark ( -- )  nested-interpret echo marker only
+: evaluate-mark ( -- )
+  ." [eval] EVALUATE u=" (ev-src) c@ .
+  ." src=" (ev-src) count type cr ;
+
+\ include-mark ( -- )  include echo marker only (name= spelling)
+: include-mark ( -- )
+  ." [eval] INCLUDE name=" (inc-name) count type cr ;
+
+\ eval-demo ( -- )  dict-reset → EVALUATE → INCLUDE → OK
+: eval-demo ( -- )
+  ." [eval-demo] dict-reset + EVALUATE + INCLUDE" cr
+  dict-reset
+  evaluate-mark
+  include-mark
+  ." [eval-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2260,6 +2288,7 @@ create (pd-tok) 5 c, char a c, char l c, char p c, char h c, char a c,
 \ - EXIT/QUIT thin control markers + exit-demo (wave16 item 4) — landed
 \ - SYNONYM/ALIAS name-map stubs + synonym-demo (wave17 item 1) — landed
 \ - PARSE/PARSE-NAME token-parse markers + parse-demo (wave17 item 2) — landed
+\ - EVALUATE/INCLUDE mark-only echo + eval-demo (wave17 item 3) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

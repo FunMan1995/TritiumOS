@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# eval-demo — Lab smoke for EVALUATE/INCLUDE mark-only echo (wave17 item 3 / docs/EVALUATE-INCLUDE.md)
+# Mirrors forth/tritium/kernel.fs eval-demo + Linux host eval_demo.
+# Mark-only nested-interpret / include echo — NOT a real file / nested-interpret VM.
+# Forth mirrors: evaluate-mark / include-mark. Do NOT redefine poly/core include or load_refined_modules.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: eval-demo"
+  echo "  dict-reset → EVALUATE fixture → INCLUDE fixture → [eval-demo] OK"
+  echo "  Markers: [eval] EVALUATE [u=] [src=] / [eval] INCLUDE name= → [eval-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[eval-demo] FAIL"
+  exit 1
+}
+
+# Demo fixtures (mark-only echo — does not re-enter nested interpret / open files)
+EV_SRC="hi"
+INC_NAME="eval-demo-fixture"
+
+dict_reset() {
+  : # eval/include stubs do not create dict words from evaluated text
+}
+
+# EVALUATE / evaluate-mark: echo marker only (+ optional u= / src=)
+evaluate_mark() {
+  local src=${1:-$EV_SRC}
+  if [[ -z "$src" ]]; then
+    echo "[eval] FAIL reason=miss"
+    return 1
+  fi
+  local u=${#src}
+  echo "[eval] EVALUATE u=$u src=$src"
+}
+
+# INCLUDE / include-mark: echo marker only (name= spelling)
+include_mark() {
+  local name=${1:-$INC_NAME}
+  if [[ -z "$name" ]]; then
+    echo "[eval] FAIL reason=miss"
+    return 1
+  fi
+  echo "[eval] INCLUDE name=$name"
+}
+
+echo "[eval-demo] dict-reset + EVALUATE + INCLUDE"
+dict_reset
+
+# 1) EVALUATE against non-empty demo string
+evaluate_mark "$EV_SRC" || fail
+
+# 2) INCLUDE with known fixture name
+include_mark "$INC_NAME" || fail
+
+# Happy path must not emit miss FAIL; refined-boot include markers untouched
+echo "[eval-demo] OK"
+exit 0
