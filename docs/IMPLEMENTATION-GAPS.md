@@ -2,7 +2,7 @@
 
 **Generated:** post-analysis (2026)
 **Source:** Full scan of codebase vs `TritiumOS.txt` (spec + phases + success criteria + layout) + all source/docs/READMEs.
-**Status:** v0.1-scaffold. UI + quantum/Qwantum tooling is the most advanced. Core OS "soul" (Forth VM in Win/Android hosts) still missing. **Wave9 item 5:** ARCHITECTURE + this file cite refresh (docs-only).
+**Status:** v0.1-scaffold. UI + quantum/Qwantum tooling is the most advanced. Core OS "soul" (Forth VM in Win/Android hosts) still missing. **Wave10 item 5:** ARCHITECTURE + this file cite refresh (docs-only). Wave9 cite refresh remains historical.
 
 ## Priority 0 — Critical Blockers (Ship & Core Mandate)
 These prevent any real "TritiumOS" behavior per the product definition.
@@ -62,6 +62,10 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Economy-wire landed (wave9 item 2):** `queue-prove!` → `assimilate-merge!` + `[economy-wire-demo] OK`; see `docs/ECONOMY-WIRE.md`.
    - **Assistant-state v2 landed (wave9 item 3):** task/reminder/note hooks + `[assistant-state-demo] OK`; see `docs/ASSISTANT-STATE.md`.
    - **ARCHITECTURE + GAPS cite refresh landed (wave9 item 5):** `docs/ARCHITECTURE.md` §4 + this file mark wave9 **1–4**; docs-only. See `docs/ARCHITECTURE.md`.
+   - **Host-boot markers landed (wave10 item 1):** poly/core load-order + `[host-boot-demo] OK`; Win/Android CONTRACT; see `docs/HOST-BOOT.md`.
+   - **Control-flow stubs landed (wave10 item 2):** `IF`/`THEN`/`ELSE` cs balance + `[control-demo] OK`; see `docs/CONTROL.md`. Full branch XT / BEGIN-UNTIL still later.
+   - **Address-fold deepen landed (wave10 item 3):** `phi-fold`/`fold-target` goldens + `[fold-demo] OK`; see `docs/ADDRESS-FOLD.md`.
+   - **Refined cold-load landed (wave10 item 4):** `evolve/forth/refined/*.fs` skip `qwantum-*` + fixture + `[refined-boot-demo] OK` (tools/ SoT; AppImage hang noted non-blocking); see `docs/REFINED-BOOT.md`.
    - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo`; refuse without confirm; see `docs/LINEOS-CONFIRM.md`.
    - **Userland scaffold landed (wave8 item 3):** `userland/` tree + `docs/USERLAND.md` + `userland-demo`; see `docs/USERLAND.md`.
    - **Host parity contracts landed (wave8 item 4):** Win/Android `parity/HOST-PARITY.txt` + `docs/HOST-PARITY.md` + `host-parity-demo`; see `docs/HOST-PARITY.md`.
@@ -77,14 +81,16 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **LINEOS brand stub landed (wave7 item 3):** `docs/LINEOS-BRAND.md` + `tools/tritium-lineos` + host/Forth; `[lineos-brand-demo] OK`. Markers only — no production branding.
    - **Groups nested find + vocab persist landed (wave7 item 4):** `group-find-nested` / vocab graph lines + demos; see `docs/GROUPS-NESTED.md`.
    - **Kernel find/interpret stub landed (wave7 item 5):** `findentry`/`find` aliases, `interpret-token` lookup-only, `kernel-demo`; see `docs/KERNEL.md`.
-   - **Interpret loop deepen landed (wave8 item 1):** `interpret` token stream + `:` create-only stub + `interpret-demo`; see `docs/INTERPRET.md`. Full colon compiler / control flow / linked dict still later.
+   - **Interpret loop deepen landed (wave8 item 1):** `interpret` token stream + `:` create-only stub + `interpret-demo`; see `docs/INTERPRET.md`. Full colon compiler / linked dict / real branch XT still later; wave10 **2** landed `IF`/`THEN`/`ELSE` stubs (`CONTROL.md`).
    - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo` + `docs/LINEOS-CONFIRM.md`. Stub only — no GUI modal.
    - **Userland scaffold landed (wave8 item 3):** `docs/USERLAND.md` + `userland/` + `tools/userland-demo` / host; `[userland-demo] OK`. Not a full shell / `/boot`.
    - **Host parity contracts landed (wave8 item 4):** `docs/HOST-PARITY.md` + Win/Android `parity/HOST-PARITY.txt` + `tools/host-parity-demo` / host; `[host-parity-demo] OK`. CONTRACT-only OK without SDK — not a full C#/Kotlin port.
    - **ARCHITECTURE + GAPS cite refresh (wave8 item 5):** `docs/ARCHITECTURE.md` + this file — wave6–8 doc index closed on tip.
    - **Trit-math / economy-wire / assistant-state / colon landed (wave9 items 1–4):** see `TRIT-MATH.md`, `ECONOMY-WIRE.md`, `ASSISTANT-STATE.md`, `COLON.md`.
    - **ARCHITECTURE + GAPS cite refresh (wave9 item 5):** wave9 **1–4** doc index closed on tip.
-   - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
+   - **Host-boot / control / address-fold / refined-boot landed (wave10 items 1–4):** see `HOST-BOOT.md`, `CONTROL.md`, `ADDRESS-FOLD.md`, `REFINED-BOOT.md`.
+   - **ARCHITECTURE + GAPS cite refresh (wave10 item 5):** wave10 **1–4** doc index closed on tip.
+   - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow; full Forth VM on Win/Android; real control compile.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
 - Real first-run bootstrap of core (extract + start TritiumForth + engines) inside the .exe / .apk.
@@ -99,11 +105,11 @@ These prevent any real "TritiumOS" behavior per the product definition.
 ## Priority 2 — Spec Completeness & Docs (Phase 0)
 All of these are called out explicitly in `TritiumOS.txt`:
 
-**Docs index (wave9 **5** cite refresh — most architecture docs now exist):**
+**Docs index (wave10 **5** cite refresh — most architecture docs now exist):**
 - ~~MASTER.md~~ / ~~FLEET.md~~ / ~~ASSIMILATE.md~~ / ~~QUEUE.md~~ / ~~ECONOMY-WIRE.md~~ landed
 - ~~ASSISTANT.md~~ / ~~ASSISTANT-STATE.md~~ / ~~LINEOS.md~~ / ~~LINEOS-BRAND.md~~ / ~~LINEOS-CONFIRM.md~~ / ~~INSTALL.md~~ / ~~LICENSE.md~~ landed
-- ~~NEURON.md~~ / ~~TRIT-MATH.md~~ / ~~REKIA.md~~ / ~~DRENA.md~~ / ~~GROUPS.md~~ / ~~GROUPS-NESTED.md~~ landed
-- ~~ARCHITECTURE.md~~ refreshed (wave9 **5**); ~~INTEGRATE.md~~ / ~~KERNEL.md~~ / ~~INTERPRET.md~~ / ~~COLON.md~~ / ~~USERLAND.md~~ / ~~HOST-PARITY.md~~ landed
+- ~~NEURON.md~~ / ~~TRIT-MATH.md~~ / ~~REKIA.md~~ / ~~DRENA.md~~ / ~~GROUPS.md~~ / ~~GROUPS-NESTED.md~~ / ~~ADDRESS-FOLD.md~~ landed
+- ~~ARCHITECTURE.md~~ refreshed (wave10 **5**); ~~INTEGRATE.md~~ / ~~KERNEL.md~~ / ~~INTERPRET.md~~ / ~~COLON.md~~ / ~~CONTROL.md~~ / ~~USERLAND.md~~ / ~~HOST-PARITY.md~~ / ~~HOST-BOOT.md~~ / ~~REFINED-BOOT.md~~ landed
 - ASSUMPTIONS.md (RESERVED S3=11 etc.); BUILD / QWANTUM / QD-COMPUTE partial — deepen later
 
 **Monorepo layout shortfalls:**
@@ -111,14 +117,14 @@ All of these are called out explicitly in `TritiumOS.txt`:
 - No `/boot` (bare-metal). `userland/` scaffold landed (wave8 **3**; see `docs/USERLAND.md`) — not a full shell.
 - `/assistant` only has `onboard.txt`.
 - `/lineos` only `graduate.txt`.
-- `/evolve/forth/refined/` only has qwantum sample (populated by dump tool).
+- `/evolve/forth/refined/` has qwantum sample + `refined-boot-fixture.fs` (wave10 **4**); runtime still populates more via REKIA/host assimilate.
 - No committed gradle wrapper for android (build script generates on-the-fly).
 - Branding assets not in `/assets`.
 
 **Other spec items:**
 - `evolve/graduation.json` (configurable thresholds).
 - Full neuron record layout + linking data binary/Forth structures (append-only links.bin etc.).
-- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; wave7 item **4** nested find + vocab persist landed — see `docs/GROUPS-NESTED.md`). Wave7 item **5** kernel find/interpret stub landed — see `docs/KERNEL.md`. Wave8 item **1** interpret loop deepen landed — see `docs/INTERPRET.md`. Wave9 item **4** colon body/marker stub landed — see `docs/COLON.md`. Full SEARCH-WORDLIST / linked dict / real colon compiler still later.
+- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; wave7 item **4** nested find + vocab persist landed — see `docs/GROUPS-NESTED.md`). Wave7 item **5** kernel find/interpret stub landed — see `docs/KERNEL.md`. Wave8 item **1** interpret loop deepen landed — see `docs/INTERPRET.md`. Wave9 item **4** colon body/marker stub landed — see `docs/COLON.md`. Wave10 item **2** control stubs landed — see `docs/CONTROL.md`. Full SEARCH-WORDLIST / linked dict / real colon compiler / BEGIN-UNTIL still later.
 - Environment vars and Forth naming conventions (§8).
 - Open: S3 code `11` RESERVED + “D.R.E.N.A. with ______” continuation (document, do not invent).
 
@@ -223,7 +229,7 @@ Current status: Both platforms now have VM integration with auto engine tests on
 
 This check shows good progress on the "Trit intelligence engine" (DRENA blocks + REKIA math) using the Dusk references, but the project is still early: the engines need debugging/refinement for correctness, the Forth must actually run on the target platforms, and most of the full OS (economy, graduation, real hosts integration) is still to be defined.
 
-All exploration artifacts persisted by refreshing this gaps doc. Run builds and test the sources in a Forth (e.g. gforth) or the future VM to validate. 
+All exploration artifacts persisted by refreshing this gaps doc. Run builds and test the sources in a Forth (e.g. gforth) or the future VM to validate.
 
 Let me know what to refine/fix/implement first from this list!
 
@@ -325,7 +331,7 @@ Update success criteria checkboxes in `TritiumOS.txt` as things land. The "perso
 
 Creator: Draco. Slogan: *The line tread between madness and genius.*
 
-**GO update (post "check all info and resume"):** 
+**GO update (post "check all info and resume"):**
 - With AV folder exception in place, source writes to "flagged" host impl files (TritiumForthVM.cs, tritiumos.c) are currently blocked in some contexts, but Program.cs + all docs remain editable.
 - Added `LoadRefinedModules()` in Program.cs (safe file). Called automatically:
   - On VM init (after core + engine tests + light host-bridge demo).
