@@ -257,11 +257,90 @@ create (kd-miss) 6 c, char n c, char o c, char s c, char u c, char c c, char h c
   then
   ." [kernel-demo] OK" cr ;
 
+\ === interpret loop deepen (wave8 item 1) ===
+\ interpret ( c-addr u -- )  whitespace-split → find → exec stub or miss (continue)
+\ : create-only stub cannot redefine host Forth colon while boot includes follow —
+\   Forth mirror is colon-create / colon-create-from; host REPL binds ": <name>".
+
+variable _interp-misses
+variable _interp-hits
+
+: skip-bl ( c-addr u -- c-addr' u' )
+  begin
+    dup while
+    over c@ bl = while
+      swap 1+ swap 1-
+  repeat then ;
+
+: tok-len ( c-addr u -- n )
+  0 >r
+  begin
+    dup r@ > while
+      over r@ + c@ bl = if drop r> exit then
+      r> 1+ >r
+  repeat drop r> ;
+
+: interpret ( c-addr u -- )
+  0 _interp-misses !
+  0 _interp-hits !
+  begin
+    skip-bl
+    dup 0= if 2drop exit then
+    2dup tok-len >r            \ R: toklen
+    over r@                    \ c-addr u c-addr toklen
+    2dup find dup 0< if
+      drop
+      ." [interpret] miss name=" type cr
+      1 _interp-misses +!
+    else
+      >r                       \ R: toklen idx
+      ." [interpret] exec #" r@ . ." name=" type cr
+      r> drop
+      1 _interp-hits +!
+    then
+    ( c-addr u )
+    r@ - swap r> + swap
+  again ;
+
+\ colon-create-from ( c-addr u -- )  create-only stub body (prints interpret marker)
+: colon-create-from ( c-addr u -- )
+  2dup entry-create-from drop
+  ." [interpret] : created " type cr ;
+
+\ colon-create ( "name" -- )  parse next word; create-only (no ] body)
+: colon-create ( "name" -- )
+  bl word count colon-create-from ;
+
+\ Fixtures for interpret-demo
+create (id-a) 5 c, char a c, char l c, char p c, char h c, char a c,
+create (id-b) 4 c, char b c, char e c, char t c, char a c,
+\ "alpha beta nosuch" = 17 chars
+create (id-src) 17 c,
+  char a c, char l c, char p c, char h c, char a c, bl c,
+  char b c, char e c, char t c, char a c, bl c,
+  char n c, char o c, char s c, char u c, char c c, char h c,
+
+\ interpret-demo ( -- )  dict-reset → : two names → interpret hits+miss → OK
+: interpret-demo ( -- )
+  ." [interpret-demo] dict-reset + colon-create + interpret stream" cr
+  dict-reset
+  (id-a) count colon-create-from
+  (id-b) count colon-create-from
+  (id-src) count interpret
+  _interp-hits @ 2 < if
+    ." [interpret-demo] FAIL" cr exit
+  then
+  _interp-misses @ 1 <> if
+    ." [interpret-demo] FAIL" cr exit
+  then
+  ." [interpret-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
-\ - Full interpret loop with : / control flow (beyond interpret-token stub)
+\ - Full colon compiler / control flow (beyond interpret + : create-only stub)
 \ - Group-scoped entries via ENTRY-GIDS + group-entry-find (wave4 item 2) — landed
 \ - findentry / find aliases + interpret-token stub (wave7 item 5) — landed
+\ - interpret loop deepen + : create-only (wave8 item 1) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

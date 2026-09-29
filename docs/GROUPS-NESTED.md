@@ -3,7 +3,7 @@
 **Status:** Shipper-ready amend (wave7 item **4**; deepens `docs/GROUPS.md`)  
 **Canonical brief:** `TritiumOS.txt` §3.4–3.5; Dusk-style wordlist search order  
 **Sources of truth (code):** `forth/tritium/drena.fs` + kernel entry table; Linux `install/hosts/linux/tritiumos.c` graph I/O  
-**Companions:** `docs/GROUPS.md` (base), `docs/DRENA.md`, `docs/KERNEL.md` (wave7 **5** kernel find/interpret stub)
+**Companions:** `docs/GROUPS.md` (base), `docs/DRENA.md`, `docs/KERNEL.md` (wave7 **5**), `docs/INTERPRET.md` (wave8 **1**)
 
 ## 1. Purpose
 

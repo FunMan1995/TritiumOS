@@ -52,7 +52,7 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 |------|-----|
 | Neuron / trit / S3 | `NEURON.md`, `ASSUMPTIONS.md` |
 | Topology | `DRENA.md`, `GROUPS.md`, `GROUPS-NESTED.md` |
-| Kernel dict stub | `KERNEL.md` (find/interpret-token; wave7 **5**) |
+| Kernel dict stub | `KERNEL.md` (find/interpret-token; wave7 **5**); `INTERPRET.md` (interpret loop; wave8 **1**) |
 | Refine | `REKIA.md`, `QWANTUM-REKIA.md` |
 | Assistant S0 | `ASSISTANT.md` |
 | License slots | `LICENSE.md` |

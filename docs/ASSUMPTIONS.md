@@ -212,3 +212,12 @@ tools/tritium-license status          # expect 10/10
 - Non-goals: full interpret `:`, linked dict, forget/units, host VM replace.
 - Cite: `docs/KERNEL.md`, `docs/GROUPS-NESTED.md`, `docs/ARCHITECTURE.md`, `docs/ASSUMPTIONS.md`.
 
+## Interpret loop deepen (wave8 item 1)
+
+- `interpret` (c-addr u): whitespace-split → find → hit `[interpret] exec #N name=…` / miss marker + continue (count misses).
+- `:` create-only stub → `entry-create` next name; marker `[interpret] : created <name>` (no body compile).
+- Keep `interpret-token` (wave7); `interpret-demo` → `[interpret-demo] OK`; `kernel-demo` stays green.
+- SoT: Linux host C + Forth `forth/tritium/kernel.fs` (+ poly / Android mirrors).
+- Non-goals: full colon compiler, control flow, linked units, Win/Android VM rewrite.
+- Cite: `docs/INTERPRET.md`, `docs/KERNEL.md`.
+

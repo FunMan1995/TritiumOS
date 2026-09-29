@@ -56,6 +56,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **LINEOS brand markers stub landed (wave7 item 3):** `lineos-splash` / `lineos-about` / `lineos-brand-demo` + `evolve/lineos/` markers; CLI `tools/tritium-lineos`. See `docs/LINEOS-BRAND.md`. Marker/demo only — **not** production assets / store rebrand.
    - **Groups nested + vocab persist landed (wave7 item 4):** `group-find-nested` / `vocab` graph lines; `[group-nested-demo] OK` / `[group-vocab-persist-demo] OK`. See `docs/GROUPS-NESTED.md`.
    - **Kernel find/interpret stub landed (wave7 item 5):** `[kernel-demo] OK`; see `docs/KERNEL.md`.
+   - **Interpret loop deepen landed (wave8 item 1):** `interpret` + `:` create-only + `[interpret-demo] OK`; see `docs/INTERPRET.md`.
    - Graph persist exists (`evolve/user-graph.trit`); local fleet export/import stub landed (wave7 **2**); networked sync / irreversible UX confirm packs still later.
    - Needed later: real splash/about branding pack (assets); irreversible confirm UX; fleet session counts / network sync.
 
@@ -66,7 +67,8 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Fleet evolve-sync stub landed (wave7 item 2):** `docs/FLEET.md` + `tools/tritium-fleet` + host/Forth; `[fleet-demo] OK`. Same-key local only — no network.
    - **LINEOS brand stub landed (wave7 item 3):** `docs/LINEOS-BRAND.md` + `tools/tritium-lineos` + host/Forth; `[lineos-brand-demo] OK`. Markers only — no production branding.
    - **Groups nested find + vocab persist landed (wave7 item 4):** `group-find-nested` / vocab graph lines + demos; see `docs/GROUPS-NESTED.md`.
-   - **Kernel find/interpret stub landed (wave7 item 5):** `findentry`/`find` aliases, `interpret-token` lookup-only, `kernel-demo`; see `docs/KERNEL.md`. Full SEARCH-WORDLIST / linked dict / `: ` still later.
+   - **Kernel find/interpret stub landed (wave7 item 5):** `findentry`/`find` aliases, `interpret-token` lookup-only, `kernel-demo`; see `docs/KERNEL.md`.
+   - **Interpret loop deepen landed (wave8 item 1):** `interpret` token stream + `:` create-only stub + `interpret-demo`; see `docs/INTERPRET.md`. Full colon compiler / control flow / linked dict still later.
    - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
@@ -101,7 +103,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 **Other spec items:**
 - `evolve/graduation.json` (configurable thresholds).
 - Full neuron record layout + linking data binary/Forth structures (append-only links.bin etc.).
-- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; wave7 item **4** nested find + vocab persist landed — see `docs/GROUPS-NESTED.md`). Wave7 item **5** kernel find/interpret stub landed — see `docs/KERNEL.md`. Full SEARCH-WORDLIST / linked dict still later.
+- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; wave7 item **4** nested find + vocab persist landed — see `docs/GROUPS-NESTED.md`). Wave7 item **5** kernel find/interpret stub landed — see `docs/KERNEL.md`. Wave8 item **1** interpret loop deepen landed — see `docs/INTERPRET.md`. Full SEARCH-WORDLIST / linked dict / colon compiler still later.
 - Environment vars and Forth naming conventions (§8).
 - Open: S3 code `11` RESERVED + “D.R.E.N.A. with ______” continuation (document, do not invent).
 

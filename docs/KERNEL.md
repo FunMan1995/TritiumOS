@@ -4,6 +4,7 @@
 **Canonical brief:** `TritiumOS.txt` Phase 2; Dusk `fs/doc/kernel.txt` + `fs/mem/dict.fs` (see `docs/FORTH-BASE-REFERENCES.md`)  
 **Sources of truth (code):** `forth/tritium/kernel.fs`; Linux host mirrors for demos  
 **Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`
+**See also:** `docs/INTERPRET.md` (wave8 **1** — interpret loop deepen).
 
 ## 1. Purpose
 
@@ -61,7 +62,7 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 
 ## 5. Non-goals (this tip)
 
-- Full interpret loop with `:` / control flow
+- Full colon compiler / control flow (minimal `interpret` loop → see `docs/INTERPRET.md`)
 - Linked-list ENTRYSZ / forget / units objects (Dusk full)
 - Replacing host C#/Kotlin VMs
 - Breaking `group-find-nested` / vocab persist (share ENTRY-GIDS)
