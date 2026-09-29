@@ -24,6 +24,7 @@ REQUIRED_DEMOS=(
   value-demo
   case-demo
   create-demo
+  string-demo
 )
 
 usage() {

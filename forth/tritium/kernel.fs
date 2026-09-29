@@ -394,6 +394,33 @@ variable _interp-hits
     swap 1+ swap 1-
   again ;
 
+variable _str-delim
+variable _str-len
+
+\ measure-to-delim ( c-addr u delim -- n flag )
+\ n = content length; flag true if delim found.
+\ For ASCII 34 ('"'), LF/CR before delim → flag false (unclosed).
+: measure-to-delim ( c-addr u delim -- n flag )
+  _str-delim !
+  0 _str-len !
+  begin
+    dup 0= if 2drop _str-len @ false exit then
+    over c@ _str-delim @ = if
+      2drop _str-len @ true exit
+    then
+    over c@ 10 = over c@ 13 = or
+    _str-delim @ 34 = and if
+      2drop _str-len @ false exit
+    then
+    1 _str-len +!
+    swap 1+ swap 1-
+  again ;
+
+\ advance-past-n+1 ( c-addr u n -- c-addr' u' )  skip n content bytes + 1 delim
+: advance-past-n+1 ( c-addr u n -- c-addr' u' )
+  1+ >r
+  r@ - swap r> + swap ;
+
 : interpret ( c-addr u -- )
   colon-abandon                 \ open : without ; → create-only
   0 _interp-misses !
@@ -419,6 +446,51 @@ variable _interp-hits
           ." [comment] skip paren" cr
         else
           ." [comment] FAIL reason=unclosed" cr
+        then
+        again
+      then
+    then
+    \ wave13 item 4: stub string-literal parse S" / ." / .( after comment skip
+    dup 2 = if
+      over c@ [char] S = over 1+ c@ 34 = and if   \ S"
+        2drop
+        r@ - swap r> + swap
+        dup if over c@ bl = if swap 1+ swap 1- then then
+        2dup 34 measure-to-delim if
+          ." [string] S" [char] " emit ."  length=" dup . cr
+          advance-past-n+1
+        else
+          drop 2drop
+          0 0
+          ." [string] FAIL reason=unclosed" cr
+        then
+        again
+      then
+      over c@ [char] . = over 1+ c@ 34 = and if   \ ."
+        2drop
+        r@ - swap r> + swap
+        dup if over c@ bl = if swap 1+ swap 1- then then
+        2dup 34 measure-to-delim if
+          ." [string] ." [char] " emit ."  length=" dup . cr
+          advance-past-n+1
+        else
+          drop 2drop
+          0 0
+          ." [string] FAIL reason=unclosed" cr
+        then
+        again
+      then
+      over c@ [char] . = over 1+ c@ [char] ( = and if   \ .(
+        2drop
+        r@ - swap r> + swap
+        dup if over c@ bl = if swap 1+ swap 1- then then
+        2dup [char] ) measure-to-delim if
+          ." [string] .( length=" dup . cr
+          advance-past-n+1
+        else
+          drop 2drop
+          0 0
+          ." [string] FAIL reason=unclosed" cr
         then
         again
       then
@@ -1083,6 +1155,55 @@ create (cm-comment) 7 c, char c c, char o c, char m c, char m c, char e c, char 
   then
   ." [comment-demo] OK" cr ;
 
+\ === string-lit stubs (wave13 item 4) ===
+\ Stream parse inside interpret (above). Forth mirrors: string-s / string-dot / string-paren
+\ (host binds S" / ." / .( on interpret/stream path; mirrors if host Forth names collide).
+
+: string-s ( -- )
+  ." [string] S" [char] " emit cr ;
+
+: string-dot ( -- )
+  ." [string] ." [char] " emit cr ;
+
+: string-paren ( -- )
+  ." [string] .(" cr ;
+
+\ Fixtures for string-demo
+\ S" hello" = 9 chars: S " sp h e l l o "
+create (sl-s) 9 c,
+  char S c, 34 c, bl c,
+  char h c, char e c, char l c, char l c, char o c, 34 c,
+\ ." world" = 9 chars
+create (sl-dot) 9 c,
+  char . c, 34 c, bl c,
+  char w c, char o c, char r c, char l c, char d c, 34 c,
+\ .( hi) = 6 chars
+create (sl-paren) 6 c,
+  char . c, char ( c, bl c,
+  char h c, char i c, char ) c,
+\ body strings that must NOT be dict hits
+create (sl-hello) 5 c, char h c, char e c, char l c, char l c, char o c,
+create (sl-world) 5 c, char w c, char o c, char r c, char l c, char d c,
+create (sl-hi) 2 c, char h c, char i c,
+
+\ string-demo ( -- )  dict-reset → S" / ." / .( streams → OK
+: string-demo ( -- )
+  ." [string-demo] dict-reset + S" [char] " emit ."  / ." [char] " emit ."  / .(" cr
+  dict-reset
+  (sl-s) count interpret
+  (sl-hello) count entry-find 0< 0= if
+    ." [string-demo] FAIL" cr exit
+  then
+  (sl-dot) count interpret
+  (sl-world) count entry-find 0< 0= if
+    ." [string-demo] FAIL" cr exit
+  then
+  (sl-paren) count interpret
+  (sl-hi) count entry-find 0< 0= if
+    ." [string-demo] FAIL" cr exit
+  then
+  ." [string-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -1100,6 +1221,7 @@ create (cm-comment) 7 c, char c c, char o c, char m c, char m c, char e c, char 
 \ - VALUE/TO named mutable-cell stubs (wave13 item 1) — landed
 \ - CASE/OF/ENDOF/ENDCASE stubs (wave13 item 2) — landed
 \ - CREATE/DOES> defining-word stubs (wave13 item 3) — landed
+\ - S" / ." / .( string-lit stubs + string-demo (wave13 item 4) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

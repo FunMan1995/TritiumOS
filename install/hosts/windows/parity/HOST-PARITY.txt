@@ -19,3 +19,4 @@ leave-demo CONTRACT
 value-demo CONTRACT
 case-demo CONTRACT
 create-demo CONTRACT
+string-demo CONTRACT
