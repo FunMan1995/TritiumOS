@@ -1,15 +1,16 @@
 \ Tritium trit arithmetic (−1, 0, +1) — Phase 2 vocabulary
 \ Spec: TritiumOS.txt §3 + Phase 2 (trit+, trit*, decode-trit, trit-pair@, pack-neuron-header)
+\ Lab smoke: docs/TRIT-MATH.md — trit+ clamps (saturate); trit-math-demo
 
 : trit-table  -1 , 0 , 1 , ;
 
 : decode-trit ( n -- t )
   3 mod trit-table + @ ;
 
-\ Balanced ternary digit add (result stays in {-1,0,+1})
+\ Balanced ternary digit add — sum clamped/saturated into {-1,0,+1} (not wrap ±2)
 : trit+ ( t1 t2 -- t3 )
-  + dup  2 = if drop -1 exit then
-  dup -2 = if drop  1 exit then ;
+  + dup  2 = if drop  1 exit then
+  dup -2 = if drop -1 exit then ;
 
 \ Product of two trits stays in {-1,0,+1}
 : trit* ( t1 t2 -- t3 ) * ;
@@ -55,3 +56,22 @@
   dup 1 = if drop ." ADDRESS_FOLD" exit then
   dup 2 = if drop ." CONNECTED" exit then
   drop ." RESERVED" ;
+
+\ trit-math-demo — Lab smoke (docs/TRIT-MATH.md): trit+ clamp, trit*, pack round-trip
+: trit-math-demo ( -- )
+  1 1 trit+ 1 = 0= if ." [trit-math-demo] FAIL" cr exit then
+  -1 -1 trit+ -1 = 0= if ." [trit-math-demo] FAIL" cr exit then
+  1 -1 trit+ 0 = 0= if ." [trit-math-demo] FAIL" cr exit then
+  0 1 trit+ 1 = 0= if ." [trit-math-demo] FAIL" cr exit then
+  ." [trit-math] trit+ ok" cr
+  1 -1 trit* -1 = 0= if ." [trit-math-demo] FAIL" cr exit then
+  -1 -1 trit* 1 = 0= if ." [trit-math-demo] FAIL" cr exit then
+  0 1 trit* 0 = 0= if ." [trit-math-demo] FAIL" cr exit then
+  ." [trit-math] trit* ok" cr
+  1 2 3 4 pack-neuron-header unpack-header
+  4 = 0= if drop drop drop ." [trit-math-demo] FAIL" cr exit then
+  3 = 0= if drop drop ." [trit-math-demo] FAIL" cr exit then
+  2 = 0= if drop ." [trit-math-demo] FAIL" cr exit then
+  1 = 0= if ." [trit-math-demo] FAIL" cr exit then
+  ." [trit-math] pack-roundtrip ok" cr
+  ." [trit-math-demo] OK" cr ;

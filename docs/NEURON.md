@@ -7,6 +7,7 @@
 
 **Engine ops:** see [`docs/DRENA.md`](DRENA.md) (spawn/link/rewire/grow/step, groups, persist).
 **Labeled groups:** see [`docs/GROUPS.md`](GROUPS.md) (`drena-group` / join / `GROUP-<label>/` / persist).
+**Trit-math Lab smoke:** see [`docs/TRIT-MATH.md`](TRIT-MATH.md) (`trit+` clamp + `trit-math-demo`).
 
 
 ## 1. Purpose

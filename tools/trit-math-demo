@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# trit-math-demo — Lab smoke for trit+/trit*/pack round-trip (wave9 item 1 / docs/TRIT-MATH.md)
+# Mirrors forth/trit.fs + Linux host trit-math-demo. Clamp (saturate), not wrap ±2.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: trit-math-demo"
+  echo "  Assert trit+ clamp, trit* product, pack-neuron-header↔unpack-header"
+  echo "  Markers: [trit-math] trit+/trit*/pack-roundtrip ok → [trit-math-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+trit_plus() {
+  local s=$(( $1 + $2 ))
+  if (( s == 2 )); then echo 1
+  elif (( s == -2 )); then echo -1
+  else echo "$s"
+  fi
+}
+
+trit_mul() {
+  echo $(( $1 * $2 ))
+}
+
+pack_neuron_header() {
+  local s0=$1 s1=$2 s2=$3 s3=$4
+  echo $(( (s0 & 15) | ((s1 & 15) << 4) | ((s2 & 15) << 8) | ((s3 & 15) << 12) ))
+}
+
+unpack_header() {
+  local h=$1
+  echo $(( h & 15 )) $(( (h >> 4) & 15 )) $(( (h >> 8) & 15 )) $(( (h >> 12) & 15 ))
+}
+
+fail() {
+  echo "[trit-math-demo] FAIL"
+  exit 1
+}
+
+# trit+ cases
+[[ "$(trit_plus 1 1)" == "1" ]] || fail
+[[ "$(trit_plus -1 -1)" == "-1" ]] || fail
+[[ "$(trit_plus 1 -1)" == "0" ]] || fail
+[[ "$(trit_plus 0 1)" == "1" ]] || fail
+echo "[trit-math] trit+ ok"
+
+# trit* cases
+[[ "$(trit_mul 1 -1)" == "-1" ]] || fail
+[[ "$(trit_mul -1 -1)" == "1" ]] || fail
+[[ "$(trit_mul 0 1)" == "0" ]] || fail
+echo "[trit-math] trit* ok"
+
+# pack → unpack round-trip
+h="$(pack_neuron_header 1 2 3 4)"
+read -r u0 u1 u2 u3 <<<"$(unpack_header "$h")"
+[[ "$u0" == "1" && "$u1" == "2" && "$u2" == "3" && "$u3" == "4" ]] || fail
+echo "[trit-math] pack-roundtrip ok"
+
+echo "[trit-math-demo] OK"
+exit 0
