@@ -9,3 +9,8 @@ Smoke: lineos-graduate-demo → [lineos-graduate-demo] OK
 Brand markers stub (wave7 item 3): evolve/lineos/{brand.json,SPLASH.txt,ABOUT.txt}
 written on graduate success; surfaces lineos-splash / lineos-about / lineos-brand-demo.
 See docs/LINEOS-BRAND.md. Smoke: lineos-brand-demo → [lineos-brand-demo] OK
+
+Confirm UX stub (wave8 item 2): lineos-confirm / lineos-confirm-demo;
+refuse without confirm → [LINEOS] refuse — confirm required (§1a.1).
+See docs/LINEOS-CONFIRM.md. Smoke: lineos-confirm-demo → [lineos-confirm-demo] OK
+Policy: demoForceReady may imply confirm for graduate-demo only.

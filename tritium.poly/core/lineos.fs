@@ -1,9 +1,12 @@
-\ L.I.N.E.O.S. graduation + brand markers stub — TritiumOS.txt §1a.1 / docs/LINEOS.md / docs/LINEOS-BRAND.md
-\ Words: lineos-graduate  lineos-graduate-demo  become-lineos
-\        lineos-splash  lineos-about  lineos-brand-demo
+\ L.I.N.E.O.S. graduation + brand markers + confirm UX stub
+\ TritiumOS.txt §1a.1 / docs/LINEOS.md / docs/LINEOS-BRAND.md / docs/LINEOS-CONFIRM.md
+\ Words: lineos-graduate  lineos-graduate-demo  become-lineos  lineos-confirm
+\        lineos-confirm-demo  lineos-splash  lineos-about  lineos-brand-demo
 \ Thresholds mirror evolve/graduation.json (host SoT creates defaults).
 \ Brand markers under evolve/lineos/ (host/CLI write; Forth prints markers).
-\ Scaffold only — no production branding release.
+\ Policy: demoForceReady may imply confirm for graduate-demo only;
+\         production lineos-graduate honors requireUserConfirm.
+\ Scaffold only — no production branding release / real GUI modal.
 
 variable grad-min-sessions       30 grad-min-sessions !
 variable grad-min-neurons         8 grad-min-neurons !
@@ -19,7 +22,7 @@ variable grad-neurons             0 grad-neurons !
 variable grad-clusters            0 grad-clusters !
 variable grad-refined             0 grad-refined !
 variable grad-license-ok          0 grad-license-ok !
-variable grad-confirm             0 grad-confirm !
+variable grad-confirm             0 grad-confirm !   \ userConfirmed default false
 variable grad-become              0 grad-become !   \ become-lineos invoked
 variable grad-product-id          0 grad-product-id !  \ 0=tritium 1=lineos
 variable grad-edition            64 grad-edition !
@@ -28,6 +31,10 @@ variable grad-edition            64 grad-edition !
   -1 grad-become !
   -1 grad-confirm !   \ user invoke path may set confirm
   ." [LINEOS] become-lineos — confirm flag set (§1a.1)" cr ;
+
+: lineos-confirm ( -- )
+  -1 grad-confirm !
+  ." [LINEOS] confirm set" cr ;
 
 \ Print one gate result: name expected actual pass?
 : (grad-gate) ( pass? -- ) if ." PASS" else ." FAIL" then ;
@@ -43,6 +50,7 @@ variable grad-edition            64 grad-edition !
   ." [LINEOS] lineos-graduate — TritiumOS.txt §1a.1 gates" cr
   grad-demo-force @ if
     ." [LINEOS] demoForceReady=true — forcing stub metrics ready" cr
+    ." [LINEOS] demoForceReady implies confirm (graduate-demo only)" cr
     grad-min-sessions @ grad-sessions !
     grad-min-neurons @ grad-neurons !
     grad-min-clusters @ grad-clusters !
@@ -71,14 +79,16 @@ variable grad-edition            64 grad-edition !
   else -1 then
   dup ." [LINEOS] gate license: " (grad-gate) cr
   and
-  \ Gate 5: user confirm
+  \ Save gates 1–4; Gate 5: user confirm (production honors when required)
+  dup
   grad-require-confirm @ if
     grad-confirm @
   else -1 then
   dup ." [LINEOS] gate confirm: " (grad-gate) cr
-  and
+  over and
 
   dup if
+    swap drop
     1 grad-product-id !
     ." [LINEOS] scaffold product_id → lineos (preserve edition=" grad-edition @ . ." )" cr
     ." [LINEOS] UI product name → L.I.N.E.O.S." cr
@@ -86,7 +96,11 @@ variable grad-edition            64 grad-edition !
     (lineos-brand-print)
     ." [LINEOS] graduate OK — scaffold only (not a production release)" cr
   else
-    ." [LINEOS] graduate blocked — gates incomplete" cr
+    swap if
+      ." [LINEOS] refuse — confirm required (§1a.1)" cr
+    else
+      ." [LINEOS] graduate blocked — gates incomplete" cr
+    then
   then ;
 
 : lineos-graduate-demo ( -- )
@@ -100,6 +114,34 @@ variable grad-edition            64 grad-edition !
     ." [lineos-graduate-demo] FAIL" cr
   then
   0 grad-demo-force ! ;
+
+\ Force gates 1–4 ready without confirm (production graduate path)
+: (lineos-force-gates14) ( -- )
+  grad-min-sessions @ grad-sessions !
+  grad-min-neurons @ grad-neurons !
+  grad-min-clusters @ grad-clusters !
+  grad-min-refined @ grad-refined !
+  -1 grad-license-ok !
+  -1 grad-require-confirm !
+  0 grad-confirm !
+  0 grad-become !
+  0 grad-demo-force ! ;
+
+: lineos-confirm-demo ( -- )
+  ." [lineos-confirm-demo] refuse→confirm→graduate (§1a.1 / docs/LINEOS-CONFIRM.md)" cr
+  0 grad-product-id !
+  (lineos-force-gates14)
+  lineos-graduate drop
+  grad-product-id @ if
+    ." [lineos-confirm-demo] FAIL — product_id flipped without confirm" cr
+    exit
+  then
+  lineos-confirm
+  lineos-graduate if
+    ." [lineos-confirm-demo] OK" cr
+  else
+    ." [lineos-confirm-demo] FAIL" cr
+  then ;
 
 \ Splash — refuse if not graduated (§1a.1); host may force via brand-demo
 : lineos-splash ( -- )

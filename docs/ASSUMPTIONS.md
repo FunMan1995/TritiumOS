@@ -55,6 +55,9 @@ fleet-demo
 lineos-brand-demo
 \ expect: [lineos-brand-demo] OK — slogan + L.I.N.E.O.S. + edition markers
 
+lineos-confirm-demo
+\ expect: [lineos-confirm-demo] OK — refuse then confirm→graduate
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -173,12 +176,13 @@ tools/tritium-license status          # expect 10/10
 ## L.I.N.E.O.S. graduation stub (§1a.1)
 
 - Thresholds: `evolve/graduation.json` (runtime create with defaults) + committed `evolve/graduation.json.example` / `lineos/graduation.json.example`.
-- Words/CLI: `lineos-graduate` / `lineos-graduate-demo` / `become-lineos`.
+- Words/CLI: `lineos-graduate` / `lineos-graduate-demo` / `become-lineos` / `lineos-confirm` / `lineos-confirm-demo`.
 - On success (scaffold only): host flag → **L.I.N.E.O.S.**; write `evolve/lineos-manifest-scaffold.json` with `product_id=lineos`; preserve edition; slogan printed. **Not** a production branding release.
 - Demo: `demoForceReady` / force-ready path so smoke PASSes without 30 sessions; prints each gate PASS/FAIL; greppable `[lineos-graduate-demo] OK`.
+- Confirm UX stub (wave8 item **2**): default `userConfirmed=false`; `lineos-confirm` → `[LINEOS] confirm set`; production `lineos-graduate` with `requireUserConfirm` and not confirmed → `[LINEOS] refuse — confirm required (§1a.1)` (no product_id flip). `lineos-confirm-demo` → refuse then confirm→OK. **Policy:** `demoForceReady` may imply confirm for graduate-demo only. See `docs/LINEOS-CONFIRM.md`.
 - Forth: `forth/tritium/lineos.fs` (poly + Android asset mirrors); Linux host SoT for Test Lab.
 - Brand markers (wave7 item **3**): `evolve/lineos/{brand.json,SPLASH.txt,ABOUT.txt}` on graduate success; surfaces `lineos-splash` (refuse if not graduated), `lineos-about`, `lineos-brand-demo` → `[lineos-brand-demo] OK`. Slogan *The line tread between madness and genius.*; product `L.I.N.E.O.S.`; origin `TritiumOS by Draco`; preserve edition 32/64. CLI `tools/tritium-lineos`. See `docs/LINEOS-BRAND.md`. No production assets / store rebrand.
-- Cite: `docs/LINEOS.md`, `TritiumOS.txt` §1a.1.
+- Cite: `docs/LINEOS.md`, `docs/LINEOS-CONFIRM.md`, `TritiumOS.txt` §1a.1.
 
 ## tritium-integrate stub (§5a.2 / Phase 8)
 
@@ -221,3 +225,12 @@ tools/tritium-license status          # expect 10/10
 - Non-goals: full colon compiler, control flow, linked units, Win/Android VM rewrite.
 - Cite: `docs/INTERPRET.md`, `docs/KERNEL.md`.
 
+## LINEOS confirm UX stub (wave8 item 2)
+
+- Default `userConfirmed=false`; `lineos-confirm` sets true + `[LINEOS] confirm set`.
+- Production `lineos-graduate`: if `requireUserConfirm` and not confirmed → refuse marker; no product_id flip.
+- `lineos-confirm-demo` → refuse → confirm → graduate OK + brand markers → `[lineos-confirm-demo] OK`.
+- Policy: `demoForceReady` may imply confirm for `lineos-graduate-demo` only.
+- SoT: Linux host C + Forth `forth/tritium/lineos.fs` (+ poly / Android mirrors).
+- Non-goals: real GUI modal, store rebrand, merge.
+- Cite: `docs/LINEOS-CONFIRM.md`, `docs/LINEOS.md`.

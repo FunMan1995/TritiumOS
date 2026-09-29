@@ -3,7 +3,7 @@
 **Status:** Shipper-ready spec (wave5 items **4+5**; stub thresholds + `lineos-graduate`)  
 **Canonical brief:** `TritiumOS.txt` §1a / §1a.1, Phase 9  
 **Sources of truth (code):** `evolve/graduation.json`; `lineos-graduate` stub (host and/or Forth); `lineos/graduate.txt`  
-**Companions:** `docs/ASSISTANT.md` (S0), `docs/LICENSE.md` (slots), `docs/DRENA.md` / `docs/REKIA.md` (graph + refine gates), `docs/LINEOS-BRAND.md` (splash/about markers stub)
+**Companions:** `docs/ASSISTANT.md` (S0), `docs/LICENSE.md` (slots), `docs/DRENA.md` / `docs/REKIA.md` (graph + refine gates), `docs/LINEOS-BRAND.md` (splash/about markers stub), `docs/LINEOS-CONFIRM.md` (irreversible confirm UX stub)
 
 ## 1. Purpose
 
@@ -30,7 +30,7 @@ Fire when **all** are true (defaults tunable in `graduation.json`):
 2. D.R.E.N.A. graph ≥ minimum neurons **and** ≥1 CONNECTED cluster
 3. R.E.K.I.A. has refined ≥1 knowledge cell per active neuron class
 4. Installed on ≥1 Priority-1 host; license valid (≤10 devices — see `LICENSE.md`)
-5. User confirms: “Promote to L.I.N.E.O.S.” (irreversible without export/reset)
+5. User confirms: “Promote to L.I.N.E.O.S.” (irreversible without export/reset) — see `docs/LINEOS-CONFIRM.md`
 
 **Stub policy (this wave):** thresholds may be forced low / demo-flagged so `lineos-graduate-demo` can PASS without 30 real sessions; still print which gates passed/failed. Do **not** merge to main or flip production branding without an explicit user ask.
 
@@ -44,6 +44,7 @@ Fire when **all** are true (defaults tunable in `graduation.json`):
   "minRefinedPerClass": 1,
   "requireLicenseValid": true,
   "requireUserConfirm": true,
+  "userConfirmed": false,
   "productIdBefore": "tritium",
   "productIdAfter": "lineos",
   "demoForceReady": false
@@ -71,6 +72,8 @@ Word / CLI:
 | `lineos-graduate` | Check gates; on success scaffold flip + markers |
 | `lineos-graduate-demo` | Smoke: force-ready or low thresholds → `[lineos-graduate-demo] OK` |
 | `become-lineos` | Optional alias / user invoke path (may set confirm flag) |
+| `lineos-confirm` | Set `userConfirmed`; marker `[LINEOS] confirm set` |
+| `lineos-confirm-demo` | Refuse without confirm → confirm → graduate OK |
 
 ## 6. Acceptance (Test Lab)
 
@@ -85,3 +88,4 @@ Word / CLI:
 - `TritiumOS.txt` §§1a, 1a.1, Phase 9
 - `docs/ASSISTANT.md`, `docs/LICENSE.md`, `docs/DRENA.md`, `docs/REKIA.md`
 - `lineos/graduate.txt`; manifest product ids `tritium` \| `lineos`
+- Confirm UX stub: `docs/LINEOS-CONFIRM.md` (wave8 item **2**)

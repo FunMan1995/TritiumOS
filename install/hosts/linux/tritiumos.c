@@ -59,6 +59,8 @@ int queue_prove(int job, unsigned proof);
 void assimilate_demo(void);
 void lineos_graduate(int demo_force);
 void lineos_graduate_demo(void);
+void lineos_confirm(void);
+void lineos_confirm_demo(void);
 void become_lineos(void);
 void lineos_splash(void);
 void lineos_about(void);
@@ -1826,13 +1828,14 @@ typedef struct {
     int minRefinedPerClass;
     int requireLicenseValid;
     int requireUserConfirm;
+    int userConfirmed; /* optional persist; default false */
     char productIdBefore[32];
     char productIdAfter[32];
     int demoForceReady;
 } graduation_cfg_t;
 
 static graduation_cfg_t grad_cfg = {
-    30, 8, 1, 1, 1, 1, "tritium", "lineos", 0
+    30, 8, 1, 1, 1, 1, 0, "tritium", "lineos", 0
 };
 
 /* Stub metrics (demo / become-lineos can force) */
@@ -1853,6 +1856,7 @@ static void grad_defaults(graduation_cfg_t* c) {
     c->minRefinedPerClass = 1;
     c->requireLicenseValid = 1;
     c->requireUserConfirm = 1;
+    c->userConfirmed = 0;
     strncpy(c->productIdBefore, "tritium", sizeof(c->productIdBefore) - 1);
     strncpy(c->productIdAfter, "lineos", sizeof(c->productIdAfter) - 1);
     c->demoForceReady = 0;
@@ -1899,6 +1903,7 @@ static void grad_write_defaults(const char* path) {
         "  \"minRefinedPerClass\": 1,\n"
         "  \"requireLicenseValid\": true,\n"
         "  \"requireUserConfirm\": true,\n"
+        "  \"userConfirmed\": false,\n"
         "  \"productIdBefore\": \"tritium\",\n"
         "  \"productIdAfter\": \"lineos\",\n"
         "  \"demoForceReady\": false\n"
@@ -1928,11 +1933,14 @@ static void grad_load_cfg(void) {
     grad_cfg.minRefinedPerClass = grad_json_int(buf, "minRefinedPerClass", 1);
     grad_cfg.requireLicenseValid = grad_json_int(buf, "requireLicenseValid", 1);
     grad_cfg.requireUserConfirm = grad_json_int(buf, "requireUserConfirm", 1);
+    grad_cfg.userConfirmed = grad_json_int(buf, "userConfirmed", 0);
     grad_cfg.demoForceReady = grad_json_int(buf, "demoForceReady", 0);
     grad_json_str(buf, "productIdBefore", grad_cfg.productIdBefore,
                   sizeof(grad_cfg.productIdBefore), "tritium");
     grad_json_str(buf, "productIdAfter", grad_cfg.productIdAfter,
                   sizeof(grad_cfg.productIdAfter), "lineos");
+    /* Optional persisted confirm; default remains false until lineos-confirm */
+    if (grad_cfg.userConfirmed) grad_confirm = 1;
 }
 
 static int grad_license_valid_now(void) {
@@ -2024,10 +2032,54 @@ static void grad_scaffold_flip(void) {
     printf("[LINEOS] graduate OK — scaffold only (not a production release)\n");
 }
 
+static void grad_persist_user_confirmed(int confirmed) {
+    char path[MAX_PATH];
+    ensure_evolve_dir();
+    snprintf(path, sizeof(path), "%s/graduation.json", get_evolve_dir());
+    /* Ensure cfg loaded so we rewrite known fields + userConfirmed. */
+    {
+        FILE* rf = fopen(path, "r");
+        if (!rf) grad_write_defaults(path);
+        else fclose(rf);
+    }
+    grad_load_cfg();
+    FILE* f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f,
+        "{\n"
+        "  \"minSessions\": %d,\n"
+        "  \"minNeurons\": %d,\n"
+        "  \"minConnectedClusters\": %d,\n"
+        "  \"minRefinedPerClass\": %d,\n"
+        "  \"requireLicenseValid\": %s,\n"
+        "  \"requireUserConfirm\": %s,\n"
+        "  \"userConfirmed\": %s,\n"
+        "  \"productIdBefore\": \"%s\",\n"
+        "  \"productIdAfter\": \"%s\",\n"
+        "  \"demoForceReady\": %s\n"
+        "}\n",
+        grad_cfg.minSessions, grad_cfg.minNeurons, grad_cfg.minConnectedClusters,
+        grad_cfg.minRefinedPerClass,
+        grad_cfg.requireLicenseValid ? "true" : "false",
+        grad_cfg.requireUserConfirm ? "true" : "false",
+        confirmed ? "true" : "false",
+        grad_cfg.productIdBefore, grad_cfg.productIdAfter,
+        grad_cfg.demoForceReady ? "true" : "false");
+    fclose(f);
+    grad_cfg.userConfirmed = confirmed ? 1 : 0;
+    grad_confirm = confirmed ? 1 : 0;
+}
+
 void become_lineos(void) {
     grad_become = 1;
     grad_confirm = 1;
     printf("[LINEOS] become-lineos — confirm flag set (§1a.1)\n");
+}
+
+void lineos_confirm(void) {
+    grad_load_cfg();
+    grad_persist_user_confirmed(1);
+    printf("[LINEOS] confirm set\n");
 }
 
 void lineos_graduate(int demo_force) {
@@ -2035,7 +2087,10 @@ void lineos_graduate(int demo_force) {
     printf("[LINEOS] lineos-graduate — TritiumOS.txt §1a.1 gates\n");
 
     if (demo_force || grad_cfg.demoForceReady) {
+        /* Policy: demoForceReady may imply confirm for graduate-demo only;
+           production lineos_graduate(0) still honors requireUserConfirm. */
         printf("[LINEOS] demoForceReady — forcing stub metrics ready (smoke)\n");
+        printf("[LINEOS] demoForceReady implies confirm (graduate-demo only)\n");
         grad_sessions = grad_cfg.minSessions;
         grad_neurons = grad_cfg.minNeurons;
         grad_clusters = grad_cfg.minConnectedClusters;
@@ -2070,6 +2125,9 @@ void lineos_graduate(int demo_force) {
 
     if (g1 && g2 && g3 && g4 && g5) {
         grad_scaffold_flip();
+    } else if (g1 && g2 && g3 && g4 && !g5) {
+        /* Confirm required and not set — refuse; no product_id flip */
+        printf("[LINEOS] refuse — confirm required (§1a.1)\n");
     } else {
         printf("[LINEOS] graduate blocked — gates incomplete\n");
     }
@@ -2088,11 +2146,63 @@ void lineos_graduate_demo(void) {
             license_save(devices, 1);
         }
     }
-    lineos_graduate(1);
+    lineos_graduate(1); /* demoForceReady implies confirm */
     if (grad_product_is_lineos && grad_host_flag_lineos) {
         printf("[lineos-graduate-demo] OK\n\n");
     } else {
         printf("[lineos-graduate-demo] FAIL\n\n");
+    }
+}
+
+void lineos_confirm_demo(void) {
+    int refused = 0;
+    printf("[lineos-confirm-demo] refuse→confirm→graduate (§1a.1 / docs/LINEOS-CONFIRM.md)\n");
+    grad_product_is_lineos = 0;
+    grad_host_flag_lineos = 0;
+    grad_become = 0;
+    {
+        char devices[LICENSE_MAX_SLOTS + 2][64];
+        int n = license_load_count(devices, LICENSE_MAX_SLOTS + 2);
+        if (n == 0) {
+            strncpy(devices[0], "lineos-confirm-demo-device", 63);
+            license_save(devices, 1);
+        }
+    }
+    /* Clear any prior confirm; force gates 1–4 WITHOUT confirm (production path) */
+    grad_load_cfg();
+    grad_cfg.requireUserConfirm = 1;
+    grad_cfg.demoForceReady = 0;
+    grad_persist_user_confirmed(0); /* userConfirmed=false; clears grad_confirm */
+    grad_sessions = grad_cfg.minSessions;
+    grad_neurons = grad_cfg.minNeurons;
+    grad_clusters = grad_cfg.minConnectedClusters;
+    grad_refined = grad_cfg.minRefinedPerClass;
+    grad_license_ok = 1;
+    grad_confirm = 0;
+    grad_cfg.demoForceReady = 0; /* persist may have reloaded; keep off */
+
+    lineos_graduate(0);
+    if (grad_product_is_lineos || grad_host_flag_lineos) {
+        printf("[lineos-confirm-demo] FAIL — product_id flipped without confirm\n\n");
+        return;
+    }
+    refused = 1;
+    printf("[lineos-confirm-demo] refuse path greppable (confirm required)\n");
+
+    lineos_confirm();
+
+    /* Keep gates 1–4; confirm now set; still production path (no demoForceReady) */
+    grad_sessions = grad_cfg.minSessions;
+    grad_neurons = grad_cfg.minNeurons;
+    grad_clusters = grad_cfg.minConnectedClusters;
+    grad_refined = grad_cfg.minRefinedPerClass;
+    grad_license_ok = 1;
+    lineos_graduate(0);
+
+    if (grad_product_is_lineos && grad_host_flag_lineos && refused) {
+        printf("[lineos-confirm-demo] OK\n\n");
+    } else {
+        printf("[lineos-confirm-demo] FAIL\n\n");
     }
 }
 
@@ -3049,7 +3159,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  : <name> - create-only stub (entry into dict; no body)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  : <name> - create-only stub (entry into dict; no body)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -3185,6 +3295,10 @@ int main(int argc, char** argv) {
             lineos_graduate_demo();
         } else if (strcasecmp(line, "lineos-graduate") == 0) {
             lineos_graduate(0);
+        } else if (strcasecmp(line, "lineos-confirm") == 0) {
+            lineos_confirm();
+        } else if (strcasecmp(line, "lineos-confirm-demo") == 0) {
+            lineos_confirm_demo();
         } else if (strcasecmp(line, "become-lineos") == 0) {
             become_lineos();
         } else if (strcasecmp(line, "lineos-splash") == 0) {

@@ -57,8 +57,9 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Groups nested + vocab persist landed (wave7 item 4):** `group-find-nested` / `vocab` graph lines; `[group-nested-demo] OK` / `[group-vocab-persist-demo] OK`. See `docs/GROUPS-NESTED.md`.
    - **Kernel find/interpret stub landed (wave7 item 5):** `[kernel-demo] OK`; see `docs/KERNEL.md`.
    - **Interpret loop deepen landed (wave8 item 1):** `interpret` + `:` create-only + `[interpret-demo] OK`; see `docs/INTERPRET.md`.
-   - Graph persist exists (`evolve/user-graph.trit`); local fleet export/import stub landed (wave7 **2**); networked sync / irreversible UX confirm packs still later.
-   - Needed later: real splash/about branding pack (assets); irreversible confirm UX; fleet session counts / network sync.
+   - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo`; refuse without confirm; see `docs/LINEOS-CONFIRM.md`.
+   - Graph persist exists (`evolve/user-graph.trit`); local fleet export/import stub landed (wave7 **2**); networked sync still later.
+   - Needed later: real splash/about branding pack (assets); real GUI irreversible confirm modal; fleet session counts / network sync.
 
 7. **Integrate / install docs (wave6 items 4+5)** / **Master stub (wave7 item 1)** / **Fleet stub (wave7 item 2)**
    - **Integrate stub landed:** `tritium-integrate` / `tritium-integrate-demo` (Linux host + CLI + Forth); scaffold from `_template` → `evolve/integrate/<platform>/`; slot gate via license helpers. See `docs/INTEGRATE.md`.
@@ -69,6 +70,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Groups nested find + vocab persist landed (wave7 item 4):** `group-find-nested` / vocab graph lines + demos; see `docs/GROUPS-NESTED.md`.
    - **Kernel find/interpret stub landed (wave7 item 5):** `findentry`/`find` aliases, `interpret-token` lookup-only, `kernel-demo`; see `docs/KERNEL.md`.
    - **Interpret loop deepen landed (wave8 item 1):** `interpret` token stream + `:` create-only stub + `interpret-demo`; see `docs/INTERPRET.md`. Full colon compiler / control flow / linked dict still later.
+   - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo` + `docs/LINEOS-CONFIRM.md`. Stub only — no GUI modal.
    - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
@@ -137,7 +139,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 4. Wire UI default input through a `rekiA-refine` path that produces visible "refined reply" + updates a neuron count.
 5. Write the missing core docs (start with NEURON.md + DRENA.md + REKIA.md — they are referenced in spec itself).
 6. Implement basic master/license slot enforcement (even if still scaffold keys) so "slot 11 rejected" works.
-7. ~~Add `evolve/graduation.json` + `lineos-graduate` stub~~ **landed (wave5 items 4+5)**; ~~splash/about brand markers stub~~ **landed (wave7 item 3)** — deepen asset packs / confirm UX later.
+7. ~~Add `evolve/graduation.json` + `lineos-graduate` stub~~ **landed (wave5 items 4+5)**; ~~splash/about brand markers stub~~ **landed (wave7 item 3)**; ~~confirm UX stub~~ **landed (wave8 item 2)** — deepen asset packs / real GUI modal later.
 8. Use `tools/qwantum-field.ps1` (or Qwantum Compute) to pull more complete Forth/engine fragments from the "parallel timeline" into the tree.
 
 ## How to Track

@@ -5,6 +5,7 @@
   "minRefinedPerClass": 1,
   "requireLicenseValid": true,
   "requireUserConfirm": true,
+  "userConfirmed": false,
   "productIdBefore": "tritium",
   "productIdAfter": "lineos",
   "demoForceReady": false
