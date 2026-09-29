@@ -38,6 +38,7 @@ REQUIRED_DEMOS=(
   buffer-demo
   exit-demo
   synonym-demo
+  parse-demo
 )
 
 usage() {

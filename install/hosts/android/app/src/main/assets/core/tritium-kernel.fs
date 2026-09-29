@@ -2201,6 +2201,33 @@ create (sy-widget2) 7 c, char w c, char i c, char d c, char g c, char e c, char 
   ." [synonym-demo] OK" cr ;
 
 
+\ === PARSE / PARSE-NAME token-parse markers (wave17 item 2) ===
+\ Prefer greppable markers; demo/fixture path only. NOT full stream parser /
+\ WORD/BL rewrite of interpret path / S"/escape heap. Thin deepen on COMMENT-PARSE.
+\ Forth mirrors: parse-name / parse-delim (host binds PARSE-NAME / PARSE).
+
+\ Token fixtures echoed by markers (demo avoids empty FAIL)
+create (pn-tok) 5 c, char h c, char e c, char l c, char l c, char o c,
+create (pd-tok) 5 c, char a c, char l c, char p c, char h c, char a c,
+
+\ parse-name ( -- )  whitespace-delimited stub token marker
+: parse-name ( -- )
+  ." [parse] PARSE-NAME tok=" (pn-tok) count type
+  ."  u=" (pn-tok) c@ . cr ;
+
+\ parse-delim ( -- )  delimiter-form stub marker (delim=, fixture span)
+: parse-delim ( -- )
+  ." [parse] PARSE delim=, tok=" (pd-tok) count type cr ;
+
+\ parse-demo ( -- )  dict-reset → PARSE-NAME → PARSE delim → OK
+: parse-demo ( -- )
+  ." [parse-demo] dict-reset + PARSE-NAME + PARSE delim" cr
+  dict-reset
+  parse-name
+  parse-delim
+  ." [parse-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2232,6 +2259,7 @@ create (sy-widget2) 7 c, char w c, char i c, char d c, char g c, char e c, char 
 \ - BUFFER: named-buffer stubs + buffer-demo (wave16 item 3) — landed
 \ - EXIT/QUIT thin control markers + exit-demo (wave16 item 4) — landed
 \ - SYNONYM/ALIAS name-map stubs + synonym-demo (wave17 item 1) — landed
+\ - PARSE/PARSE-NAME token-parse markers + parse-demo (wave17 item 2) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

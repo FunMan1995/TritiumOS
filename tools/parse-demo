@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# parse-demo — Lab smoke for PARSE/PARSE-NAME markers (wave17 item 2 / docs/PARSE-NAME.md)
+# Mirrors forth/tritium/kernel.fs parse-demo + Linux host parse_demo.
+# Thin token-parse markers only — NOT full stream parser / WORD/BL rewrite / S"/escape heap.
+# Forth mirrors: parse-name / parse-delim.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: parse-demo"
+  echo "  dict-reset → PARSE-NAME fixture → PARSE delim fixture → [parse-demo] OK"
+  echo "  Markers: [parse] PARSE-NAME [tok=] [u=] / [parse] PARSE delim= [tok=] → [parse-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[parse-demo] FAIL"
+  exit 1
+}
+
+# Fixture buffers (demo/fixture path — does not rewrite live interpret WORD/BL)
+PN_FIXTURE="hello world"
+PD_FIXTURE="alpha,beta"
+PD_DELIM=','
+
+dict_reset() {
+  : # parse stubs do not create dict words from token text
+}
+
+# PARSE-NAME: take one whitespace-delimited stub token from fixture
+parse_name() {
+  local src=${1:-$PN_FIXTURE}
+  # trim leading whitespace
+  src="${src#"${src%%[![:space:]]*}"}"
+  if [[ -z "$src" ]]; then
+    echo "[parse] FAIL reason=empty"
+    return 1
+  fi
+  local tok="${src%%[[:space:]]*}"
+  if [[ -z "$tok" ]]; then
+    echo "[parse] FAIL reason=empty"
+    return 1
+  fi
+  local u=${#tok}
+  echo "[parse] PARSE-NAME tok=$tok u=$u"
+}
+
+# PARSE / parse-delim: take characters until delimiter from fixture
+parse_delim() {
+  local delim=${1:-$PD_DELIM}
+  local src=${2:-$PD_FIXTURE}
+  if [[ -z "$src" ]]; then
+    echo "[parse] FAIL reason=empty"
+    return 1
+  fi
+  local tok="${src%%"${delim}"*}"
+  if [[ -z "$tok" ]]; then
+    echo "[parse] FAIL reason=empty"
+    return 1
+  fi
+  echo "[parse] PARSE delim=$delim tok=$tok"
+}
+
+echo "[parse-demo] dict-reset + PARSE-NAME + PARSE delim"
+dict_reset
+
+# 1) PARSE-NAME against non-empty fixture
+parse_name "$PN_FIXTURE" || fail
+
+# 2) PARSE with delimiter against non-empty span
+parse_delim "$PD_DELIM" "$PD_FIXTURE" || fail
+
+# Happy path must not emit empty FAIL
+echo "[parse-demo] OK"
+exit 0
