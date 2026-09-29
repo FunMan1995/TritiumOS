@@ -49,6 +49,7 @@ void group_vocab_persist_demo(void);
 void kernel_demo(void);
 void interpret_demo(void);
 void colon_demo(void);
+void control_demo(void);
 void license_status(void);
 void license_register(const char* device_id);
 void queue_demo(void);
@@ -248,6 +249,9 @@ static int host_entry_btoks[HOST_MAX_GENTRIES];  /* body token count */
 static int host_colon_def = 0;
 static int host_colon_idx = -1;
 static int host_colon_toks = 0;
+/* wave10 item 2: control-stack stub (depth only; no XT patching) */
+static int host_cs_depth = 0;
+static int host_cs_side = 0; /* 0=IF side; 1=ELSE side */
 
 static void host_dict_reset(void) {
     host_entry_count = 0;
@@ -260,6 +264,8 @@ static void host_dict_reset(void) {
     host_colon_def = 0;
     host_colon_idx = -1;
     host_colon_toks = 0;
+    host_cs_depth = 0;
+    host_cs_side = 0;
 }
 
 static int host_group_entry_find(const char* name, int gid) {
@@ -1761,6 +1767,59 @@ void colon_demo(void) {
         return;
     }
     printf("[colon-demo] OK\n\n");
+}
+
+/* wave10 item 2: IF/THEN/ELSE control stubs — balance-only cs depth */
+static void host_control_if(int flag_present, int flag) {
+    host_cs_depth++;
+    host_cs_side = 0;
+    if (flag_present)
+        printf("[control] IF taken=%d\n", flag ? 1 : 0);
+    else
+        printf("[control] IF\n");
+}
+
+static void host_control_else(void) {
+    if (host_cs_depth <= 0) {
+        printf("[control] FAIL reason=unbalanced\n");
+        return;
+    }
+    host_cs_side = 1;
+    printf("[control] ELSE\n");
+}
+
+static void host_control_then(void) {
+    if (host_cs_depth <= 0) {
+        printf("[control] FAIL reason=unbalanced\n");
+        return;
+    }
+    host_cs_depth--;
+    host_cs_side = 0;
+    printf("[control] THEN depth=%d\n", host_cs_depth);
+}
+
+static int host_control_cs_depth(void) {
+    return host_cs_depth;
+}
+
+void control_demo(void) {
+    /* wave10 item 2: balanced IF…THEN + IF…ELSE…THEN */
+    printf("[control-demo] dict-reset + IF…THEN + IF…ELSE…THEN\n");
+    host_dict_reset();
+    host_control_if(1, 1);
+    host_control_then();
+    if (host_control_cs_depth() != 0) {
+        printf("[control-demo] FAIL\n\n");
+        return;
+    }
+    host_control_if(1, 0);
+    host_control_else();
+    host_control_then();
+    if (host_control_cs_depth() != 0) {
+        printf("[control-demo] FAIL\n\n");
+        return;
+    }
+    printf("[control-demo] OK\n\n");
 }
 
 /* --- License slot stub (TritiumOS.txt §5a.4): max 10; refuse slot 11 --- */
@@ -4045,7 +4104,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  colon-demo - : body ; marker stub + run body\n  : <name> [body…] ; - colon-def body/marker stub (wave9)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  host-boot / host-boot-report - poly/core load-order markers (wave10)\n  host-boot-demo - assert boot.fs + §2 core files present → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n  assistant-state-demo - v2 task/reminder/note persist → greppable OK\n  assistant-state! / assistant-state@ - save/load evolve/assistant-state.trit v2\n  assistant-task! / assistant-reminder! / assistant-note! - upsert hooks\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  colon-demo - : body ; marker stub + run body\n  control-demo - IF/THEN/ELSE cs-depth stubs → greppable OK\n  IF [0|1] / THEN / ELSE - control stubs (aliases control-if/then/else)\n  : <name> [body…] ; - colon-def body/marker stub (wave9)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  host-boot / host-boot-report - poly/core load-order markers (wave10)\n  host-boot-demo - assert boot.fs + §2 core files present → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n  assistant-state-demo - v2 task/reminder/note persist → greppable OK\n  assistant-state! / assistant-state@ - save/load evolve/assistant-state.trit v2\n  assistant-task! / assistant-reminder! / assistant-note! - upsert hooks\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -4140,6 +4199,30 @@ int main(int argc, char** argv) {
             interpret_demo();
         } else if (strcasecmp(line, "colon-demo") == 0) {
             colon_demo();
+        } else if (strcasecmp(line, "control-demo") == 0) {
+            control_demo();
+        } else if (strcasecmp(line, "control-cs-depth") == 0) {
+            printf("[control] cs-depth=%d\n", host_control_cs_depth());
+        } else if (strcasecmp(line, "ELSE") == 0 ||
+                   strcasecmp(line, "control-else") == 0) {
+            host_control_else();
+        } else if (strcasecmp(line, "THEN") == 0 ||
+                   strcasecmp(line, "control-then") == 0) {
+            host_control_then();
+        } else if (strncasecmp(line, "IF ", 3) == 0 ||
+                   strcasecmp(line, "IF") == 0 ||
+                   strncasecmp(line, "control-if ", 11) == 0 ||
+                   strcasecmp(line, "control-if") == 0) {
+            const char* arg = line;
+            if (strncasecmp(arg, "control-if", 10) == 0)
+                arg += 10;
+            else
+                arg += 2; /* IF */
+            while (*arg == ' ') arg++;
+            if (*arg)
+                host_control_if(1, atoi(arg));
+            else
+                host_control_if(0, 0);
         } else if (strcmp(line, ";") == 0) {
             host_semicolon();
         } else if (strncmp(line, ": ", 2) == 0 || strcmp(line, ":") == 0) {

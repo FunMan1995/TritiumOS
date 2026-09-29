@@ -223,8 +223,8 @@ tools/tritium-license status          # expect 10/10
 
 - `:` / `colon-create` enter colon-def; body tokens until `;` store body-present + token count.
 - Exec of body entry prints `[colon] run body name=… tokens=…`. Create-only (no `;`) unchanged.
-- Non-goals: real XT compiler, IF/THEN/DO, immediate/compile beyond colon-def flag.
-- Cite: `docs/COLON.md`, `docs/INTERPRET.md`.
+- Non-goals: real XT compiler, `DO`/`BEGIN`, immediate/compile beyond colon-def flag. `IF`/`THEN`/`ELSE` stubs → wave10 **2** (`docs/CONTROL.md`).
+- Cite: `docs/COLON.md`, `docs/INTERPRET.md`, `docs/CONTROL.md`.
 
 ## Interpret loop deepen (wave8 item 1)
 
@@ -266,5 +266,13 @@ tools/tritium-license status          # expect 10/10
 - Markers: `[host-boot] core-dir` / `order` / `file=… OK|MISSING` / `sources-loaded` / optional `words=` → `[host-boot-demo] OK`.
 - Surfaces: `tools/host-boot-demo` + Linux host `host-boot-demo` / `host-boot-report`; Win/Android CONTRACT via `HOST-PARITY.txt`.
 - Cite: `docs/HOST-BOOT.md`, `tritium.poly/core/boot.fs`, `docs/HOST-PARITY.md`.
+
+### Control IF/THEN/ELSE stubs (wave10 item 2)
+- Balance-only cs depth: `IF`/`control-if` +1; `THEN`/`control-then` −1; `ELSE`/`control-else` flips stub side (requires open IF).
+- Markers: `[control] IF [taken=0|1]`, `[control] ELSE`, `[control] THEN depth=<n>`, unbalanced → `[control] FAIL reason=unbalanced`.
+- `control-demo` → balanced IF…THEN + IF…ELSE…THEN → `[control-demo] OK`; prior colon/interpret/host-boot demos stay green.
+- Surfaces: `tools/control-demo` + Linux host REPL; Forth mirrors `control-if` / `control-then` / `control-else`.
+- Non-goals: real branch XT patching, `BEGIN`/`DO`/`LOOP`, Win/Android VM rewrite.
+- Cite: `docs/CONTROL.md`, `docs/COLON.md`, `forth/tritium/kernel.fs`.
 
 

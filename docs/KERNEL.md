@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave7 item **5**)  
 **Canonical brief:** `TritiumOS.txt` Phase 2; Dusk `fs/doc/kernel.txt` + `fs/mem/dict.fs` (see `docs/FORTH-BASE-REFERENCES.md`)  
 **Sources of truth (code):** `forth/tritium/kernel.fs`; Linux host mirrors for demos  
-**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`, `docs/COLON.md` (wave9 **4**)
+**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`, `docs/COLON.md` (wave9 **4**), `docs/CONTROL.md` (wave10 **2**)
 **See also:** `docs/INTERPRET.md` (wave8 **1** — interpret loop deepen); `docs/COLON.md` (wave9 **4** — colon body/marker stub).
 
 ## 1. Purpose
@@ -62,7 +62,7 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 
 ## 5. Non-goals (this tip)
 
-- Full colon compiler / control flow (minimal `interpret` loop → see `docs/INTERPRET.md`)
+- Full colon compiler / real branch XT (minimal `interpret` loop → `docs/INTERPRET.md`; `IF`/`THEN`/`ELSE` stubs → `docs/CONTROL.md`)
 - Linked-list ENTRYSZ / forget / units objects (Dusk full)
 - Replacing host C#/Kotlin VMs
 - Breaking `group-find-nested` / vocab persist (share ENTRY-GIDS)

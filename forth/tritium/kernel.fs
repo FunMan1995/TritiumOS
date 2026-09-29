@@ -67,6 +67,9 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
 variable _colon-toks   \ body tokens accumulated
+\ control-stack stub (wave10 item 2) — depth only; no XT patching
+variable _cs-depth     \ open IF count
+variable _cs-side      \ 0=IF side; 1=ELSE side (stub flip)
 
 
 : entry-name-clear ( i -- )
@@ -81,7 +84,9 @@ variable _colon-toks   \ body tokens accumulated
   MAX-ENTRIES 0 do 0 i entry-btoks[] ! loop
   0 _colon-def !
   -1 _colon-idx !
-  0 _colon-toks ! ;
+  0 _colon-toks !
+  0 _cs-depth !
+  0 _cs-side ! ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -442,13 +447,67 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
   then
   ." [colon-demo] OK" cr ;
 
+\ === control IF/THEN/ELSE stubs (wave10 item 2) ===
+\ Balance-only cs depth; no branch XT patching / BEGIN / DO.
+\ Forth mirrors are control-if / control-then / control-else (host binds IF/THEN/ELSE).
+
+: control-cs-depth ( -- n ) _cs-depth @ ;
+
+\ control-if ( flag -- )  +1 cs; print [control] IF taken=0|1
+: control-if ( flag -- )
+  1 _cs-depth +!
+  0 _cs-side !
+  0= if
+    ." [control] IF taken=0" cr
+  else
+    ." [control] IF taken=1" cr
+  then ;
+
+\ control-else ( -- )  flip stub side; requires open IF
+: control-else ( -- )
+  _cs-depth @ 0= if
+    ." [control] FAIL reason=unbalanced" cr exit
+  then
+  1 _cs-side !
+  ." [control] ELSE" cr ;
+
+\ control-then ( -- )  -1 cs; print depth after pop
+: control-then ( -- )
+  _cs-depth @ 0= if
+    ." [control] FAIL reason=unbalanced" cr exit
+  then
+  -1 _cs-depth +!
+  0 _cs-side !
+  ." [control] THEN depth=" _cs-depth @ . cr ;
+
+\ Aliases (may collide with host Forth IF/THEN/ELSE — prefer control-* in includes)
+\ : IF control-if ;  \ omitted — host Forth uses IF; Linux REPL binds IF
+
+\ control-demo ( -- )  balanced IF…THEN + IF…ELSE…THEN → OK
+: control-demo ( -- )
+  ." [control-demo] dict-reset + IF…THEN + IF…ELSE…THEN" cr
+  dict-reset
+  1 control-if
+  control-then
+  control-cs-depth 0<> if
+    ." [control-demo] FAIL" cr exit
+  then
+  0 control-if
+  control-else
+  control-then
+  control-cs-depth 0<> if
+    ." [control-demo] FAIL" cr exit
+  then
+  ." [control-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
-\ - Full colon compiler / control flow (beyond body/marker stub)
+\ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE stubs)
 \ - Group-scoped entries via ENTRY-GIDS + group-entry-find (wave4 item 2) — landed
 \ - findentry / find aliases + interpret-token stub (wave7 item 5) — landed
 \ - interpret loop deepen + : create-only (wave8 item 1) — landed
 \ - colon body/marker stub (wave9 item 4) — landed
+\ - IF/THEN/ELSE control stubs (wave10 item 2) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

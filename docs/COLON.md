@@ -1,9 +1,9 @@
 # COLON — Deepen `:` beyond create-only (body marker)
 
-**Status:** Shipper-ready stub spec (wave9 item **4**)  
-**Canonical brief:** Dusk colon compile (thin stub); `docs/INTERPRET.md` (wave8 **1**)  
-**Sources of truth (code):** `forth/tritium/kernel.fs` (`colon-create*`); Linux host REPL `:` bind  
-**Companions:** `docs/INTERPRET.md` (thin amend this tip), `docs/KERNEL.md`
+**Status:** Shipper-ready stub spec (wave9 item **4**)
+**Canonical brief:** Dusk colon compile (thin stub); `docs/INTERPRET.md` (wave8 **1**)
+**Sources of truth (code):** `forth/tritium/kernel.fs` (`colon-create*`); Linux host REPL `:` bind
+**Companions:** `docs/INTERPRET.md` (thin amend wave9 **4**), `docs/KERNEL.md`, `docs/CONTROL.md` (wave10 **2**)
 
 ## 1. Purpose
 
@@ -67,7 +67,7 @@ Also keep `[interpret] : created <name>` if useful for back-compat, or replace w
 ## 7. Non-goals
 
 - Immediate vs compile state machine (beyond colon-def flag)
-- Control flow (`if`/`then`/`do`/`begin`)
+- Control flow beyond stubs — see `docs/CONTROL.md` (wave10 **2**) for `IF`/`THEN`/`ELSE` stubs; `DO`/`BEGIN` still out
 - Linked XT lists / Dusk `comp/` emitter
 - assistant-state / docs cites (wave9 **3** done; **5** next)
 
@@ -83,3 +83,4 @@ Also keep `[interpret] : created <name>` if useful for back-compat, or replace w
 - `docs/INTERPRET.md`, `docs/KERNEL.md`
 - `forth/tritium/kernel.fs`
 - Dusk `fs/doc/kernel.txt` (colon — stub only)
+- `docs/CONTROL.md` (wave10 **2**)

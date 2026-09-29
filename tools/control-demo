@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# control-demo — Lab smoke for IF/THEN/ELSE control stubs (wave10 item 2 / docs/CONTROL.md)
+# Mirrors forth/tritium/kernel.fs control-demo + Linux host control_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: control-demo"
+  echo "  dict-reset → IF…THEN → IF…ELSE…THEN → cs-depth 0"
+  echo "  Markers: [control] IF/ELSE/THEN → [control-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[control-demo] FAIL"
+  exit 1
+}
+
+CS_DEPTH=0
+CS_SIDE=0
+
+dict_reset() {
+  CS_DEPTH=0
+  CS_SIDE=0
+}
+
+control_cs_depth() {
+  echo "$CS_DEPTH"
+}
+
+control_if() {
+  local flag=${1:-0}
+  CS_DEPTH=$((CS_DEPTH + 1))
+  CS_SIDE=0
+  if [[ "$flag" -ne 0 ]]; then
+    echo "[control] IF taken=1"
+  else
+    echo "[control] IF taken=0"
+  fi
+}
+
+control_else() {
+  if [[ "$CS_DEPTH" -eq 0 ]]; then
+    echo "[control] FAIL reason=unbalanced"
+    return 1
+  fi
+  CS_SIDE=1
+  echo "[control] ELSE"
+}
+
+control_then() {
+  if [[ "$CS_DEPTH" -eq 0 ]]; then
+    echo "[control] FAIL reason=unbalanced"
+    return 1
+  fi
+  CS_DEPTH=$((CS_DEPTH - 1))
+  CS_SIDE=0
+  echo "[control] THEN depth=$CS_DEPTH"
+}
+
+echo "[control-demo] dict-reset + IF…THEN + IF…ELSE…THEN"
+dict_reset
+
+control_if 1
+control_then
+[[ "$(control_cs_depth)" -eq 0 ]] || fail
+
+control_if 0
+control_else
+control_then
+[[ "$(control_cs_depth)" -eq 0 ]] || fail
+
+echo "[control-demo] OK"
+exit 0
