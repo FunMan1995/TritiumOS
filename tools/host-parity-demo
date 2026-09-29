@@ -21,6 +21,7 @@ REQUIRED_DEMOS=(
   var-demo
   comment-demo
   leave-demo
+  value-demo
 )
 
 usage() {

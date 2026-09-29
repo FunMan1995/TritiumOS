@@ -3,12 +3,12 @@
 **Status:** Shipper-ready stub spec (wave12 item **2**)
 **Canonical brief:** Dusk `variable` / `const` (thin stub); `docs/KERNEL.md` (wave7 **5**), `docs/WORDS-VOCAB.md` (wave11 **3**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `var.fs`); Linux host REPL
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DO-LOOP.md` (wave12 **1**)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DO-LOOP.md` (wave12 **1**), `docs/VALUE-TO.md` (wave13 **1**)
 **Base tip SHA:** `132f99e` (wave12 tip1 CLOSED / #52)
 
 ## 1. Purpose
 
-Flat dict + colon body stubs exist; named cells do not. This tip adds **VARIABLE / CONSTANT stubs**: `VARIABLE <name>` creates a named cell entry (init 0), `CONSTANT <name>` creates a named constant from TOS (or an explicit value arg), prints greppable `[var]` markers, and smokes via **`var-demo`**. Optional `@` / `!` on VARIABLE body if already present — **prefer greppable markers without a full memory / HERE model**. Not real ALLOT, VALUE/TO, or DOES>.
+Flat dict + colon body stubs exist; named cells do not. This tip adds **VARIABLE / CONSTANT stubs**: `VARIABLE <name>` creates a named cell entry (init 0), `CONSTANT <name>` creates a named constant from TOS (or an explicit value arg), prints greppable `[var]` markers, and smokes via **`var-demo`**. Optional `@` / `!` on VARIABLE body if already present — **prefer greppable markers without a full memory / HERE model**. Not real ALLOT or DOES>. VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**).
 
 ## 2. Words / Surfaces
 
@@ -31,7 +31,7 @@ Host note: bind `VARIABLE` / `CONSTANT` on Linux REPL; Forth mirrors `var-create
 - Optional `@`/`!`: only if already present on host / kernel soft ops; print `[var] @` / `[var] !` markers. **No** requirement to back VARIABLE with real ALLOT/HERE this tip — a host-side int map or entry-slot field is enough.
 - Unrecognized / missing name on optional fetch → `[var] FAIL` reason=miss (demo must avoid).
 - Nest with prior colon / control / loop / do-loop stubs OK; dict-reset clears var/const stubs.
-- Still no VALUE/TO, DOES>, real ALLOT/HERE arena; comment-parse → `docs/COMMENT-PARSE.md` (wave12 **3**).
+- VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**). Still no DOES>, real ALLOT/HERE arena; comment-parse → `docs/COMMENT-PARSE.md` (wave12 **3**).
 
 ## 4. Markers
 
@@ -63,7 +63,7 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 
 - Companions: add `VARIABLE-CONST.md` (wave12 **2**).
 - Words table: add `VARIABLE` / `CONSTANT` stubs + `var-demo` (cite tip; no full memory model).
-- Non-goals: note real ALLOT/HERE / VALUE/TO / DOES> still later; this tip is named-cell stubs only.
+- Non-goals: note real ALLOT/HERE / DOES> still later; VALUE/TO → wave13 **1** (`VALUE-TO.md`); this tip is VARIABLE/CONSTANT stubs only.
 - Acceptance: Lab smokes `var-demo`.
 - Cite: `docs/VARIABLE-CONST.md`.
 
@@ -86,8 +86,8 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 ## 7. Non-goals
 
 - Real ALLOT / HERE arena / linked cell memory model
-- VALUE / TO / DOES> / CREATE-DOES>
-- Comment-parse: see `docs/COMMENT-PARSE.md` (wave12 **3**); leave-again (wave12 **4**); docs cites (wave12 **5**)
+- VALUE / TO stubs: see `docs/VALUE-TO.md` (wave13 **1**); DOES> / CREATE-DOES> still later
+- Comment-parse: see `docs/COMMENT-PARSE.md` (wave12 **3**); leave-again: see `docs/LEAVE-AGAIN.md` (wave12 **4**); docs cites (wave12 **5**)
 - Real crypto / network fleet
 - Full Win/Android Forth VM (CONTRACT acceptable)
 
@@ -105,3 +105,4 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 - `forth/tritium/kernel.fs`
 - Dusk `fs/doc/dict.txt` (`variable` / `const` — stub only)
 - Base tip: `132f99e`
+- `docs/VALUE-TO.md` (wave13 **1**)

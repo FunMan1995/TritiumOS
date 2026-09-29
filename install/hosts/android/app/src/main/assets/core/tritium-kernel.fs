@@ -57,6 +57,7 @@ create ENTRY-GIDS   MAX-ENTRIES cells allot   \ -1 = global/flat; >=0 = group-sc
 create ENTRY-BODY   MAX-ENTRIES cells allot   \ 0 = create-only; 1 = body-present (wave9 item 4)
 create ENTRY-BTOKS  MAX-ENTRIES cells allot   \ body token count when body-present
 create ENTRY-CELLS  MAX-ENTRIES cells allot   \ VARIABLE/CONSTANT stub cell (wave12 item 2)
+create ENTRY-VALUE? MAX-ENTRIES cells allot   \ 1 = VALUE stub (wave13 item 1)
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
@@ -65,6 +66,7 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : entry-body[] ( i -- addr )   cells ENTRY-BODY + ;
 : entry-btoks[] ( i -- addr )  cells ENTRY-BTOKS + ;
 : entry-cell[] ( i -- addr )   cells ENTRY-CELLS + ;
+: entry-value?[] ( i -- addr ) cells ENTRY-VALUE? + ;
 \ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
@@ -90,6 +92,7 @@ variable _do-loop-index  \ stub index for I (start value)
   MAX-ENTRIES 0 do 0 i entry-body[] ! loop
   MAX-ENTRIES 0 do 0 i entry-btoks[] ! loop
   MAX-ENTRIES 0 do 0 i entry-cell[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-value?[] ! loop
   0 _colon-def !
   -1 _colon-idx !
   0 _colon-toks !
@@ -823,6 +826,80 @@ create (vd-bar) 3 c, char b c, char a c, char r c,
   then
   ." [var-demo] OK" cr ;
 
+
+\ === VALUE / TO named mutable-cell stubs (wave13 item 1) ===
+\ Prefer greppable markers; stub cell via ENTRY-CELLS (no HERE/ALLOT arena).
+\ Forth mirrors: value-create / value-to (host binds VALUE / TO).
+
+\ value-create-from ( n c-addr u -- i )  named mutable cell; init = n
+: value-create-from ( n c-addr u -- i )
+  2dup entry-create-from dup 0< if nip nip nip exit then
+  >r
+  rot r@ entry-cell[] !
+  1 r@ entry-value?[] !
+  ." [value] VALUE name=" type ."  value=" r@ entry-cell[] @ . cr
+  r> ;
+
+\ value-to-from ( n c-addr u -- )  store into existing VALUE stub
+: value-to-from ( n c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop drop
+    ." [value] FAIL reason=miss" cr exit
+  then
+  dup entry-value?[] @ 0= if
+    drop 2drop drop
+    ." [value] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  r@ entry-cell[] !
+  ." [value] TO name=" r@ entry-name[] NAMELEN name-trim type
+  ."  value=" r@ entry-cell[] @ . cr
+  r> drop ;
+
+\ value-create ( n "name" -- )  parse + VALUE stub
+: value-create ( n "name" -- )
+  bl word count value-create-from drop ;
+
+\ value-to ( n "name" -- )  parse + TO stub
+: value-to ( n "name" -- )
+  bl word count value-to-from ;
+
+\ value-find ( c-addr u -- i )  thin alias of entry-find
+: value-find ( c-addr u -- i ) entry-find ;
+
+\ value-fetch-from ( c-addr u -- )  optional value@ stub
+: value-fetch-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [value] FAIL reason=miss" cr exit
+  then
+  dup entry-value?[] @ 0= if
+    drop 2drop
+    ." [value] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [value] @ name=" r@ entry-name[] NAMELEN name-trim type
+  ."  value=" r@ entry-cell[] @ . cr
+  r> drop ;
+
+create (vald-baz) 3 c, char b c, char a c, char z c,
+
+\ value-demo ( -- )  dict-reset → 7 VALUE baz → 99 TO baz → value@ → find/WORDS → OK
+: value-demo ( -- )
+  ." [value-demo] dict-reset + 7 VALUE baz + 99 TO baz" cr
+  dict-reset
+  7 (vald-baz) count value-create-from drop
+  99 (vald-baz) count value-to-from
+  (vald-baz) count value-fetch-from
+  WORDS
+  (vald-baz) count entry-find 0< if
+    ." [value-demo] FAIL" cr exit
+  then
+  words-count 1 < if
+    ." [value-demo] FAIL" cr exit
+  then
+  ." [value-demo] OK" cr ;
+
 \ === comment-parse stubs (wave12 item 3) ===
 \ Stream skip inside interpret (above). Forth mirrors: comment-line / comment-paren
 \ (host binds '\' / '(' on REPL interpret path).
@@ -902,6 +979,7 @@ create (cm-comment) 7 c, char c c, char o c, char m c, char m c, char e c, char 
 \ - VARIABLE/CONSTANT named-cell stubs (wave12 item 2) — landed
 \ - comment-parse \\ / ( ) skip + comment-demo (wave12 item 3) — landed
 \ - LEAVE/AGAIN stubs + leave-demo (wave12 item 4) — landed
+\ - VALUE/TO named mutable-cell stubs (wave13 item 1) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

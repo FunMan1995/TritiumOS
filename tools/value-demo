@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# value-demo — Lab smoke for VALUE/TO named mutable-cell stubs (wave13 item 1 / docs/VALUE-TO.md)
+# Mirrors forth/tritium/kernel.fs value-demo + Linux host value_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: value-demo"
+  echo "  dict-reset → 7 VALUE baz → 99 TO baz → value@ → find/WORDS"
+  echo "  Markers: [value] VALUE/TO/@ → [value-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[value-demo] FAIL"
+  exit 1
+}
+
+declare -a NAMES=()
+declare -A CELLS=()
+declare -A IS_VALUE=()
+
+dict_reset() {
+  NAMES=()
+  CELLS=()
+  IS_VALUE=()
+}
+
+entry_find() {
+  local name=$1
+  local i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      echo "$i"
+      return 0
+    fi
+  done
+  echo "-1"
+}
+
+value_create() {
+  local name=$1
+  local value=$2
+  NAMES+=("$name")
+  CELLS["$name"]=$value
+  IS_VALUE["$name"]=1
+  echo "[kernel] created #$(( ${#NAMES[@]} - 1 ))"
+  echo "[value] VALUE name=$name value=$value"
+}
+
+value_to() {
+  local name=$1
+  local value=$2
+  if [[ -z "${IS_VALUE[$name]:-}" ]]; then
+    echo "[value] FAIL reason=miss"
+    return 1
+  fi
+  CELLS["$name"]=$value
+  echo "[value] TO name=$name value=$value"
+}
+
+value_fetch() {
+  local name=$1
+  if [[ -z "${IS_VALUE[$name]:-}" ]]; then
+    echo "[value] FAIL reason=miss"
+    return 1
+  fi
+  echo "[value] @ name=$name value=${CELLS[$name]}"
+}
+
+words() {
+  local n=${#NAMES[@]}
+  printf '[kernel] words (%d): ' "$n"
+  local name
+  for name in "${NAMES[@]}"; do
+    printf '%s ' "$name"
+  done
+  printf '\n'
+}
+
+echo "[value-demo] dict-reset + 7 VALUE baz + 99 TO baz"
+dict_reset
+value_create baz 7
+value_to baz 99
+value_fetch baz
+
+out="$(words)"
+echo "$out"
+
+[[ "$(entry_find baz)" != "-1" ]] || fail
+[[ "${#NAMES[@]}" -ge 1 ]] || fail
+echo "$out" | grep -q 'baz' || fail
+echo "$out" | grep -q 'words (' || fail
+[[ "${CELLS[baz]}" == "99" ]] || fail
+
+echo "[value-demo] OK"
+exit 0
