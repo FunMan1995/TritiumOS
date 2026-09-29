@@ -1308,6 +1308,63 @@ create (sl-hi) 2 c, char h c, char i c,
   ." [allot-demo] OK" cr ;
 
 
+\ === CELL / CELLS / ALIGN / ALIGNED dictionary-unit stubs (wave15 item 1) ===
+\ Prefer greppable markers; host cell constant + HERE pointer round-up. No dictionary image.
+\ Forth mirrors: cell-size / cells-n / align-here / aligned-addr (host binds CELL / CELLS / ALIGN / ALIGNED).
+\ Linux SoT cell size n=8. Pairs with wave14 HERE/ALLOT byte bump.
+
+8 constant _cell-bytes   \ Linux SoT n=8
+
+\ align-up ( addr -- a-addr )  round addr up to cell boundary
+: align-up ( addr -- a-addr )
+  dup 0< if drop -1 exit then
+  dup _cell-bytes mod dup 0= if drop exit then
+  _cell-bytes swap - + ;
+
+: cell-size ( -- )
+  ." [cell] CELL bytes=" _cell-bytes . cr ;
+
+: cells-n ( k -- )
+  dup 0< if
+    drop ." [cell] FAIL reason=neg" cr exit
+  then
+  dup _cell-bytes *
+  ." [cell] CELLS n=" swap . ." bytes=" . cr ;
+
+: align-here ( -- )
+  _here @ align-up dup 0< if
+    drop ." [cell] FAIL reason=neg" cr exit
+  then
+  dup _here !
+  ." [cell] ALIGN addr=" . cr ;
+
+: aligned-addr ( addr -- )
+  dup 0< if
+    drop ." [cell] FAIL reason=neg" cr exit
+  then
+  align-up
+  ." [cell] ALIGNED addr=" . cr ;
+
+\ cell-demo ( -- )  CELL + CELLS 3 + 1 ALLOT + ALIGN + ALIGNED 1 + OK
+: cell-demo ( -- )
+  ." [cell-demo] CELL + CELLS + ALIGN + ALIGNED" cr
+  dict-reset
+  cell-size
+  3 cells-n
+  \ Force unaligned: HERE base $1000 is cell-aligned, so bump 1 byte
+  1 allot-bump
+  _here @ >r
+  align-here
+  _here @ _cell-bytes mod 0= 0= if
+    r> drop ." [cell-demo] FAIL" cr exit
+  then
+  _here @ r> > 0= if
+    ." [cell-demo] FAIL" cr exit
+  then
+  1 aligned-addr
+  ." [cell-demo] OK" cr ;
+
+
 \ === 2VARIABLE / 2CONSTANT double-cell stubs (wave14 item 3) ===
 \ Prefer greppable markers; two-slot via ENTRY-CELLS + ENTRY-CELLS2 (no double heap).
 \ Forth mirrors: 2var-create / 2const-create (host binds 2VARIABLE / 2CONSTANT).
@@ -1477,6 +1534,7 @@ create (td-boom) 4 c, char b c, char o c, char o c, char m c,
 \ - UNLOOP/J stubs + unloop-demo (wave14 item 2) — landed
 \ - 2VARIABLE/2CONSTANT stubs + 2var-demo (wave14 item 3) — landed
 \ - CATCH/THROW stubs + throw-demo (wave14 item 4) — landed
+\ - CELL/CELLS/ALIGN/ALIGNED stubs + cell-demo (wave15 item 1) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

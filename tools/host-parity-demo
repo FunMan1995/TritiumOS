@@ -29,6 +29,7 @@ REQUIRED_DEMOS=(
   unloop-demo
   2var-demo
   throw-demo
+  cell-demo
 )
 
 usage() {

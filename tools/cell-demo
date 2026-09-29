@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# cell-demo — Lab smoke for CELL/CELLS/ALIGN/ALIGNED stubs (wave15 item 1 / docs/CELL-CELLS.md)
+# Mirrors forth/tritium/kernel.fs cell-demo + Linux host cell_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: cell-demo"
+  echo "  CELL → CELLS 3 → 1 ALLOT → ALIGN → ALIGNED 1 → [cell-demo] OK"
+  echo "  Markers: [cell] CELL/CELLS/ALIGN/ALIGNED → [cell-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[cell-demo] FAIL"
+  exit 1
+}
+
+# Host-held stub pointer (bytes). Base 0x1000 — no arena; pairs with wave14 HERE/ALLOT.
+CELL_BYTES=8
+HERE_BASE=4096
+HERE_PTR=$HERE_BASE
+
+dict_reset() {
+  HERE_PTR=$HERE_BASE
+}
+
+cell_size() {
+  echo "[cell] CELL bytes=$CELL_BYTES"
+}
+
+cells_n() {
+  local k=$1
+  if [[ "$k" -lt 0 ]]; then
+    echo "[cell] FAIL reason=neg"
+    return 1
+  fi
+  echo "[cell] CELLS n=$k bytes=$(( k * CELL_BYTES ))"
+}
+
+allot_bump() {
+  local n=$1
+  if [[ "$n" -lt 0 ]]; then
+    echo "[allot] FAIL reason=neg"
+    return 1
+  fi
+  HERE_PTR=$(( HERE_PTR + n ))
+  echo "[allot] ALLOT n=$n addr=$HERE_PTR"
+}
+
+align_up() {
+  local addr=$1
+  local rem=$(( addr % CELL_BYTES ))
+  if [[ "$rem" -eq 0 ]]; then
+    echo "$addr"
+  else
+    echo $(( addr + (CELL_BYTES - rem) ))
+  fi
+}
+
+align_here() {
+  local rounded
+  rounded=$(align_up "$HERE_PTR")
+  HERE_PTR=$rounded
+  echo "[cell] ALIGN addr=$HERE_PTR"
+}
+
+aligned_addr() {
+  local addr=$1
+  if [[ "$addr" -lt 0 ]]; then
+    echo "[cell] FAIL reason=neg"
+    return 1
+  fi
+  local rounded
+  rounded=$(align_up "$addr")
+  echo "[cell] ALIGNED addr=$rounded"
+}
+
+echo "[cell-demo] CELL + CELLS + ALIGN + ALIGNED"
+dict_reset
+
+cell_size
+cells_n 3 || fail
+
+# Force unaligned stub (base 0x1000 is already cell-aligned)
+allot_bump 1 || fail
+unaligned=$HERE_PTR
+align_here
+[[ $(( HERE_PTR % CELL_BYTES )) -eq 0 ]] || fail
+[[ "$HERE_PTR" -gt "$unaligned" ]] || fail
+
+aligned_addr 1 || fail
+# Linux SoT: input 1 → addr=8
+rounded_one=$(align_up 1)
+[[ "$rounded_one" -eq 8 ]] || fail
+
+echo "[cell-demo] OK"
+exit 0
