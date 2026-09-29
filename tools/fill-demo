@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# fill-demo — Lab smoke for FILL/ERASE/MOVE/CMOVE stubs (wave15 item 3 / docs/FILL-MOVE.md)
+# Mirrors forth/tritium/kernel.fs fill-demo + Linux host fill_demo.
+# One fixed host byte buffer (cap=64) — not an arena. Addresses are offsets.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: fill-demo"
+  echo "  FILL → ERASE → MOVE → CMOVE → [fill-demo] OK"
+  echo "  Markers: [fill] FILL/ERASE/MOVE/CMOVE → [fill-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[fill-demo] FAIL"
+  exit 1
+}
+
+FILL_CAP=64
+# Fixed host byte buffer (offsets 0 .. cap-1)
+declare -a FILL_BUF
+for (( i=0; i<FILL_CAP; i++ )); do
+  FILL_BUF[$i]=0
+done
+
+fill_bounds() {
+  local addr=$1 u=$2
+  if [[ "$addr" -lt 0 || "$u" -lt 0 ]]; then
+    return 1
+  fi
+  if [[ $(( addr + u )) -gt "$FILL_CAP" ]]; then
+    return 1
+  fi
+  return 0
+}
+
+fill_buf() {
+  local addr=$1 u=$2 char=$3
+  local i
+  if ! fill_bounds "$addr" "$u"; then
+    echo "[fill] FAIL reason=bounds"
+    return 1
+  fi
+  for (( i=0; i<u; i++ )); do
+    FILL_BUF[$(( addr + i ))]=$char
+  done
+  echo "[fill] FILL addr=$addr u=$u char=$char"
+}
+
+erase_buf() {
+  local addr=$1 u=$2
+  local i
+  if ! fill_bounds "$addr" "$u"; then
+    echo "[fill] FAIL reason=bounds"
+    return 1
+  fi
+  for (( i=0; i<u; i++ )); do
+    FILL_BUF[$(( addr + i ))]=0
+  done
+  echo "[fill] ERASE addr=$addr u=$u"
+}
+
+move_buf() {
+  local from=$1 to=$2 u=$3
+  local i
+  local -a tmp=()
+  if ! fill_bounds "$from" "$u" || ! fill_bounds "$to" "$u"; then
+    echo "[fill] FAIL reason=bounds"
+    return 1
+  fi
+  for (( i=0; i<u; i++ )); do
+    tmp[$i]=${FILL_BUF[$(( from + i ))]}
+  done
+  for (( i=0; i<u; i++ )); do
+    FILL_BUF[$(( to + i ))]=${tmp[$i]}
+  done
+  echo "[fill] MOVE from=$from to=$to u=$u bytes=$u"
+}
+
+cmove_buf() {
+  local from=$1 to=$2 u=$3
+  local i
+  local -a tmp=()
+  if ! fill_bounds "$from" "$u" || ! fill_bounds "$to" "$u"; then
+    echo "[fill] FAIL reason=bounds"
+    return 1
+  fi
+  for (( i=0; i<u; i++ )); do
+    tmp[$i]=${FILL_BUF[$(( from + i ))]}
+  done
+  for (( i=0; i<u; i++ )); do
+    FILL_BUF[$(( to + i ))]=${tmp[$i]}
+  done
+  echo "[fill] CMOVE from=$from to=$to u=$u bytes=$u"
+}
+
+echo "[fill-demo] FILL + ERASE + MOVE + CMOVE cap=$FILL_CAP"
+
+# 1) FILL addr=0 u=8 char=65 ('A')
+fill_buf 0 8 65 || fail
+
+# 2) ERASE addr=0 u=8
+erase_buf 0 8 || fail
+
+# 3) seed source then MOVE non-overlapping
+fill_buf 0 4 66 || fail
+move_buf 0 8 4 || fail
+
+# 4) CMOVE non-overlapping
+fill_buf 16 4 67 || fail
+cmove_buf 16 24 4 || fail
+
+echo "[fill-demo] OK"
+exit 0

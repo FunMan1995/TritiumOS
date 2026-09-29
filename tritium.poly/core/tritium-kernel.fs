@@ -1457,6 +1457,90 @@ variable _pick-tos-hold   \ scratch for ?DUP / demo
   ." [pick-demo] OK" cr ;
 
 
+\ === FILL / ERASE / MOVE / CMOVE fixed host-buffer stubs (wave15 item 3) ===
+\ Prefer greppable markers; one fixed host byte buffer (cap=64). Not an arena/heap.
+\ Forth mirrors: fill-buf / erase-buf / move-buf / cmove-buf (host binds FILL / ERASE / MOVE / CMOVE).
+\ Do NOT redefine kernel-internal cmove used by dict copy in kernel.fs / drena.fs — mirrors only.
+\ Addresses are offsets into the fixed buffer (0 .. cap-1).
+
+64 constant _fill-cap
+create _fill-buf 64 allot
+
+: fill-bounds? ( addr u -- flag )  \ true = out of bounds
+  over 0< if 2drop -1 exit then
+  dup 0< if 2drop -1 exit then
+  + _fill-cap > ;
+
+: fill-buf ( addr u char -- )
+  >r                                \ addr u | R: char
+  2dup fill-bounds? if
+    2drop r> drop ." [fill] FAIL reason=bounds" cr exit
+  then
+  2dup                              \ addr u addr u
+  0 ?do                             \ addr u
+    over i + _fill-buf + r@ swap c!
+  loop
+  ." [fill] FILL addr=" swap . ." u=" . ." char=" r> . cr ;
+
+: erase-buf ( addr u -- )
+  2dup fill-bounds? if
+    2drop ." [fill] FAIL reason=bounds" cr exit
+  then
+  2dup
+  0 ?do
+    over i + _fill-buf + 0 swap c!
+  loop
+  ." [fill] ERASE addr=" swap . ." u=" . cr ;
+
+: move-buf ( from to u -- )
+  >r                                \ from to | R: u
+  over r@ fill-bounds? if
+    2drop r> drop ." [fill] FAIL reason=bounds" cr exit
+  then
+  dup r@ fill-bounds? if
+    2drop r> drop ." [fill] FAIL reason=bounds" cr exit
+  then
+  r@ 0 ?do
+    over i + _fill-buf + c@
+    over i + _fill-buf + c!
+  loop
+  \ from to | R:u
+  swap                              \ to from
+  ." [fill] MOVE from=" . ." to=" dup . ." u=" r@ . ." bytes=" r@ . cr
+  drop r> drop ;
+
+: cmove-buf ( from to u -- )
+  >r                                \ from to | R: u
+  over r@ fill-bounds? if
+    2drop r> drop ." [fill] FAIL reason=bounds" cr exit
+  then
+  dup r@ fill-bounds? if
+    2drop r> drop ." [fill] FAIL reason=bounds" cr exit
+  then
+  r@ 0 ?do
+    over i + _fill-buf + c@
+    over i + _fill-buf + c!
+  loop
+  swap
+  ." [fill] CMOVE from=" . ." to=" dup . ." u=" r@ . ." bytes=" r@ . cr
+  drop r> drop ;
+
+\ fill-demo ( -- )  FILL + ERASE + MOVE + CMOVE (non-overlap) + OK
+: fill-demo ( -- )
+  ." [fill-demo] FILL + ERASE + MOVE + CMOVE cap=" _fill-cap . cr
+  \ 1) FILL addr=0 u=8 char=65 ('A')
+  0 8 65 fill-buf
+  \ 2) ERASE addr=0 u=8
+  0 8 erase-buf
+  \ 3) seed source then MOVE non-overlapping: FILL 0..4 with 'B'=66, MOVE 0->8 u=4
+  0 4 66 fill-buf
+  0 8 4 move-buf
+  \ 4) CMOVE non-overlapping: FILL 16..4 with 'C'=67, CMOVE 16->24 u=4
+  16 4 67 fill-buf
+  16 24 4 cmove-buf
+  ." [fill-demo] OK" cr ;
+
+
 \ === 2VARIABLE / 2CONSTANT double-cell stubs (wave14 item 3) ===
 \ Prefer greppable markers; two-slot via ENTRY-CELLS + ENTRY-CELLS2 (no double heap).
 \ Forth mirrors: 2var-create / 2const-create (host binds 2VARIABLE / 2CONSTANT).
@@ -1628,6 +1712,7 @@ create (td-boom) 4 c, char b c, char o c, char o c, char m c,
 \ - CATCH/THROW stubs + throw-demo (wave14 item 4) — landed
 \ - CELL/CELLS/ALIGN/ALIGNED stubs + cell-demo (wave15 item 1) — landed
 \ - PICK/ROLL/DEPTH/?DUP stubs + pick-demo (wave15 item 2) — landed
+\ - FILL/ERASE/MOVE/CMOVE stubs + fill-demo (wave15 item 3) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

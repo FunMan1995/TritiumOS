@@ -64,6 +64,7 @@ void two_var_demo(void);
 void throw_demo(void);
 void cell_demo(void);
 void pick_demo(void);
+void fill_demo(void);
 void fold_demo(void);
 void license_status(void);
 void license_register(const char* device_id);
@@ -279,6 +280,9 @@ static int host_here = HOST_HERE_BASE;
 #define HOST_PICK_MAX 8
 static int host_pick_pic[HOST_PICK_MAX];
 static int host_pick_depth = 0;
+/* wave15 item 3: fixed host byte buffer for FILL/ERASE/MOVE/CMOVE stubs */
+#define HOST_FILL_CAP 64
+static unsigned char host_fill_mem[HOST_FILL_CAP];
 static int host_colon_def = 0;
 static int host_colon_idx = -1;
 static int host_colon_toks = 0;
@@ -2795,6 +2799,78 @@ void pick_demo(void) {
     host_qdup();
     printf("[pick-demo] OK\n\n");
 }
+
+/* wave15 item 3: FILL / ERASE / MOVE / CMOVE stubs — fixed host byte buffer (cap=64) */
+static int host_fill_bounds(int addr, int u) {
+    if (addr < 0 || u < 0)
+        return 0;
+    if (addr + u > HOST_FILL_CAP)
+        return 0;
+    return 1;
+}
+
+static void host_fill_buf(int addr, int u, int ch) {
+    int i;
+    if (!host_fill_bounds(addr, u)) {
+        printf("[fill] FAIL reason=bounds\n");
+        return;
+    }
+    for (i = 0; i < u; i++)
+        host_fill_mem[addr + i] = (unsigned char)(ch & 0xff);
+    printf("[fill] FILL addr=%d u=%d char=%d\n", addr, u, ch & 0xff);
+}
+
+static void host_erase_buf(int addr, int u) {
+    int i;
+    if (!host_fill_bounds(addr, u)) {
+        printf("[fill] FAIL reason=bounds\n");
+        return;
+    }
+    for (i = 0; i < u; i++)
+        host_fill_mem[addr + i] = 0;
+    printf("[fill] ERASE addr=%d u=%d\n", addr, u);
+}
+
+static void host_move_buf(int from, int to, int u) {
+    int i;
+    unsigned char tmp[HOST_FILL_CAP];
+    if (!host_fill_bounds(from, u) || !host_fill_bounds(to, u)) {
+        printf("[fill] FAIL reason=bounds\n");
+        return;
+    }
+    for (i = 0; i < u; i++)
+        tmp[i] = host_fill_mem[from + i];
+    for (i = 0; i < u; i++)
+        host_fill_mem[to + i] = tmp[i];
+    printf("[fill] MOVE from=%d to=%d u=%d bytes=%d\n", from, to, u, u);
+}
+
+static void host_cmove_buf(int from, int to, int u) {
+    int i;
+    unsigned char tmp[HOST_FILL_CAP];
+    if (!host_fill_bounds(from, u) || !host_fill_bounds(to, u)) {
+        printf("[fill] FAIL reason=bounds\n");
+        return;
+    }
+    for (i = 0; i < u; i++)
+        tmp[i] = host_fill_mem[from + i];
+    for (i = 0; i < u; i++)
+        host_fill_mem[to + i] = tmp[i];
+    printf("[fill] CMOVE from=%d to=%d u=%d bytes=%d\n", from, to, u, u);
+}
+
+void fill_demo(void) {
+    /* wave15 item 3: FILL → ERASE → MOVE → CMOVE (non-overlap) */
+    printf("[fill-demo] FILL + ERASE + MOVE + CMOVE cap=%d\n", HOST_FILL_CAP);
+    host_fill_buf(0, 8, 65);
+    host_erase_buf(0, 8);
+    host_fill_buf(0, 4, 66);
+    host_move_buf(0, 8, 4);
+    host_fill_buf(16, 4, 67);
+    host_cmove_buf(16, 24, 4);
+    printf("[fill-demo] OK\n\n");
+}
+
 
 /* wave12 item 3: comment-parse skip + comment-demo */
 void comment_demo(void) {
@@ -5385,7 +5461,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  colon-demo - : body ; marker stub + run body\n  control-demo - IF/THEN/ELSE cs-depth stubs → greppable OK\n  loop-demo - BEGIN/UNTIL/WHILE/REPEAT loop stubs → greppable OK\n  do-loop-demo - DO/LOOP/+LOOP/I counted-loop stubs → greppable OK\n  words-demo - WORDS/dict-list create≥2 + list → greppable OK\n  var-demo - VARIABLE/CONSTANT named-cell stubs → greppable OK\n  value-demo - VALUE/TO named mutable-cell stubs → greppable OK\n  case-demo - CASE/OF/ENDOF/ENDCASE stubs → greppable OK\n  create-demo - CREATE/DOES> defining-word stubs → greppable OK\n  string-demo - S\" /.\" /.( string-lit stubs → greppable OK\n  allot-demo - HERE/ALLOT pointer stubs → greppable OK\n  unloop-demo - UNLOOP/J do-loop sibling stubs → greppable OK\n  2var-demo - 2VARIABLE/2CONSTANT double-cell stubs → greppable OK\n  throw-demo - CATCH/THROW exception-mark stubs → greppable OK\n  cell-demo - CELL/CELLS/ALIGN/ALIGNED unit stubs → greppable OK\n  pick-demo - PICK/ROLL/DEPTH/?DUP stack stubs → greppable OK\n  comment-demo - \\ / ( ) comment skip stubs → greppable OK\n  leave-demo - LEAVE/AGAIN stubs (BEGIN+DO) → greppable OK\n  WORDS / words / .words - list flat dict names\n  VARIABLE <name> / CONSTANT <name> <n> - named-cell stubs (aliases var-create/const-create)\n  VALUE <n> <name> / TO <n> <name> - VALUE/TO stubs (aliases value-create/value-to)\n  value@ <name> - optional VALUE fetch stub\n  2VARIABLE <name> / 2CONSTANT <lo> <hi> <name> - double-cell stubs (aliases 2var-create/2const-create)\n  2@ <name> / 2! <lo> <hi> <name> - optional 2VARIABLE fetch/store stubs\n  CREATE <name> / DOES> - CREATE/DOES> stubs (aliases create-entry/does-mark)\n  HERE / ALLOT <n> - dictionary-pointer stubs (aliases here-at/allot-bump)\n  CELL / CELLS <k> / ALIGN / ALIGNED <addr> - unit stubs (aliases cell-size/cells-n/align-here/aligned-addr)\n  DEPTH / PICK <u> / ROLL <u> / ?DUP - stack stubs (aliases stack-depth/pick-nth/roll-nth/qdup)\n  , <n> / C, <c> - optional cell/char stub store + bump\n  fold-demo - phi-fold / fold-target goldens → greppable OK\n  IF [0|1] / THEN / ELSE - control stubs (aliases control-if/then/else)\n  CASE / OF / ENDOF / ENDCASE - case stubs (aliases control-case/of/endof/endcase)\n  BEGIN / UNTIL [0|1] / WHILE [0|1] / REPEAT - loop stubs (aliases control-*)\n  LEAVE / AGAIN - leave-mark / infinite-close stubs (aliases control-leave/again)\n  DO [limit start] / LOOP / +LOOP [n] / I - do-loop stubs (aliases control-*)\n  UNLOOP / J - do-loop sibling stubs (aliases control-unloop/control-j)\n  CATCH / THROW <n> / ABORT\" <text>\" - exception-mark stubs (aliases catch-mark/throw-code/abort-quote)\n  : <name> [body…] ; - colon-def body/marker stub (wave9)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  assistant-s0-demo - S0 deepen + neurons= (wave11 tip2 / ASSISTANT-S0)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  host-boot / host-boot-report - poly/core load-order markers (wave10)\n  host-boot-demo - assert boot.fs + §2 core files present → greppable OK\n  refined-boot / refined-boot-report - cold-load evolve/forth/refined/*.fs markers (wave10)\n  refined-boot-demo - include fixture + skip qwantum → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n  assistant-state-demo - v2 task/reminder/note persist → greppable OK\n  assistant-state! / assistant-state@ - save/load evolve/assistant-state.trit v2\n  assistant-task! / assistant-reminder! / assistant-note! - upsert hooks\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  colon-demo - : body ; marker stub + run body\n  control-demo - IF/THEN/ELSE cs-depth stubs → greppable OK\n  loop-demo - BEGIN/UNTIL/WHILE/REPEAT loop stubs → greppable OK\n  do-loop-demo - DO/LOOP/+LOOP/I counted-loop stubs → greppable OK\n  words-demo - WORDS/dict-list create≥2 + list → greppable OK\n  var-demo - VARIABLE/CONSTANT named-cell stubs → greppable OK\n  value-demo - VALUE/TO named mutable-cell stubs → greppable OK\n  case-demo - CASE/OF/ENDOF/ENDCASE stubs → greppable OK\n  create-demo - CREATE/DOES> defining-word stubs → greppable OK\n  string-demo - S\" /.\" /.( string-lit stubs → greppable OK\n  allot-demo - HERE/ALLOT pointer stubs → greppable OK\n  unloop-demo - UNLOOP/J do-loop sibling stubs → greppable OK\n  2var-demo - 2VARIABLE/2CONSTANT double-cell stubs → greppable OK\n  throw-demo - CATCH/THROW exception-mark stubs → greppable OK\n  cell-demo - CELL/CELLS/ALIGN/ALIGNED unit stubs → greppable OK\n  pick-demo - PICK/ROLL/DEPTH/?DUP stack stubs → greppable OK\n  fill-demo - FILL/ERASE/MOVE/CMOVE buffer stubs → greppable OK\n  comment-demo - \\ / ( ) comment skip stubs → greppable OK\n  leave-demo - LEAVE/AGAIN stubs (BEGIN+DO) → greppable OK\n  WORDS / words / .words - list flat dict names\n  VARIABLE <name> / CONSTANT <name> <n> - named-cell stubs (aliases var-create/const-create)\n  VALUE <n> <name> / TO <n> <name> - VALUE/TO stubs (aliases value-create/value-to)\n  value@ <name> - optional VALUE fetch stub\n  2VARIABLE <name> / 2CONSTANT <lo> <hi> <name> - double-cell stubs (aliases 2var-create/2const-create)\n  2@ <name> / 2! <lo> <hi> <name> - optional 2VARIABLE fetch/store stubs\n  CREATE <name> / DOES> - CREATE/DOES> stubs (aliases create-entry/does-mark)\n  HERE / ALLOT <n> - dictionary-pointer stubs (aliases here-at/allot-bump)\n  CELL / CELLS <k> / ALIGN / ALIGNED <addr> - unit stubs (aliases cell-size/cells-n/align-here/aligned-addr)\n  DEPTH / PICK <u> / ROLL <u> / ?DUP - stack stubs (aliases stack-depth/pick-nth/roll-nth/qdup)\n  FILL <addr> <u> <char> / ERASE <addr> <u> / MOVE <from> <to> <u> / CMOVE <from> <to> <u> - buffer stubs (aliases fill-buf/erase-buf/move-buf/cmove-buf)\n  , <n> / C, <c> - optional cell/char stub store + bump\n  fold-demo - phi-fold / fold-target goldens → greppable OK\n  IF [0|1] / THEN / ELSE - control stubs (aliases control-if/then/else)\n  CASE / OF / ENDOF / ENDCASE - case stubs (aliases control-case/of/endof/endcase)\n  BEGIN / UNTIL [0|1] / WHILE [0|1] / REPEAT - loop stubs (aliases control-*)\n  LEAVE / AGAIN - leave-mark / infinite-close stubs (aliases control-leave/again)\n  DO [limit start] / LOOP / +LOOP [n] / I - do-loop stubs (aliases control-*)\n  UNLOOP / J - do-loop sibling stubs (aliases control-unloop/control-j)\n  CATCH / THROW <n> / ABORT\" <text>\" - exception-mark stubs (aliases catch-mark/throw-code/abort-quote)\n  : <name> [body…] ; - colon-def body/marker stub (wave9)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  assistant-s0-demo - S0 deepen + neurons= (wave11 tip2 / ASSISTANT-S0)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  host-boot / host-boot-report - poly/core load-order markers (wave10)\n  host-boot-demo - assert boot.fs + §2 core files present → greppable OK\n  refined-boot / refined-boot-report - cold-load evolve/forth/refined/*.fs markers (wave10)\n  refined-boot-demo - include fixture + skip qwantum → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n  assistant-state-demo - v2 task/reminder/note persist → greppable OK\n  assistant-state! / assistant-state@ - save/load evolve/assistant-state.trit v2\n  assistant-task! / assistant-reminder! / assistant-note! - upsert hooks\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -5564,6 +5640,9 @@ int main(int argc, char** argv) {
         } else if (strcasecmp(line, "pick-demo") == 0 ||
                    strcasecmp(line, "pick_demo") == 0) {
             pick_demo();
+        } else if (strcasecmp(line, "fill-demo") == 0 ||
+                   strcasecmp(line, "fill_demo") == 0) {
+            fill_demo();
         } else if (strcasecmp(line, "WORDS") == 0 ||
                    strcasecmp(line, "words") == 0 ||
                    strcasecmp(line, ".words") == 0) {
@@ -5850,6 +5929,58 @@ int main(int argc, char** argv) {
         } else if (strcasecmp(line, "?DUP") == 0 ||
                    strcasecmp(line, "qdup") == 0) {
             host_qdup();
+        } else if (strncasecmp(line, "FILL ", 5) == 0 ||
+                   strncasecmp(line, "fill-buf ", 9) == 0) {
+            const char* arg = line;
+            int a = 0, u = 0, ch = 0;
+            if (strncasecmp(arg, "fill-buf", 8) == 0)
+                arg += 8;
+            else
+                arg += 4; /* FILL */
+            while (*arg == ' ') arg++;
+            if (sscanf(arg, "%d %d %d", &a, &u, &ch) == 3)
+                host_fill_buf(a, u, ch);
+            else
+                printf("[fill] FAIL reason=miss\n");
+        } else if (strncasecmp(line, "ERASE ", 6) == 0 ||
+                   strncasecmp(line, "erase-buf ", 10) == 0) {
+            const char* arg = line;
+            int a = 0, u = 0;
+            if (strncasecmp(arg, "erase-buf", 9) == 0)
+                arg += 9;
+            else
+                arg += 5; /* ERASE */
+            while (*arg == ' ') arg++;
+            if (sscanf(arg, "%d %d", &a, &u) == 2)
+                host_erase_buf(a, u);
+            else
+                printf("[fill] FAIL reason=miss\n");
+        } else if (strncasecmp(line, "MOVE ", 5) == 0 ||
+                   strncasecmp(line, "move-buf ", 9) == 0) {
+            const char* arg = line;
+            int f = 0, t = 0, u = 0;
+            if (strncasecmp(arg, "move-buf", 8) == 0)
+                arg += 8;
+            else
+                arg += 4; /* MOVE */
+            while (*arg == ' ') arg++;
+            if (sscanf(arg, "%d %d %d", &f, &t, &u) == 3)
+                host_move_buf(f, t, u);
+            else
+                printf("[fill] FAIL reason=miss\n");
+        } else if (strncasecmp(line, "CMOVE ", 6) == 0 ||
+                   strncasecmp(line, "cmove-buf ", 10) == 0) {
+            const char* arg = line;
+            int f = 0, t = 0, u = 0;
+            if (strncasecmp(arg, "cmove-buf", 9) == 0)
+                arg += 9;
+            else
+                arg += 5; /* CMOVE */
+            while (*arg == ' ') arg++;
+            if (sscanf(arg, "%d %d %d", &f, &t, &u) == 3)
+                host_cmove_buf(f, t, u);
+            else
+                printf("[fill] FAIL reason=miss\n");
         } else if (strncasecmp(line, "VARIABLE ", 9) == 0 ||
                    strncasecmp(line, "var-create ", 11) == 0) {
             const char* arg = line;

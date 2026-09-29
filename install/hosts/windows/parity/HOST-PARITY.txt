@@ -26,3 +26,4 @@ unloop-demo CONTRACT
 throw-demo CONTRACT
 cell-demo CONTRACT
 pick-demo CONTRACT
+fill-demo CONTRACT
