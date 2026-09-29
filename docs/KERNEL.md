@@ -3,8 +3,8 @@
 **Status:** Shipper-ready stub spec (wave7 item **5**)  
 **Canonical brief:** `TritiumOS.txt` Phase 2; Dusk `fs/doc/kernel.txt` + `fs/mem/dict.fs` (see `docs/FORTH-BASE-REFERENCES.md`)  
 **Sources of truth (code):** `forth/tritium/kernel.fs`; Linux host mirrors for demos  
-**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`, `docs/COLON.md` (wave9 **4**), `docs/CONTROL.md` (wave10 **2**); `docs/WORDS-VOCAB.md` (wave11 **3**); `docs/VARIABLE-CONST.md` (wave12 **2**)
-**See also:** `docs/INTERPRET.md` (wave8 **1** — interpret loop deepen); `docs/COLON.md` (wave9 **4** — colon body/marker stub).
+**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`, `docs/COLON.md` (wave9 **4**), `docs/CONTROL.md` (wave10 **2**); `docs/WORDS-VOCAB.md` (wave11 **3**); `docs/VARIABLE-CONST.md` (wave12 **2**); `docs/COMMENT-PARSE.md` (wave12 **3**)
+**See also:** `docs/INTERPRET.md` (wave8 **1** — interpret loop deepen); `docs/COLON.md` (wave9 **4** — colon body/marker stub); `docs/COMMENT-PARSE.md` (wave12 **3** — `\` / `(` comment skip).
 
 ## 1. Purpose
 
@@ -68,7 +68,7 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 
 - Full SEARCH-WORDLIST / linked dict — list-only `WORDS` is wave11 **3** (`WORDS-VOCAB.md`)
 - Named-cell stubs (`VARIABLE`/`CONSTANT`) → `docs/VARIABLE-CONST.md` (wave12 **2**); real ALLOT/HERE / VALUE/TO / DOES> still later
-- Full colon compiler / real branch XT (minimal `interpret` loop → `docs/INTERPRET.md`; `IF`/`THEN`/`ELSE` stubs → `docs/CONTROL.md`)
+- Full colon compiler / real branch XT (minimal `interpret` loop → `docs/INTERPRET.md`; comment skip → `docs/COMMENT-PARSE.md` wave12 **3**; `IF`/`THEN`/`ELSE` stubs → `docs/CONTROL.md`)
 - Linked-list ENTRYSZ / forget / units objects (Dusk full)
 - Replacing host C#/Kotlin VMs
 - Breaking `group-find-nested` / vocab persist (share ENTRY-GIDS)
@@ -76,7 +76,7 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 ## 6. Acceptance (Test Lab)
 
 1. `docs/KERNEL.md` present (Research byte-copy OK).
-2. `kernel-demo` → OK; `find`/`findentry` miss path greppable; wave11 **3**: `words-demo` → OK; wave12 **2**: `var-demo` → OK.
+2. `kernel-demo` → OK; `find`/`findentry` miss path greppable; wave11 **3**: `words-demo` → OK; wave12 **2**: `var-demo` → OK; wave12 **3**: `comment-demo` → OK.
 3. Full regression green (esp. group-nested / group-vocab-persist / rekia / s3-reserved / cold path).
 4. No merge.
 
@@ -87,3 +87,4 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 - `forth/tritium/kernel.fs`
 - `docs/GROUPS-NESTED.md`, `docs/ARCHITECTURE.md`
 - `docs/VARIABLE-CONST.md` (wave12 **2**)
+- `docs/COMMENT-PARSE.md` (wave12 **3**)

@@ -305,10 +305,17 @@ create (kd-miss) 6 c, char n c, char o c, char s c, char u c, char c c, char h c
 variable _interp-misses
 variable _interp-hits
 
+: ws? ( c -- flag )
+  dup bl = if drop true exit then
+  dup 9 = if drop true exit then    \ tab
+  dup 10 = if drop true exit then   \ lf
+  dup 13 = if drop true exit then   \ cr
+  drop false ;
+
 : skip-bl ( c-addr u -- c-addr' u' )
   begin
     dup while
-    over c@ bl = while
+    over c@ ws? while
       swap 1+ swap 1-
   repeat then ;
 
@@ -316,7 +323,7 @@ variable _interp-hits
   0 >r
   begin
     dup r@ > while
-      over r@ + c@ bl = if drop r> exit then
+      over r@ + c@ ws? if drop r> exit then
       r> 1+ >r
   repeat drop r> ;
 
@@ -355,6 +362,25 @@ variable _interp-hits
   -1 _colon-idx !
   0 _colon-toks ! ;
 
+: skip-line-rest ( c-addr u -- c-addr' u' )
+  begin
+    dup while
+    over c@ 10 = over c@ 13 = or 0= while
+      swap 1+ swap 1-
+  repeat then
+  dup if over c@ 13 = if swap 1+ swap 1- then then
+  dup if over c@ 10 = if swap 1+ swap 1- then then ;
+
+\ skip-paren-rest ( c-addr u -- c-addr' u' flag )  non-nested; flag true if found ')'
+: skip-paren-rest ( c-addr u -- c-addr' u' flag )
+  begin
+    dup 0= if false exit then
+    over c@ [char] ) = if
+      swap 1+ swap 1- true exit
+    then
+    swap 1+ swap 1-
+  again ;
+
 : interpret ( c-addr u -- )
   colon-abandon                 \ open : without ; → create-only
   0 _interp-misses !
@@ -364,6 +390,26 @@ variable _interp-hits
     dup 0= if 2drop exit then
     2dup tok-len >r            \ R: toklen
     over r@                    \ c-addr u c-addr toklen
+    \ wave12 item 3: comment skip before find/exec
+    dup 1 = if
+      over c@ 92 = if          \ '\' (ASCII 92) — line comment
+        2drop
+        r@ - swap r> + swap    \ advance past '\'
+        skip-line-rest
+        ." [comment] skip line" cr
+        again
+      then
+      over c@ [char] ( = if    \ '(' — paren comment (non-nested)
+        2drop
+        r@ - swap r> + swap    \ advance past '('
+        skip-paren-rest if
+          ." [comment] skip paren" cr
+        else
+          ." [comment] FAIL reason=unclosed" cr
+        then
+        again
+      then
+    then
     2dup find dup 0< if
       drop
       ." [interpret] miss name=" type cr
@@ -383,7 +429,6 @@ variable _interp-hits
     r@ - swap r> + swap
   again ;
 
-\ colon-create-from ( c-addr u -- )  create + enter colon-def (body until ;)
 : colon-create-from ( c-addr u -- )
   colon-abandon                 \ prior open : stays create-only
   2dup entry-create-from dup 0< if
@@ -728,6 +773,71 @@ create (vd-bar) 3 c, char b c, char a c, char r c,
   then
   ." [var-demo] OK" cr ;
 
+\ === comment-parse stubs (wave12 item 3) ===
+\ Stream skip inside interpret (above). Forth mirrors: comment-line / comment-paren
+\ (host binds '\' / '(' on REPL interpret path).
+
+: comment-line ( -- )
+  ." [comment] skip line" cr ;
+
+: comment-paren ( -- )
+  ." [comment] skip paren" cr ;
+
+\ Fixtures for comment-demo
+\ "alpha" / "beta"
+create (cm-a) 5 c, char a c, char l c, char p c, char h c, char a c,
+create (cm-b) 4 c, char b c, char e c, char t c, char a c,
+\ line stream: "alpha \ line comment" + lf  (23 chars: alpha sp \ sp line sp comment + lf = 5+1+1+1+4+1+7+1=21?)
+\ a l p h a   \   l i n e   c o m m e n t \n
+\ 5 +1 +1 +1 +4 +1 +7 +1 = 21
+create (cm-line) 21 c,
+  char a c, char l c, char p c, char h c, char a c, bl c,
+  92 c, bl c,
+  char l c, char i c, char n c, char e c, bl c,
+  char c c, char o c, char m c, char m c, char e c, char n c, char t c,
+  10 c,
+\ paren stream: "alpha ( paren comment ) beta" = 28 chars
+\ a l p h a sp ( sp p a r e n sp c o m m e n t sp ) sp b e t a
+\ 5+1+1+1+5+1+7+1+1+1+4 = 28
+create (cm-paren) 28 c,
+  char a c, char l c, char p c, char h c, char a c, bl c,
+  char ( c, bl c,
+  char p c, char a c, char r c, char e c, char n c, bl c,
+  char c c, char o c, char m c, char m c, char e c, char n c, char t c, bl c,
+  char ) c, bl c,
+  char b c, char e c, char t c, char a c,
+\ body strings that must NOT be dict hits
+create (cm-line-body) 4 c, char l c, char i c, char n c, char e c,
+create (cm-paren-body) 5 c, char p c, char a c, char r c, char e c, char n c,
+create (cm-comment) 7 c, char c c, char o c, char m c, char m c, char e c, char n c, char t c,
+
+\ comment-demo ( -- )  dict-reset → known name → mixed streams → OK
+: comment-demo ( -- )
+  ." [comment-demo] dict-reset + mixed \\ / ( ) streams" cr
+  dict-reset
+  (cm-a) count entry-create-from drop
+  (cm-line) count interpret
+  _interp-hits @ 1 < if
+    ." [comment-demo] FAIL" cr exit
+  then
+  (cm-line-body) count entry-find 0< 0= if
+    ." [comment-demo] FAIL" cr exit
+  then
+  (cm-comment) count entry-find 0< 0= if
+    ." [comment-demo] FAIL" cr exit
+  then
+  (cm-paren) count interpret
+  _interp-hits @ 2 < if
+    ." [comment-demo] FAIL" cr exit
+  then
+  (cm-paren-body) count entry-find 0< 0= if
+    ." [comment-demo] FAIL" cr exit
+  then
+  (cm-b) count entry-find 0< if
+    ." [comment-demo] FAIL" cr exit
+  then
+  ." [comment-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -740,6 +850,7 @@ create (vd-bar) 3 c, char b c, char a c, char r c,
 \ - DO/LOOP/+LOOP/I do-loop stubs (wave12 item 1) — landed
 \ - WORDS / words-demo dict-list smoke (wave11 item 3) — landed
 \ - VARIABLE/CONSTANT named-cell stubs (wave12 item 2) — landed
+\ - comment-parse \\ / ( ) skip + comment-demo (wave12 item 3) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

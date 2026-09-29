@@ -19,6 +19,7 @@ REQUIRED_DEMOS=(
   refined-boot-demo
   do-loop-demo
   var-demo
+  comment-demo
 )
 
 usage() {

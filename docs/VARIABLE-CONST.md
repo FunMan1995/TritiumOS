@@ -31,7 +31,7 @@ Host note: bind `VARIABLE` / `CONSTANT` on Linux REPL; Forth mirrors `var-create
 - Optional `@`/`!`: only if already present on host / kernel soft ops; print `[var] @` / `[var] !` markers. **No** requirement to back VARIABLE with real ALLOT/HERE this tip — a host-side int map or entry-slot field is enough.
 - Unrecognized / missing name on optional fetch → `[var] FAIL` reason=miss (demo must avoid).
 - Nest with prior colon / control / loop / do-loop stubs OK; dict-reset clears var/const stubs.
-- Still no VALUE/TO, DOES>, real ALLOT/HERE arena, or comment-parse (later tips).
+- Still no VALUE/TO, DOES>, real ALLOT/HERE arena; comment-parse → `docs/COMMENT-PARSE.md` (wave12 **3**).
 
 ## 4. Markers
 
@@ -87,7 +87,7 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 
 - Real ALLOT / HERE arena / linked cell memory model
 - VALUE / TO / DOES> / CREATE-DOES>
-- Comment-parse (wave12 **3**); leave-again (wave12 **4**); docs cites (wave12 **5**)
+- Comment-parse: see `docs/COMMENT-PARSE.md` (wave12 **3**); leave-again (wave12 **4**); docs cites (wave12 **5**)
 - Real crypto / network fleet
 - Full Win/Android Forth VM (CONTRACT acceptable)
 
