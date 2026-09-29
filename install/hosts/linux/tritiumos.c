@@ -815,6 +815,8 @@ void assistant_state_bang(void) {
 static int refined_boot_last_loaded = 0;
 static int refined_boot_last_skipped = 0;
 
+static int refined_boot_resolve_dir(char* out, size_t outsz);
+
 /* Scan dir for *.fs: skip qwantum-* dumps, include the rest. Prints [refined-boot] + [VM] markers.
  * Returns 1 if dir was opened (even if empty). Sets refined_boot_last_{loaded,skipped}. */
 static int refined_boot_scan_dir(const char* dir, int do_vocab_ack) {
@@ -833,7 +835,12 @@ static int refined_boot_scan_dir(const char* dir, int do_vocab_ack) {
     }
     while ((ent = readdir(d)) != NULL) {
         size_t len = strlen(ent->d_name);
+        char fspath[MAX_PATH];
+        struct stat st;
         if (len < 4 || strcmp(ent->d_name + len - 3, ".fs") != 0) continue;
+        snprintf(fspath, sizeof(fspath), "%s/%s", dir, ent->d_name);
+        /* wave11 tip4: skip fifo/socket before fopen/fgets (hang class) */
+        if (stat(fspath, &st) != 0 || !S_ISREG(st.st_mode)) continue;
         /* CRITICAL: never load dump fragments (qwantum-*.fs) as live vocab */
         if (strncmp(ent->d_name, "qwantum-", 8) == 0) {
             printf("[VM]   skip %s (dump atom — not vocab; refine only)\n", ent->d_name);
@@ -842,9 +849,7 @@ static int refined_boot_scan_dir(const char* dir, int do_vocab_ack) {
             continue;
         }
         {
-            char path[MAX_PATH];
-            snprintf(path, sizeof(path), "%s/%s", dir, ent->d_name);
-            FILE* f = fopen(path, "r");
+            FILE* f = fopen(fspath, "r");
             if (!f) continue;
             printf("[VM]   include %s (persisted refined)\n", ent->d_name);
             printf("[refined-boot] include=%s\n", ent->d_name);
@@ -877,9 +882,11 @@ static int refined_boot_scan_dir(const char* dir, int do_vocab_ack) {
 }
 
 void load_refined_modules(void) {
-    ensure_evolve_dir();
     char dir[MAX_PATH];
-    snprintf(dir, sizeof(dir), "%s/forth/refined", evolve_dir);
+    if (!refined_boot_resolve_dir(dir, sizeof(dir))) {
+        ensure_evolve_dir();
+        snprintf(dir, sizeof(dir), "%s/forth/refined", evolve_dir);
+    }
     (void)refined_boot_scan_dir(dir, 1);
 }
 
@@ -3907,36 +3914,96 @@ static int refined_boot_copy_file(const char* src, const char* dst) {
     return 1;
 }
 
-/* Ensure live evolve refined dir has fixture + qwantum skip sample (copy from repo if needed).
- * Prefer repo dir when live lacks fixture. Returns path used in out. */
+/* Minimal stubs when repo/AppDir share unavailable (wave11 tip4 / APPIMAGE-REFINED). */
+static int refined_boot_write_stub(const char* path, const char* contents) {
+    FILE* f = fopen(path, "w");
+    if (!f) return 0;
+    if (fputs(contents, f) == EOF) { fclose(f); return 0; }
+    fclose(f);
+    return 1;
+}
+
+/* AppDir / TRITIUM_POLY share: .../tritium.poly/evolve/forth/refined. */
+static int find_share_refined_dir(char* out, size_t outsz) {
+    char try_path[MAX_PATH];
+    struct stat st;
+    const char* poly = getenv("TRITIUM_POLY");
+    if (poly && *poly) {
+        snprintf(try_path, sizeof(try_path),
+                 "%s/evolve/forth/refined/refined-boot-fixture.fs", poly);
+        if (stat(try_path, &st) == 0 && S_ISREG(st.st_mode)) {
+            snprintf(out, outsz, "%s/evolve/forth/refined", poly);
+            return 1;
+        }
+    }
+    if (core_dir[0]) {
+        snprintf(try_path, sizeof(try_path),
+                 "%s/../evolve/forth/refined/refined-boot-fixture.fs", core_dir);
+        if (stat(try_path, &st) == 0 && S_ISREG(st.st_mode)) {
+            snprintf(out, outsz, "%s/../evolve/forth/refined", core_dir);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* Ensure live evolve refined dir has fixture + qwantum sample.
+ * Portable seed: copy from repo/AppDir if available, else write minimal stubs.
+ * Always returns live evolve path (demo PASS without repo cwd). */
 static int refined_boot_resolve_dir(char* out, size_t outsz) {
     char live[MAX_PATH];
     char repo[MAX_PATH];
-    char live_fix[MAX_PATH];
+    char share[MAX_PATH];
+    char live_fx[MAX_PATH];
     char live_qw[MAX_PATH];
+    char src[MAX_PATH];
     struct stat st;
     int has_repo;
+    int has_share;
+    static const char* fixture_stub =
+        "\\ wave10 tip4 fixture — cold-load smoke\n"
+        ": refined-boot-fixture-ok .\" [refined] fixture ok\" cr ;\n";
+    static const char* qwantum_stub =
+        "\\ TritiumOS fragment dumped from qwantum field\n"
+        ": qwantum-ok .\" field dump ok\" cr ;\n";
 
     ensure_evolve_dir();
     snprintf(live, sizeof(live), "%s/forth/refined", evolve_dir);
     mkdir(live, 0755);
-    snprintf(live_fix, sizeof(live_fix), "%s/refined-boot-fixture.fs", live);
+    snprintf(live_fx, sizeof(live_fx), "%s/refined-boot-fixture.fs", live);
     snprintf(live_qw, sizeof(live_qw), "%s/qwantum-sample.fs", live);
     has_repo = find_repo_refined_dir(repo, sizeof(repo));
+    has_share = find_share_refined_dir(share, sizeof(share));
 
-    if (stat(live_fix, &st) != 0) {
+    if (stat(live_fx, &st) != 0 || !S_ISREG(st.st_mode)) {
+        int seeded = 0;
         if (has_repo) {
-            /* Prefer loading from repo when live lacks fixture */
-            snprintf(out, outsz, "%s", repo);
-            return 1;
+            snprintf(src, sizeof(src), "%s/refined-boot-fixture.fs", repo);
+            seeded = refined_boot_copy_file(src, live_fx);
         }
-        return 0;
+        if (!seeded && has_share) {
+            snprintf(src, sizeof(src), "%s/refined-boot-fixture.fs", share);
+            seeded = refined_boot_copy_file(src, live_fx);
+        }
+        if (!seeded)
+            seeded = refined_boot_write_stub(live_fx, fixture_stub);
+        if (!seeded) {
+            snprintf(out, outsz, "%s", live);
+            return 0;
+        }
     }
-    /* Live has fixture — ensure skip sample present (copy from repo if needed) */
-    if (stat(live_qw, &st) != 0 && has_repo) {
-        char src[MAX_PATH];
-        snprintf(src, sizeof(src), "%s/qwantum-sample.fs", repo);
-        (void)refined_boot_copy_file(src, live_qw);
+    if (stat(live_qw, &st) != 0 || !S_ISREG(st.st_mode)) {
+        int seeded = 0;
+        if (has_repo) {
+            snprintf(src, sizeof(src), "%s/qwantum-sample.fs", repo);
+            seeded = refined_boot_copy_file(src, live_qw);
+        }
+        if (!seeded && has_share) {
+            snprintf(src, sizeof(src), "%s/qwantum-sample.fs", share);
+            seeded = refined_boot_copy_file(src, live_qw);
+        }
+        if (!seeded)
+            (void)refined_boot_write_stub(live_qw, qwantum_stub);
     }
     snprintf(out, outsz, "%s", live);
     return 1;
@@ -3952,32 +4019,19 @@ void refined_boot_report(void) {
     printf("\n");
 }
 
+/* oneshot exit: 0 on last demo OK, 1 on FAIL (wave11 tip4) */
+static int g_oneshot_status = 0;
+
 void refined_boot_demo(void) {
     char dir[MAX_PATH];
-    char repo[MAX_PATH];
     int ok;
 
     ensure_evolve_dir();
     if (!refined_boot_resolve_dir(dir, sizeof(dir))) {
         printf("[refined-boot] dir=MISSING\n");
         printf("[refined-boot-demo] FAIL\n\n");
+        g_oneshot_status = 1;
         return;
-    }
-    /* If using live dir and still missing fixture, try copy from repo */
-    {
-        char fx[MAX_PATH];
-        struct stat st;
-        snprintf(fx, sizeof(fx), "%s/refined-boot-fixture.fs", dir);
-        if (stat(fx, &st) != 0 && find_repo_refined_dir(repo, sizeof(repo))) {
-            char src[MAX_PATH], dst[MAX_PATH], qwsrc[MAX_PATH], qwdst[MAX_PATH];
-            snprintf(src, sizeof(src), "%s/refined-boot-fixture.fs", repo);
-            snprintf(dst, sizeof(dst), "%s/refined-boot-fixture.fs", dir);
-            (void)refined_boot_copy_file(src, dst);
-            snprintf(qwsrc, sizeof(qwsrc), "%s/qwantum-sample.fs", repo);
-            snprintf(qwdst, sizeof(qwdst), "%s/qwantum-sample.fs", dir);
-            if (stat(qwdst, &st) != 0)
-                (void)refined_boot_copy_file(qwsrc, qwdst);
-        }
     }
     (void)refined_boot_scan_dir(dir, 1);
     ok = (refined_boot_last_loaded >= 1 && refined_boot_last_skipped >= 1);
@@ -3985,6 +4039,7 @@ void refined_boot_demo(void) {
         printf("[refined-boot-demo] OK\n\n");
     } else {
         printf("[refined-boot-demo] FAIL\n\n");
+        g_oneshot_status = 1;
     }
 }
 
@@ -4473,7 +4528,31 @@ void show_status() {
 }
 
 int main(int argc, char** argv) {
+    int oneshot = 0;
+    const char* oneshot_cmd = NULL;
+    int ai;
+    int oneshot_done = 0;
+    char line[MAX_LINE];
+
     find_core_dir(argv[0]);
+
+    /* --oneshot <cmd> or TRITIUM_ONESHOT=<cmd>: one REPL command then exit (wave11 tip4) */
+    for (ai = 1; ai < argc; ai++) {
+        if (strcmp(argv[ai], "--oneshot") == 0 && ai + 1 < argc) {
+            oneshot = 1;
+            oneshot_cmd = argv[++ai];
+        } else if (strncmp(argv[ai], "--oneshot=", 10) == 0) {
+            oneshot = 1;
+            oneshot_cmd = argv[ai] + 10;
+        }
+    }
+    if (!oneshot_cmd) {
+        const char* env_os = getenv("TRITIUM_ONESHOT");
+        if (env_os && *env_os) {
+            oneshot = 1;
+            oneshot_cmd = env_os;
+        }
+    }
 
     /* Simple first-run simulation (in real, persist like in C#) */
     if (argc > 1 && strcmp(argv[1], "--first-run") == 0) {
@@ -4497,18 +4576,28 @@ int main(int argc, char** argv) {
     set_edition(edition);  /* persist edition.trit if missing */
     load_persisted_evolve();
 
-    printf("\nType 'help' to begin. The assistant is ready (on-demand .AppImage).\n");
-    printf("(Native bootstrap: 'assimilate' | 'bootstrap-host' | 'full-stack-optimize' exercise Forth-to-C host assimilation + optimization.)\n");
+    if (!oneshot) {
+        printf("\nType 'help' to begin. The assistant is ready (on-demand .AppImage).\n");
+        printf("(Native bootstrap: 'assimilate' | 'bootstrap-host' | 'full-stack-optimize' exercise Forth-to-C host assimilation + optimization.)\n");
+    }
 
-    char line[MAX_LINE];
     while (1) {
-        printf("> ");
-        if (!fgets(line, sizeof(line), stdin)) break;
-        line[strcspn(line, "\n")] = 0;
-        if (strlen(line) == 0) continue;
+        if (oneshot) {
+            if (oneshot_done)
+                return g_oneshot_status;
+            snprintf(line, sizeof(line), "%s", oneshot_cmd);
+            oneshot_done = 1;
+        } else {
+            printf("> ");
+            if (!fgets(line, sizeof(line), stdin)) break;
+            line[strcspn(line, "\n")] = 0;
+            if (strlen(line) == 0) continue;
+        }
 
         if (strcasecmp(line, "quit") == 0 || strcasecmp(line, "exit") == 0) {
-            printf("Goodbye. The assistant evolves with you.\n");
+
+            if (!oneshot)
+                printf("Goodbye. The assistant evolves with you.\n");
             break;
         } else if (strcasecmp(line, "help") == 0) {
             show_help();
@@ -4804,5 +4893,7 @@ int main(int argc, char** argv) {
         }
     }
 
+    if (oneshot)
+        return g_oneshot_status;
     return 0;
 }
