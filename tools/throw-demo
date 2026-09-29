@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# throw-demo — Lab smoke for CATCH/THROW stubs (wave14 item 4 / docs/THROW-CATCH.md)
+# Mirrors forth/tritium/kernel.fs throw-demo + Linux host throw_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: throw-demo"
+  echo "  dict-reset → CATCH → THROW 0 → THROW 42 → CATCH → ABORT\" boom\""
+  echo "  Markers: [throw] CATCH/THROW/ABORT\" → [throw-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[throw-demo] FAIL"
+  exit 1
+}
+
+CATCH_DEPTH=0
+
+dict_reset() {
+  CATCH_DEPTH=0
+}
+
+catch_depth() {
+  echo "$CATCH_DEPTH"
+}
+
+catch_mark() {
+  CATCH_DEPTH=$((CATCH_DEPTH + 1))
+  echo "[throw] CATCH depth=$CATCH_DEPTH"
+}
+
+throw_code() {
+  local n=${1:-0}
+  if [[ "$n" -eq 0 ]]; then
+    echo "[throw] THROW code=0"
+    return 0
+  fi
+  if [[ "$CATCH_DEPTH" -le 0 ]]; then
+    echo "[throw] FAIL reason=uncaught"
+    return 1
+  fi
+  CATCH_DEPTH=$((CATCH_DEPTH - 1))
+  echo "[throw] THROW code=$n"
+}
+
+abort_quote() {
+  local content=${1:-}
+  echo "[throw] ABORT\" $content"
+  throw_code -2
+}
+
+echo "[throw-demo] dict-reset + CATCH + THROW 0 + THROW 42 + ABORT\" boom\""
+dict_reset
+
+catch_mark
+throw_code 0
+[[ "$(catch_depth)" -eq 1 ]] || fail
+
+throw_code 42
+[[ "$(catch_depth)" -eq 0 ]] || fail
+
+catch_mark
+abort_quote boom
+[[ "$(catch_depth)" -eq 0 ]] || fail
+
+echo "[throw-demo] OK"
+exit 0

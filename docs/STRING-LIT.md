@@ -3,12 +3,12 @@
 **Status:** Shipper-ready stub spec (wave13 item **4**)
 **Canonical brief:** ANS-shaped `S"` / `."` (optional `.(`) string parse (thin stub); `docs/COMMENT-PARSE.md` (wave12 **3**), `docs/INTERPRET.md` (wave8 **1**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `interpret.fs` / `string.fs`); Linux host REPL
-**Companions:** `docs/COMMENT-PARSE.md` (thin amend this tip), `docs/INTERPRET.md` (thin amend this tip), `docs/KERNEL.md`, `docs/CREATE-DOES.md` (wave13 **3**)
+**Companions:** `docs/COMMENT-PARSE.md` (thin amend this tip), `docs/INTERPRET.md` (thin amend this tip), `docs/KERNEL.md`, `docs/CREATE-DOES.md` (wave13 **3**), `docs/THROW-CATCH.md` (wave14 **4**)
 **Base tip SHA:** `5933306` (wave13 tip3 CLOSED / #59 CREATE-DOES) / full `59333061739637c78c83e8be2ced7275d567f7ea`
 
 ## 1. Purpose
 
-Comment skip exists on the interpret/token path (wave12 **3**); string-literal parse was an explicit deferral. This tip deepens the **interpret path** with **stub** `S"` / `."` (optional `.(`): parse until closing `"`, print greppable `[string]` markers (content greppable or `length=`), and smoke via **`string-demo`**. Must **not** `entry-create` the literal text. Not a full counted-string heap / BLOCK, escape rewrite, or real print-to-stdout contract beyond markers.
+Comment skip exists on the interpret/token path (wave12 **3**); string-literal parse was an explicit deferral. This tip deepens the **interpret path** with **stub** `S"` / `."` (optional `.(`): parse until closing `"`, print greppable `[string]` markers (content greppable or `length=`), and smoke via **`string-demo`**. Must **not** `entry-create` the literal text. Not a full counted-string heap / BLOCK, escape rewrite, or real print-to-stdout contract beyond markers. Optional `ABORT"` (parse-until-`"` + THROW-equivalent) → `docs/THROW-CATCH.md` (wave14 **4**; reuses this parse path).
 
 ## 2. Words / Surfaces
 
@@ -30,7 +30,7 @@ Host note: bind `S"` / `."` (and optional `.(`) on Linux REPL interpret/stream p
 - Literal text must **not** create words (no `entry-create` / find hit for the string body) and must **not** emit `[interpret] miss` for the body characters.
 - Unclosed string → `[string] FAIL` reason=unclosed (demo must avoid).
 - Nest with prior comment / colon / VARIABLE / VALUE / CREATE / control / CASE stubs OK; `dict-reset` unaffected by string parse (no new entries from literals).
-- Still no full counted-string heap / BLOCK, escape rewrite (`\"` etc.), `UNLOOP`/`J`, real LEAVE jump; those → non-goals / later tips.
+- Still no full counted-string heap / BLOCK, escape rewrite (`\"` etc.), real LEAVE jump; those → non-goals / later tips. Optional `ABORT"` (THROW-equivalent + parse-until-`"`) → `docs/THROW-CATCH.md` (wave14 **4**).
 
 ## 4. Markers
 
@@ -79,10 +79,10 @@ Lab greps `[string-demo] OK` plus at least one `[string] S"` and one `[string] .
 
 - Full counted-string heap / `ALLOCATE` / BLOCK / screen strings
 - Escape rewrite (`\"`, hex embeds, etc.)
-- `UNLOOP` / `J` stubs (do-loop sibling — later)
 - Real LEAVE jump (LEAVE-AGAIN remains stub markers)
-- Docs cites pass (wave13 **5**)
-- CREATE / DOES> (done — wave13 **3**); CASE / OF (done — wave13 **2**); VALUE / TO (done — wave13 **1**)
+- Optional `ABORT"` / CATCH / THROW stubs: see `docs/THROW-CATCH.md` (wave14 **4**; may reuse this parse path)
+- Docs cites pass (wave13 **5** / wave14 **5**)
+- CREATE / DOES> (done — wave13 **3**); CASE / OF (done — wave13 **2**); VALUE / TO (done — wave13 **1**); UNLOOP / J (done — wave14 **2**)
 - Real crypto / network fleet
 - Full Win/Android Forth VM (CONTRACT acceptable)
 - No merge. Stay out of Mango.
@@ -97,7 +97,7 @@ Lab greps `[string-demo] OK` plus at least one `[string] S"` and one `[string] .
 
 ## 9. Cite
 
-- `docs/COMMENT-PARSE.md` (wave12 **3**), `docs/INTERPRET.md` (wave8 **1**), `docs/KERNEL.md` (wave7 **5**), `docs/CREATE-DOES.md` (wave13 **3**)
+- `docs/COMMENT-PARSE.md` (wave12 **3**), `docs/INTERPRET.md` (wave8 **1**), `docs/KERNEL.md` (wave7 **5**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/THROW-CATCH.md` (wave14 **4**)
 - `forth/tritium/kernel.fs`
 - ANS Forth `S"` / `."` / `.(` (stub only); Dusk interpret / string surface (stub only)
 - Base tip: `5933306` / `59333061739637c78c83e8be2ced7275d567f7ea`

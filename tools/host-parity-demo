@@ -28,6 +28,7 @@ REQUIRED_DEMOS=(
   allot-demo
   unloop-demo
   2var-demo
+  throw-demo
 )
 
 usage() {

@@ -93,6 +93,8 @@ variable _create-latest  \ index of most recent CREATE; -1 = none
 \ HERE/ALLOT stub pointer (wave14 item 1) — host-held bump counter; bytes; no arena
 variable _here
 $1000 _here !   \ stub base 0x1000
+\ CATCH/THROW stub depth (wave14 item 4) — frame-mark only; no RS unwind
+variable _catch-depth  \ open CATCH frame count
 
 
 : entry-name-clear ( i -- )
@@ -121,7 +123,8 @@ $1000 _here !   \ stub base 0x1000
   0 _do-loop-outer !
   0 _case-depth !
   -1 _create-latest !
-  $1000 _here ! ;
+  $1000 _here !
+  0 _catch-depth ! ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -1399,6 +1402,59 @@ create (2vd-dc) 2 c, char d c, char c c,
   ." [2var-demo] OK" cr ;
 
 
+\ === CATCH / THROW stubs (wave14 item 4) ===
+\ Frame-mark only: CATCH +1 depth; THROW 0 no-op; THROW n≠0 pops one frame.
+\ Optional ABORT" reuses string-lit parse path (marker + THROW-equivalent).
+\ Soft KERNEL abort / (abort") remain. No real RS unwind / frame restore.
+\ Forth mirrors: catch-mark / throw-code / abort-quote (host binds CATCH/THROW/ABORT").
+
+: catch-depth ( -- n ) _catch-depth @ ;
+
+\ catch-mark ( -- )  +1 catch-depth; print post-push depth
+: catch-mark ( -- )
+  1 _catch-depth +!
+  ." [throw] CATCH depth=" _catch-depth @ . cr ;
+
+\ throw-code ( n -- )  n=0 no-op; n≠0 require open CATCH then pop
+: throw-code ( n -- )
+  dup 0= if
+    ." [throw] THROW code=" . cr exit
+  then
+  _catch-depth @ 0= if
+    drop
+    ." [throw] FAIL reason=uncaught" cr exit
+  then
+  -1 _catch-depth +!
+  ." [throw] THROW code=" . cr ;
+
+\ abort-quote-from ( c-addr u -- )  optional ABORT" stub; THROW-equivalent code=-2
+: abort-quote-from ( c-addr u -- )
+  ." [throw] ABORT" [char] " emit space type cr
+  -2 throw-code ;
+
+create (td-boom) 4 c, char b c, char o c, char o c, char m c,
+
+\ throw-demo ( -- )  CATCH + THROW 0 + THROW nonzero + optional ABORT" → OK
+: throw-demo ( -- )
+  ." [throw-demo] dict-reset + CATCH + THROW 0 + THROW 42 + ABORT" [char] " emit ."  boom" [char] " emit cr
+  dict-reset
+  catch-mark
+  0 throw-code
+  catch-depth 1 <> if
+    ." [throw-demo] FAIL" cr exit
+  then
+  42 throw-code
+  catch-depth 0<> if
+    ." [throw-demo] FAIL" cr exit
+  then
+  catch-mark
+  (td-boom) count abort-quote-from
+  catch-depth 0<> if
+    ." [throw-demo] FAIL" cr exit
+  then
+  ." [throw-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -1420,6 +1476,7 @@ create (2vd-dc) 2 c, char d c, char c c,
 \ - HERE/ALLOT pointer stubs + allot-demo (wave14 item 1) — landed
 \ - UNLOOP/J stubs + unloop-demo (wave14 item 2) — landed
 \ - 2VARIABLE/2CONSTANT stubs + 2var-demo (wave14 item 3) — landed
+\ - CATCH/THROW stubs + throw-demo (wave14 item 4) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
