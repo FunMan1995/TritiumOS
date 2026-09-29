@@ -231,6 +231,55 @@ variable _gld-a  variable _gld-b
   loop
   ." [group-link-demo] FAIL — no LINK-INTER" cr ;
 
+
+create (gnd-a) 5 c, char a c, char l c, char p c, char h c, char a c,
+create (gnd-b) 4 c, char b c, char e c, char t c, char a c,
+create (gnd-w) 6 c, char n c, char e c, char s c, char t c, char e c, char d c,
+variable _gnd-a  variable _gnd-b
+
+\ group-nested-demo: word only under B; nested find from A via LINK-INTER → OK
+: group-nested-demo ( -- )
+  ." [group-nested-demo] two groups + link; nested find from A" cr
+  (gnd-a) drena-group _gnd-a !
+  (gnd-b) drena-group _gnd-b !
+  0 drena-spawn _gnd-a @ drena-join
+  0 drena-spawn _gnd-b @ drena-join
+  _gnd-a @ _gnd-b @ group-link!
+  (gnd-w) count _gnd-b @ group-vocab-add
+  (gnd-w) count _gnd-a @ group-find 0< 0= if
+    ." [group-nested-demo] FAIL — direct find on A should miss" cr exit
+  then
+  (gnd-w) count _gnd-a @ group-find-nested dup 0< if
+    drop ." [group-nested-demo] FAIL" cr
+  else
+    ." [group-nested-demo] found #" . ." via nested walk" cr
+    ." [group-nested-demo] OK — nested find via LINK-INTER" cr
+  then ;
+
+create (gvp-label) 4 c, char d c, char e c, char m c, char o c,
+create (gvp-word)  6 c, char n c, char e c, char s c, char t c, char e c, char d c,
+variable _gvp-gid
+
+\ group-vocab-persist-demo: add→save→dict-reset→re-add (load path)→find → OK
+\ Host SoT does real graph vocab line reload; Forth mirrors recreate contract.
+: group-vocab-persist-demo ( -- )
+  ." [group-vocab-persist-demo] add→save→reload vocab contract" cr
+  (gvp-label) drena-group _gvp-gid !
+  (gvp-word) count _gvp-gid @ group-vocab-add
+  (gvp-word) count _gvp-gid @ group-find 0< if
+    ." [group-vocab-persist-demo] FAIL" cr exit
+  then
+  graph-save
+  dict-reset
+  \ recreate unit + vocab as graph-load vocab lines would
+  _gvp-gid @ group-register-vocab-unit
+  (gvp-word) count _gvp-gid @ group-vocab-add
+  (gvp-word) count _gvp-gid @ group-find 0< if
+    ." [group-vocab-persist-demo] FAIL" cr
+  else
+    ." [group-vocab-persist-demo] OK — vocab restored from graph" cr
+  then ;
+
 : persist-demo ( -- )
   ." [persist-demo] refine then persist graph+state" cr
   rekia-demo

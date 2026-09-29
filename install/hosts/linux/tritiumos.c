@@ -44,6 +44,8 @@ void groups_status(void);
 void groups_persist_demo(void);
 void group_vocab_demo(void);
 void group_link_demo(void);
+void group_nested_demo(void);
+void group_vocab_persist_demo(void);
 void license_status(void);
 void license_register(const char* device_id);
 void queue_demo(void);
@@ -336,14 +338,89 @@ static void host_group_link(int ga, int gb) {
            ga, gb, HOST_LINK_INTER);
 }
 
+/* wave7 item 4: nested search-order across LINK-INTER (docs/GROUPS-NESTED.md) */
+#define HOST_NEST_MAX_HOPS 4
+#define HOST_NEST_MAX_GIDS 8
+#define HOST_GID_MARK 0x80000000u
+
+static int host_id_to_gid(int id) {
+    if ((unsigned)id & HOST_GID_MARK)
+        return (int)((unsigned)id & ~HOST_GID_MARK);
+    for (int g = 0; g < host_group_count; g++) {
+        for (int m = 0; m < host_group_n_members[g]; m++) {
+            if (host_group_members[g][m] == id)
+                return g;
+        }
+    }
+    return -1;
+}
+
+static int host_nest_has(const int *order, int n, int gid) {
+    for (int i = 0; i < n; i++)
+        if (order[i] == gid) return 1;
+    return 0;
+}
+
+/* Build walk order: start gid then LINK-INTER neighbors (undirected), caps hops/gids.
+   Returns count; writes gids into out[0..count). */
+static int host_group_search_order(int start_gid, int *out, int maxn) {
+    int depth[HOST_NEST_MAX_GIDS];
+    int n = 0;
+    if (start_gid < 0 || start_gid >= host_group_count || maxn <= 0)
+        return 0;
+    out[n] = start_gid;
+    depth[n] = 0;
+    n++;
+    for (int i = 0; i < n; i++) {
+        if (depth[i] >= HOST_NEST_MAX_HOPS) continue;
+        int gid = out[i];
+        for (int L = 0; L < host_link_count; L++) {
+            if (host_links_type[L] != HOST_LINK_INTER) continue;
+            int ga = host_id_to_gid(host_links_src[L]);
+            int gb = host_id_to_gid(host_links_dst[L]);
+            if (ga < 0 || gb < 0) continue;
+            int nb = -1;
+            if (ga == gid) nb = gb;
+            else if (gb == gid) nb = ga;
+            if (nb < 0 || nb >= host_group_count) continue;
+            if (host_nest_has(out, n, nb)) continue;
+            if (n >= maxn || n >= HOST_NEST_MAX_GIDS) break;
+            out[n] = nb;
+            depth[n] = depth[i] + 1;
+            n++;
+        }
+    }
+    return n;
+}
+
+static int host_group_find_nested(const char *name, int gid) {
+    int order[HOST_NEST_MAX_GIDS];
+    int n = host_group_search_order(gid, order, HOST_NEST_MAX_GIDS);
+    for (int i = 0; i < n; i++) {
+        int idx = host_group_entry_find(name, order[i]);
+        if (idx >= 0) return idx;
+    }
+    return -1;
+}
+
+static int host_entry_is_unit(int eid) {
+    int gid = host_entry_gids[eid];
+    if (gid < 0 || gid >= host_group_count || !host_group_labels[gid][0])
+        return 0;
+    char unit[48];
+    snprintf(unit, sizeof(unit), "GROUP-%s/", host_group_labels[gid]);
+    return strcmp(host_entry_names[eid], unit) == 0;
+}
+
+
 void save_user_graph(void) {
     ensure_evolve_dir();
     char path[MAX_PATH];
     snprintf(path, sizeof(path), "%s/user-graph.trit", evolve_dir);
     FILE* f = fopen(path, "w");
     if (!f) { perror("user-graph.trit"); return; }
-    fprintf(f, "# TritiumOS user-graph.trit v1\n");
-    fprintf(f, "# neuron headers + typed links + groups/members (host snapshot)\n");
+    fprintf(f, "# TritiumOS user-graph.trit v2\n");
+    fprintf(f, "# neuron headers + typed links + groups/members/vocab (host snapshot)\n");
     fprintf(f, "next-id=%d\n", host_next_id);
     fprintf(f, "neuron id=1 mode=%d header-s3=%d links=1\n", host_neuron_mode, host_neuron_mode);
     fprintf(f, "link src=%d dst=%d type=%d w_lo=0 w_hi=0 s3=%d\n",
@@ -354,6 +431,12 @@ void save_user_graph(void) {
         fprintf(f, "group %d %s\n", g, host_group_labels[g]);
         for (int m = 0; m < host_group_n_members[g]; m++)
             fprintf(f, "member %d %d\n", g, host_group_members[g][m]);
+        /* wave7 item 4: vocab <gid> <word-name> (skip GROUP-<label>/ unit row) */
+        for (int e = 0; e < host_entry_count; e++) {
+            if (host_entry_gids[e] != g) continue;
+            if (host_entry_is_unit(e)) continue;
+            fprintf(f, "vocab %d %s\n", g, host_entry_names[e]);
+        }
     }
     fclose(f);
     printf("[DRENA] graph-save -> %s\n", path);
@@ -432,7 +515,7 @@ void load_user_graph(void) {
     }
     printf("[DRENA] graph-load <- %s\n", path);
     char line[512];
-    int neurons = 0, links = 0, groups = 0, members = 0;
+    int neurons = 0, links = 0, groups = 0, members = 0, vocabs = 0;
     host_groups_reset();
     while (fgets(line, sizeof(line), f)) {
         if (line[0] == '#' || line[0] == '\n') continue;
@@ -457,6 +540,20 @@ void load_user_graph(void) {
                         host_group_members[gid][host_group_n_members[gid]++] = nid;
                 }
                 members++;
+            }
+        } else if (strncmp(line, "vocab ", 6) == 0) {
+            /* wave7 item 4: vocab <gid> <word-name> */
+            int gid = -1;
+            char wname[HOST_NAMELEN] = {0};
+            if (sscanf(line + 6, "%d %15s", &gid, wname) == 2 &&
+                gid >= 0 && gid < HOST_MAX_GROUPS && wname[0]) {
+                while (host_group_count <= gid && host_group_count < HOST_MAX_GROUPS) {
+                    host_group_labels[host_group_count][0] = 0;
+                    host_group_n_members[host_group_count] = 0;
+                    host_group_count++;
+                }
+                host_group_vocab_add(wname, gid);
+                vocabs++;
             }
         } else if (strncmp(line, "group ", 6) == 0) {
             /* New: "group <gid> <label>" or legacy "group gid=N label=..." */
@@ -490,8 +587,8 @@ void load_user_graph(void) {
     }
     fclose(f);
     graph_loaded = 1;
-    printf("[DRENA] graph-load OK neurons=%d links=%d groups=%d members=%d\n",
-           neurons, links, groups, members);
+    printf("[DRENA] graph-load OK neurons=%d links=%d groups=%d members=%d vocabs=%d\n",
+           neurons, links, groups, members, vocabs);
     /* Rebuild vocab prefix + searchable unit so GROUP-<label>/ is findable after restart */
     for (int g = 0; g < host_group_count; g++) {
         if (!host_group_labels[g][0]) continue;
@@ -1071,6 +1168,85 @@ void group_link_demo(void) {
     else
         printf("[group-link-demo] FAIL — no LINK-INTER\n\n");
 }
+
+void group_nested_demo(void) {
+    /* wave7 item 4: nested find via LINK-INTER */
+    printf("[group-nested-demo] two groups + link; nested find from A\n");
+    host_groups_reset();
+    host_links_reset();
+    int ga = host_group_create("alpha");
+    int gb = host_group_create("beta");
+    printf("[DRENA] spawned neuron id=1 mode=RANDOM\n");
+    printf("neuron stable & valid\n");
+    host_group_join(1, ga);
+    printf("[DRENA] spawned neuron id=2 mode=RANDOM\n");
+    printf("neuron stable & valid\n");
+    host_group_join(2, gb);
+    host_next_id = 3;
+    host_group_link(ga, gb);
+    host_group_vocab_add("nested", gb);
+    if (host_group_entry_find("nested", ga) >= 0) {
+        printf("[group-nested-demo] FAIL — direct find on A should miss\n\n");
+        return;
+    }
+    int idx = host_group_find_nested("nested", ga);
+    if (idx < 0) {
+        printf("[group-nested-demo] FAIL\n\n");
+        return;
+    }
+    printf("[group-nested-demo] found #%d via nested walk\n", idx);
+    printf("[group-nested-demo] OK — nested find via LINK-INTER\n\n");
+}
+
+void group_vocab_persist_demo(void) {
+    /* wave7 item 4: vocab lines survive save → clear → reload */
+    printf("[group-vocab-persist-demo] add→save→reload vocab contract\n");
+    host_groups_reset();
+    host_links_reset();
+    int gid = host_group_create("demo");
+    host_group_vocab_add("nested", gid);
+    if (host_group_entry_find("nested", gid) < 0) {
+        printf("[group-vocab-persist-demo] FAIL\n\n");
+        return;
+    }
+    save_user_graph();
+    /* prove graph contains vocab line */
+    {
+        char path[MAX_PATH];
+        snprintf(path, sizeof(path), "%s/user-graph.trit", get_evolve_dir());
+        FILE* f = fopen(path, "r");
+        int saw = 0;
+        if (f) {
+            char line[512];
+            while (fgets(line, sizeof(line), f)) {
+                if (strncmp(line, "vocab ", 6) == 0 && strstr(line, "nested"))
+                    saw = 1;
+            }
+            fclose(f);
+        }
+        if (!saw) {
+            printf("[group-vocab-persist-demo] FAIL — no vocab line in graph\n\n");
+            return;
+        }
+    }
+    printf("[group-vocab-persist-demo] clearing host and reloading evolve/user-graph.trit...\n");
+    host_groups_reset();
+    load_user_graph();
+    int idx = host_group_entry_find("nested", gid);
+    /* gid may rematerialize as 0 after reload with single group */
+    if (idx < 0) {
+        for (int g = 0; g < host_group_count; g++) {
+            idx = host_group_entry_find("nested", g);
+            if (idx >= 0) break;
+        }
+    }
+    if (idx < 0) {
+        printf("[group-vocab-persist-demo] FAIL\n\n");
+        return;
+    }
+    printf("[group-vocab-persist-demo] OK — vocab restored from graph\n\n");
+}
+
 
 /* --- License slot stub (TritiumOS.txt §5a.4): max 10; refuse slot 11 --- */
 #define LICENSE_MAX_SLOTS 10
@@ -2730,7 +2906,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -2815,6 +2991,10 @@ int main(int argc, char** argv) {
             group_vocab_demo();
         } else if (strcasecmp(line, "group-link-demo") == 0) {
             group_link_demo();
+        } else if (strcasecmp(line, "group-nested-demo") == 0) {
+            group_nested_demo();
+        } else if (strcasecmp(line, "group-vocab-persist-demo") == 0) {
+            group_vocab_persist_demo();
         } else if (strcasecmp(line, "license-status") == 0) {
             license_status();
         } else if (strncasecmp(line, "license-register ", 17) == 0) {

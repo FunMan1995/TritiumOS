@@ -164,6 +164,97 @@ variable _gpfxd  variable _gpca  variable _gpu
 \ group-find ( c-addr u gid -- i )  scoped find under GROUP-<label>/ unit
 : group-find ( c-addr u gid -- i ) group-entry-find ;
 
+\ --- nested search-order + caps (wave7 item 4 / docs/GROUPS-NESTED.md) ---
+\ Walk active gid then LINK-INTER neighbors; max 4 hops / 8 gids; first hit; miss -1.
+4 constant NEST-MAX-HOPS
+8 constant NEST-MAX-GIDS
+create nest-order   NEST-MAX-GIDS cells allot
+create nest-depth   NEST-MAX-GIDS cells allot
+variable nest-order-n
+variable _nwalk-gid  variable _nwalk-d
+
+: (gid-mark?) ( id -- f ) $80000000 and 0<> ;
+: (unmark-gid) ( id -- gid ) $7fffffff and ;
+
+: (nid-in-group?) ( nid gid -- f )
+  group-members 0 ?do
+    dup i cells + @  2 pick = if 2drop -1 unloop exit then
+  loop
+  2drop 0 ;
+
+: (id->gid) ( id -- gid | -1 )
+  dup (gid-mark?) if (unmark-gid) exit then
+  group-count @ 0 ?do
+    dup i (nid-in-group?) if drop i unloop exit then
+  loop
+  drop -1 ;
+
+: (nest-has?) ( gid -- f )
+  nest-order-n @ 0 ?do
+    dup nest-order i cells + @ = if drop -1 unloop exit then
+  loop
+  drop 0 ;
+
+: (nest-push) ( gid depth -- )
+  nest-order-n @ NEST-MAX-GIDS >= if 2drop exit then
+  over (nest-has?) if 2drop exit then
+  over 0< if 2drop exit then
+  nest-order-n @ cells nest-depth + !
+  nest-order-n @ cells nest-order + !
+  1 nest-order-n +! ;
+
+\ Collect LINK-INTER neighbor gids of _nwalk-gid at depth _nwalk-d+1
+: (nest-expand) ( -- )
+  link-count @ 0 ?do
+    i link-rec link-type@ LINK-INTER = if
+      i link-rec link-src (id->gid)
+      i link-rec link-dst (id->gid)   \ ga gb
+      2dup 0< swap 0< or if 2drop
+      else
+        over _nwalk-gid @ = if         \ ga == walk → neighbor gb
+          nip _nwalk-d @ 1+ (nest-push)
+        else
+          dup _nwalk-gid @ = if        \ gb == walk → neighbor ga
+            drop _nwalk-d @ 1+ (nest-push)
+          else
+            2drop
+          then
+        then
+      then
+    then
+  loop ;
+
+: group-search-order ( gid -- addr count )
+  0 nest-order-n !
+  0 (nest-push)
+  0
+  begin
+    dup nest-order-n @ <
+  while
+    dup cells nest-depth + @ NEST-MAX-HOPS >= if
+      \ skip expand past hop cap
+    else
+      dup cells nest-order + @ _nwalk-gid !
+      dup cells nest-depth + @ _nwalk-d !
+      (nest-expand)
+    then
+    1+
+  repeat
+  drop
+  nest-order nest-order-n @ ;
+
+variable _gnf-ca  variable _gnf-u
+
+: group-find-nested ( c-addr u gid -- i )
+  _gnf-u !  _gnf-ca !
+  group-search-order 0 ?do
+    _gnf-ca @ _gnf-u @  nest-order i cells + @  group-find
+    dup 0< 0= if nip unloop exit then
+    drop
+  loop
+  drop -1 ;
+
+
 : group-label! ( c-addr u gid -- )
   dup _gid !
   group-label-addr place

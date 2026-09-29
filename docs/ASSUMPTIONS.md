@@ -25,6 +25,12 @@ group-vocab-demo
 group-link-demo
 \ expect: [group-link-demo] OK — inter-group bridge
 
+group-nested-demo
+\ expect: [group-nested-demo] OK — nested find via LINK-INTER
+
+group-vocab-persist-demo
+\ expect: [group-vocab-persist-demo] OK — vocab restored from graph
+
 queue-demo
 \ expect: [queue-demo] OK — local cue (evolve/queue/; no fleet crypto)
 
@@ -76,7 +82,7 @@ Default remains mod-3 split (`trit-pair@` / `encode-trit`). Dense 2+2 packing is
 
 ## Persist files
 
-- `evolve/user-graph.trit` — neuron headers + typed links snapshot after refine; also `group <gid> <label>` / `member <gid> <nid>` (v1-compatible; legacy `group gid=` still loads).
+- `evolve/user-graph.trit` — neuron headers + typed links snapshot after refine; also `group <gid> <label>` / `member <gid> <nid>` / `vocab <gid> <word-name>` (v2 additive; v1/legacy still load). See `docs/GROUPS-NESTED.md`.
 - `evolve/assistant-state.trit` — touched after `rekiA-refine` (last-refine label/path).
 - `evolve/edition.trit` — `edition=32|64`; host load on start / save on `set_edition`.
 - Reload on host start; refined `.fs` under `evolve/forth/refined/` stay live vocab.

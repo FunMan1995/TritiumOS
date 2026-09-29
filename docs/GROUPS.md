@@ -3,7 +3,7 @@
 **Status:** Shipper-ready spec (wave3 item **3** + wave4 items **2** vocab unit + **4** `group-link!`)  
 **Canonical brief:** `TritiumOS.txt` §3.4–3.5, §5  
 **Sources of truth (code):** `forth/tritium/drena.fs` (group words); Linux host `install/hosts/linux/tritiumos.c` (graph lines + restart restore)  
-**Companions:** `docs/DRENA.md` §6–7 (topology owner), `docs/REKIA.md` (`rekiA-label-group`), `docs/ASSUMPTIONS.md` (persist format), `docs/NEURON.md`
+**Companions:** `docs/DRENA.md` §6–7 (topology owner), `docs/REKIA.md` (`rekiA-label-group`), `docs/ASSUMPTIONS.md` (persist format), `docs/NEURON.md`, `docs/GROUPS-NESTED.md` (nested find + vocab persist)
 
 ## 1. Purpose
 
