@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# imm-demo — Lab smoke for IMMEDIATE/POSTPONE stubs (wave15 item 4 / docs/IMMEDIATE-POSTPONE.md)
+# Mirrors forth/tritium/kernel.fs imm-demo + Linux host imm_demo.
+# Flag + name mark only — no linked XT compiler / executing postponed XT.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: imm-demo"
+  echo "  dict-reset → : name ; → IMMEDIATE → POSTPONE → [imm-demo] OK"
+  echo "  Markers: [imm] IMMEDIATE/POSTPONE name= → [imm-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[imm-demo] FAIL"
+  exit 1
+}
+
+# --- tiny dict stub (mirrors colon-demo + immediate-bit) ---
+declare -a NAMES=()
+declare -a BODY=()
+declare -a BTOKS=()
+declare -a IMM=()
+COLON_DEF=0
+COLON_IDX=-1
+COLON_TOKS=0
+LATEST=-1
+LAST_IDX=-1
+
+dict_reset() {
+  NAMES=()
+  BODY=()
+  BTOKS=()
+  IMM=()
+  COLON_DEF=0
+  COLON_IDX=-1
+  COLON_TOKS=0
+  LATEST=-1
+  LAST_IDX=-1
+}
+
+entry_find() {
+  local name=$1 i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      LAST_IDX=$i
+      return 0
+    fi
+  done
+  LAST_IDX=-1
+  return 1
+}
+
+entry_create() {
+  local name=$1
+  if entry_find "$name"; then
+    echo "[kernel] entry exists #$LAST_IDX"
+    return 0
+  fi
+  LAST_IDX=${#NAMES[@]}
+  NAMES+=("$name")
+  BODY+=(0)
+  BTOKS+=(0)
+  IMM+=(0)
+  echo "[kernel] created #$LAST_IDX"
+}
+
+colon_abandon() {
+  COLON_DEF=0
+  COLON_IDX=-1
+  COLON_TOKS=0
+}
+
+colon_create() {
+  colon_abandon
+  local name=$1
+  shift || true
+  entry_create "$name"
+  local idx=$LAST_IDX
+  [[ "$idx" -ge 0 ]] || fail
+  COLON_IDX=$idx
+  COLON_DEF=1
+  COLON_TOKS=0
+  LATEST=$idx
+  BODY[$idx]=0
+  BTOKS[$idx]=0
+  echo "[colon] : $name"
+  echo "[interpret] : created $name"
+  local tok
+  for tok in "$@"; do
+    if [[ "$tok" == ";" ]]; then
+      local k=$COLON_TOKS
+      (( k == 0 )) && k=1
+      BTOKS[$idx]=$k
+      BODY[$idx]=1
+      echo "[colon] ; name=$name tokens=$k"
+      colon_abandon
+      return 0
+    fi
+    echo "[colon] body + $tok"
+    COLON_TOKS=$((COLON_TOKS + 1))
+  done
+}
+
+immediate_mark() {
+  # Prefer latest colon/CREATE; optional named form: immediate_mark <name>
+  local idx=$LATEST
+  if [[ $# -ge 1 && -n "${1:-}" ]]; then
+    if entry_find "$1"; then
+      idx=$LAST_IDX
+    else
+      echo "[imm] FAIL reason=miss"
+      return 1
+    fi
+  fi
+  if [[ "$idx" -lt 0 ]]; then
+    echo "[imm] FAIL reason=miss"
+    return 1
+  fi
+  IMM[$idx]=1
+  echo "[imm] IMMEDIATE name=${NAMES[$idx]}"
+}
+
+postpone_mark() {
+  local name=${1:-}
+  if [[ -z "$name" ]]; then
+    echo "[imm] FAIL reason=miss"
+    return 1
+  fi
+  # Accept known name (look up) OR any non-empty name string — lookup preferred.
+  if ! entry_find "$name"; then
+    # Still accept the name string (parse/mark only) if we want — but demo uses known.
+    # Spec: missing → FAIL reason=miss; demo avoids.
+    echo "[imm] FAIL reason=miss"
+    return 1
+  fi
+  echo "[imm] POSTPONE name=$name"
+  if [[ "$COLON_DEF" -ne 0 ]]; then
+    echo "[imm] compile-only"
+  fi
+}
+
+echo "[imm-demo] dict-reset + : square ; + IMMEDIATE + POSTPONE"
+dict_reset
+
+# 1) named colon entry
+colon_create square dup '*' ';'
+entry_find square || fail
+[[ "${BODY[$LAST_IDX]}" -ne 0 ]] || fail
+
+# 2) IMMEDIATE on latest
+immediate_mark || fail
+[[ "${IMM[$LATEST]}" -eq 1 ]] || fail
+
+# 3) POSTPONE known name (not in colon-def → no compile-only required)
+postpone_mark square || fail
+
+# Happy path must not emit miss FAIL (already guarded by || fail above)
+echo "[imm-demo] OK"
+exit 0

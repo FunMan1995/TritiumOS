@@ -61,6 +61,7 @@ create ENTRY-VALUE? MAX-ENTRIES cells allot   \ 1 = VALUE stub (wave13 item 1)
 create ENTRY-DOES?  MAX-ENTRIES cells allot   \ 1 = DOES> stub marked (wave13 item 3)
 create ENTRY-CELLS2 MAX-ENTRIES cells allot   \ 2VARIABLE/2CONSTANT hi stub cell (wave14 item 3)
 create ENTRY-2CELL? MAX-ENTRIES cells allot   \ 1 = 2VARIABLE/2CONSTANT stub (wave14 item 3)
+create ENTRY-IMM?   MAX-ENTRIES cells allot   \ 1 = IMMEDIATE bit set (wave15 item 4)
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
@@ -73,6 +74,7 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : entry-does?[]  ( i -- addr ) cells ENTRY-DOES? + ;
 : entry-cell2[]  ( i -- addr ) cells ENTRY-CELLS2 + ;
 : entry-2cell?[] ( i -- addr ) cells ENTRY-2CELL? + ;
+: entry-imm?[]   ( i -- addr ) cells ENTRY-IMM? + ;
 \ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
@@ -90,6 +92,8 @@ variable _do-loop-outer  \ enclosing-frame index stub for J (wave14 item 2)
 variable _case-depth  \ open CASE count
 \ CREATE/DOES> stub (wave13 item 3) — latest CREATE index; no XT child body
 variable _create-latest  \ index of most recent CREATE; -1 = none
+\ IMMEDIATE/POSTPONE stub (wave15 item 4) — latest colon/CREATE index for IMMEDIATE
+variable _latest  \ index of most recent colon/CREATE; -1 = none
 \ HERE/ALLOT stub pointer (wave14 item 1) — host-held bump counter; bytes; no arena
 variable _here
 $1000 _here !   \ stub base 0x1000
@@ -112,6 +116,7 @@ variable _catch-depth  \ open CATCH frame count
   MAX-ENTRIES 0 do 0 i entry-does?[] ! loop
   MAX-ENTRIES 0 do 0 i entry-cell2[] ! loop
   MAX-ENTRIES 0 do 0 i entry-2cell?[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-imm?[] ! loop
   0 _colon-def !
   -1 _colon-idx !
   0 _colon-toks !
@@ -123,6 +128,7 @@ variable _catch-depth  \ open CATCH frame count
   0 _do-loop-outer !
   0 _case-depth !
   -1 _create-latest !
+  -1 _latest !
   $1000 _here !
   0 _catch-depth ! ;
 
@@ -181,6 +187,7 @@ variable _catch-depth  \ open CATCH frame count
   0 r@ entry-cell2[] !         \ 2VARIABLE/2CONSTANT hi stub init
   0 r@ entry-2cell?[] !        \ not a 2-cell stub by default
   0 r@ entry-does?[] !         \ CREATE/DOES> stub clear
+  0 r@ entry-imm?[] !          \ IMMEDIATE bit clear
   1 ENTRY-COUNT +!
   ." [kernel] created #" r@ . cr
   r> ;
@@ -538,6 +545,7 @@ variable _str-len
   then
   ( c-addr u idx )
   dup _colon-idx !
+  dup _latest !
   1 _colon-def !
   0 _colon-toks !
   0 over entry-body[] !
@@ -1113,6 +1121,7 @@ create (vald-baz) 3 c, char b c, char a c, char z c,
   >r
   0 r@ entry-does?[] !
   r@ _create-latest !
+  r@ _latest !
   ." [create] CREATE name=" type cr
   r> ;
 
@@ -1541,6 +1550,63 @@ create _fill-buf 64 allot
   ." [fill-demo] OK" cr ;
 
 
+\ === IMMEDIATE / POSTPONE compile-only stubs (wave15 item 4) ===
+\ Prefer greppable markers; flag + name mark only. No linked XT / executing postponed XT.
+\ Forth mirrors: immediate-mark / postpone-mark (host binds IMMEDIATE / POSTPONE).
+
+\ immediate-mark-idx ( i -- )  set immediate-bit on entry i
+: immediate-mark-idx ( i -- )
+  dup 0< if
+    drop ." [imm] FAIL reason=miss" cr exit
+  then
+  dup ENTRY-COUNT @ >= if
+    drop ." [imm] FAIL reason=miss" cr exit
+  then
+  >r
+  1 r@ entry-imm?[] !
+  ." [imm] IMMEDIATE name=" r@ entry-name[] NAMELEN name-trim type cr
+  r> drop ;
+
+\ immediate-mark ( -- )  IMMEDIATE on latest colon/CREATE
+: immediate-mark ( -- )
+  _latest @ immediate-mark-idx ;
+
+\ immediate-mark-named ( c-addr u -- )  IMMEDIATE on named entry
+: immediate-mark-named ( c-addr u -- )
+  entry-find immediate-mark-idx ;
+
+\ postpone-mark-from ( c-addr u -- )  parse/mark name only; no XT compile/run
+: postpone-mark-from ( c-addr u -- )
+  2dup entry-find 0< if
+    2drop ." [imm] FAIL reason=miss" cr exit
+  then
+  ." [imm] POSTPONE name=" type cr
+  _colon-def @ if
+    ." [imm] compile-only" cr
+  then ;
+
+\ postpone-mark ( "name" -- )  parse + POSTPONE stub
+: postpone-mark ( "name" -- )
+  bl word count postpone-mark-from ;
+
+create (imm-sq) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
+
+\ imm-demo ( -- )  dict-reset → : square ; → IMMEDIATE → POSTPONE → OK
+: imm-demo ( -- )
+  ." [imm-demo] dict-reset + : square ; + IMMEDIATE + POSTPONE" cr
+  dict-reset
+  (imm-sq) count colon-create-from
+  s" dup" colon-body-tok
+  s" *" colon-body-tok
+  semicolon
+  (imm-sq) count entry-find 0< if
+    ." [imm-demo] FAIL" cr exit
+  then
+  immediate-mark
+  (imm-sq) count postpone-mark-from
+  ." [imm-demo] OK" cr ;
+
+
 \ === 2VARIABLE / 2CONSTANT double-cell stubs (wave14 item 3) ===
 \ Prefer greppable markers; two-slot via ENTRY-CELLS + ENTRY-CELLS2 (no double heap).
 \ Forth mirrors: 2var-create / 2const-create (host binds 2VARIABLE / 2CONSTANT).
@@ -1713,6 +1779,7 @@ create (td-boom) 4 c, char b c, char o c, char o c, char m c,
 \ - CELL/CELLS/ALIGN/ALIGNED stubs + cell-demo (wave15 item 1) — landed
 \ - PICK/ROLL/DEPTH/?DUP stubs + pick-demo (wave15 item 2) — landed
 \ - FILL/ERASE/MOVE/CMOVE stubs + fill-demo (wave15 item 3) — landed
+\ - IMMEDIATE/POSTPONE stubs + imm-demo (wave15 item 4) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

@@ -1,9 +1,9 @@
 # COLON — Deepen `:` beyond create-only (body marker)
 
-**Status:** Shipper-ready stub spec (wave9 item **4**)
+**Status:** Shipper-ready stub spec (wave9 item **4**; thin amend wave15 **4** IMMEDIATE-POSTPONE)
 **Canonical brief:** Dusk colon compile (thin stub); `docs/INTERPRET.md` (wave8 **1**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (`colon-create*`); Linux host REPL `:` bind
-**Companions:** `docs/INTERPRET.md` (thin amend wave9 **4**), `docs/KERNEL.md`, `docs/CONTROL.md` (wave10 **2**), `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/CREATE-DOES.md` (wave13 **3**)
+**Companions:** `docs/INTERPRET.md` (thin amend wave9 **4**), `docs/KERNEL.md`, `docs/CONTROL.md` (wave10 **2**), `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**)
 
 ## 1. Purpose
 
@@ -66,7 +66,7 @@ Also keep `[interpret] : created <name>` if useful for back-compat, or replace w
 
 ## 7. Non-goals
 
-- Immediate vs compile state machine (beyond colon-def flag)
+- Immediate vs compile state machine beyond colon-def flag + immediate-bit — flag + name mark stubs → `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**); still no linked XT list / executing postponed XT
 - Control flow beyond stubs — see `docs/CONTROL.md` (wave10 **2**) for `IF`/`THEN`/`ELSE` stubs; `DO`/`BEGIN` still out
 - Named-cell stubs (`VARIABLE`/`CONSTANT`) → `docs/VARIABLE-CONST.md` (wave12 **2**); CREATE/DOES> defining-word stubs → `docs/CREATE-DOES.md` (wave13 **3**; markers only, no real XT child)
 - Linked XT lists / Dusk `comp/` emitter
@@ -75,7 +75,7 @@ Also keep `[interpret] : created <name>` if useful for back-compat, or replace w
 ## 8. Acceptance (Test Lab)
 
 1. `docs/COLON.md` present (Research byte-copy OK); `INTERPRET.md` thin amend present.
-2. `colon-demo` → OK (markers §4); `interpret-demo` + `kernel-demo` still OK.
+2. `colon-demo` → OK (markers §4); `interpret-demo` + `kernel-demo` still OK; wave15 **4**: `imm-demo` → OK.
 3. Regression green (`assistant-state-demo`, `economy-wire-demo`, `trit-math-demo`, …).
 4. No merge.
 
@@ -87,3 +87,4 @@ Also keep `[interpret] : created <name>` if useful for back-compat, or replace w
 - `docs/CONTROL.md` (wave10 **2**)
 - `docs/VARIABLE-CONST.md` (wave12 **2**)
 - `docs/CREATE-DOES.md` (wave13 **3**)
+- `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**)
