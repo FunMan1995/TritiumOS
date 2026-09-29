@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# pick-demo — Lab smoke for PICK/ROLL/DEPTH/?DUP stubs (wave15 item 2 / docs/PICK-ROLL.md)
+# Mirrors forth/tritium/kernel.fs pick-demo + Linux host pick_demo.
+# Tiny host stack picture only — not a real threaded stack.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: pick-demo"
+  echo "  seed≥3 → DEPTH → PICK → ROLL → ?DUP both → [pick-demo] OK"
+  echo "  Markers: [pick] DEPTH/PICK/ROLL/?DUP → [pick-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[pick-demo] FAIL"
+  exit 1
+}
+
+# Tiny host stack picture (low index = bottom; high = TOS). Max 8.
+PICK_MAX=8
+declare -a PICK_PIC=()
+PICK_DEPTH=0
+
+pick_pic_reset() {
+  PICK_PIC=()
+  PICK_DEPTH=0
+}
+
+pick_pic_push() {
+  local x=$1
+  if [[ "$PICK_DEPTH" -ge "$PICK_MAX" ]]; then
+    return 0
+  fi
+  PICK_PIC+=("$x")
+  PICK_DEPTH=$(( PICK_DEPTH + 1 ))
+}
+
+stack_depth() {
+  echo "[pick] DEPTH n=$PICK_DEPTH"
+}
+
+pick_nth() {
+  local u=$1
+  if [[ "$u" -lt 0 || "$u" -ge "$PICK_DEPTH" ]]; then
+    echo "[pick] FAIL reason=underflow"
+    return 1
+  fi
+  # u=0 → TOS = last element
+  local idx=$(( PICK_DEPTH - 1 - u ))
+  local x=${PICK_PIC[$idx]}
+  echo "[pick] PICK u=$u x=$x"
+}
+
+roll_nth() {
+  local u=$1
+  if [[ "$u" -lt 0 || "$u" -ge "$PICK_DEPTH" ]]; then
+    echo "[pick] FAIL reason=underflow"
+    return 1
+  fi
+  if [[ "$u" -eq 0 ]]; then
+    echo "[pick] ROLL u=$u"
+    return 0
+  fi
+  # Promote item at (depth-1-u) to TOS; shift higher slots down one
+  local idx=$(( PICK_DEPTH - 1 - u ))
+  local val=${PICK_PIC[$idx]}
+  local i
+  for (( i=idx; i < PICK_DEPTH - 1; i++ )); do
+    PICK_PIC[$i]=${PICK_PIC[$(( i + 1 ))]}
+  done
+  PICK_PIC[$(( PICK_DEPTH - 1 ))]=$val
+  echo "[pick] ROLL u=$u"
+}
+
+qdup() {
+  if [[ "$PICK_DEPTH" -eq 0 ]]; then
+    echo "[pick] FAIL reason=underflow"
+    return 1
+  fi
+  local tos=${PICK_PIC[$(( PICK_DEPTH - 1 ))]}
+  if [[ "$tos" -eq 0 ]]; then
+    echo "[pick] ?DUP flag=0"
+    return 0
+  fi
+  pick_pic_push "$tos"
+  echo "[pick] ?DUP flag=1"
+}
+
+echo "[pick-demo] DEPTH + PICK + ROLL + ?DUP"
+pick_pic_reset
+
+# Seed known picture: bottom=10, mid=20, TOS=30 → depth 3
+pick_pic_push 10
+pick_pic_push 20
+pick_pic_push 30
+
+stack_depth
+[[ "$PICK_DEPTH" -ge 3 ]] || fail
+
+pick_nth 1 || fail
+# u=1 → x=20 (second from TOS)
+
+roll_nth 2 || fail
+# After ROLL 2 on [10,20,30]: promote 10 → [20,30,10], TOS=10
+
+qdup || fail
+# nonzero TOS=10 → flag=1, picture [20,30,10,10]
+
+pick_pic_push 0
+qdup || fail
+# TOS=0 → flag=0 (no duplicate)
+
+echo "[pick-demo] OK"
+exit 0

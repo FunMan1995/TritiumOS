@@ -25,3 +25,4 @@ unloop-demo CONTRACT
 2var-demo CONTRACT
 throw-demo CONTRACT
 cell-demo CONTRACT
+pick-demo CONTRACT

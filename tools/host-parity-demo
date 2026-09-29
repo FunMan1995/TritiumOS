@@ -30,6 +30,7 @@ REQUIRED_DEMOS=(
   2var-demo
   throw-demo
   cell-demo
+  pick-demo
 )
 
 usage() {

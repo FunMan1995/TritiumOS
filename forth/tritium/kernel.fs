@@ -1365,6 +1365,98 @@ create (sl-hi) 2 c, char h c, char i c,
   ." [cell-demo] OK" cr ;
 
 
+
+\ === PICK / ROLL / DEPTH / ?DUP stack-marker stubs (wave15 item 2) ===
+\ Prefer greppable markers; tiny host stack picture only. Not a real threaded stack.
+\ Forth mirrors: pick-nth / roll-nth / stack-depth / qdup (host binds PICK / ROLL / DEPTH / ?DUP).
+\ Do NOT redefine host 2dup/2drop/2swap. Do NOT replace in-tree 2 pick (drena.fs) — mirrors only.
+
+8 constant _pick-max
+create _pick-pic 8 cells allot
+variable _pick-depth
+variable _pick-tos-hold   \ scratch for ?DUP / demo
+
+: pick-pic-reset ( -- )
+  0 _pick-depth ! ;
+
+: pick-pic-push ( x -- )
+  _pick-depth @ _pick-max >= if drop exit then
+  _pick-pic _pick-depth @ cells + !
+  1 _pick-depth +! ;
+
+: pick-pic-tos@ ( -- x )
+  _pick-depth @ 0= if 0 exit then
+  _pick-pic _pick-depth @ 1- cells + @ ;
+
+: stack-depth ( -- )
+  ." [pick] DEPTH n=" _pick-depth @ . cr ;
+
+: pick-nth ( u -- )
+  dup 0< if
+    drop ." [pick] FAIL reason=underflow" cr exit
+  then
+  dup _pick-depth @ >= if
+    drop ." [pick] FAIL reason=underflow" cr exit
+  then
+  \ u=0 → TOS = depth-1; u indexes down from TOS
+  dup >r
+  _pick-depth @ 1- swap -   \ idx
+  _pick-pic swap cells + @
+  ." [pick] PICK u=" r> . ." x=" . cr ;
+
+: roll-nth ( u -- )
+  dup 0< if
+    drop ." [pick] FAIL reason=underflow" cr exit
+  then
+  dup _pick-depth @ >= if
+    drop ." [pick] FAIL reason=underflow" cr exit
+  then
+  dup 0= if
+    ." [pick] ROLL u=" . cr exit
+  then
+  \ Rotate picture: item at (depth-1-u) → TOS; shift higher slots down one
+  dup >r
+  _pick-depth @ 1- over -          \ u  idx
+  nip                              \ idx   (u saved in R)
+  _pick-pic over cells + @         \ idx  val
+  swap                             \ val  idx
+  begin
+    dup _pick-depth @ 1- <
+  while
+    dup >r                         \ val idx | R: u idx
+    1+ _pick-pic swap cells + @    \ val next
+    _pick-pic r@ cells + !         \ val      (store next at idx)
+    r> 1+                          \ val idx+1
+  repeat
+  drop                             \ val
+  _pick-pic _pick-depth @ 1- cells + !
+  ." [pick] ROLL u=" r> . cr ;
+
+: qdup ( -- )
+  pick-pic-tos@ dup 0= if
+    drop ." [pick] ?DUP flag=0" cr exit
+  then
+  pick-pic-push
+  ." [pick] ?DUP flag=1" cr ;
+
+\ pick-demo ( -- )  seed≥3 + DEPTH + PICK + ROLL + ?DUP both paths + OK
+: pick-demo ( -- )
+  ." [pick-demo] DEPTH + PICK + ROLL + ?DUP" cr
+  pick-pic-reset
+  10 pick-pic-push
+  20 pick-pic-push
+  30 pick-pic-push
+  stack-depth
+  1 pick-nth
+  2 roll-nth
+  \ nonzero ?DUP (TOS after ROLL 2 on [10,20,30] → [20,30,10], TOS=10)
+  qdup
+  \ zero path: push 0 then ?DUP
+  0 pick-pic-push
+  qdup
+  ." [pick-demo] OK" cr ;
+
+
 \ === 2VARIABLE / 2CONSTANT double-cell stubs (wave14 item 3) ===
 \ Prefer greppable markers; two-slot via ENTRY-CELLS + ENTRY-CELLS2 (no double heap).
 \ Forth mirrors: 2var-create / 2const-create (host binds 2VARIABLE / 2CONSTANT).
@@ -1535,6 +1627,7 @@ create (td-boom) 4 c, char b c, char o c, char o c, char m c,
 \ - 2VARIABLE/2CONSTANT stubs + 2var-demo (wave14 item 3) — landed
 \ - CATCH/THROW stubs + throw-demo (wave14 item 4) — landed
 \ - CELL/CELLS/ALIGN/ALIGNED stubs + cell-demo (wave15 item 1) — landed
+\ - PICK/ROLL/DEPTH/?DUP stubs + pick-demo (wave15 item 2) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
