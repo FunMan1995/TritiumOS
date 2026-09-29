@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+# marker-demo — Lab smoke for MARKER dictionary-restore stubs (wave16 item 2 / docs/MARKER.md)
+# Mirrors forth/tritium/kernel.fs marker-demo + Linux host marker_demo.
+# Snapshot mark only — NOT real forget of XT bodies / dict image / arena rewind.
+# Forth mirrors: marker-create / marker-restore.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: marker-demo"
+  echo "  dict-reset → MARKER name → ALLOT + entry → RESTORE → [marker-demo] OK"
+  echo "  Markers: [marker] MARKER/RESTORE name= here= → [marker-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[marker-demo] FAIL"
+  exit 1
+}
+
+# --- tiny dict + HERE stub (mirrors allot-demo + create-demo + marker) ---
+declare -a NAMES=()
+declare -a MARKER_P=()
+declare -a MARKER_HERE=()
+declare -a MARKER_DICT=()
+LATEST=-1
+LAST_IDX=-1
+HERE_BASE=4096
+HERE_PTR=$HERE_BASE
+
+dict_reset() {
+  NAMES=()
+  MARKER_P=()
+  MARKER_HERE=()
+  MARKER_DICT=()
+  LATEST=-1
+  LAST_IDX=-1
+  HERE_PTR=$HERE_BASE
+}
+
+entry_find() {
+  local name=$1 i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      LAST_IDX=$i
+      return 0
+    fi
+  done
+  LAST_IDX=-1
+  return 1
+}
+
+entry_create() {
+  local name=$1
+  if entry_find "$name"; then
+    echo "[kernel] entry exists #$LAST_IDX"
+    return 0
+  fi
+  LAST_IDX=${#NAMES[@]}
+  NAMES+=("$name")
+  MARKER_P+=(0)
+  MARKER_HERE+=(0)
+  MARKER_DICT+=(0)
+  echo "[kernel] created #$LAST_IDX"
+}
+
+allot_bump() {
+  local n=$1
+  if [[ "$n" -lt 0 ]]; then
+    echo "[allot] FAIL reason=neg"
+    return 1
+  fi
+  HERE_PTR=$(( HERE_PTR + n ))
+  echo "[allot] ALLOT n=$n addr=$HERE_PTR"
+}
+
+marker_create() {
+  local name=${1:-}
+  if [[ -z "$name" ]]; then
+    echo "[marker] FAIL reason=miss"
+    return 1
+  fi
+  local h0=$HERE_PTR
+  local d0=${#NAMES[@]}
+  entry_create "$name"
+  local idx=$LAST_IDX
+  [[ "$idx" -ge 0 ]] || return 1
+  MARKER_P[$idx]=1
+  MARKER_HERE[$idx]=$h0
+  MARKER_DICT[$idx]=$d0
+  LATEST=$idx
+  echo "[marker] MARKER name=$name here=$h0 dict=$d0"
+}
+
+marker_restore() {
+  local name=${1:-}
+  if [[ -z "$name" ]]; then
+    echo "[marker] FAIL reason=miss"
+    return 1
+  fi
+  if ! entry_find "$name"; then
+    echo "[marker] FAIL reason=miss"
+    return 1
+  fi
+  local idx=$LAST_IDX
+  if [[ "${MARKER_P[$idx]}" -ne 1 ]]; then
+    echo "[marker] FAIL reason=miss"
+    return 1
+  fi
+  local h0=${MARKER_HERE[$idx]}
+  local d0=${MARKER_DICT[$idx]}
+  HERE_PTR=$h0
+  # stub trim: reset entry list length to snapshot (host int only)
+  if [[ "$d0" -ge 0 && "$d0" -le ${#NAMES[@]} ]]; then
+    NAMES=("${NAMES[@]:0:$d0}")
+    MARKER_P=("${MARKER_P[@]:0:$d0}")
+    MARKER_HERE=("${MARKER_HERE[@]:0:$d0}")
+    MARKER_DICT=("${MARKER_DICT[@]:0:$d0}")
+  fi
+  if [[ ${#NAMES[@]} -eq 0 ]]; then
+    LATEST=-1
+  else
+    LATEST=$(( ${#NAMES[@]} - 1 ))
+  fi
+  echo "[marker] RESTORE name=$name here=$h0 dict=$d0"
+}
+
+echo "[marker-demo] dict-reset + MARKER ckpt + ALLOT + RESTORE"
+dict_reset
+
+# 1) MARKER known name
+marker_create ckpt || fail
+entry_find ckpt || fail
+[[ "${MARKER_P[$LAST_IDX]}" -eq 1 ]] || fail
+h0=$HERE_PTR
+
+# 2) Bump HERE + create throwaway entry so restore has something to undo
+allot_bump 8 || fail
+entry_create tmp || fail
+[[ "$HERE_PTR" -gt "$h0" ]] || fail
+entry_find tmp || fail
+
+# 3) RESTORE — HERE and stub entry-count match snapshot
+marker_restore ckpt || fail
+[[ "$HERE_PTR" -eq "$h0" ]] || fail
+if entry_find ckpt; then fail; fi
+if entry_find tmp; then fail; fi
+
+# Happy path must not emit miss FAIL
+echo "[marker-demo] OK"
+exit 0

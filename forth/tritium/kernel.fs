@@ -65,6 +65,9 @@ create ENTRY-IMM?   MAX-ENTRIES cells allot   \ 1 = IMMEDIATE bit set (wave15 it
 create ENTRY-DEFER? MAX-ENTRIES cells allot   \ 1 = deferred-word stub (wave16 item 1)
 create ENTRY-DEFER-XT MAX-ENTRIES cells allot \ stub xt id (0 = unbound; not executable)
 create ENTRY-DEFER-ACT MAX-ENTRIES NAMELEN * allot \ stub action name (blank = unbound)
+create ENTRY-MARKER? MAX-ENTRIES cells allot  \ 1 = MARKER restore stub (wave16 item 2)
+create ENTRY-MARKER-HERE MAX-ENTRIES cells allot \ captured HERE bump
+create ENTRY-MARKER-DICT MAX-ENTRIES cells allot \ captured ENTRY-COUNT
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
@@ -81,6 +84,9 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : entry-defer?[] ( i -- addr ) cells ENTRY-DEFER? + ;
 : entry-defer-xt[] ( i -- addr ) cells ENTRY-DEFER-XT + ;
 : entry-defer-act[] ( i -- c-addr ) NAMELEN * ENTRY-DEFER-ACT + ;
+: entry-marker?[] ( i -- addr ) cells ENTRY-MARKER? + ;
+: entry-marker-here[] ( i -- addr ) cells ENTRY-MARKER-HERE + ;
+: entry-marker-dict[] ( i -- addr ) cells ENTRY-MARKER-DICT + ;
 \ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
@@ -126,6 +132,9 @@ variable _catch-depth  \ open CATCH frame count
   MAX-ENTRIES 0 do 0 i entry-defer?[] ! loop
   MAX-ENTRIES 0 do 0 i entry-defer-xt[] ! loop
   MAX-ENTRIES 0 do i entry-defer-act[] NAMELEN bl fill loop
+  MAX-ENTRIES 0 do 0 i entry-marker?[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-marker-here[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-marker-dict[] ! loop
   0 _colon-def !
   -1 _colon-idx !
   0 _colon-toks !
@@ -200,6 +209,9 @@ variable _catch-depth  \ open CATCH frame count
   0 r@ entry-defer?[] !        \ deferred stub clear
   0 r@ entry-defer-xt[] !      \ stub xt unbound
   r@ entry-defer-act[] NAMELEN bl fill
+  0 r@ entry-marker?[] !       \ marker stub clear
+  0 r@ entry-marker-here[] !
+  0 r@ entry-marker-dict[] !
   1 ENTRY-COUNT +!
   ." [kernel] created #" r@ . cr
   r> ;
@@ -1872,6 +1884,87 @@ create (df-bound) 5 c, char b c, char o c, char u c, char n c, char d c,
   ." [defer-demo] OK" cr ;
 
 
+
+\ === MARKER dictionary-restore stubs (wave16 item 2) ===
+\ Prefer greppable markers; snapshot HERE + optional ENTRY-COUNT. No arena / real forget.
+\ Forth mirrors: marker-create / marker-restore (host binds MARKER; restore via named word or marker-restore).
+
+create (mk-ckpt) 4 c, char c c, char k c, char p c, char t c,
+create (mk-tmp) 3 c, char t c, char m c, char p c,
+
+\ marker-create-from ( c-addr u -- i )  named restore mark; capture HERE + ENTRY-COUNT first
+: marker-create-from ( c-addr u -- i )
+  _here @ >r
+  ENTRY-COUNT @ >r
+  2dup entry-create-from dup 0< if
+    nip nip r> drop r> drop exit
+  then
+  >r
+  1 r@ entry-marker?[] !
+  r@
+  r> drop
+  r> over entry-marker-dict[] !
+  r> over entry-marker-here[] !
+  dup _latest !
+  ." [marker] MARKER name=" rot rot type
+  ."  here=" dup entry-marker-here[] @ .
+  ." dict=" dup entry-marker-dict[] @ . cr ;
+
+\ marker-create ( "name" -- )  parse + MARKER stub
+: marker-create ( "name" -- )
+  bl word count marker-create-from drop ;
+
+\ marker-restore-from ( c-addr u -- )  restore HERE + optional ENTRY-COUNT from named mark
+: marker-restore-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [marker] FAIL reason=miss" cr exit
+  then
+  dup entry-marker?[] @ 0= if
+    drop 2drop
+    ." [marker] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  r@ entry-marker-here[] @ _here !
+  r@ entry-marker-dict[] @ dup 0< if
+    drop
+  else
+    ENTRY-COUNT @ min ENTRY-COUNT !
+  then
+  ." [marker] RESTORE name=" r@ entry-name[] NAMELEN name-trim type
+  ."  here=" r@ entry-marker-here[] @ .
+  ." dict=" r@ entry-marker-dict[] @ . cr
+  r> drop
+  ENTRY-COUNT @ dup 0= if drop -1 else 1- then _latest ! ;
+
+\ marker-restore ( "name" -- )  parse + RESTORE stub
+: marker-restore ( "name" -- )
+  bl word count marker-restore-from ;
+
+\ marker-demo ( -- )  dict-reset → MARKER ckpt → ALLOT + entry → RESTORE → OK
+: marker-demo ( -- )
+  ." [marker-demo] dict-reset + MARKER ckpt + ALLOT + RESTORE" cr
+  dict-reset
+  (mk-ckpt) count marker-create-from drop
+  _here @ >r
+  8 allot-bump
+  (mk-tmp) count entry-create-from drop
+  _here @ r@ > 0= if
+    r> drop ." [marker-demo] FAIL" cr exit
+  then
+  (mk-ckpt) count marker-restore-from
+  _here @ r> <> if
+    ." [marker-demo] FAIL" cr exit
+  then
+  (mk-ckpt) count entry-find 0< 0= if
+    ." [marker-demo] FAIL" cr exit
+  then
+  (mk-tmp) count entry-find 0< 0= if
+    ." [marker-demo] FAIL" cr exit
+  then
+  ." [marker-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -1899,6 +1992,7 @@ create (df-bound) 5 c, char b c, char o c, char u c, char n c, char d c,
 \ - FILL/ERASE/MOVE/CMOVE stubs + fill-demo (wave15 item 3) — landed
 \ - IMMEDIATE/POSTPONE stubs + imm-demo (wave15 item 4) — landed
 \ - DEFER/IS/ACTION-OF stubs + defer-demo (wave16 item 1) — landed
+\ - MARKER restore-mark stubs + marker-demo (wave16 item 2) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

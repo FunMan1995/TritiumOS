@@ -274,6 +274,9 @@ static int host_entry_imm[HOST_MAX_GENTRIES]; /* 1 = IMMEDIATE bit (wave15 item 
 static int host_entry_defer[HOST_MAX_GENTRIES]; /* 1 = deferred-word stub (wave16 item 1) */
 static int host_entry_defer_xt[HOST_MAX_GENTRIES]; /* stub xt id; 0 = unbound; not executable */
 static char host_entry_defer_act[HOST_MAX_GENTRIES][HOST_NAMELEN]; /* stub action name */
+static int host_entry_marker[HOST_MAX_GENTRIES]; /* 1 = MARKER restore stub (wave16 item 2) */
+static int host_entry_marker_here[HOST_MAX_GENTRIES]; /* captured HERE bump */
+static int host_entry_marker_dict[HOST_MAX_GENTRIES]; /* captured entry-count */
 static int host_create_latest = -1; /* index of most recent CREATE; -1 = none */
 static int host_latest = -1; /* latest colon/CREATE for IMMEDIATE (wave15 item 4) */
 /* wave14 item 1: HERE/ALLOT stub dictionary pointer (bytes); no arena */
@@ -321,6 +324,9 @@ static void host_dict_reset(void) {
         host_entry_defer[i] = 0;
         host_entry_defer_xt[i] = 0;
         host_entry_defer_act[i][0] = 0;
+        host_entry_marker[i] = 0;
+        host_entry_marker_here[i] = 0;
+        host_entry_marker_dict[i] = 0;
     }
     host_colon_def = 0;
     host_colon_idx = -1;
@@ -371,6 +377,9 @@ static int host_group_entry_create(const char* name, int gid) {
     host_entry_defer[i] = 0;
     host_entry_defer_xt[i] = 0;
     host_entry_defer_act[i][0] = 0;
+    host_entry_marker[i] = 0;
+    host_entry_marker_here[i] = 0;
+    host_entry_marker_dict[i] = 0;
     printf("[kernel] group-entry #%d gid=%d\n", i, gid);
     return i;
 }
@@ -417,6 +426,9 @@ static int host_entry_create(const char* name) {
     host_entry_defer[i] = 0;
     host_entry_defer_xt[i] = 0;
     host_entry_defer_act[i][0] = 0;
+    host_entry_marker[i] = 0;
+    host_entry_marker_here[i] = 0;
+    host_entry_marker_dict[i] = 0;
     printf("[kernel] created #%d\n", i);
     return i;
 }
@@ -3014,6 +3026,84 @@ void defer_demo(void) {
         return;
     }
     printf("[defer-demo] OK\n\n");
+}
+
+
+/* wave16 item 2: MARKER dictionary-restore stubs — snapshot HERE + optional entry-count.
+ * Forth mirrors: marker-create / marker-restore. Snapshot mark only — not real forget / arena. */
+static int host_marker_create(const char* name) {
+    int i;
+    int h0;
+    int d0;
+    if (!name || !name[0]) {
+        printf("[marker] FAIL reason=miss\n");
+        return -1;
+    }
+    h0 = host_here;
+    d0 = host_entry_count;
+    i = host_entry_create(name);
+    if (i < 0) return -1;
+    host_entry_marker[i] = 1;
+    host_entry_marker_here[i] = h0;
+    host_entry_marker_dict[i] = d0;
+    host_latest = i;
+    printf("[marker] MARKER name=%s here=%d dict=%d\n",
+           host_entry_names[i], h0, d0);
+    return i;
+}
+
+static void host_marker_restore(const char* name) {
+    int i;
+    int h0;
+    int d0;
+    if (!name || !name[0]) {
+        printf("[marker] FAIL reason=miss\n");
+        return;
+    }
+    i = host_entry_find(name);
+    if (i < 0 || !host_entry_marker[i]) {
+        printf("[marker] FAIL reason=miss\n");
+        return;
+    }
+    h0 = host_entry_marker_here[i];
+    d0 = host_entry_marker_dict[i];
+    host_here = h0;
+    /* stub trim: reset entry-count to snapshot (host int only — no XT free) */
+    if (d0 >= 0 && d0 <= host_entry_count)
+        host_entry_count = d0;
+    host_latest = (host_entry_count > 0) ? (host_entry_count - 1) : -1;
+    printf("[marker] RESTORE name=%s here=%d dict=%d\n", name, h0, d0);
+}
+
+void marker_demo(void) {
+    /* wave16 item 2: dict-reset → MARKER ckpt → ALLOT + entry → RESTORE */
+    int h0;
+    printf("[marker-demo] dict-reset + MARKER ckpt + ALLOT + RESTORE\n");
+    host_dict_reset();
+    if (host_marker_create("ckpt") < 0) {
+        printf("[marker-demo] FAIL\n\n");
+        return;
+    }
+    h0 = host_here;
+    host_allot_bump(8);
+    if (host_entry_create("tmp") < 0) {
+        printf("[marker-demo] FAIL\n\n");
+        return;
+    }
+    if (host_here <= h0) {
+        printf("[marker-demo] FAIL\n\n");
+        return;
+    }
+    host_marker_restore("ckpt");
+    if (host_here != h0) {
+        printf("[marker-demo] FAIL\n\n");
+        return;
+    }
+    if (host_entry_find("ckpt") >= 0 || host_entry_find("tmp") >= 0) {
+        printf("[marker-demo] FAIL\n\n");
+        return;
+    }
+    printf("[marker-demo] OK\n\n");
 }
 
 
@@ -5794,6 +5884,9 @@ int main(int argc, char** argv) {
         } else if (strcasecmp(line, "defer-demo") == 0 ||
                    strcasecmp(line, "defer_demo") == 0) {
             defer_demo();
+        } else if (strcasecmp(line, "marker-demo") == 0 ||
+                   strcasecmp(line, "marker_demo") == 0) {
+            marker_demo();
         } else if (strcasecmp(line, "WORDS") == 0 ||
                    strcasecmp(line, "words") == 0 ||
                    strcasecmp(line, ".words") == 0) {

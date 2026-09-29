@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave11 item **3**)
 **Canonical brief:** Dusk `words` / dict list; `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (`.words`); Linux `host_words()` in `tritiumos.c`
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`, `docs/VARIABLE-CONST.md` (wave12 **2**)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`, `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/MARKER.md` (wave16 **2**)
 
 ## 1. Purpose
 
@@ -37,6 +37,7 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - Truncate/pad names stay NAMELEN policy from KERNEL.
 - No requirement to dump body markers or XT.
 - VARIABLE/CONSTANT names (wave12 **2**) appear in the flat list after create — see `docs/VARIABLE-CONST.md`.
+- `MARKER` restore-mark stubs (wave16 **2**) may snapshot / restore stub entry-count — **not** a real wordlist prune or SEARCH-WORDLIST; see `docs/MARKER.md`.
 
 ## 5. `words-demo`
 
@@ -58,6 +59,7 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 
 - Full SEARCH-WORDLIST / wordlist stack / linked dict
 - Group-scoped `WORDS` filter (use `group-vocab-*` later)
+- Real forget-chain / wordlist prune beyond stub entry-count (`MARKER` restore-mark → `docs/MARKER.md` wave16 **2**)
 - AppImage refined hang (wave11 **4**)
 - Docs cites (wave11 **5**)
 
@@ -74,3 +76,4 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - `forth/tritium/kernel.fs` (`.words`)
 - Dusk `fs/mem/dict.fs` words (stub list only)
 - `docs/VARIABLE-CONST.md` (wave12 **2**)
+- `docs/MARKER.md` (wave16 **2**)

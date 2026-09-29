@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave7 item **5**)  
 **Canonical brief:** `TritiumOS.txt` Phase 2; Dusk `fs/doc/kernel.txt` + `fs/mem/dict.fs` (see `docs/FORTH-BASE-REFERENCES.md`)  
 **Sources of truth (code):** `forth/tritium/kernel.fs`; Linux host mirrors for demos  
-**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`, `docs/COLON.md` (wave9 **4**), `docs/CONTROL.md` (wave10 **2**); `docs/WORDS-VOCAB.md` (wave11 **3**); `docs/VARIABLE-CONST.md` (wave12 **2**); `docs/COMMENT-PARSE.md` (wave12 **3**); `docs/VALUE-TO.md` (wave13 **1**); `docs/CREATE-DOES.md` (wave13 **3**); `docs/ALLOT-HERE.md` (wave14 **1**); `docs/2VARIABLE.md` (wave14 **3**); `docs/THROW-CATCH.md` (wave14 **4**); `docs/CELL-CELLS.md` (wave15 **1**); `docs/PICK-ROLL.md` (wave15 **2**); `docs/FILL-MOVE.md` (wave15 **3**); `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**); `docs/DEFER-IS.md` (wave16 **1**)
+**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`, `docs/COLON.md` (wave9 **4**), `docs/CONTROL.md` (wave10 **2**); `docs/WORDS-VOCAB.md` (wave11 **3**); `docs/VARIABLE-CONST.md` (wave12 **2**); `docs/COMMENT-PARSE.md` (wave12 **3**); `docs/VALUE-TO.md` (wave13 **1**); `docs/CREATE-DOES.md` (wave13 **3**); `docs/ALLOT-HERE.md` (wave14 **1**); `docs/2VARIABLE.md` (wave14 **3**); `docs/THROW-CATCH.md` (wave14 **4**); `docs/CELL-CELLS.md` (wave15 **1**); `docs/PICK-ROLL.md` (wave15 **2**); `docs/FILL-MOVE.md` (wave15 **3**); `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**); `docs/DEFER-IS.md` (wave16 **1**); `docs/MARKER.md` (wave16 **2**)
 **See also:** `docs/INTERPRET.md` (wave8 **1** — interpret loop deepen); `docs/COLON.md` (wave9 **4** — colon body/marker stub); `docs/COMMENT-PARSE.md` (wave12 **3** — `\` / `(` comment skip).
 
 ## 1. Purpose
@@ -51,6 +51,8 @@ Not a full VM, linked dict, or xcomp.
 | `imm-demo` | `( -- )` | IMMEDIATE + POSTPONE → OK (`IMMEDIATE-POSTPONE.md`) |
 | `DEFER` / `IS` / `ACTION-OF` | (see tip) | Deferred-word stubs — see `DEFER-IS.md` (wave16 **1**); Forth mirrors `defer-create` / `is-bind` / `action-of-xt` (**do not** redefine rekia `defer` / `is`) |
 | `defer-demo` | `( -- )` | DEFER + IS + ACTION-OF → OK (`DEFER-IS.md`) |
+| `MARKER` / `marker-create` | (see tip) | Dictionary-restore stubs — see `MARKER.md` (wave16 **2**); restore via named marker word or optional `marker-restore` (snapshot mark only — not real forget) |
+| `marker-demo` | `( -- )` | MARKER + RESTORE → OK (`MARKER.md`) |
 | `dict-reset` | `( -- )` | Empty table |
 | `cold-boot` | `( -- )` | sysvars + dict-reset + edition default + markers |
 | `abort` / `(abort")` | soft | Existing; no hard exit; CATCH/THROW mark stubs → `THROW-CATCH.md` (wave14 **4**) |
@@ -87,7 +89,7 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 ## 5. Non-goals (this tip)
 
 - Full SEARCH-WORDLIST / linked dict — list-only `WORDS` is wave11 **3** (`WORDS-VOCAB.md`)
-- Named-cell stubs (`VARIABLE`/`CONSTANT`) → `docs/VARIABLE-CONST.md` (wave12 **2**); VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**); CREATE/DOES> stubs → `docs/CREATE-DOES.md` (wave13 **3**); HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**); double-cell stubs → `docs/2VARIABLE.md` (wave14 **3**); CATCH/THROW stubs → `docs/THROW-CATCH.md` (wave14 **4**); dictionary-unit stubs (`CELL`/`CELLS`/`ALIGN`/`ALIGNED`) → `docs/CELL-CELLS.md` (wave15 **1**); stack-marker stubs (`PICK`/`ROLL`/`DEPTH`/`?DUP`) → `docs/PICK-ROLL.md` (wave15 **2**; do not redefine host `2dup`/`2drop`/`2swap`); fixed host-buffer stubs (`FILL`/`ERASE`/`MOVE`/`CMOVE`) → `docs/FILL-MOVE.md` (wave15 **3**; do not redefine kernel `cmove`); IMMEDIATE/POSTPONE flag stubs → `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**; flag + name mark only); DEFER/IS/ACTION-OF deferred-word stubs → `docs/DEFER-IS.md` (wave16 **1**; Forth mirrors only — do not redefine rekia `defer`/`is`); full arena / free / linked XT chaining / FLOAT / real exception RS unwind / executing postponed XT / executing bound XT still later
+- Named-cell stubs (`VARIABLE`/`CONSTANT`) → `docs/VARIABLE-CONST.md` (wave12 **2**); VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**); CREATE/DOES> stubs → `docs/CREATE-DOES.md` (wave13 **3**); HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**); double-cell stubs → `docs/2VARIABLE.md` (wave14 **3**); CATCH/THROW stubs → `docs/THROW-CATCH.md` (wave14 **4**); dictionary-unit stubs (`CELL`/`CELLS`/`ALIGN`/`ALIGNED`) → `docs/CELL-CELLS.md` (wave15 **1**); stack-marker stubs (`PICK`/`ROLL`/`DEPTH`/`?DUP`) → `docs/PICK-ROLL.md` (wave15 **2**; do not redefine host `2dup`/`2drop`/`2swap`); fixed host-buffer stubs (`FILL`/`ERASE`/`MOVE`/`CMOVE`) → `docs/FILL-MOVE.md` (wave15 **3**; do not redefine kernel `cmove`); IMMEDIATE/POSTPONE flag stubs → `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**; flag + name mark only); DEFER/IS/ACTION-OF deferred-word stubs → `docs/DEFER-IS.md` (wave16 **1**; Forth mirrors only — do not redefine rekia `defer`/`is`); MARKER restore-mark stubs → `docs/MARKER.md` (wave16 **2**; snapshot HERE + optional entry-count only — not real forget / arena rewind); full arena / free / linked XT chaining / FLOAT / real exception RS unwind / executing postponed XT / executing bound XT still later
 - Full colon compiler / real branch XT (minimal `interpret` loop → `docs/INTERPRET.md`; comment skip → `docs/COMMENT-PARSE.md` wave12 **3**; `IF`/`THEN`/`ELSE` stubs → `docs/CONTROL.md`)
 - Linked-list ENTRYSZ / forget / units objects (Dusk full)
 - Replacing host C#/Kotlin VMs
@@ -96,7 +98,7 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 ## 6. Acceptance (Test Lab)
 
 1. `docs/KERNEL.md` present (Research byte-copy OK).
-2. `kernel-demo` → OK; `find`/`findentry` miss path greppable; wave11 **3**: `words-demo` → OK; wave12 **2**: `var-demo` → OK; wave12 **3**: `comment-demo` → OK; wave13 **1**: `value-demo` → OK; wave13 **3**: `create-demo` → OK; wave14 **1**: `allot-demo` → OK; wave14 **3**: `2var-demo` → OK; wave14 **4**: `throw-demo` → OK; wave15 **1**: `cell-demo` → OK; wave15 **2**: `pick-demo` → OK; wave15 **3**: `fill-demo` → OK; wave15 **4**: `imm-demo` → OK; wave16 **1**: `defer-demo` → OK.
+2. `kernel-demo` → OK; `find`/`findentry` miss path greppable; wave11 **3**: `words-demo` → OK; wave12 **2**: `var-demo` → OK; wave12 **3**: `comment-demo` → OK; wave13 **1**: `value-demo` → OK; wave13 **3**: `create-demo` → OK; wave14 **1**: `allot-demo` → OK; wave14 **3**: `2var-demo` → OK; wave14 **4**: `throw-demo` → OK; wave15 **1**: `cell-demo` → OK; wave15 **2**: `pick-demo` → OK; wave15 **3**: `fill-demo` → OK; wave15 **4**: `imm-demo` → OK; wave16 **1**: `defer-demo` → OK; wave16 **2**: `marker-demo` → OK.
 3. Full regression green (esp. group-nested / group-vocab-persist / rekia / s3-reserved / cold path).
 4. No merge.
 
@@ -118,3 +120,4 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 - `docs/FILL-MOVE.md` (wave15 **3**)
 - `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**)
 - `docs/DEFER-IS.md` (wave16 **1**)
+- `docs/MARKER.md` (wave16 **2**)
