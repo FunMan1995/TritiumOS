@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# buffer-demo — Lab smoke for BUFFER: named buffer-slot stubs (wave16 item 3 / docs/BUFFER-COLON.md)
+# Mirrors forth/tritium/kernel.fs buffer-demo + Linux host buffer_demo.
+# Named slots over wave15 fill cap (64) — NOT an arena / ALLOCATE / FILL-buffer redefine.
+# Forth mirrors: buffer-colon / buffer-fetch.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: buffer-demo"
+  echo "  dict-reset → 8 BUFFER: buf → fetch → [buffer-demo] OK"
+  echo "  Markers: [buffer] BUFFER: name= n= / [buffer] addr= name= → [buffer-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[buffer-demo] FAIL"
+  exit 1
+}
+
+FILL_CAP=64
+declare -a NAMES=()
+declare -a BUFFER_P=()
+declare -a BUFFER_N=()
+declare -a BUFFER_ADDR=()
+LAST_IDX=-1
+BUFFER_NEXT=0
+
+dict_reset() {
+  NAMES=()
+  BUFFER_P=()
+  BUFFER_N=()
+  BUFFER_ADDR=()
+  LAST_IDX=-1
+  BUFFER_NEXT=0
+}
+
+entry_find() {
+  local name=$1 i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      LAST_IDX=$i
+      return 0
+    fi
+  done
+  LAST_IDX=-1
+  return 1
+}
+
+entry_create() {
+  local name=$1
+  if entry_find "$name"; then
+    echo "[kernel] entry exists #$LAST_IDX"
+    return 0
+  fi
+  LAST_IDX=${#NAMES[@]}
+  NAMES+=("$name")
+  BUFFER_P+=(0)
+  BUFFER_N+=(0)
+  BUFFER_ADDR+=(0)
+  echo "[kernel] created #$LAST_IDX"
+}
+
+buffer_colon() {
+  local n=$1
+  local name=${2:-}
+  if [[ -z "$name" ]]; then
+    echo "[buffer] FAIL reason=miss"
+    return 1
+  fi
+  if [[ "$n" -le 0 ]]; then
+    echo "[buffer] FAIL reason=bounds"
+    return 1
+  fi
+  if [[ $(( BUFFER_NEXT + n )) -gt "$FILL_CAP" ]]; then
+    echo "[buffer] FAIL reason=bounds"
+    return 1
+  fi
+  entry_create "$name"
+  local idx=$LAST_IDX
+  [[ "$idx" -ge 0 ]] || return 1
+  local addr=$BUFFER_NEXT
+  BUFFER_P[$idx]=1
+  BUFFER_N[$idx]=$n
+  BUFFER_ADDR[$idx]=$addr
+  BUFFER_NEXT=$(( BUFFER_NEXT + n ))
+  echo "[buffer] BUFFER: name=$name n=$n addr=$addr"
+}
+
+buffer_fetch() {
+  local name=${1:-}
+  if [[ -z "$name" ]]; then
+    echo "[buffer] FAIL reason=miss"
+    return 1
+  fi
+  if ! entry_find "$name"; then
+    echo "[buffer] FAIL reason=miss"
+    return 1
+  fi
+  local idx=$LAST_IDX
+  if [[ "${BUFFER_P[$idx]}" -ne 1 ]]; then
+    echo "[buffer] FAIL reason=miss"
+    return 1
+  fi
+  echo "[buffer] addr=${BUFFER_ADDR[$idx]} name=$name"
+}
+
+echo "[buffer-demo] dict-reset + 8 BUFFER: buf + fetch"
+dict_reset
+
+# 1) 8 BUFFER: buf — create named slot inside fill cap
+buffer_colon 8 buf || fail
+entry_find buf || fail
+[[ "${BUFFER_P[$LAST_IDX]}" -eq 1 ]] || fail
+[[ "${BUFFER_N[$LAST_IDX]}" -eq 8 ]] || fail
+
+# 2) Fetch / execute buf → addr= name=
+buffer_fetch buf || fail
+
+# Happy path must not emit bounds FAIL
+echo "[buffer-demo] OK"
+exit 0

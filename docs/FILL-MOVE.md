@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave15 item **3**)
 **Canonical brief:** ANS-shaped `FILL` / `ERASE` / `MOVE` / `CMOVE` (thin fixed host-buffer markers); `docs/ALLOT-HERE.md` (wave14 **1**); `docs/KERNEL.md` (wave7 **5**); pairs with wave15 **1** `CELL-CELLS` (optional `CELLS` for `u` — not required for Lab OK)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `fill.fs`); Linux host REPL
-**Companions:** `docs/ALLOT-HERE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip)
+**Companions:** `docs/ALLOT-HERE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/BUFFER-COLON.md` (wave16 **3**)
 **Base tip SHA:** `3587fc2` (wave15 tip2 CLOSED / #68 PICK-ROLL) / full `3587fc274f6dc05221dfa8663ca625c699fddd36`
 
 ## 1. Purpose
@@ -30,6 +30,7 @@ Host note: bind `FILL` / `ERASE` / `MOVE` / `CMOVE` on the Linux REPL; Forth mir
 - **MOVE / CMOVE from to u:** copy `u` bytes. Print `[fill] MOVE from=<f> to=<t> u=<u>` or `[fill] CMOVE from=<f> to=<t> u=<u>`. Also emit a greppable **post-image** (e.g. hex dump of touched region) **or** `bytes=<u>` on the same / next line. Stub may treat MOVE and CMOVE identically (overlap handling not required for Lab OK); demo should avoid overlapping regions.
 - **Bounds:** `addr+u > cap`, `from+u > cap`, `to+u > cap`, or negative → `[fill] FAIL reason=bounds` (demo **must avoid** — keep all ranges inside `0 .. cap`).
 - Storage: the fixed host array only. **No** arena, pool, free, fragmentation, real `ALLOCATE`, or dictionary image.
+- Named buffer `BUFFER:` slots may use offsets into this same cap → `docs/BUFFER-COLON.md` (wave16 **3**). Named slot only — **do not** redefine / replace this FILL host buffer; still **not** an arena / `ALLOCATE`.
 - Optional: `u` may be composed with tip1 `CELLS` (e.g. `2 CELLS` → 16 when cell=8) — **not** required for Lab OK.
 - Nest with prior pick / cell / allot / throw / 2var / create / colon / control / string stubs OK. `dict-reset` need not clear the buffer (demo seeds explicitly via FILL/ERASE).
 - Still no IMMEDIATE/POSTPONE, real DOES> XT, real branch XT, full Win/Android Forth VM. Those stay non-goals / later tips.
@@ -83,6 +84,7 @@ Do **not** wipe CELL-CELLS / PICK-ROLL / ALLOT-HERE / THROW-CATCH / other wave14
 
 - Full Dusk arena / pool / free / fragmentation model (this tip = fixed host buffer stub only)
 - Real `ALLOCATE` / `FREE` / `RESIZE`
+- `BUFFER:` named allot buffer stubs → `docs/BUFFER-COLON.md` (wave16 **3**; offsets into this cap OK — do not redefine FILL buffer)
 - Redefining kernel-internal `cmove` used by dict copy in `kernel.fs` / `drena.fs` (use mirrors `fill-buf` / `cmove-buf` / `move-buf` / `erase-buf`)
 - IMMEDIATE / POSTPONE (wave15 **4** candidate)
 - Docs cites pass (wave15 **5**)
@@ -109,3 +111,4 @@ Do **not** wipe CELL-CELLS / PICK-ROLL / ALLOT-HERE / THROW-CATCH / other wave14
 - ANS Forth `FILL` / `ERASE` / `MOVE` / `CMOVE` (stub markers + fixed host buffer only — not an arena)
 - Base tip: `3587fc2` / `3587fc274f6dc05221dfa8663ca625c699fddd36` (#68 wave15 tip2 PICK-ROLL)
 - Wave15 proposal: `/workspace/tritium-research-docs/WAVE15-PROPOSAL.md`
+- `docs/BUFFER-COLON.md` (wave16 **3**)

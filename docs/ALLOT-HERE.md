@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave14 item **1**)
 **Canonical brief:** ANS-shaped `HERE` / `ALLOT` (thin pointer stub); `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `allot.fs` / `here.fs`); Linux host REPL
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/CREATE-DOES.md` (thin amend this tip), `docs/CELL-CELLS.md` (wave15 **1**), `docs/FILL-MOVE.md` (wave15 **3**), `docs/MARKER.md` (wave16 **2**)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/CREATE-DOES.md` (thin amend this tip), `docs/CELL-CELLS.md` (wave15 **1**), `docs/FILL-MOVE.md` (wave15 **3**), `docs/MARKER.md` (wave16 **2**), `docs/BUFFER-COLON.md` (wave16 **3**)
 **Base tip SHA:** `b2c8e7d` (wave13 tip5 CLOSED / #61) / full `b2c8e7d2de370ca822c49bc9f3a8c9f84d77598b`
 
 ## 1. Purpose
@@ -31,6 +31,7 @@ Host note: bind `HERE` / `ALLOT` on Linux REPL; Forth mirrors `here-at` / `allot
 - Dictionary-unit words `CELL` / `CELLS` / `ALIGN` / `ALIGNED` → `docs/CELL-CELLS.md` (wave15 **1**). This tip's bump stays a **byte** counter; cell size is a host constant (prefer 8 on 64-bit Linux SoT). `ALIGN` rounds this stub pointer up to a cell boundary only — **not** a real aligned physical image or dictionary.
 - Fixed host-buffer `FILL` / `ERASE` / `MOVE` / `CMOVE` → `docs/FILL-MOVE.md` (wave15 **3**). Still **not** an arena / `ALLOCATE` / free — one capped host byte array only.
 - Dictionary-restore `MARKER` snapshot (HERE + optional entry index) → `docs/MARKER.md` (wave16 **2**). Snapshot mark only — **not** arena rewind / real forget of XT bodies.
+- Named buffer `BUFFER:` slots (size + offset into fill cap and/or HERE bump) → `docs/BUFFER-COLON.md` (wave16 **3**). Named slot only — **not** an arena / ALLOCATE / FILL-buffer redefine.
 - Nest with prior VARIABLE / VALUE / CREATE / colon / control / string stubs OK; `dict-reset` may reset the pointer to base (optional; demo may record before/after without requiring reset).
 - Still no real DOES> XT chain, UNLOOP/J, THROW/CATCH, 2VARIABLE, full Win/Android Forth VM; those → later wave14 tips / non-goals.
 
@@ -86,7 +87,7 @@ HERE + ALLOT markers and a visible bump are required. Optional comma words are n
 ## 7. Non-goals
 
 - Full Dusk arena / pool / free / fragmentation model (this tip = pointer stub only)
-- `CELL` / `CELLS` / `ALIGN` / `ALIGNED` dictionary-unit markers → `docs/CELL-CELLS.md` (wave15 **1**); fixed host-buffer FILL/ERASE/MOVE/CMOVE → `docs/FILL-MOVE.md` (wave15 **3**); `MARKER` restore-mark stubs → `docs/MARKER.md` (wave16 **2**); IMMEDIATE/POSTPONE already stubbed (wave15 **4**). Full arena stays out
+- `CELL` / `CELLS` / `ALIGN` / `ALIGNED` dictionary-unit markers → `docs/CELL-CELLS.md` (wave15 **1**); fixed host-buffer FILL/ERASE/MOVE/CMOVE → `docs/FILL-MOVE.md` (wave15 **3**); `MARKER` restore-mark stubs → `docs/MARKER.md` (wave16 **2**); `BUFFER:` named buffer stubs → `docs/BUFFER-COLON.md` (wave16 **3**); IMMEDIATE/POSTPONE already stubbed (wave15 **4**). Full arena stays out
 - Real linked cell memory / buffer-backed `,`/`C,` heap
 - Real DOES> XT chaining / threaded child runtime body
 - UNLOOP / J (wave14 **2** candidate)
@@ -115,3 +116,4 @@ HERE + ALLOT markers and a visible bump are required. Optional comma words are n
 - `docs/CELL-CELLS.md` (wave15 **1**)
 - `docs/FILL-MOVE.md` (wave15 **3**)
 - `docs/MARKER.md` (wave16 **2**)
+- `docs/BUFFER-COLON.md` (wave16 **3**)

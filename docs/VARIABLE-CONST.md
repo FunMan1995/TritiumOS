@@ -3,12 +3,12 @@
 **Status:** Shipper-ready stub spec (wave12 item **2**)
 **Canonical brief:** Dusk `variable` / `const` (thin stub); `docs/KERNEL.md` (wave7 **5**), `docs/WORDS-VOCAB.md` (wave11 **3**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `var.fs`); Linux host REPL
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DO-LOOP.md` (wave12 **1**), `docs/VALUE-TO.md` (wave13 **1**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/ALLOT-HERE.md` (wave14 **1**), `docs/2VARIABLE.md` (wave14 **3**), `docs/CELL-CELLS.md` (wave15 **1**), `docs/DEFER-IS.md` (wave16 **1**)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DO-LOOP.md` (wave12 **1**), `docs/VALUE-TO.md` (wave13 **1**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/ALLOT-HERE.md` (wave14 **1**), `docs/2VARIABLE.md` (wave14 **3**), `docs/CELL-CELLS.md` (wave15 **1**), `docs/DEFER-IS.md` (wave16 **1**), `docs/BUFFER-COLON.md` (wave16 **3**)
 **Base tip SHA:** `132f99e` (wave12 tip1 CLOSED / #52)
 
 ## 1. Purpose
 
-Flat dict + colon body stubs exist; named cells do not. This tip adds **VARIABLE / CONSTANT stubs**: `VARIABLE <name>` creates a named cell entry (init 0), `CONSTANT <name>` creates a named constant from TOS (or an explicit value arg), prints greppable `[var]` markers, and smokes via **`var-demo`**. Optional `@` / `!` on VARIABLE body if already present — **prefer greppable markers without a full memory / HERE model**. HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**; not full arena). VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**). CREATE/DOES> defining-word stubs → `docs/CREATE-DOES.md` (wave13 **3**). Double-cell `2VARIABLE` / `2CONSTANT` stubs → `docs/2VARIABLE.md` (wave14 **3**). Dictionary-unit size and align-up (`CELL` / `CELLS` / `ALIGN` / `ALIGNED`) → `docs/CELL-CELLS.md` (wave15 **1**; host constant + stub-pointer round-up, not a physical cell). Deferred-word stubs (`DEFER` / `IS` / `ACTION-OF`) → `docs/DEFER-IS.md` (wave16 **1**; name + bind markers — Forth mirrors; rekia `defer`/`is` untouched).
+Flat dict + colon body stubs exist; named cells do not. This tip adds **VARIABLE / CONSTANT stubs**: `VARIABLE <name>` creates a named cell entry (init 0), `CONSTANT <name>` creates a named constant from TOS (or an explicit value arg), prints greppable `[var]` markers, and smokes via **`var-demo`**. Optional `@` / `!` on VARIABLE body if already present — **prefer greppable markers without a full memory / HERE model**. HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**; not full arena). VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**). CREATE/DOES> defining-word stubs → `docs/CREATE-DOES.md` (wave13 **3**). Double-cell `2VARIABLE` / `2CONSTANT` stubs → `docs/2VARIABLE.md` (wave14 **3**). Dictionary-unit size and align-up (`CELL` / `CELLS` / `ALIGN` / `ALIGNED`) → `docs/CELL-CELLS.md` (wave15 **1**; host constant + stub-pointer round-up, not a physical cell). Deferred-word stubs (`DEFER` / `IS` / `ACTION-OF`) → `docs/DEFER-IS.md` (wave16 **1**; name + bind markers — Forth mirrors; rekia `defer`/`is` untouched). Named buffer stubs (`BUFFER:`) → `docs/BUFFER-COLON.md` (wave16 **3**; size + offset into fill cap / HERE bump — not a VARIABLE body / arena).
 
 ## 2. Words / Surfaces
 
@@ -31,7 +31,7 @@ Host note: bind `VARIABLE` / `CONSTANT` on Linux REPL; Forth mirrors `var-create
 - Optional `@`/`!`: only if already present on host / kernel soft ops; print `[var] @` / `[var] !` markers. VARIABLE may stay host-side int map / entry-slot; HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**; full arena still out).
 - Unrecognized / missing name on optional fetch → `[var] FAIL` reason=miss (demo must avoid).
 - Nest with prior colon / control / loop / do-loop stubs OK; dict-reset clears var/const stubs.
-- VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**). CREATE/DOES> stubs → `docs/CREATE-DOES.md` (wave13 **3**; markers only, no XT child). HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**); full arena/pool/free still out. Double-cell `2VARIABLE` / `2CONSTANT` stubs → `docs/2VARIABLE.md` (wave14 **3**; same host cell-map, two-slot). Dictionary-unit words → `docs/CELL-CELLS.md` (wave15 **1**): cell size + align of the HERE stub only; named cells stay host ints (no physical cell allocation). Deferred-word stubs → `docs/DEFER-IS.md` (wave16 **1**; name + bind only, not a VARIABLE body / XT vector). Comment-parse → `docs/COMMENT-PARSE.md` (wave12 **3**).
+- VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**). CREATE/DOES> stubs → `docs/CREATE-DOES.md` (wave13 **3**; markers only, no XT child). HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**); full arena/pool/free still out. Double-cell `2VARIABLE` / `2CONSTANT` stubs → `docs/2VARIABLE.md` (wave14 **3**; same host cell-map, two-slot). Dictionary-unit words → `docs/CELL-CELLS.md` (wave15 **1**): cell size + align of the HERE stub only; named cells stay host ints (no physical cell allocation). Deferred-word stubs → `docs/DEFER-IS.md` (wave16 **1**; name + bind only, not a VARIABLE body / XT vector). Named buffer stubs → `docs/BUFFER-COLON.md` (wave16 **3**; size + offset slot — not a VARIABLE body / arena). Comment-parse → `docs/COMMENT-PARSE.md` (wave12 **3**).
 
 ## 4. Markers
 
@@ -88,6 +88,7 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 - Full ALLOT / HERE arena / pool / free / linked cell memory model (pointer stubs → `docs/ALLOT-HERE.md` wave14 **1**)
 - `CELL` / `CELLS` / `ALIGN` / `ALIGNED` unit markers → `docs/CELL-CELLS.md` (wave15 **1**; not a dictionary image)
 - `DEFER` / `IS` / `ACTION-OF` deferred-word stubs → `docs/DEFER-IS.md` (wave16 **1**; mirrors only — do not redefine rekia `defer`/`is`)
+- `BUFFER:` named buffer stubs → `docs/BUFFER-COLON.md` (wave16 **3**; not a VARIABLE body / arena)
 - VALUE / TO stubs: see `docs/VALUE-TO.md` (wave13 **1**); CREATE / DOES> stubs: see `docs/CREATE-DOES.md` (wave13 **3**; no real XT chaining); HERE/ALLOT stubs: see `docs/ALLOT-HERE.md` (wave14 **1**); `2VARIABLE` / `2CONSTANT` stubs: see `docs/2VARIABLE.md` (wave14 **3**)
 - Comment-parse: see `docs/COMMENT-PARSE.md` (wave12 **3**); leave-again: see `docs/LEAVE-AGAIN.md` (wave12 **4**); docs cites (wave12 **5**)
 - Real crypto / network fleet
@@ -113,3 +114,4 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 - `docs/2VARIABLE.md` (wave14 **3**)
 - `docs/CELL-CELLS.md` (wave15 **1**)
 - `docs/DEFER-IS.md` (wave16 **1**)
+- `docs/BUFFER-COLON.md` (wave16 **3**)

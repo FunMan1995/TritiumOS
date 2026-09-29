@@ -31,3 +31,4 @@ fill-demo CONTRACT
 imm-demo CONTRACT
 defer-demo CONTRACT
 marker-demo CONTRACT
+buffer-demo CONTRACT

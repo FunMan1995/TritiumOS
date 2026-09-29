@@ -68,6 +68,9 @@ create ENTRY-DEFER-ACT MAX-ENTRIES NAMELEN * allot \ stub action name (blank = u
 create ENTRY-MARKER? MAX-ENTRIES cells allot  \ 1 = MARKER restore stub (wave16 item 2)
 create ENTRY-MARKER-HERE MAX-ENTRIES cells allot \ captured HERE bump
 create ENTRY-MARKER-DICT MAX-ENTRIES cells allot \ captured ENTRY-COUNT
+create ENTRY-BUFFER? MAX-ENTRIES cells allot  \ 1 = BUFFER: named slot (wave16 item 3)
+create ENTRY-BUFFER-N MAX-ENTRIES cells allot \ size n of named buffer
+create ENTRY-BUFFER-ADDR MAX-ENTRIES cells allot \ offset into fill cap
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
@@ -87,6 +90,9 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : entry-marker?[] ( i -- addr ) cells ENTRY-MARKER? + ;
 : entry-marker-here[] ( i -- addr ) cells ENTRY-MARKER-HERE + ;
 : entry-marker-dict[] ( i -- addr ) cells ENTRY-MARKER-DICT + ;
+: entry-buffer?[] ( i -- addr ) cells ENTRY-BUFFER? + ;
+: entry-buffer-n[] ( i -- addr ) cells ENTRY-BUFFER-N + ;
+: entry-buffer-addr[] ( i -- addr ) cells ENTRY-BUFFER-ADDR + ;
 \ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
@@ -111,6 +117,9 @@ variable _here
 $1000 _here !   \ stub base 0x1000
 \ CATCH/THROW stub depth (wave14 item 4) — frame-mark only; no RS unwind
 variable _catch-depth  \ open CATCH frame count
+\ BUFFER: next free offset into fill cap (wave16 item 3) — named slots only; not an arena
+variable _buffer-next
+0 _buffer-next !
 
 
 : entry-name-clear ( i -- )
@@ -135,6 +144,9 @@ variable _catch-depth  \ open CATCH frame count
   MAX-ENTRIES 0 do 0 i entry-marker?[] ! loop
   MAX-ENTRIES 0 do 0 i entry-marker-here[] ! loop
   MAX-ENTRIES 0 do 0 i entry-marker-dict[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-buffer?[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-buffer-n[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-buffer-addr[] ! loop
   0 _colon-def !
   -1 _colon-idx !
   0 _colon-toks !
@@ -148,7 +160,8 @@ variable _catch-depth  \ open CATCH frame count
   -1 _create-latest !
   -1 _latest !
   $1000 _here !
-  0 _catch-depth ! ;
+  0 _catch-depth !
+  0 _buffer-next ! ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -212,6 +225,9 @@ variable _catch-depth  \ open CATCH frame count
   0 r@ entry-marker?[] !       \ marker stub clear
   0 r@ entry-marker-here[] !
   0 r@ entry-marker-dict[] !
+  0 r@ entry-buffer?[] !       \ BUFFER: named slot clear
+  0 r@ entry-buffer-n[] !
+  0 r@ entry-buffer-addr[] !
   1 ENTRY-COUNT +!
   ." [kernel] created #" r@ . cr
   r> ;
@@ -1965,6 +1981,74 @@ create (mk-tmp) 3 c, char t c, char m c, char p c,
   ." [marker-demo] OK" cr ;
 
 
+\ === BUFFER: named buffer-slot stubs (wave16 item 3) ===
+\ Prefer greppable markers; named size+offset into fill cap (cap=64). Not an arena / ALLOCATE.
+\ Forth mirrors: buffer-colon / buffer-fetch (host binds BUFFER: ; fetch via named word or buffer-fetch).
+\ Do NOT redefine the wave15 FILL host buffer — slots are markers over that cap.
+
+variable _bf-n
+create (bf-buf) 3 c, char b c, char u c, char f c,
+
+\ buffer-colon-from ( n c-addr u -- i )  named buffer slot of size n; offset bump in fill cap
+: buffer-colon-from ( n c-addr u -- i )
+  rot _bf-n !                       \ c-addr u ; n saved
+  _bf-n @ 0 <= if
+    2drop
+    ." [buffer] FAIL reason=bounds" cr -1 exit
+  then
+  _buffer-next @ _bf-n @ + _fill-cap > if
+    2drop
+    ." [buffer] FAIL reason=bounds" cr -1 exit
+  then
+  2dup entry-create-from dup 0< if
+    nip nip exit
+  then
+  >r 2drop                          \ | R: idx
+  1 r@ entry-buffer?[] !
+  _bf-n @ r@ entry-buffer-n[] !
+  _buffer-next @ r@ entry-buffer-addr[] !
+  _bf-n @ _buffer-next +!
+  r@ _latest !
+  ." [buffer] BUFFER: name=" r@ entry-name[] NAMELEN name-trim type
+  ."  n=" r@ entry-buffer-n[] @ .
+  ." addr=" r@ entry-buffer-addr[] @ . cr
+  r> ;
+
+\ buffer-colon ( n "name" -- )  parse + BUFFER: stub
+: buffer-colon ( n "name" -- )
+  bl word count buffer-colon-from drop ;
+
+\ buffer-fetch-from ( c-addr u -- )  fetch/execute named buffer slot
+: buffer-fetch-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [buffer] FAIL reason=miss" cr exit
+  then
+  dup entry-buffer?[] @ 0= if
+    drop 2drop
+    ." [buffer] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [buffer] addr=" r@ entry-buffer-addr[] @ .
+  ." name=" r@ entry-name[] NAMELEN name-trim type cr
+  r> drop ;
+
+\ buffer-fetch ( "name" -- )  parse + fetch stub
+: buffer-fetch ( "name" -- )
+  bl word count buffer-fetch-from ;
+
+\ buffer-demo ( -- )  dict-reset → 8 BUFFER: buf → fetch → OK
+: buffer-demo ( -- )
+  ." [buffer-demo] dict-reset + 8 BUFFER: buf + fetch" cr
+  dict-reset
+  8 (bf-buf) count buffer-colon-from drop
+  (bf-buf) count entry-find 0< if
+    ." [buffer-demo] FAIL" cr exit
+  then
+  (bf-buf) count buffer-fetch-from
+  ." [buffer-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -1993,6 +2077,7 @@ create (mk-tmp) 3 c, char t c, char m c, char p c,
 \ - IMMEDIATE/POSTPONE stubs + imm-demo (wave15 item 4) — landed
 \ - DEFER/IS/ACTION-OF stubs + defer-demo (wave16 item 1) — landed
 \ - MARKER restore-mark stubs + marker-demo (wave16 item 2) — landed
+\ - BUFFER: named-buffer stubs + buffer-demo (wave16 item 3) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
