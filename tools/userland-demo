@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# userland-demo — assert userland/ scaffold presence (wave8 item 3 / docs/USERLAND.md)
+# Checks dirs + key files relative to repo root (or TRITIUM_USERLAND / AppDir share).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+USERLAND_ROOT="${TRITIUM_USERLAND:-}"
+
+usage() {
+  echo "Usage: userland-demo"
+  echo "  Assert userland/{init,shell,demos}/ + key files → greppable OK markers"
+  echo "Root: ${USERLAND_ROOT:-$ROOT/userland} (override with TRITIUM_USERLAND)"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Resolve userland root: env → repo → AppDir share next to this tools/ when bundled
+if [[ -z "$USERLAND_ROOT" ]]; then
+  if [[ -d "$ROOT/userland" ]]; then
+    USERLAND_ROOT="$ROOT/userland"
+  elif [[ -d "$ROOT/usr/share/userland" ]]; then
+    USERLAND_ROOT="$ROOT/usr/share/userland"
+  elif [[ -n "${APPDIR:-}" && -d "${APPDIR}/usr/share/userland" ]]; then
+    USERLAND_ROOT="${APPDIR}/usr/share/userland"
+  else
+    USERLAND_ROOT="$ROOT/userland"
+  fi
+fi
+
+fail=0
+ok_init=0
+ok_shell=0
+ok_demos=0
+
+need() {
+  local p="$1"
+  if [[ -e "$USERLAND_ROOT/$p" ]]; then
+    return 0
+  fi
+  echo "[userland] missing: $USERLAND_ROOT/$p" >&2
+  fail=1
+  return 1
+}
+
+# init/
+if need "init" && need "init/README.txt" && need "init/init.txt"; then
+  ok_init=1
+  echo "[userland] init/ OK"
+else
+  echo "[userland] init/ FAIL"
+fi
+
+# shell/
+if need "shell" && need "shell/README.txt" && need "shell/shell.txt"; then
+  ok_shell=1
+  echo "[userland] shell/ OK"
+else
+  echo "[userland] shell/ FAIL"
+fi
+
+# demos/
+if need "demos" && need "demos/README.txt" && need "demos/userland-demo.txt"; then
+  ok_demos=1
+  echo "[userland] demos/ OK"
+else
+  echo "[userland] demos/ FAIL"
+fi
+
+# top README
+need "README.txt" || true
+
+if [[ "$fail" -eq 0 && "$ok_init" -eq 1 && "$ok_shell" -eq 1 && "$ok_demos" -eq 1 ]]; then
+  echo "[userland-demo] OK"
+  exit 0
+fi
+echo "[userland-demo] FAIL"
+exit 1

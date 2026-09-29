@@ -43,6 +43,14 @@ else
   echo "Warning: evolve/qwantum-dump/sample01test missing; host will embed seed."
 fi
 
+echo "Bundling userland/ scaffold (wave8 item 3)..."
+if [ -d "$ROOT/userland" ]; then
+  mkdir -p "$APPDIR/usr/share/userland"
+  cp -a "$ROOT/userland/." "$APPDIR/usr/share/userland/"
+else
+  echo "Warning: userland/ missing; userland-demo may FAIL in AppImage."
+fi
+
 echo "Building native host (gcc -static for portability)..."
 if ! command -v gcc >/dev/null 2>&1; then
   echo "Error: gcc not found. Install build-essential."

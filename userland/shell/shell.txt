@@ -1,0 +1,5 @@
+userland shell stub — command list pointer
+Mirror host help: interpret-demo, kernel-demo, s0-assist-demo, queue-demo,
+assimilate-demo, lineos-*, tritium-integrate-demo, master-demo, fleet-demo,
+userland-demo, … (see Linux REPL help).
+Real interactive shell rewrite = non-goal (wave8 item 3).

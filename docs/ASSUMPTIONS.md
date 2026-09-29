@@ -58,6 +58,9 @@ lineos-brand-demo
 lineos-confirm-demo
 \ expect: [lineos-confirm-demo] OK — refuse then confirm→graduate
 
+userland-demo
+\ expect: [userland] init/ OK; shell/ OK; demos/ OK; [userland-demo] OK
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -234,3 +237,12 @@ tools/tritium-license status          # expect 10/10
 - SoT: Linux host C + Forth `forth/tritium/lineos.fs` (+ poly / Android mirrors).
 - Non-goals: real GUI modal, store rebrand, merge.
 - Cite: `docs/LINEOS-CONFIRM.md`, `docs/LINEOS.md`.
+
+## Userland scaffold (wave8 item 3)
+
+- Tree: `userland/{init,shell,demos}/` + READMEs + `init.txt` / `shell.txt` / `userland-demo.txt`; optional `userland/integrate.md` → `docs/INTEGRATE.md`.
+- Surfaces: `tools/userland-demo` + Linux host `userland-demo` (assert dirs + key files relative to repo root / AppDir).
+- Markers: `[userland] init/ OK` / `shell/ OK` / `demos/ OK` → `[userland-demo] OK`.
+- Non-goals: real interactive shell, `/boot`, relocating demos, host parity (wave8 **4**).
+- Cite: `docs/USERLAND.md`, `docs/ARCHITECTURE.md`, `TritiumOS.txt` §7.
+

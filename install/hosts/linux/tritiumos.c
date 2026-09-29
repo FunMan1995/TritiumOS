@@ -76,6 +76,8 @@ void master_demo(void);
 void fleet_export(const char* device_id);
 int fleet_import(void);
 void fleet_demo(void);
+/* userland scaffold presence demo (wave8 item 3) */
+void userland_demo(void);
 int assimilate_epoch(void);
 int assimilate_fragment(int group, int links);
 int assimilate_merge(int frag, unsigned proof);
@@ -2786,8 +2788,121 @@ void fleet_demo(void) {
         printf("[fleet-demo] FAIL\n\n");
 }
 
+/* --- userland scaffold presence (wave8 item 3 / docs/USERLAND.md) --- */
+static int userland_path_ok(const char* root, const char* rel) {
+    char path[MAX_PATH];
+    struct stat st;
+    snprintf(path, sizeof(path), "%s/%s", root, rel);
+    return (stat(path, &st) == 0);
+}
 
+static int find_userland_root(char* out, size_t outsz) {
+    const char* env = getenv("TRITIUM_USERLAND");
+    char cand[MAX_PATH];
+    char resolved[MAX_PATH];
+    struct stat st;
+    if (env && *env) {
+        if (stat(env, &st) == 0 && S_ISDIR(st.st_mode)) {
+            snprintf(out, outsz, "%s", env);
+            return 1;
+        }
+    }
+    /* AppImage/poly share: usr/share/userland next to tritium.poly */
+    {
+        const char* poly = getenv("TRITIUM_POLY");
+        if (poly && *poly) {
+            snprintf(cand, sizeof(cand), "%s/../userland", poly);
+            if (realpath(cand, resolved) != NULL && stat(resolved, &st) == 0 && S_ISDIR(st.st_mode)) {
+                snprintf(out, outsz, "%s", resolved);
+                return 1;
+            }
+        }
+    }
+    if (core_dir[0]) {
+        snprintf(cand, sizeof(cand), "%s/../../userland", core_dir);
+        if (realpath(cand, resolved) != NULL && stat(resolved, &st) == 0 && S_ISDIR(st.st_mode)) {
+            snprintf(out, outsz, "%s", resolved);
+            return 1;
+        }
+        snprintf(cand, sizeof(cand), "%s/../../../userland", core_dir);
+        if (realpath(cand, resolved) != NULL && stat(resolved, &st) == 0 && S_ISDIR(st.st_mode)) {
+            snprintf(out, outsz, "%s", resolved);
+            return 1;
+        }
+        /* AppDir: usr/share/tritium.poly/core -> usr/share/userland */
+        snprintf(cand, sizeof(cand), "%s/../userland", core_dir);
+        if (realpath(cand, resolved) != NULL && stat(resolved, &st) == 0 && S_ISDIR(st.st_mode)) {
+            snprintf(out, outsz, "%s", resolved);
+            return 1;
+        }
+    }
+    if (getcwd(cand, sizeof(cand)) != NULL) {
+        char try[MAX_PATH];
+        snprintf(try, sizeof(try), "%s/userland", cand);
+        if (stat(try, &st) == 0 && S_ISDIR(st.st_mode)) {
+            snprintf(out, outsz, "%s", try);
+            return 1;
+        }
+        /* walk parents a few levels (dev from subdirs) */
+        char walk[MAX_PATH];
+        snprintf(walk, sizeof(walk), "%s", cand);
+        for (int i = 0; i < 5; i++) {
+            snprintf(try, sizeof(try), "%s/userland", walk);
+            if (stat(try, &st) == 0 && S_ISDIR(st.st_mode)) {
+                snprintf(out, outsz, "%s", try);
+                return 1;
+            }
+            char* slash = strrchr(walk, '/');
+            if (!slash || slash == walk) break;
+            *slash = '\0';
+        }
+    }
+    out[0] = 0;
+    return 0;
+}
 
+void userland_demo(void) {
+    char root[MAX_PATH];
+    int ok_init = 0, ok_shell = 0, ok_demos = 0, fail = 0;
+    if (!find_userland_root(root, sizeof(root))) {
+        printf("[userland] FAIL — userland/ not found (repo root or AppDir share)\n");
+        printf("[userland-demo] FAIL\n\n");
+        return;
+    }
+    if (userland_path_ok(root, "init") &&
+        userland_path_ok(root, "init/README.txt") &&
+        userland_path_ok(root, "init/init.txt")) {
+        ok_init = 1;
+        printf("[userland] init/ OK\n");
+    } else {
+        fail = 1;
+        printf("[userland] init/ FAIL\n");
+    }
+    if (userland_path_ok(root, "shell") &&
+        userland_path_ok(root, "shell/README.txt") &&
+        userland_path_ok(root, "shell/shell.txt")) {
+        ok_shell = 1;
+        printf("[userland] shell/ OK\n");
+    } else {
+        fail = 1;
+        printf("[userland] shell/ FAIL\n");
+    }
+    if (userland_path_ok(root, "demos") &&
+        userland_path_ok(root, "demos/README.txt") &&
+        userland_path_ok(root, "demos/userland-demo.txt")) {
+        ok_demos = 1;
+        printf("[userland] demos/ OK\n");
+    } else {
+        fail = 1;
+        printf("[userland] demos/ FAIL\n");
+    }
+    if (!userland_path_ok(root, "README.txt")) fail = 1;
+    if (!fail && ok_init && ok_shell && ok_demos) {
+        printf("[userland-demo] OK\n\n");
+    } else {
+        printf("[userland-demo] FAIL\n\n");
+    }
+}
 
 void bootstrap_demo() {
     printf("Running bootstrap-host demo (full-stack host OS optimization from refined intelligence)...\n");
@@ -3159,7 +3274,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  : <name> - create-only stub (entry into dict; no body)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  : <name> - create-only stub (entry into dict; no body)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -3344,6 +3459,8 @@ int main(int argc, char** argv) {
             fleet_export("dev1");
         } else if (strcasecmp(line, "fleet-import") == 0) {
             fleet_import();
+        } else if (strcasecmp(line, "userland-demo") == 0) {
+            userland_demo();
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {

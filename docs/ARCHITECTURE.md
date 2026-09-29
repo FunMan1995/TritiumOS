@@ -59,6 +59,7 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 | Queue / Assimilate | `QUEUE.md`, `ASSIMILATE.md` |
 | Graduation | `LINEOS.md` |
 | Install / Integrate | `INSTALL.md`, `INTEGRATE.md` |
+| Userland scaffold | `USERLAND.md` (wave8 **3**; `userland/` tree + `userland-demo`) |
 | Build / platforms | `BUILD.md`, `SYSTEM-DESIGN-INITIAL-PLATFORMS.md` |
 | Gaps (living) | `IMPLEMENTATION-GAPS.md` |
 
@@ -73,11 +74,11 @@ Wave6 **4+5** landed: `tritium-integrate` stub + `INSTALL.md` / `INTEGRATE.md` (
 | `install/hosts/{windows,android,linux,_template}` | Host bridges |
 | `tools/` | build-*, tritium-license, qwantum, tests |
 | `evolve/` | Runtime state (mostly gitignored) |
-| `queue/`, `assimilate/`, `license/`, `lineos/`, `master/` | Subsystem notes / validators |
+| `queue/`, `assimilate/`, `license/`, `lineos/`, `master/`, `fleet/`, `userland/` | Subsystem notes / validators / userland scaffold |
 | `refs/` | DuskOS / CollapseOS / GrapheneOS references |
 | `docs/` | Specs (this file + §4) |
 
-Target layout in `TritiumOS.txt` §7 still lists top-level `/drena` `/rekia` `/boot` `/userland` — engines today live under `forth/tritium/` (+ stubs); `tritium-integrate` stub landed (wave6 **4**); deeper userland later.
+Target layout in `TritiumOS.txt` §7 still lists top-level `/drena` `/rekia` `/boot` `/userland` — engines today live under `forth/tritium/` (+ stubs); `tritium-integrate` stub landed (wave6 **4**); `userland/` scaffold + `userland-demo` landed (wave8 **3**; see `docs/USERLAND.md`); bare-metal `/boot` later.
 
 ## 6. Non-goals (this doc)
 

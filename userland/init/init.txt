@@ -1,0 +1,5 @@
+userland init checklist (stub)
+1. license slot / first-run gate (docs/LICENSE.md)
+2. edition 32|64 (docs/ASSUMPTIONS.md)
+3. REPL ready (docs/INTERPRET.md / host)
+Cold path may call cold-boot conceptually; no bare-metal /boot this tip.

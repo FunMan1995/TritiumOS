@@ -1,0 +1,9 @@
+userland-demo expected markers / steps (Lab)
+1. Assert userland/{init,shell,demos}/ + README.txt + init.txt + shell.txt + userland-demo.txt
+2. Print:
+   [userland] init/ OK
+   [userland] shell/ OK
+   [userland] demos/ OK
+   [userland-demo] OK
+3. On missing path → [userland-demo] FAIL
+Surfaces: tools/userland-demo and/or Linux host userland-demo
