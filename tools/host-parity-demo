@@ -22,6 +22,7 @@ REQUIRED_DEMOS=(
   comment-demo
   leave-demo
   value-demo
+  case-demo
 )
 
 usage() {

@@ -3,11 +3,11 @@
 **Status:** Shipper-ready stub spec (wave10 item **2**)
 **Canonical brief:** Dusk control compile (thin stub); `docs/COLON.md` (wave9 **4**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `control.fs`); Linux host REPL
-**Companions:** `docs/COLON.md` (thin amend wave10 **2**), `docs/INTERPRET.md`, `docs/KERNEL.md`, `docs/BEGIN-UNTIL.md` (wave11 **1**), `docs/DO-LOOP.md` (wave12 **1**)
+**Companions:** `docs/COLON.md` (thin amend wave10 **2**), `docs/INTERPRET.md`, `docs/KERNEL.md`, `docs/BEGIN-UNTIL.md` (wave11 **1**), `docs/DO-LOOP.md` (wave12 **1**), `docs/CASE-OF.md` (wave13 **2**)
 
 ## 1. Purpose
 
-Colon body/marker exists; control words do not. This tip lands **stub** `IF` / `THEN` / `ELSE` (and optional `control-if` aliases) that recognize the words, maintain a tiny **cs** (control-stack) depth counter, and print greppable markers — **not** real branch XT patching or a threaded compiler.
+Colon body/marker exists; control words do not. This tip lands **stub** `IF` / `THEN` / `ELSE` (and optional `control-if` aliases) that recognize the words, maintain a tiny **cs** (control-stack) depth counter, and print greppable markers — **not** real branch XT patching or a threaded compiler. Multi-way select stubs (`CASE` / `OF` / `ENDOF` / `ENDCASE`) → `docs/CASE-OF.md` (wave13 **2**).
 
 ## 2. Words
 
@@ -28,7 +28,7 @@ Host note: may bind `IF`/`THEN`/`ELSE` on Linux REPL; Forth mirrors `control-if`
 - **Balance only:** each `IF` +1 cs; each `THEN` −1; `ELSE` requires open `IF` and does not change depth.
 - Unbalanced `THEN` / `ELSE` → `[control] FAIL` reason=unbalanced (demo must avoid this).
 - Flag path (optional): if a numeric flag is on data stack at `IF`, print `taken=1` when nonzero else `taken=0` — **no** requirement to skip tokens this tip (skip can be a no-op print).
-- No real forward/back branch patching. Loop stubs (`BEGIN`/`UNTIL`/`WHILE`/`REPEAT`) → `docs/BEGIN-UNTIL.md` (wave11 **1**). Counted-loop stubs (`DO`/`LOOP`/`+LOOP`/`I`) → `docs/DO-LOOP.md` (wave12 **1`).
+- No real forward/back branch patching. Loop stubs (`BEGIN`/`UNTIL`/`WHILE`/`REPEAT`) → `docs/BEGIN-UNTIL.md` (wave11 **1**). Counted-loop stubs (`DO`/`LOOP`/`+LOOP`/`I`) → `docs/DO-LOOP.md` (wave12 **1**). CASE/OF/ENDOF/ENDCASE stubs (balance-only sibling) → `docs/CASE-OF.md` (wave13 **2**).
 
 ## 4. Markers
 
@@ -62,6 +62,7 @@ Lab greps `[control-demo] OK` plus at least one each of `IF` / `THEN` (ELSE pref
 
 - Real compile-time branch resolution / XT lists
 - `BEGIN`/`UNTIL`/`WHILE`/`REPEAT` stubs: see `docs/BEGIN-UNTIL.md` (wave11 **1`); counted `DO`/`LOOP`/`+LOOP`/`I` stubs: see `docs/DO-LOOP.md` (wave12 **1**)
+- `CASE` / `OF` / `ENDOF` / `ENDCASE` stubs: see `docs/CASE-OF.md` (wave13 **2**); real OF match / branch XT / token skip still out
 - Address-fold / refined-boot (wave10 **3–4**)
 - Full Win/Android Forth VM
 
@@ -79,3 +80,4 @@ Lab greps `[control-demo] OK` plus at least one each of `IF` / `THEN` (ELSE pref
 - Dusk control words (stub only)
 - `docs/BEGIN-UNTIL.md` (wave11 **1**)
 - `docs/DO-LOOP.md` (wave12 **1**)
+- `docs/CASE-OF.md` (wave13 **2**)

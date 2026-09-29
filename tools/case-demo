@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# case-demo — Lab smoke for CASE/OF/ENDOF/ENDCASE stubs (wave13 item 2 / docs/CASE-OF.md)
+# Mirrors forth/tritium/kernel.fs case-demo + Linux host case_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: case-demo"
+  echo "  dict-reset → CASE…OF…ENDOF…ENDCASE → two-OF → case-depth 0"
+  echo "  Markers: [case] CASE/OF/ENDOF/ENDCASE → [case-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[case-demo] FAIL"
+  exit 1
+}
+
+CASE_DEPTH=0
+
+dict_reset() {
+  CASE_DEPTH=0
+}
+
+case_cs_depth() {
+  echo "$CASE_DEPTH"
+}
+
+control_case() {
+  CASE_DEPTH=$((CASE_DEPTH + 1))
+  echo "[case] CASE depth=$CASE_DEPTH"
+}
+
+control_of() {
+  if [[ "$CASE_DEPTH" -eq 0 ]]; then
+    echo "[case] FAIL reason=unbalanced"
+    return 1
+  fi
+  echo "[case] OF"
+}
+
+control_endof() {
+  if [[ "$CASE_DEPTH" -eq 0 ]]; then
+    echo "[case] FAIL reason=unbalanced"
+    return 1
+  fi
+  echo "[case] ENDOF"
+}
+
+control_endcase() {
+  if [[ "$CASE_DEPTH" -eq 0 ]]; then
+    echo "[case] FAIL reason=unbalanced"
+    return 1
+  fi
+  CASE_DEPTH=$((CASE_DEPTH - 1))
+  echo "[case] ENDCASE depth=$CASE_DEPTH"
+}
+
+echo "[case-demo] dict-reset + CASE…OF…ENDOF…ENDCASE + two-OF"
+dict_reset
+
+# Stream A — single OF
+control_case
+control_of
+control_endof
+control_endcase
+[[ "$(case_cs_depth)" -eq 0 ]] || fail
+
+# Stream B — two OF arms
+control_case
+control_of
+control_endof
+control_of
+control_endof
+control_endcase
+[[ "$(case_cs_depth)" -eq 0 ]] || fail
+
+echo "[case-demo] OK"
+exit 0

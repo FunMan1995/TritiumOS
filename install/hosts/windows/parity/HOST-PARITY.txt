@@ -17,3 +17,4 @@ var-demo CONTRACT
 comment-demo CONTRACT
 leave-demo CONTRACT
 value-demo CONTRACT
+case-demo CONTRACT

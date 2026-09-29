@@ -79,6 +79,8 @@ variable _loop-depth  \ open BEGIN count
 \ do-loop stub (wave12 item 1) — sibling of BEGIN loop-depth; no XT patching
 variable _do-loop-depth  \ open DO count
 variable _do-loop-index  \ stub index for I (start value)
+\ case-stack stub (wave13 item 2) — sibling of cs; balance-only CASE/OF
+variable _case-depth  \ open CASE count
 
 
 : entry-name-clear ( i -- )
@@ -100,7 +102,8 @@ variable _do-loop-index  \ stub index for I (start value)
   0 _cs-side !
   0 _loop-depth !
   0 _do-loop-depth !
-  0 _do-loop-index ! ;
+  0 _do-loop-index !
+  0 _case-depth ! ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -900,6 +903,65 @@ create (vald-baz) 3 c, char b c, char a c, char z c,
   then
   ." [value-demo] OK" cr ;
 
+
+\ === CASE / OF / ENDOF / ENDCASE stubs (wave13 item 2) ===
+\ Balance-only case-depth sibling of IF/ELSE/THEN; no OF match / branch XT / token skip.
+\ Forth mirrors: control-case / control-of / control-endof / control-endcase
+\ (host binds CASE / OF / ENDOF / ENDCASE). Marker namespace is [case] NOT [control].
+
+: case-cs-depth ( -- n ) _case-depth @ ;
+
+\ control-case ( -- )  +1 case; print [case] CASE depth=<n>
+: control-case ( -- )
+  1 _case-depth +!
+  ." [case] CASE depth=" _case-depth @ . cr ;
+
+\ control-of ( -- )  require open CASE; no depth change; print [case] OF
+: control-of ( -- )
+  _case-depth @ 0= if
+    ." [case] FAIL reason=unbalanced" cr exit
+  then
+  ." [case] OF" cr ;
+
+\ control-endof ( -- )  close OF branch; no depth change; print [case] ENDOF
+: control-endof ( -- )
+  _case-depth @ 0= if
+    ." [case] FAIL reason=unbalanced" cr exit
+  then
+  ." [case] ENDOF" cr ;
+
+\ control-endcase ( -- )  -1 case; print depth after pop
+: control-endcase ( -- )
+  _case-depth @ 0= if
+    ." [case] FAIL reason=unbalanced" cr exit
+  then
+  -1 _case-depth +!
+  ." [case] ENDCASE depth=" _case-depth @ . cr ;
+
+\ case-demo ( -- )  Stream A single OF + Stream B two OF arms → OK
+: case-demo ( -- )
+  ." [case-demo] dict-reset + CASE…OF…ENDOF…ENDCASE + two-OF" cr
+  dict-reset
+  \ Stream A — single OF
+  control-case
+  control-of
+  control-endof
+  control-endcase
+  case-cs-depth 0<> if
+    ." [case-demo] FAIL" cr exit
+  then
+  \ Stream B — two OF arms
+  control-case
+  control-of
+  control-endof
+  control-of
+  control-endof
+  control-endcase
+  case-cs-depth 0<> if
+    ." [case-demo] FAIL" cr exit
+  then
+  ." [case-demo] OK" cr ;
+
 \ === comment-parse stubs (wave12 item 3) ===
 \ Stream skip inside interpret (above). Forth mirrors: comment-line / comment-paren
 \ (host binds '\' / '(' on REPL interpret path).
@@ -980,6 +1042,7 @@ create (cm-comment) 7 c, char c c, char o c, char m c, char m c, char e c, char 
 \ - comment-parse \\ / ( ) skip + comment-demo (wave12 item 3) — landed
 \ - LEAVE/AGAIN stubs + leave-demo (wave12 item 4) — landed
 \ - VALUE/TO named mutable-cell stubs (wave13 item 1) — landed
+\ - CASE/OF/ENDOF/ENDCASE stubs (wave13 item 2) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
