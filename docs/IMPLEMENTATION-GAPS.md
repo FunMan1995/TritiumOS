@@ -2,7 +2,7 @@
 
 **Generated:** post-analysis (2026)
 **Source:** Full scan of codebase vs `TritiumOS.txt` (spec + phases + success criteria + layout) + all source/docs/READMEs.
-**Status:** v0.1-scaffold. UI + quantum/Qwantum tooling is the most advanced. Core OS "soul" (Forth VM in Win/Android hosts) still missing. **Wave8 item 5:** ARCHITECTURE + this file cite refresh (docs-only).
+**Status:** v0.1-scaffold. UI + quantum/Qwantum tooling is the most advanced. Core OS "soul" (Forth VM in Win/Android hosts) still missing. **Wave9 item 5:** ARCHITECTURE + this file cite refresh (docs-only).
 
 ## Priority 0 — Critical Blockers (Ship & Core Mandate)
 These prevent any real "TritiumOS" behavior per the product definition.
@@ -49,7 +49,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Queue stub landed (wave5 item 2, §5b.1):** `queue-local?` / `queue-enqueue!` / `queue-pull` / `queue-prove!` + `queue-demo` (Forth + Linux host); persist `evolve/queue/jobs.jsonl` local cue only — **no fleet crypto/network**. See `docs/QUEUE.md`.
    - **Assimilate stub landed (wave5 item 3, §5b.2–5b.3):** `assimilate-epoch` / `assimilate-fragment` / `assimilate-merge!` / `assimilate-solved?` / `assimilate-balance` + `assimilate-demo` (Forth + Linux host); integer simti wallet, 1 ASIM = 10⁸ simti, stub pool 10⁶; persist `evolve/assimilate/` — **no real crypto/fleet**. Duplicate proof-hash → zero credit. See `docs/ASSIMILATE.md`.
    - Quantum jobs log to `evolve/qwantum-jobs.log` (works), but no offload to queue when "not locally computable".
-   - **Needed (Phases 6-7):** Wire queue-prove! → assimilate-merge! end-to-end; later real distributed proof + master epoch settlement.
+   - ~~Wire queue-prove! → assimilate-merge!~~ **landed (wave9 **2**):** see `docs/ECONOMY-WIRE.md`. **Needed later:** real distributed proof + master epoch settlement.
 
 6. **Graduation / L.I.N.E.O.S. / evolution persistence**
    - **Graduation stub landed (wave5 items 4+5, §1a.1):** `evolve/graduation.json` (+ `.example`); `lineos-graduate` / `lineos-graduate-demo` / `become-lineos` (Forth + Linux host); scaffold `product_id=lineos` under `evolve/` — **not** a production branding release. See `docs/LINEOS.md`.
@@ -58,6 +58,10 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Kernel find/interpret stub landed (wave7 item 5):** `[kernel-demo] OK`; see `docs/KERNEL.md`.
    - **Interpret loop deepen landed (wave8 item 1):** `interpret` + `:` create-only + `[interpret-demo] OK`; see `docs/INTERPRET.md`.
    - **Colon body/marker stub landed (wave9 item 4):** `:` body until `;` + `[colon] run body` + `[colon-demo] OK`; see `docs/COLON.md`.
+   - **Trit-math demo landed (wave9 item 1):** clamp `trit+` / `trit*` / pack round-trip + `[trit-math-demo] OK`; see `docs/TRIT-MATH.md`.
+   - **Economy-wire landed (wave9 item 2):** `queue-prove!` → `assimilate-merge!` + `[economy-wire-demo] OK`; see `docs/ECONOMY-WIRE.md`.
+   - **Assistant-state v2 landed (wave9 item 3):** task/reminder/note hooks + `[assistant-state-demo] OK`; see `docs/ASSISTANT-STATE.md`.
+   - **ARCHITECTURE + GAPS cite refresh landed (wave9 item 5):** `docs/ARCHITECTURE.md` §4 + this file mark wave9 **1–4**; docs-only. See `docs/ARCHITECTURE.md`.
    - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo`; refuse without confirm; see `docs/LINEOS-CONFIRM.md`.
    - **Userland scaffold landed (wave8 item 3):** `userland/` tree + `docs/USERLAND.md` + `userland-demo`; see `docs/USERLAND.md`.
    - **Host parity contracts landed (wave8 item 4):** Win/Android `parity/HOST-PARITY.txt` + `docs/HOST-PARITY.md` + `host-parity-demo`; see `docs/HOST-PARITY.md`.
@@ -78,13 +82,15 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Userland scaffold landed (wave8 item 3):** `docs/USERLAND.md` + `userland/` + `tools/userland-demo` / host; `[userland-demo] OK`. Not a full shell / `/boot`.
    - **Host parity contracts landed (wave8 item 4):** `docs/HOST-PARITY.md` + Win/Android `parity/HOST-PARITY.txt` + `tools/host-parity-demo` / host; `[host-parity-demo] OK`. CONTRACT-only OK without SDK — not a full C#/Kotlin port.
    - **ARCHITECTURE + GAPS cite refresh (wave8 item 5):** `docs/ARCHITECTURE.md` + this file — wave6–8 doc index closed on tip.
+   - **Trit-math / economy-wire / assistant-state / colon landed (wave9 items 1–4):** see `TRIT-MATH.md`, `ECONOMY-WIRE.md`, `ASSISTANT-STATE.md`, `COLON.md`.
+   - **ARCHITECTURE + GAPS cite refresh (wave9 item 5):** wave9 **1–4** doc index closed on tip.
    - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
 - Real first-run bootstrap of core (extract + start TritiumForth + engines) inside the .exe / .apk.
 - `dist/TritiumOS.exe` + `.apk` that actually boot the Forth core (currently the builds succeed for the UI shell only).
 - ~~`tritium-integrate` tool (from `_template`)~~ **landed (wave6 items 4+5):** CLI `tools/tritium-integrate` + Linux host SoT + Forth stub; scaffold → `evolve/integrate/<platform>/`; refuse 10/10. See `docs/INTEGRATE.md` / `docs/INSTALL.md`.
-- `evolve/assistant-state.trit` + basic task/reminder/note hooks.
+- ~~`evolve/assistant-state.trit` + task/reminder/note hooks~~ **landed (wave9 **3**):** see `docs/ASSISTANT-STATE.md` — deepen calendar/sync later.
 - Linux: .AppImage as the end product for the on-demand assistant (see BUILD.md + tools/build-linux.sh + install/hosts/linux/TritiumOS.py). Full project vision: on-demand intelligent assistant that full-stack refines the hardware (DRENA/REKIA) and assists the user. GrapheneOS refs for komodo, but Linux is portable app.
 - Assets folder (`/assets` with branding JPGs referenced from manifest + builds). Loose JPGs at root today.
 - ~~Userland scaffold~~ landed (wave8 **3**; see `docs/USERLAND.md`) — deepen shell/init / bare-metal `/boot` later.
@@ -93,11 +99,11 @@ These prevent any real "TritiumOS" behavior per the product definition.
 ## Priority 2 — Spec Completeness & Docs (Phase 0)
 All of these are called out explicitly in `TritiumOS.txt`:
 
-**Docs index (wave8 **5** cite refresh — most architecture docs now exist):**
-- ~~MASTER.md~~ / ~~FLEET.md~~ / ~~ASSIMILATE.md~~ / ~~QUEUE.md~~ landed
-- ~~ASSISTANT.md~~ / ~~LINEOS.md~~ / ~~LINEOS-BRAND.md~~ / ~~LINEOS-CONFIRM.md~~ / ~~INSTALL.md~~ / ~~LICENSE.md~~ landed
-- ~~NEURON.md~~ / ~~REKIA.md~~ / ~~DRENA.md~~ / ~~GROUPS.md~~ / ~~GROUPS-NESTED.md~~ landed
-- ~~ARCHITECTURE.md~~ refreshed (wave8 **5**); ~~INTEGRATE.md~~ / ~~KERNEL.md~~ / ~~INTERPRET.md~~ / ~~USERLAND.md~~ / ~~HOST-PARITY.md~~ landed
+**Docs index (wave9 **5** cite refresh — most architecture docs now exist):**
+- ~~MASTER.md~~ / ~~FLEET.md~~ / ~~ASSIMILATE.md~~ / ~~QUEUE.md~~ / ~~ECONOMY-WIRE.md~~ landed
+- ~~ASSISTANT.md~~ / ~~ASSISTANT-STATE.md~~ / ~~LINEOS.md~~ / ~~LINEOS-BRAND.md~~ / ~~LINEOS-CONFIRM.md~~ / ~~INSTALL.md~~ / ~~LICENSE.md~~ landed
+- ~~NEURON.md~~ / ~~TRIT-MATH.md~~ / ~~REKIA.md~~ / ~~DRENA.md~~ / ~~GROUPS.md~~ / ~~GROUPS-NESTED.md~~ landed
+- ~~ARCHITECTURE.md~~ refreshed (wave9 **5**); ~~INTEGRATE.md~~ / ~~KERNEL.md~~ / ~~INTERPRET.md~~ / ~~COLON.md~~ / ~~USERLAND.md~~ / ~~HOST-PARITY.md~~ landed
 - ASSUMPTIONS.md (RESERVED S3=11 etc.); BUILD / QWANTUM / QD-COMPUTE partial — deepen later
 
 **Monorepo layout shortfalls:**
