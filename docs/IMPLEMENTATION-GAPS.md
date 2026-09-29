@@ -2,7 +2,7 @@
 
 **Generated:** post-analysis (2026)
 **Source:** Full scan of codebase vs `TritiumOS.txt` (spec + phases + success criteria + layout) + all source/docs/READMEs.
-**Status:** v0.1-scaffold. UI + quantum/Qwantum tooling is the most advanced. Core OS "soul" (Forth + DRENA/REKIA) is missing.
+**Status:** v0.1-scaffold. UI + quantum/Qwantum tooling is the most advanced. Core OS "soul" (Forth VM in Win/Android hosts) still missing. **Wave8 item 5:** ARCHITECTURE + this file cite refresh (docs-only).
 
 ## Priority 0 — Critical Blockers (Ship & Core Mandate)
 These prevent any real "TritiumOS" behavior per the product definition.
@@ -60,6 +60,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo`; refuse without confirm; see `docs/LINEOS-CONFIRM.md`.
    - **Userland scaffold landed (wave8 item 3):** `userland/` tree + `docs/USERLAND.md` + `userland-demo`; see `docs/USERLAND.md`.
    - **Host parity contracts landed (wave8 item 4):** Win/Android `parity/HOST-PARITY.txt` + `docs/HOST-PARITY.md` + `host-parity-demo`; see `docs/HOST-PARITY.md`.
+   - **ARCHITECTURE + GAPS cite refresh landed (wave8 item 5):** `docs/ARCHITECTURE.md` §4 index + this file mark wave6–8 stubs; docs-only — no Forth change. See `docs/ARCHITECTURE.md`.
    - Graph persist exists (`evolve/user-graph.trit`); local fleet export/import stub landed (wave7 **2**); networked sync still later.
    - Needed later: real splash/about branding pack (assets); real GUI irreversible confirm modal; fleet session counts / network sync.
 
@@ -75,6 +76,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo` + `docs/LINEOS-CONFIRM.md`. Stub only — no GUI modal.
    - **Userland scaffold landed (wave8 item 3):** `docs/USERLAND.md` + `userland/` + `tools/userland-demo` / host; `[userland-demo] OK`. Not a full shell / `/boot`.
    - **Host parity contracts landed (wave8 item 4):** `docs/HOST-PARITY.md` + Win/Android `parity/HOST-PARITY.txt` + `tools/host-parity-demo` / host; `[host-parity-demo] OK`. CONTRACT-only OK without SDK — not a full C#/Kotlin port.
+   - **ARCHITECTURE + GAPS cite refresh (wave8 item 5):** `docs/ARCHITECTURE.md` + this file — wave6–8 doc index closed on tip.
    - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
@@ -84,18 +86,18 @@ These prevent any real "TritiumOS" behavior per the product definition.
 - `evolve/assistant-state.trit` + basic task/reminder/note hooks.
 - Linux: .AppImage as the end product for the on-demand assistant (see BUILD.md + tools/build-linux.sh + install/hosts/linux/TritiumOS.py). Full project vision: on-demand intelligent assistant that full-stack refines the hardware (DRENA/REKIA) and assists the user. GrapheneOS refs for komodo, but Linux is portable app.
 - Assets folder (`/assets` with branding JPGs referenced from manifest + builds). Loose JPGs at root today.
-- Userland dir + shell/init demos (spec layout).
+- ~~Userland scaffold~~ landed (wave8 **3**; see `docs/USERLAND.md`) — deepen shell/init / bare-metal `/boot` later.
 - Proper `tritium.poly` packing that includes full core (currently minimal).
 
 ## Priority 2 — Spec Completeness & Docs (Phase 0)
 All of these are called out explicitly in `TritiumOS.txt`:
 
-**Missing docs/ (none of the architecture ones exist):**
-- ~~MASTER.md~~ landed (see `docs/MASTER.md`), ~~FLEET.md~~ landed (see `docs/FLEET.md`), ~~ASSIMILATE.md~~ landed (see `docs/ASSIMILATE.md`), ~~QUEUE.md~~ landed (see `docs/QUEUE.md`)
-- ASSISTANT.md, LINEOS.md, ~~INSTALL.md~~ landed (see `docs/INSTALL.md`), LICENSE.md
-- ~~NEURON.md~~ / ~~REKIA.md~~ landed (see `docs/NEURON.md`, `docs/REKIA.md`); ~~DRENA.md~~ / ~~GROUPS.md~~ landed (see docs/)
-- ~~ARCHITECTURE.md~~ landed (see `docs/ARCHITECTURE.md`), ~~INTEGRATE.md~~ landed (see `docs/INTEGRATE.md`), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
-- Also referenced: NEURON.md in §3, docs for BUILD, QWANTUM, QD-COMPUTE (partial quantum docs exist).
+**Docs index (wave8 **5** cite refresh — most architecture docs now exist):**
+- ~~MASTER.md~~ / ~~FLEET.md~~ / ~~ASSIMILATE.md~~ / ~~QUEUE.md~~ landed
+- ~~ASSISTANT.md~~ / ~~LINEOS.md~~ / ~~LINEOS-BRAND.md~~ / ~~LINEOS-CONFIRM.md~~ / ~~INSTALL.md~~ / ~~LICENSE.md~~ landed
+- ~~NEURON.md~~ / ~~REKIA.md~~ / ~~DRENA.md~~ / ~~GROUPS.md~~ / ~~GROUPS-NESTED.md~~ landed
+- ~~ARCHITECTURE.md~~ refreshed (wave8 **5**); ~~INTEGRATE.md~~ / ~~KERNEL.md~~ / ~~INTERPRET.md~~ / ~~USERLAND.md~~ / ~~HOST-PARITY.md~~ landed
+- ASSUMPTIONS.md (RESERVED S3=11 etc.); BUILD / QWANTUM / QD-COMPUTE partial — deepen later
 
 **Monorepo layout shortfalls:**
 - No top-level `/drena`, `/rekia` (stuff is under `forth/drena|rekia`).
