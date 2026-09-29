@@ -2,7 +2,7 @@
 
 **Generated:** post-analysis (2026)
 **Source:** Full scan of codebase vs `TritiumOS.txt` (spec + phases + success criteria + layout) + all source/docs/READMEs.
-**Status:** v0.1-scaffold. UI + quantum/Qwantum tooling is the most advanced. Core OS "soul" (Forth VM in Win/Android hosts) still missing. **Wave14 item 5:** ARCHITECTURE + this file cite refresh (docs-only). Wave11–13 cite refreshes remain historical; wave14 **1–4** landed on tip (ALLOT-HERE / UNLOOP-J / 2VARIABLE / THROW-CATCH).
+**Status:** v0.1-scaffold. UI + quantum/Qwantum tooling is the most advanced. Core OS "soul" (Forth VM in Win/Android hosts) still missing. **Wave15 item 5:** ARCHITECTURE + this file cite refresh (docs-only). Wave11–14 cite refreshes remain historical; wave15 **1–4** landed on tip (CELL-CELLS / PICK-ROLL / FILL-MOVE / IMMEDIATE-POSTPONE).
 
 ## Priority 0 — Critical Blockers (Ship & Core Mandate)
 These prevent any real "TritiumOS" behavior per the product definition.
@@ -79,6 +79,10 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **UNLOOP/J stubs landed (wave14 item 2):** `UNLOOP`/`J` + `[unloop-demo] OK`; see `docs/UNLOOP-J.md`.
    - **2VARIABLE/2CONSTANT stubs landed (wave14 item 3):** `2VARIABLE`/`2CONSTANT` + `[2var-demo] OK`; see `docs/2VARIABLE.md`.
    - **CATCH/THROW stubs landed (wave14 item 4):** `CATCH`/`THROW` + `[throw-demo] OK`; see `docs/THROW-CATCH.md`.
+   - **CELL/CELLS/ALIGN/ALIGNED stubs landed (wave15 item 1):** `CELL`/`CELLS`/`ALIGN`/`ALIGNED` + `[cell-demo] OK`; see `docs/CELL-CELLS.md`.
+   - **PICK/ROLL/DEPTH/?DUP stubs landed (wave15 item 2):** `PICK`/`ROLL`/`DEPTH`/`?DUP` + `[pick-demo] OK`; see `docs/PICK-ROLL.md`.
+   - **FILL/ERASE/MOVE/CMOVE stubs landed (wave15 item 3):** `FILL`/`ERASE`/`MOVE`/`CMOVE` + `[fill-demo] OK`; see `docs/FILL-MOVE.md`.
+   - **IMMEDIATE/POSTPONE stubs landed (wave15 item 4):** `IMMEDIATE`/`POSTPONE` + `[imm-demo] OK`; see `docs/IMMEDIATE-POSTPONE.md`.
    - **Address-fold deepen landed (wave10 item 3):** `phi-fold`/`fold-target` goldens + `[fold-demo] OK`; see `docs/ADDRESS-FOLD.md`.
    - **Refined cold-load landed (wave10 item 4):** `evolve/forth/refined/*.fs` skip `qwantum-*` + fixture + `[refined-boot-demo] OK` (tools/ SoT); see `docs/REFINED-BOOT.md`.
    - **AppImage refined host path landed (wave11 item 4):** portable seed + `S_ISREG` + oneshot/EXTRACT; AppImage `refined-boot-demo` matches tools/ SoT — **AppImage hang class closed** (prior tools-only / non-blocking note superseded); see `docs/APPIMAGE-REFINED.md` (thin amend `REFINED-BOOT.md`).
@@ -97,7 +101,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **LINEOS brand stub landed (wave7 item 3):** `docs/LINEOS-BRAND.md` + `tools/tritium-lineos` + host/Forth; `[lineos-brand-demo] OK`. Markers only — no production branding.
    - **Groups nested find + vocab persist landed (wave7 item 4):** `group-find-nested` / vocab graph lines + demos; see `docs/GROUPS-NESTED.md`.
    - **Kernel find/interpret stub landed (wave7 item 5):** `findentry`/`find` aliases, `interpret-token` lookup-only, `kernel-demo`; see `docs/KERNEL.md`.
-   - **Interpret loop deepen landed (wave8 item 1):** `interpret` token stream + `:` create-only stub + `interpret-demo`; see `docs/INTERPRET.md`. Full colon compiler / linked dict / real branch XT still later; wave10 **2** landed `IF`/`THEN`/`ELSE` stubs (`CONTROL.md`); wave11 **1** landed loop stubs (`BEGIN-UNTIL.md`); wave12 **1–4** landed do-loop / var-const / comment-parse / leave-again stubs; wave13 **1–4** landed VALUE/TO / CASE/OF / CREATE/DOES> / string-lit stubs; wave14 **1–4** landed HERE/ALLOT / UNLOOP/J / 2VARIABLE / CATCH/THROW stubs.
+   - **Interpret loop deepen landed (wave8 item 1):** `interpret` token stream + `:` create-only stub + `interpret-demo`; see `docs/INTERPRET.md`. Full colon compiler / linked dict / real branch XT still later; wave10 **2** landed `IF`/`THEN`/`ELSE` stubs (`CONTROL.md`); wave11 **1** landed loop stubs (`BEGIN-UNTIL.md`); wave12 **1–4** landed do-loop / var-const / comment-parse / leave-again stubs; wave13 **1–4** landed VALUE/TO / CASE/OF / CREATE/DOES> / string-lit stubs; wave14 **1–4** landed HERE/ALLOT / UNLOOP/J / 2VARIABLE / CATCH/THROW stubs; wave15 **1–4** landed CELL/CELLS/ALIGN/ALIGNED / PICK/ROLL/DEPTH/?DUP / FILL/ERASE/MOVE/CMOVE / IMMEDIATE/POSTPONE stubs.
    - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo` + `docs/LINEOS-CONFIRM.md`. Stub only — no GUI modal.
    - **Userland scaffold landed (wave8 item 3):** `docs/USERLAND.md` + `userland/` + `tools/userland-demo` / host; `[userland-demo] OK`. Not a full shell / `/boot`.
    - **Host parity contracts landed (wave8 item 4):** `docs/HOST-PARITY.md` + Win/Android `parity/HOST-PARITY.txt` + `tools/host-parity-demo` / host; `[host-parity-demo] OK`. CONTRACT-only OK without SDK — not a full C#/Kotlin port.
@@ -113,8 +117,10 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **VALUE-TO / CASE-OF / CREATE-DOES / STRING-LIT landed (wave13 items 1–4):** see `VALUE-TO.md`, `CASE-OF.md`, `CREATE-DOES.md`, `STRING-LIT.md`.
    - **ARCHITECTURE + GAPS cite refresh (wave13 item 5):** wave13 **1–4** doc index closed on tip (historical).
    - **ALLOT-HERE / UNLOOP-J / 2VARIABLE / THROW-CATCH landed (wave14 items 1–4):** see `ALLOT-HERE.md`, `UNLOOP-J.md`, `2VARIABLE.md`, `THROW-CATCH.md`.
-   - **ARCHITECTURE + GAPS cite refresh (wave14 item 5):** wave14 **1–4** doc index closed on tip (this tip).
-   - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow; full Forth VM on Win/Android; real control compile / runtime counted re-exec / LEAVE jump / real OF match / DOES> XT chain / counted-string heap / full arena/heap / real exception RS unwind; real crypto / network fleet.
+   - **ARCHITECTURE + GAPS cite refresh (wave14 item 5):** wave14 **1–4** doc index closed on tip (historical).
+   - **CELL-CELLS / PICK-ROLL / FILL-MOVE / IMMEDIATE-POSTPONE landed (wave15 items 1–4):** see `CELL-CELLS.md`, `PICK-ROLL.md`, `FILL-MOVE.md`, `IMMEDIATE-POSTPONE.md`.
+   - **ARCHITECTURE + GAPS cite refresh (wave15 item 5):** wave15 **1–4** doc index closed on tip (this tip).
+   - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow; full Forth VM on Win/Android; real control compile / runtime counted re-exec / LEAVE jump / real OF match / DOES> XT chain / counted-string heap / full arena/heap / real exception RS unwind; linked XT compiler / executing postponed XT; real crypto / network fleet.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
 - Real first-run bootstrap of core (extract + start TritiumForth + engines) inside the .exe / .apk.
@@ -129,11 +135,11 @@ These prevent any real "TritiumOS" behavior per the product definition.
 ## Priority 2 — Spec Completeness & Docs (Phase 0)
 All of these are called out explicitly in `TritiumOS.txt`:
 
-**Docs index (wave14 **5** cite refresh — most architecture docs now exist):**
+**Docs index (wave15 **5** cite refresh — most architecture docs now exist):**
 - ~~MASTER.md~~ / ~~FLEET.md~~ / ~~ASSIMILATE.md~~ / ~~QUEUE.md~~ / ~~ECONOMY-WIRE.md~~ landed
 - ~~ASSISTANT.md~~ / ~~ASSISTANT-STATE.md~~ / ~~ASSISTANT-S0.md~~ / ~~LINEOS.md~~ / ~~LINEOS-BRAND.md~~ / ~~LINEOS-CONFIRM.md~~ / ~~INSTALL.md~~ / ~~LICENSE.md~~ landed
 - ~~NEURON.md~~ / ~~TRIT-MATH.md~~ / ~~REKIA.md~~ / ~~DRENA.md~~ / ~~GROUPS.md~~ / ~~GROUPS-NESTED.md~~ / ~~ADDRESS-FOLD.md~~ landed
-- ~~ARCHITECTURE.md~~ refreshed (wave14 **5**); ~~INTEGRATE.md~~ / ~~KERNEL.md~~ / ~~INTERPRET.md~~ / ~~COLON.md~~ / ~~CONTROL.md~~ / ~~BEGIN-UNTIL.md~~ / ~~WORDS-VOCAB.md~~ / ~~DO-LOOP.md~~ / ~~VARIABLE-CONST.md~~ / ~~COMMENT-PARSE.md~~ / ~~LEAVE-AGAIN.md~~ / ~~VALUE-TO.md~~ / ~~CASE-OF.md~~ / ~~CREATE-DOES.md~~ / ~~STRING-LIT.md~~ / ~~ALLOT-HERE.md~~ / ~~UNLOOP-J.md~~ / ~~2VARIABLE.md~~ / ~~THROW-CATCH.md~~ / ~~USERLAND.md~~ / ~~HOST-PARITY.md~~ / ~~HOST-BOOT.md~~ / ~~REFINED-BOOT.md~~ / ~~APPIMAGE-REFINED.md~~ landed
+- ~~ARCHITECTURE.md~~ refreshed (wave15 **5**); ~~INTEGRATE.md~~ / ~~KERNEL.md~~ / ~~INTERPRET.md~~ / ~~COLON.md~~ / ~~CONTROL.md~~ / ~~BEGIN-UNTIL.md~~ / ~~WORDS-VOCAB.md~~ / ~~DO-LOOP.md~~ / ~~VARIABLE-CONST.md~~ / ~~COMMENT-PARSE.md~~ / ~~LEAVE-AGAIN.md~~ / ~~VALUE-TO.md~~ / ~~CASE-OF.md~~ / ~~CREATE-DOES.md~~ / ~~STRING-LIT.md~~ / ~~ALLOT-HERE.md~~ / ~~UNLOOP-J.md~~ / ~~2VARIABLE.md~~ / ~~THROW-CATCH.md~~ / ~~CELL-CELLS.md~~ / ~~PICK-ROLL.md~~ / ~~FILL-MOVE.md~~ / ~~IMMEDIATE-POSTPONE.md~~ / ~~USERLAND.md~~ / ~~HOST-PARITY.md~~ / ~~HOST-BOOT.md~~ / ~~REFINED-BOOT.md~~ / ~~APPIMAGE-REFINED.md~~ landed
 - ASSUMPTIONS.md (RESERVED S3=11 etc.); BUILD / QWANTUM / QD-COMPUTE partial — deepen later
 
 **Monorepo layout shortfalls:**
@@ -148,7 +154,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 **Other spec items:**
 - `evolve/graduation.json` (configurable thresholds).
 - Full neuron record layout + linking data binary/Forth structures (append-only links.bin etc.).
-- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; wave7 item **4** nested find + vocab persist landed — see `docs/GROUPS-NESTED.md`). Wave7 item **5** kernel find/interpret stub landed — see `docs/KERNEL.md`. Wave8 item **1** interpret loop deepen landed — see `docs/INTERPRET.md`. Wave9 item **4** colon body/marker stub landed — see `docs/COLON.md`. Wave10 item **2** control stubs landed — see `docs/CONTROL.md`. Wave11 item **1** loop stubs landed — see `docs/BEGIN-UNTIL.md`. Wave11 item **3** WORDS list landed — see `docs/WORDS-VOCAB.md`. Wave12 item **1** counted-loop stubs landed — see `docs/DO-LOOP.md`. Wave12 item **2** VARIABLE/CONSTANT stubs — see `docs/VARIABLE-CONST.md`. Wave12 item **3** comment-parse — see `docs/COMMENT-PARSE.md`. Wave12 item **4** LEAVE/AGAIN stubs — see `docs/LEAVE-AGAIN.md`. Wave13 item **1** VALUE/TO stubs — see `docs/VALUE-TO.md`. Wave13 item **2** CASE/OF stubs — see `docs/CASE-OF.md`. Wave13 item **3** CREATE/DOES> stubs — see `docs/CREATE-DOES.md`. Wave13 item **4** string-lit stubs — see `docs/STRING-LIT.md`. Wave14 item **1** HERE/ALLOT stubs — see `docs/ALLOT-HERE.md`. Wave14 item **2** UNLOOP/J stubs — see `docs/UNLOOP-J.md`. Wave14 item **3** 2VARIABLE/2CONSTANT stubs — see `docs/2VARIABLE.md`. Wave14 item **4** CATCH/THROW stubs — see `docs/THROW-CATCH.md`. Full SEARCH-WORDLIST / linked dict / real colon compiler / runtime counted re-exec / LEAVE jump / real OF match / DOES> XT chain / counted-string heap / full arena/heap / real exception RS unwind still later.
+- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; wave7 item **4** nested find + vocab persist landed — see `docs/GROUPS-NESTED.md`). Wave7 item **5** kernel find/interpret stub landed — see `docs/KERNEL.md`. Wave8 item **1** interpret loop deepen landed — see `docs/INTERPRET.md`. Wave9 item **4** colon body/marker stub landed — see `docs/COLON.md`. Wave10 item **2** control stubs landed — see `docs/CONTROL.md`. Wave11 item **1** loop stubs landed — see `docs/BEGIN-UNTIL.md`. Wave11 item **3** WORDS list landed — see `docs/WORDS-VOCAB.md`. Wave12 item **1** counted-loop stubs landed — see `docs/DO-LOOP.md`. Wave12 item **2** VARIABLE/CONSTANT stubs — see `docs/VARIABLE-CONST.md`. Wave12 item **3** comment-parse — see `docs/COMMENT-PARSE.md`. Wave12 item **4** LEAVE/AGAIN stubs — see `docs/LEAVE-AGAIN.md`. Wave13 item **1** VALUE/TO stubs — see `docs/VALUE-TO.md`. Wave13 item **2** CASE/OF stubs — see `docs/CASE-OF.md`. Wave13 item **3** CREATE/DOES> stubs — see `docs/CREATE-DOES.md`. Wave13 item **4** string-lit stubs — see `docs/STRING-LIT.md`. Wave14 item **1** HERE/ALLOT stubs — see `docs/ALLOT-HERE.md`. Wave14 item **2** UNLOOP/J stubs — see `docs/UNLOOP-J.md`. Wave14 item **3** 2VARIABLE/2CONSTANT stubs — see `docs/2VARIABLE.md`. Wave14 item **4** CATCH/THROW stubs — see `docs/THROW-CATCH.md`. Wave15 item **1** CELL/CELLS/ALIGN/ALIGNED stubs — see `docs/CELL-CELLS.md`. Wave15 item **2** PICK/ROLL/DEPTH/?DUP stubs — see `docs/PICK-ROLL.md`. Wave15 item **3** FILL/ERASE/MOVE/CMOVE stubs — see `docs/FILL-MOVE.md`. Wave15 item **4** IMMEDIATE/POSTPONE stubs — see `docs/IMMEDIATE-POSTPONE.md`. Full SEARCH-WORDLIST / linked dict / real colon compiler / runtime counted re-exec / LEAVE jump / real OF match / DOES> XT chain / counted-string heap / full arena/heap / real exception RS unwind / linked XT / executing postponed XT still later.
 - Environment vars and Forth naming conventions (§8).
 - Open: S3 code `11` RESERVED + “D.R.E.N.A. with ______” continuation (document, do not invent).
 
