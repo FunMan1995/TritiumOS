@@ -3,12 +3,12 @@
 **Status:** Shipper-ready stub spec (wave12 item **2**)
 **Canonical brief:** Dusk `variable` / `const` (thin stub); `docs/KERNEL.md` (wave7 **5**), `docs/WORDS-VOCAB.md` (wave11 **3**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `var.fs`); Linux host REPL
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DO-LOOP.md` (wave12 **1**), `docs/VALUE-TO.md` (wave13 **1**), `docs/CREATE-DOES.md` (wave13 **3**)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DO-LOOP.md` (wave12 **1**), `docs/VALUE-TO.md` (wave13 **1**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/ALLOT-HERE.md` (wave14 **1**)
 **Base tip SHA:** `132f99e` (wave12 tip1 CLOSED / #52)
 
 ## 1. Purpose
 
-Flat dict + colon body stubs exist; named cells do not. This tip adds **VARIABLE / CONSTANT stubs**: `VARIABLE <name>` creates a named cell entry (init 0), `CONSTANT <name>` creates a named constant from TOS (or an explicit value arg), prints greppable `[var]` markers, and smokes via **`var-demo`**. Optional `@` / `!` on VARIABLE body if already present — **prefer greppable markers without a full memory / HERE model**. Not real ALLOT. VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**). CREATE/DOES> defining-word stubs → `docs/CREATE-DOES.md` (wave13 **3**).
+Flat dict + colon body stubs exist; named cells do not. This tip adds **VARIABLE / CONSTANT stubs**: `VARIABLE <name>` creates a named cell entry (init 0), `CONSTANT <name>` creates a named constant from TOS (or an explicit value arg), prints greppable `[var]` markers, and smokes via **`var-demo`**. Optional `@` / `!` on VARIABLE body if already present — **prefer greppable markers without a full memory / HERE model**. HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**; not full arena). VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**). CREATE/DOES> defining-word stubs → `docs/CREATE-DOES.md` (wave13 **3**).
 
 ## 2. Words / Surfaces
 
@@ -21,17 +21,17 @@ Flat dict + colon body stubs exist; named cells do not. This tip adds **VARIABLE
 | `var-find` | `( c-addr u -- i )` | Optional; alias / thin wrapper of `entry-find` for var/const entries |
 | `var-demo` | `( -- )` | See §5 |
 
-Host note: bind `VARIABLE` / `CONSTANT` on Linux REPL; Forth mirrors `var-create` / `const-create` if host Forth names collide (host Forth often has real `VARIABLE`/`CONSTANT`). Optional `@`/`!` only when host already has cell ops — **do not** invent a HERE/ALLOT arena this tip.
+Host note: bind `VARIABLE` / `CONSTANT` on Linux REPL; Forth mirrors `var-create` / `const-create` if host Forth names collide (host Forth often has real `VARIABLE`/`CONSTANT`). Optional `@`/`!` only when host already has cell ops — HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**; full arena still out).
 
 ## 3. Stub semantics
 
 - **VARIABLE** → `entry-create` (or host mirror) named cell; stash stub cell = **0**; dict presence greppable via `WORDS` / `entry-find` / find hit.
 - **CONSTANT** → create named entry that holds immutable stub value `n` (from TOS, or demo-supplied arg); on exec may print/push `value=<n>` stub — no requirement to push real stack cell if marker alone is greppable.
 - Init: VARIABLE always starts at 0; CONSTANT takes the value at create time.
-- Optional `@`/`!`: only if already present on host / kernel soft ops; print `[var] @` / `[var] !` markers. **No** requirement to back VARIABLE with real ALLOT/HERE this tip — a host-side int map or entry-slot field is enough.
+- Optional `@`/`!`: only if already present on host / kernel soft ops; print `[var] @` / `[var] !` markers. VARIABLE may stay host-side int map / entry-slot; HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**; full arena still out).
 - Unrecognized / missing name on optional fetch → `[var] FAIL` reason=miss (demo must avoid).
 - Nest with prior colon / control / loop / do-loop stubs OK; dict-reset clears var/const stubs.
-- VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**). CREATE/DOES> stubs → `docs/CREATE-DOES.md` (wave13 **3**; markers only, no XT child). Still no real ALLOT/HERE arena; comment-parse → `docs/COMMENT-PARSE.md` (wave12 **3**).
+- VALUE/TO stubs → `docs/VALUE-TO.md` (wave13 **1**). CREATE/DOES> stubs → `docs/CREATE-DOES.md` (wave13 **3**; markers only, no XT child). HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**); full arena/pool/free still out. Comment-parse → `docs/COMMENT-PARSE.md` (wave12 **3**).
 
 ## 4. Markers
 
@@ -63,7 +63,7 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 
 - Companions: add `VARIABLE-CONST.md` (wave12 **2**).
 - Words table: add `VARIABLE` / `CONSTANT` stubs + `var-demo` (cite tip; no full memory model).
-- Non-goals: note real ALLOT/HERE / DOES> still later; VALUE/TO → wave13 **1** (`VALUE-TO.md`); this tip is VARIABLE/CONSTANT stubs only.
+- Non-goals: HERE/ALLOT pointer stubs → wave14 **1** (`ALLOT-HERE.md`); full arena / real DOES> XT still later; VALUE/TO → wave13 **1** (`VALUE-TO.md`); this tip is VARIABLE/CONSTANT stubs only.
 - Acceptance: Lab smokes `var-demo`.
 - Cite: `docs/VARIABLE-CONST.md`.
 
@@ -85,8 +85,8 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 
 ## 7. Non-goals
 
-- Real ALLOT / HERE arena / linked cell memory model
-- VALUE / TO stubs: see `docs/VALUE-TO.md` (wave13 **1**); CREATE / DOES> stubs: see `docs/CREATE-DOES.md` (wave13 **3**; no real XT chaining / ALLOT/HERE)
+- Full ALLOT / HERE arena / pool / free / linked cell memory model (pointer stubs → `docs/ALLOT-HERE.md` wave14 **1**)
+- VALUE / TO stubs: see `docs/VALUE-TO.md` (wave13 **1**); CREATE / DOES> stubs: see `docs/CREATE-DOES.md` (wave13 **3**; no real XT chaining); HERE/ALLOT stubs: see `docs/ALLOT-HERE.md` (wave14 **1**)
 - Comment-parse: see `docs/COMMENT-PARSE.md` (wave12 **3**); leave-again: see `docs/LEAVE-AGAIN.md` (wave12 **4**); docs cites (wave12 **5**)
 - Real crypto / network fleet
 - Full Win/Android Forth VM (CONTRACT acceptable)
@@ -107,3 +107,4 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 - Base tip: `132f99e`
 - `docs/VALUE-TO.md` (wave13 **1**)
 - `docs/CREATE-DOES.md` (wave13 **3**)
+- `docs/ALLOT-HERE.md` (wave14 **1**)

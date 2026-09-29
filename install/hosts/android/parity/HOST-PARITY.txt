@@ -21,3 +21,4 @@ value-demo CONTRACT
 case-demo CONTRACT
 create-demo CONTRACT
 string-demo CONTRACT
+allot-demo CONTRACT

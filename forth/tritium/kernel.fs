@@ -85,6 +85,9 @@ variable _do-loop-index  \ stub index for I (start value)
 variable _case-depth  \ open CASE count
 \ CREATE/DOES> stub (wave13 item 3) — latest CREATE index; no XT child body
 variable _create-latest  \ index of most recent CREATE; -1 = none
+\ HERE/ALLOT stub pointer (wave14 item 1) — host-held bump counter; bytes; no arena
+variable _here
+$1000 _here !   \ stub base 0x1000
 
 
 : entry-name-clear ( i -- )
@@ -109,7 +112,8 @@ variable _create-latest  \ index of most recent CREATE; -1 = none
   0 _do-loop-depth !
   0 _do-loop-index !
   0 _case-depth !
-  -1 _create-latest ! ;
+  -1 _create-latest !
+  $1000 _here ! ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -1204,6 +1208,47 @@ create (sl-hi) 2 c, char h c, char i c,
   then
   ." [string-demo] OK" cr ;
 
+\ === HERE / ALLOT dictionary-pointer stubs (wave14 item 1) ===
+\ Prefer greppable markers; one cell bump counter (bytes). No arena/pool/free.
+\ Forth mirrors: here-at / allot-bump (host binds HERE / ALLOT; host Forth often collides).
+\ Optional comma / c-comma when cheap.
+
+: here-at ( -- )
+  ." [allot] HERE addr=" _here @ . cr ;
+
+: allot-bump ( n -- )
+  dup 0< if
+    drop ." [allot] FAIL reason=neg" cr exit
+  then
+  dup _here +!
+  ." [allot] ALLOT n=" . ." addr=" _here @ . cr ;
+
+\ comma ( n -- )  optional cell-store stub + bump by cell
+: comma ( n -- )
+  cell _here +!
+  ." [allot] , value=" . cr ;
+
+\ c-comma ( c -- )  optional char-store stub + bump by 1
+: c-comma ( c -- )
+  1 _here +!
+  ." [allot] C, value=" . cr ;
+
+\ allot-demo ( -- )  HERE → ALLOT 8 → HERE (bump visible) → OK
+: allot-demo ( -- )
+  ." [allot-demo] HERE + ALLOT 8 + HERE" cr
+  dict-reset
+  _here @ >r
+  here-at
+  8 allot-bump
+  _here @ r@ > 0= if
+    r> drop ." [allot-demo] FAIL" cr exit
+  then
+  _here @ r> 8 + <> if
+    ." [allot-demo] FAIL" cr exit
+  then
+  here-at
+  ." [allot-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -1222,6 +1267,7 @@ create (sl-hi) 2 c, char h c, char i c,
 \ - CASE/OF/ENDOF/ENDCASE stubs (wave13 item 2) — landed
 \ - CREATE/DOES> defining-word stubs (wave13 item 3) — landed
 \ - S" / ." / .( string-lit stubs + string-demo (wave13 item 4) — landed
+\ - HERE/ALLOT pointer stubs + allot-demo (wave14 item 1) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

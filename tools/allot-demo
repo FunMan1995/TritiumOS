@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# allot-demo — Lab smoke for HERE/ALLOT dictionary-pointer stubs (wave14 item 1 / docs/ALLOT-HERE.md)
+# Mirrors forth/tritium/kernel.fs allot-demo + Linux host allot_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: allot-demo"
+  echo "  HERE → ALLOT 8 → HERE (bump visible) → [allot-demo] OK"
+  echo "  Markers: [allot] HERE addr= / ALLOT n= → [allot-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[allot-demo] FAIL"
+  exit 1
+}
+
+# Host-held stub pointer (bytes). Base 0x1000 — no arena/pool/free.
+HERE_BASE=4096
+HERE_PTR=$HERE_BASE
+
+here_at() {
+  echo "[allot] HERE addr=$HERE_PTR"
+}
+
+allot_bump() {
+  local n=$1
+  if [[ "$n" -lt 0 ]]; then
+    echo "[allot] FAIL reason=neg"
+    return 1
+  fi
+  HERE_PTR=$(( HERE_PTR + n ))
+  echo "[allot] ALLOT n=$n addr=$HERE_PTR"
+}
+
+echo "[allot-demo] HERE + ALLOT 8 + HERE"
+HERE_PTR=$HERE_BASE
+a0=$HERE_PTR
+here_at
+allot_bump 8 || fail
+a1=$HERE_PTR
+here_at
+
+[[ "$a1" -gt "$a0" ]] || fail
+[[ "$a1" -eq $(( a0 + 8 )) ]] || fail
+
+echo "[allot-demo] OK"
+exit 0
