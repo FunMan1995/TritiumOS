@@ -58,6 +58,7 @@ create ENTRY-BODY   MAX-ENTRIES cells allot   \ 0 = create-only; 1 = body-presen
 create ENTRY-BTOKS  MAX-ENTRIES cells allot   \ body token count when body-present
 create ENTRY-CELLS  MAX-ENTRIES cells allot   \ VARIABLE/CONSTANT stub cell (wave12 item 2)
 create ENTRY-VALUE? MAX-ENTRIES cells allot   \ 1 = VALUE stub (wave13 item 1)
+create ENTRY-DOES?  MAX-ENTRIES cells allot   \ 1 = DOES> stub marked (wave13 item 3)
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
@@ -67,6 +68,7 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : entry-btoks[] ( i -- addr )  cells ENTRY-BTOKS + ;
 : entry-cell[] ( i -- addr )   cells ENTRY-CELLS + ;
 : entry-value?[] ( i -- addr ) cells ENTRY-VALUE? + ;
+: entry-does?[]  ( i -- addr ) cells ENTRY-DOES? + ;
 \ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
@@ -81,6 +83,8 @@ variable _do-loop-depth  \ open DO count
 variable _do-loop-index  \ stub index for I (start value)
 \ case-stack stub (wave13 item 2) — sibling of cs; balance-only CASE/OF
 variable _case-depth  \ open CASE count
+\ CREATE/DOES> stub (wave13 item 3) — latest CREATE index; no XT child body
+variable _create-latest  \ index of most recent CREATE; -1 = none
 
 
 : entry-name-clear ( i -- )
@@ -95,6 +99,7 @@ variable _case-depth  \ open CASE count
   MAX-ENTRIES 0 do 0 i entry-btoks[] ! loop
   MAX-ENTRIES 0 do 0 i entry-cell[] ! loop
   MAX-ENTRIES 0 do 0 i entry-value?[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-does?[] ! loop
   0 _colon-def !
   -1 _colon-idx !
   0 _colon-toks !
@@ -103,7 +108,8 @@ variable _case-depth  \ open CASE count
   0 _loop-depth !
   0 _do-loop-depth !
   0 _do-loop-index !
-  0 _case-depth ! ;
+  0 _case-depth !
+  -1 _create-latest ! ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -157,6 +163,7 @@ variable _case-depth  \ open CASE count
   0 r@ entry-body[] !          \ create-only until ;
   0 r@ entry-btoks[] !
   0 r@ entry-cell[] !          \ VARIABLE/CONSTANT stub init
+  0 r@ entry-does?[] !         \ CREATE/DOES> stub clear
   1 ENTRY-COUNT +!
   ." [kernel] created #" r@ . cr
   r> ;
@@ -962,6 +969,55 @@ create (vald-baz) 3 c, char b c, char a c, char z c,
   then
   ." [case-demo] OK" cr ;
 
+\ === CREATE / DOES> defining-word stubs (wave13 item 3) ===
+\ Prefer greppable markers; no real XT chaining / child runtime body / HERE/ALLOT.
+\ Forth mirrors: create-entry / does-mark (host binds CREATE / DOES>).
+
+\ create-entry-from ( c-addr u -- i )  named dict entry; presence only
+: create-entry-from ( c-addr u -- i )
+  2dup entry-create-from dup 0< if nip nip exit then
+  >r
+  0 r@ entry-does?[] !
+  r@ _create-latest !
+  ." [create] CREATE name=" type cr
+  r> ;
+
+\ does-mark ( -- )  mark does-body stub on latest CREATE
+: does-mark ( -- )
+  _create-latest @ dup 0< if
+    drop
+    ." [create] FAIL reason=unbalanced" cr exit
+  then
+  >r
+  1 r@ entry-does?[] !
+  ." [create] DOES> name=" r@ entry-name[] NAMELEN name-trim type cr
+  -1 _create-latest !
+  r> drop ;
+
+\ create-entry ( "name" -- )  parse + CREATE stub
+: create-entry ( "name" -- )
+  bl word count create-entry-from drop ;
+
+\ create-find ( c-addr u -- i )  thin alias of entry-find
+: create-find ( c-addr u -- i ) entry-find ;
+
+create (crd-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t c,
+
+\ create-demo ( -- )  dict-reset → CREATE widget → DOES> → find/WORDS → OK
+: create-demo ( -- )
+  ." [create-demo] dict-reset + CREATE widget + DOES>" cr
+  dict-reset
+  (crd-widget) count create-entry-from drop
+  does-mark
+  WORDS
+  (crd-widget) count entry-find 0< if
+    ." [create-demo] FAIL" cr exit
+  then
+  words-count 1 < if
+    ." [create-demo] FAIL" cr exit
+  then
+  ." [create-demo] OK" cr ;
+
 \ === comment-parse stubs (wave12 item 3) ===
 \ Stream skip inside interpret (above). Forth mirrors: comment-line / comment-paren
 \ (host binds '\' / '(' on REPL interpret path).
@@ -1043,6 +1099,7 @@ create (cm-comment) 7 c, char c c, char o c, char m c, char m c, char e c, char 
 \ - LEAVE/AGAIN stubs + leave-demo (wave12 item 4) — landed
 \ - VALUE/TO named mutable-cell stubs (wave13 item 1) — landed
 \ - CASE/OF/ENDOF/ENDCASE stubs (wave13 item 2) — landed
+\ - CREATE/DOES> defining-word stubs (wave13 item 3) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

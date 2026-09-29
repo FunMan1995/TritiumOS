@@ -19,3 +19,4 @@ comment-demo CONTRACT
 leave-demo CONTRACT
 value-demo CONTRACT
 case-demo CONTRACT
+create-demo CONTRACT

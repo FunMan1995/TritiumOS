@@ -23,6 +23,7 @@ REQUIRED_DEMOS=(
   leave-demo
   value-demo
   case-demo
+  create-demo
 )
 
 usage() {

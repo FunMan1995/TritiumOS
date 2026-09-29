@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# create-demo — Lab smoke for CREATE/DOES> defining-word stubs (wave13 item 3 / docs/CREATE-DOES.md)
+# Mirrors forth/tritium/kernel.fs create-demo + Linux host create_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: create-demo"
+  echo "  dict-reset → CREATE widget → DOES> → find/WORDS"
+  echo "  Markers: [create] CREATE/DOES> → [create-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[create-demo] FAIL"
+  exit 1
+}
+
+declare -a NAMES=()
+declare -A DOES_BODY=()
+CREATE_LATEST=-1
+
+dict_reset() {
+  NAMES=()
+  DOES_BODY=()
+  CREATE_LATEST=-1
+}
+
+entry_find() {
+  local name=$1
+  local i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      echo "$i"
+      return 0
+    fi
+  done
+  echo "-1"
+}
+
+create_entry() {
+  local name=$1
+  NAMES+=("$name")
+  local idx=$(( ${#NAMES[@]} - 1 ))
+  DOES_BODY["$name"]=0
+  CREATE_LATEST=$idx
+  echo "[kernel] created #$idx"
+  echo "[create] CREATE name=$name"
+}
+
+does_mark() {
+  if [[ "$CREATE_LATEST" -lt 0 ]]; then
+    echo "[create] FAIL reason=unbalanced"
+    return 1
+  fi
+  local name="${NAMES[$CREATE_LATEST]}"
+  DOES_BODY["$name"]=1
+  echo "[create] DOES> name=$name"
+  CREATE_LATEST=-1
+}
+
+words() {
+  local n=${#NAMES[@]}
+  printf '[kernel] words (%d): ' "$n"
+  local name
+  for name in "${NAMES[@]}"; do
+    printf '%s ' "$name"
+  done
+  printf '\n'
+}
+
+echo "[create-demo] dict-reset + CREATE widget + DOES>"
+dict_reset
+create_entry widget
+does_mark
+
+out="$(words)"
+echo "$out"
+
+[[ "$(entry_find widget)" != "-1" ]] || fail
+[[ "${#NAMES[@]}" -ge 1 ]] || fail
+echo "$out" | grep -q 'widget' || fail
+echo "$out" | grep -q 'words (' || fail
+[[ "${DOES_BODY[widget]}" == "1" ]] || fail
+
+echo "[create-demo] OK"
+exit 0
