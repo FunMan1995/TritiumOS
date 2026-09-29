@@ -193,6 +193,10 @@ variable _gec-gid
   r> ;
 
 : words ( -- ) .words ;
+\ WORDS — ANS/Dusk-facing alias of .words (host also binds WORDS; Forth often case-insensitive)
+: WORDS ( -- ) .words ;
+\ words-count ( -- n )  optional helper = ENTRY-COUNT @
+: words-count ( -- n ) ENTRY-COUNT @ ;
 
 \ === Trit + neuron primitives (Tritium-specific, Phase 2) ===
 \ Build on existing forth/trit.fs (include it in boot).
@@ -564,6 +568,25 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
   then
   ." [loop-demo] OK" cr ;
 
+\ words-demo ( -- )  dict-reset → entry-create alpha+beta → WORDS → count≥2 → OK
+\ wave11 item 3 / docs/WORDS-VOCAB.md
+: words-demo ( -- )
+  ." [words-demo] dict-reset + entry-create alpha + beta + WORDS" cr
+  dict-reset
+  (kd-a) count entry-create-from drop
+  (kd-b) count entry-create-from drop
+  WORDS
+  words-count 2 < if
+    ." [words-demo] FAIL" cr exit
+  then
+  (kd-a) count entry-find 0< if
+    ." [words-demo] FAIL" cr exit
+  then
+  (kd-b) count entry-find 0< if
+    ." [words-demo] FAIL" cr exit
+  then
+  ." [words-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop stubs)
@@ -573,6 +596,7 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
 \ - colon body/marker stub (wave9 item 4) — landed
 \ - IF/THEN/ELSE control stubs (wave10 item 2) — landed
 \ - BEGIN/UNTIL/WHILE/REPEAT loop stubs (wave11 item 1) — landed
+\ - WORDS / words-demo dict-list smoke (wave11 item 3) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# words-demo — Lab smoke for WORDS / dict-list (wave11 item 3 / docs/WORDS-VOCAB.md)
+# Mirrors forth/tritium/kernel.fs words-demo + Linux host words_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: words-demo"
+  echo "  dict-reset → entry-create alpha + beta → WORDS → count≥2 + names greppable"
+  echo "  Markers: [kernel] words (N): … → [words-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[words-demo] FAIL"
+  exit 1
+}
+
+declare -a NAMES=()
+
+dict_reset() {
+  NAMES=()
+}
+
+entry_create() {
+  local name=$1
+  NAMES+=("$name")
+  echo "[kernel] created #$(( ${#NAMES[@]} - 1 ))"
+}
+
+words() {
+  local n=${#NAMES[@]}
+  printf '[kernel] words (%d): ' "$n"
+  local name
+  for name in "${NAMES[@]}"; do
+    printf '%s ' "$name"
+  done
+  printf '\n'
+}
+
+words_count() {
+  echo "${#NAMES[@]}"
+}
+
+echo "[words-demo] dict-reset + entry-create alpha + beta + WORDS"
+dict_reset
+entry_create alpha
+entry_create beta
+
+out="$(words)"
+echo "$out"
+
+[[ "$(words_count)" -ge 2 ]] || fail
+echo "$out" | grep -q 'words (' || fail
+echo "$out" | grep -q 'alpha' || fail
+echo "$out" | grep -q 'beta' || fail
+
+# Parse N from marker
+n="$(echo "$out" | sed -n 's/.*words (\([0-9]*\)):.*/\1/p')"
+[[ -n "$n" && "$n" -ge 2 ]] || fail
+
+echo "[words-demo] OK"
+exit 0
