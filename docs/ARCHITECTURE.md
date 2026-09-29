@@ -1,6 +1,6 @@
 # ARCHITECTURE — TritiumOS map
 
-**Status:** Shipper-ready overview (wave12 item **5** — cite refresh; supersedes wave11 **5** map)
+**Status:** Shipper-ready overview (wave13 item **5** — cite refresh; supersedes wave12 **5** map)
 **Canonical brief:** `TritiumOS.txt` §§1a, 5–8
 **Companions:** per-subsystem docs listed in §4 (do not duplicate their contracts here)
 
@@ -23,13 +23,15 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 │  TritiumForth core         │   │  evolve/ (runtime)         │
 │  kernel · interpret · colon│   │  user-graph · assistant-*  │
 │  control · loops · do-loop │   │  edition · license-slots   │
-│  var · comment · leave     │   │  forth/refined cold-load │
-│  trit-math · drena · rekia │   │  queue/ · assimilate/      │
-│  queue · assimilate · lineos│  │  integrate/ · master/      │
-│  integrate · master · fleet│   │  fleet/ · lineos/ · userland│
-│  userland scaffold         │   │  forth/refined/*.fs        │
-│  D.R.E.N.A. = structure    │   │  graduation.json           │
-│  R.E.K.I.A. = refine→Forth │   │  assistant-state.trit v2 │
+│  var · value · comment     │   │  forth/refined cold-load │
+│  leave · case · create     │   │  queue/ · assimilate/      │
+│  string-lit · trit-math    │   │  integrate/ · master/      │
+│  drena · rekia · queue     │   │  fleet/ · lineos/ · userland│
+│  assimilate · lineos       │   │  forth/refined/*.fs        │
+│  integrate · master · fleet│   │  graduation.json           │
+│  userland scaffold         │   │  assistant-state.trit v2 │
+│  D.R.E.N.A. = structure    │   │                            │
+│  R.E.K.I.A. = refine→Forth │   │                            │
 └────────────┬───────────────┘   └────────────────────────────┘
              │ bundled by
              ▼
@@ -62,6 +64,10 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 | Variable / const stubs | `VARIABLE`/`CONSTANT` + `var-demo` (`VARIABLE-CONST.md`) |
 | Comment-parse | `\` / `(` skip + `comment-demo` (`COMMENT-PARSE.md`) |
 | Leave / again stubs | `LEAVE`/`AGAIN` + `leave-demo` (`LEAVE-AGAIN.md`) |
+| Value / TO stubs | `VALUE`/`TO` + `value-demo` (`VALUE-TO.md`) |
+| Case stubs | `CASE`/`OF`/`ENDOF`/`ENDCASE` + `case-demo` (`CASE-OF.md`) |
+| Create / DOES> stubs | `CREATE`/`DOES>` + `create-demo` (`CREATE-DOES.md`) |
+| String-lit stubs | `S"`/`."` + `string-demo` (`STRING-LIT.md`) |
 | Address fold | `phi-fold` / `fold-target` goldens + `fold-demo` (`ADDRESS-FOLD.md`) |
 | Refined cold-load | `evolve/forth/refined/*.fs` skip `qwantum-*` + `refined-boot-demo` (`REFINED-BOOT.md`) |
 | AppImage refined | portable seed + `S_ISREG` + oneshot/EXTRACT; host matches tools/ SoT (`APPIMAGE-REFINED.md`) |
@@ -73,7 +79,7 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 |------|-----|
 | Neuron / trit / S3 | `NEURON.md`, `ASSUMPTIONS.md`; `TRIT-MATH.md` (wave9 **1**) |
 | Topology | `DRENA.md`, `GROUPS.md`, `GROUPS-NESTED.md` (wave7 **4**); `ADDRESS-FOLD.md` (wave10 **3**) |
-| Kernel / interpret / colon / control / loops / cells | `KERNEL.md` (wave7 **5**); `INTERPRET.md` (wave8 **1**); `COLON.md` (wave9 **4**); `CONTROL.md` (wave10 **2**); `BEGIN-UNTIL.md` (wave11 **1**); `WORDS-VOCAB.md` (wave11 **3**); `DO-LOOP.md` (wave12 **1**); `VARIABLE-CONST.md` (wave12 **2**); `COMMENT-PARSE.md` (wave12 **3**); `LEAVE-AGAIN.md` (wave12 **4**) |
+| Kernel / interpret / colon / control / loops / cells | `KERNEL.md` (wave7 **5**); `INTERPRET.md` (wave8 **1**); `COLON.md` (wave9 **4**); `CONTROL.md` (wave10 **2**); `BEGIN-UNTIL.md` (wave11 **1**); `WORDS-VOCAB.md` (wave11 **3**); `DO-LOOP.md` (wave12 **1**); `VARIABLE-CONST.md` (wave12 **2**); `COMMENT-PARSE.md` (wave12 **3**); `LEAVE-AGAIN.md` (wave12 **4**); `VALUE-TO.md` (wave13 **1**); `CASE-OF.md` (wave13 **2**); `CREATE-DOES.md` (wave13 **3**); `STRING-LIT.md` (wave13 **4**) |
 | Refine / refined boot / AppImage | `REKIA.md`, `QWANTUM-REKIA.md`; `REFINED-BOOT.md` (wave10 **4**); `APPIMAGE-REFINED.md` (wave11 **4**) |
 | Assistant S0 / state | `ASSISTANT.md`; `ASSISTANT-STATE.md` (wave9 **3**); `ASSISTANT-S0.md` (wave11 **2**) |
 | License / master | `LICENSE.md`; `MASTER.md` (wave7 **1**) |
@@ -87,7 +93,7 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 | Build / platforms | `BUILD.md`, `SYSTEM-DESIGN-INITIAL-PLATFORMS.md` |
 | Gaps (living) | `IMPLEMENTATION-GAPS.md` (this tip refreshes cites) |
 
-**Wave cite summary (closed on tip, not merged):** wave6–9 as prior; **wave10** HOST-BOOT / CONTROL / ADDRESS-FOLD / REFINED-BOOT / prior cite; **wave11** BEGIN-UNTIL / ASSISTANT-S0 / WORDS-VOCAB / APPIMAGE-REFINED / prior cite; **wave12** DO-LOOP / VARIABLE-CONST / COMMENT-PARSE / LEAVE-AGAIN / **this cite refresh**.
+**Wave cite summary (closed on tip, not merged):** wave6–9 as prior; **wave10** HOST-BOOT / CONTROL / ADDRESS-FOLD / REFINED-BOOT / prior cite; **wave11** BEGIN-UNTIL / ASSISTANT-S0 / WORDS-VOCAB / APPIMAGE-REFINED / prior cite; **wave12** DO-LOOP / VARIABLE-CONST / COMMENT-PARSE / LEAVE-AGAIN / prior cite; **wave13** VALUE-TO / CASE-OF / CREATE-DOES / STRING-LIT / **this cite refresh**.
 
 ## 5. Repo layout (as-built vs target)
 
@@ -103,7 +109,7 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 | `refs/` | DuskOS / CollapseOS / GrapheneOS references |
 | `docs/` | Specs (this file + §4) |
 
-Target layout in `TritiumOS.txt` §7 still lists top-level `/drena` `/rekia` `/boot` `/userland` — engines today live under `forth/tritium/` (+ stubs). Landed scaffolds: integrate (wave6 **4**), userland (wave8 **3**), host-parity (wave8 **4**), assistant-state v2 (wave9 **3**), host-boot markers (wave10 **1**), refined cold-load (wave10 **4**), loop stubs (wave11 **1**), S0 deepen (wave11 **2**), WORDS list (wave11 **3**), AppImage refined host path (wave11 **4**), counted-loop stubs (wave12 **1**), VARIABLE/CONSTANT stubs (wave12 **2**), comment-parse (wave12 **3**), LEAVE/AGAIN stubs (wave12 **4**). Bare-metal `/boot` later.
+Target layout in `TritiumOS.txt` §7 still lists top-level `/drena` `/rekia` `/boot` `/userland` — engines today live under `forth/tritium/` (+ stubs). Landed scaffolds: integrate (wave6 **4**), userland (wave8 **3**), host-parity (wave8 **4**), assistant-state v2 (wave9 **3**), host-boot markers (wave10 **1**), refined cold-load (wave10 **4**), loop stubs (wave11 **1**), S0 deepen (wave11 **2**), WORDS list (wave11 **3**), AppImage refined host path (wave11 **4**), counted-loop stubs (wave12 **1**), VARIABLE/CONSTANT stubs (wave12 **2**), comment-parse (wave12 **3**), LEAVE/AGAIN stubs (wave12 **4**), VALUE/TO stubs (wave13 **1**), CASE/OF stubs (wave13 **2**), CREATE/DOES> stubs (wave13 **3**), string-lit stubs (wave13 **4**). Bare-metal `/boot` later.
 
 ## 6. Non-goals (this doc)
 
@@ -112,11 +118,11 @@ Target layout in `TritiumOS.txt` §7 still lists top-level `/drena` `/rekia` `/b
 - Product decisions (escalate via Chief of Staff)
 - Forth behavior change (docs-only tip)
 
-## 7. Acceptance (Test Lab — wave12 **5**)
+## 7. Acceptance (Test Lab — wave13 **5**)
 
 1. `docs/ARCHITECTURE.md` matches Research draft (byte-cmp OK).
-2. §4 index cites wave12 **1–4** docs (`DO-LOOP`, `VARIABLE-CONST`, `COMMENT-PARSE`, `LEAVE-AGAIN`) plus wave11 **1–4**, wave10 **1–4**, and prior wave6–9 index.
-3. `docs/IMPLEMENTATION-GAPS.md` refreshed with wave12 **5** cite note + wave12 **1–4** landed markers; prior wave11 AppImage hang class remains closed.
+2. §4 index cites wave13 **1–4** docs (`VALUE-TO`, `CASE-OF`, `CREATE-DOES`, `STRING-LIT`) plus wave12 **1–4**, wave11 **1–4**, wave10 **1–4**, and prior wave6–9 index.
+3. `docs/IMPLEMENTATION-GAPS.md` refreshed with wave13 **5** cite note + wave13 **1–4** landed markers; prior wave11 AppImage hang class remains closed; wave12 cite remains historical.
 4. Docs-only: light suite still green (no Forth behavior change required).
 5. No merge.
 
@@ -124,4 +130,4 @@ Target layout in `TritiumOS.txt` §7 still lists top-level `/drena` `/rekia` `/b
 
 - `TritiumOS.txt` §§1a, 5–8
 - `README.md` project layout; subsystem docs in §4
-- Wave6–12 tip stack (gate by SHA; unmerged tip stack OK)
+- Wave6–13 tip stack (gate by SHA; unmerged tip stack OK)
