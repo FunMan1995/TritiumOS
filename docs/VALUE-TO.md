@@ -3,12 +3,12 @@
 **Status:** Shipper-ready stub spec (wave13 item **1**)
 **Canonical brief:** ANS-shaped `VALUE` / `TO` (thin stub); `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `var.fs` / `value.fs`); Linux host REPL
-**Companions:** `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip)
+**Companions:** `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/ALLOT-HERE.md` (wave14 **1**), `docs/2VARIABLE.md` (wave14 **3**)
 **Base tip SHA:** `8df5974` (wave12 tip5 CLOSED / #56) / full `8df59749768792e97babc98f14e68851a3705c69`
 
 ## 1. Purpose
 
-`VARIABLE` / `CONSTANT` named-cell stubs exist (wave12 **2**). This tip **thin-deepens** that surface with **VALUE / TO stubs**: `n VALUE <name>` creates a named mutable cell initialized to `n`, `TO <name>` stores TOS into that cell, prints greppable `[value]` markers, and smokes via **`value-demo`**. Optional `value@` fetch. Not real ALLOT/HERE, DOES>/CREATE, CASE, string lit, or branch XT.
+`VARIABLE` / `CONSTANT` named-cell stubs exist (wave12 **2**). This tip **thin-deepens** that surface with **VALUE / TO stubs**: `n VALUE <name>` creates a named mutable cell initialized to `n`, `TO <name>` stores TOS into that cell, prints greppable `[value]` markers, and smokes via **`value-demo`**. Optional `value@` fetch. HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**; not full arena). Double-cell `2VARIABLE` / `2CONSTANT` stubs → `docs/2VARIABLE.md` (wave14 **3**). Not real DOES> XT chaining, FLOAT, THROW, or full double-cell heap.
 
 ## 2. Words / Surfaces
 
@@ -29,7 +29,7 @@ Host note: bind `VALUE` / `TO` on Linux REPL; Forth mirrors `value-create` / `va
 - Optional `value@`: fetch current stub; print `[value] @ name=<name> value=<n>`. No requirement to push a real stack cell if the marker alone is greppable.
 - Storage: host-side int map or entry-slot field is enough — **no** ALLOT/HERE arena, no linked cell memory, no DOES>/CREATE defining-word body.
 - Nest with prior VARIABLE/CONSTANT / colon / control / loop stubs OK; `dict-reset` clears VALUE stubs along with var/const.
-- Still no CASE, string lit, real branch XT, DOES>/CREATE; those → later wave13 tips.
+- CREATE/DOES> stubs → `docs/CREATE-DOES.md` (wave13 **3**; markers only). HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**). Double-cell stubs → `docs/2VARIABLE.md` (wave14 **3**; VALUE stays single mutable cell). Still no FLOAT, THROW, real DOES> XT, or full double heap.
 
 ## 4. Markers
 
@@ -73,12 +73,12 @@ Lab greps `[value-demo] OK` plus at least one `[value] VALUE name=` with `value=
 
 ## 7. Non-goals
 
-- Real ALLOT / HERE arena / linked cell memory model
-- DOES> / CREATE / CREATE-DOES> (wave13 **3** candidate)
-- CASE / OF / ENDOF / ENDCASE (wave13 **2** candidate)
-- String literals `S"` / `."` (wave13 **4** candidate)
+- Full ALLOT / HERE arena / linked cell memory model (pointer stubs → `docs/ALLOT-HERE.md` wave14 **1**)
+- `2VARIABLE` / `2CONSTANT` stubs: see `docs/2VARIABLE.md` (wave14 **3**); FLOAT / real double-cell heap still out
+- Real DOES> XT chaining (CREATE/DOES> markers → `docs/CREATE-DOES.md` wave13 **3**)
+- THROW / CATCH / ABORT" (wave14 **4** candidate)
 - Real branch XT / runtime counted re-exec / LEAVE jump
-- Docs cites pass (wave13 **5**)
+- Docs cites pass (wave14 **5**)
 - Real crypto / network fleet
 - Full Win/Android Forth VM (CONTRACT acceptable)
 - No merge. Stay out of Mango.
@@ -98,4 +98,6 @@ Lab greps `[value-demo] OK` plus at least one `[value] VALUE name=` with `value=
 - ANS Forth `VALUE` / `TO` (stub only); Dusk named-cell surface (stub only)
 - Base tip: `8df5974` / `8df59749768792e97babc98f14e68851a3705c69`
 - Wave13 proposal: `/workspace/tritium-research-docs/WAVE13-PROPOSAL.md`
+- `docs/ALLOT-HERE.md` (wave14 **1**)
+- `docs/2VARIABLE.md` (wave14 **3**)
 

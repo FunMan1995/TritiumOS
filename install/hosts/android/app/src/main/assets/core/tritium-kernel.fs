@@ -59,6 +59,8 @@ create ENTRY-BTOKS  MAX-ENTRIES cells allot   \ body token count when body-prese
 create ENTRY-CELLS  MAX-ENTRIES cells allot   \ VARIABLE/CONSTANT stub cell (wave12 item 2)
 create ENTRY-VALUE? MAX-ENTRIES cells allot   \ 1 = VALUE stub (wave13 item 1)
 create ENTRY-DOES?  MAX-ENTRIES cells allot   \ 1 = DOES> stub marked (wave13 item 3)
+create ENTRY-CELLS2 MAX-ENTRIES cells allot   \ 2VARIABLE/2CONSTANT hi stub cell (wave14 item 3)
+create ENTRY-2CELL? MAX-ENTRIES cells allot   \ 1 = 2VARIABLE/2CONSTANT stub (wave14 item 3)
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
@@ -69,6 +71,8 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : entry-cell[] ( i -- addr )   cells ENTRY-CELLS + ;
 : entry-value?[] ( i -- addr ) cells ENTRY-VALUE? + ;
 : entry-does?[]  ( i -- addr ) cells ENTRY-DOES? + ;
+: entry-cell2[]  ( i -- addr ) cells ENTRY-CELLS2 + ;
+: entry-2cell?[] ( i -- addr ) cells ENTRY-2CELL? + ;
 \ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
@@ -104,6 +108,8 @@ $1000 _here !   \ stub base 0x1000
   MAX-ENTRIES 0 do 0 i entry-cell[] ! loop
   MAX-ENTRIES 0 do 0 i entry-value?[] ! loop
   MAX-ENTRIES 0 do 0 i entry-does?[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-cell2[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-2cell?[] ! loop
   0 _colon-def !
   -1 _colon-idx !
   0 _colon-toks !
@@ -169,6 +175,8 @@ $1000 _here !   \ stub base 0x1000
   0 r@ entry-body[] !          \ create-only until ;
   0 r@ entry-btoks[] !
   0 r@ entry-cell[] !          \ VARIABLE/CONSTANT stub init
+  0 r@ entry-cell2[] !         \ 2VARIABLE/2CONSTANT hi stub init
+  0 r@ entry-2cell?[] !        \ not a 2-cell stub by default
   0 r@ entry-does?[] !         \ CREATE/DOES> stub clear
   1 ENTRY-COUNT +!
   ." [kernel] created #" r@ . cr
@@ -1296,6 +1304,101 @@ create (sl-hi) 2 c, char h c, char i c,
   here-at
   ." [allot-demo] OK" cr ;
 
+
+\ === 2VARIABLE / 2CONSTANT double-cell stubs (wave14 item 3) ===
+\ Prefer greppable markers; two-slot via ENTRY-CELLS + ENTRY-CELLS2 (no double heap).
+\ Forth mirrors: 2var-create / 2const-create (host binds 2VARIABLE / 2CONSTANT).
+\ Optional 2@ / 2! when cheap.
+
+\ 2var-create-from ( c-addr u -- i )  named double-cell stub; init 0 0
+: 2var-create-from ( c-addr u -- i )
+  2dup entry-create-from dup 0< if nip nip exit then
+  >r
+  0 r@ entry-cell[] !
+  0 r@ entry-cell2[] !
+  1 r@ entry-2cell?[] !
+  ." [2var] 2VARIABLE name=" type cr
+  r> ;
+
+\ 2const-create-from ( lo hi c-addr u -- i )  named double-constant stub
+: 2const-create-from ( lo hi c-addr u -- i )
+  2dup entry-create-from dup 0< if nip nip nip nip exit then
+  >r
+  ( lo hi ) swap r@ entry-cell[] !   \ lo
+  r@ entry-cell2[] !                 \ hi
+  1 r@ entry-2cell?[] !
+  ." [2var] 2CONSTANT name=" type
+  ."  lo=" r@ entry-cell[] @ .
+  ." hi=" r@ entry-cell2[] @ . cr
+  r> ;
+
+\ 2var-create ( "name" -- )  parse + 2VARIABLE stub
+: 2var-create ( "name" -- )
+  bl word count 2var-create-from drop ;
+
+\ 2const-create ( lo hi "name" -- )  parse + 2CONSTANT stub
+: 2const-create ( lo hi "name" -- )
+  bl word count 2const-create-from drop ;
+
+\ 2var-find ( c-addr u -- i )  thin alias of entry-find
+: 2var-find ( c-addr u -- i ) entry-find ;
+
+\ 2var-fetch-from ( c-addr u -- )  optional 2@ stub
+: 2var-fetch-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [2var] FAIL reason=miss" cr exit
+  then
+  dup entry-2cell?[] @ 0= if
+    drop 2drop
+    ." [2var] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [2var] 2@ name=" r@ entry-name[] NAMELEN name-trim type
+  ."  lo=" r@ entry-cell[] @ .
+  ." hi=" r@ entry-cell2[] @ . cr
+  r> drop ;
+
+\ 2var-store-from ( lo hi c-addr u -- )  optional 2! stub
+: 2var-store-from ( lo hi c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop 2drop
+    ." [2var] FAIL reason=miss" cr exit
+  then
+  dup entry-2cell?[] @ 0= if
+    drop 2drop 2drop
+    ." [2var] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ( lo hi ) swap r@ entry-cell[] !
+  r@ entry-cell2[] !
+  ." [2var] 2! name=" r@ entry-name[] NAMELEN name-trim type
+  ."  lo=" r@ entry-cell[] @ .
+  ." hi=" r@ entry-cell2[] @ . cr
+  r> drop ;
+
+create (2vd-dv) 2 c, char d c, char v c,
+create (2vd-dc) 2 c, char d c, char c c,
+
+\ 2var-demo ( -- )  dict-reset → 2VARIABLE dv → 1 2 2CONSTANT dc → find/WORDS → OK
+: 2var-demo ( -- )
+  ." [2var-demo] dict-reset + 2VARIABLE dv + 1 2 2CONSTANT dc" cr
+  dict-reset
+  (2vd-dv) count 2var-create-from drop
+  1 2 (2vd-dc) count 2const-create-from drop
+  WORDS
+  (2vd-dv) count entry-find 0< if
+    ." [2var-demo] FAIL" cr exit
+  then
+  (2vd-dc) count entry-find 0< if
+    ." [2var-demo] FAIL" cr exit
+  then
+  words-count 2 < if
+    ." [2var-demo] FAIL" cr exit
+  then
+  ." [2var-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -1316,6 +1419,7 @@ create (sl-hi) 2 c, char h c, char i c,
 \ - S" / ." / .( string-lit stubs + string-demo (wave13 item 4) — landed
 \ - HERE/ALLOT pointer stubs + allot-demo (wave14 item 1) — landed
 \ - UNLOOP/J stubs + unloop-demo (wave14 item 2) — landed
+\ - 2VARIABLE/2CONSTANT stubs + 2var-demo (wave14 item 3) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

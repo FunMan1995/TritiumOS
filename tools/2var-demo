@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# 2var-demo — Lab smoke for 2VARIABLE/2CONSTANT double-cell stubs (wave14 item 3 / docs/2VARIABLE.md)
+# Mirrors forth/tritium/kernel.fs 2var-demo + Linux host two_var_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: 2var-demo"
+  echo "  dict-reset → 2VARIABLE dv → 1 2 2CONSTANT dc → find/WORDS"
+  echo "  Markers: [2var] 2VARIABLE/2CONSTANT → [2var-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[2var-demo] FAIL"
+  exit 1
+}
+
+declare -a NAMES=()
+declare -A CELLS_LO=()
+declare -A CELLS_HI=()
+declare -A IS_2CELL=()
+
+dict_reset() {
+  NAMES=()
+  CELLS_LO=()
+  CELLS_HI=()
+  IS_2CELL=()
+}
+
+entry_find() {
+  local name=$1
+  local i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      echo "$i"
+      return 0
+    fi
+  done
+  echo "-1"
+}
+
+two_var_create() {
+  local name=$1
+  NAMES+=("$name")
+  CELLS_LO["$name"]=0
+  CELLS_HI["$name"]=0
+  IS_2CELL["$name"]=1
+  echo "[kernel] created #$(( ${#NAMES[@]} - 1 ))"
+  echo "[2var] 2VARIABLE name=$name"
+}
+
+two_const_create() {
+  local name=$1
+  local lo=$2
+  local hi=$3
+  NAMES+=("$name")
+  CELLS_LO["$name"]=$lo
+  CELLS_HI["$name"]=$hi
+  IS_2CELL["$name"]=1
+  echo "[kernel] created #$(( ${#NAMES[@]} - 1 ))"
+  echo "[2var] 2CONSTANT name=$name lo=$lo hi=$hi"
+}
+
+words() {
+  local n=${#NAMES[@]}
+  printf '[kernel] words (%d): ' "$n"
+  local name
+  for name in "${NAMES[@]}"; do
+    printf '%s ' "$name"
+  done
+  printf '\n'
+}
+
+echo "[2var-demo] dict-reset + 2VARIABLE dv + 1 2 2CONSTANT dc"
+dict_reset
+two_var_create dv
+two_const_create dc 1 2
+
+out="$(words)"
+echo "$out"
+
+[[ "$(entry_find dv)" != "-1" ]] || fail
+[[ "$(entry_find dc)" != "-1" ]] || fail
+[[ "${#NAMES[@]}" -ge 2 ]] || fail
+echo "$out" | grep -q 'dv' || fail
+echo "$out" | grep -q 'dc' || fail
+echo "$out" | grep -q 'words (' || fail
+[[ "${CELLS_LO[dv]}" == "0" && "${CELLS_HI[dv]}" == "0" ]] || fail
+[[ "${CELLS_LO[dc]}" == "1" && "${CELLS_HI[dc]}" == "2" ]] || fail
+
+echo "[2var-demo] OK"
+exit 0

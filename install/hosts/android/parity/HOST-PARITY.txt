@@ -23,3 +23,4 @@ create-demo CONTRACT
 string-demo CONTRACT
 allot-demo CONTRACT
 unloop-demo CONTRACT
+2var-demo CONTRACT
