@@ -3,12 +3,12 @@
 **Status:** Shipper-ready stub spec (wave13 item **3**)
 **Canonical brief:** ANS-shaped `CREATE` / `DOES>` (thin stub); `docs/COLON.md` (wave9 **4**), `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `create.fs` / `does.fs`); Linux host REPL
-**Companions:** `docs/COLON.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/VALUE-TO.md` (wave13 **1**), `docs/CASE-OF.md` (wave13 **2**), `docs/ALLOT-HERE.md` (wave14 **1**), `docs/DEFER-IS.md` (wave16 **1**)
+**Companions:** `docs/COLON.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/VALUE-TO.md` (wave13 **1**), `docs/CASE-OF.md` (wave13 **2**), `docs/ALLOT-HERE.md` (wave14 **1**), `docs/DEFER-IS.md` (wave16 **1**), `docs/SYNONYM-ALIAS.md` (wave17 **1**)
 **Base tip SHA:** `7fd97dd` (wave13 tip2 CLOSED / #58 CASE-OF) / full `7fd97ddada221a0e1cd9929a2c43678b1cb78013`
 
 ## 1. Purpose
 
-Colon body markers and named-cell stubs (`VARIABLE`/`CONSTANT`/`VALUE`) exist; defining-word surface does not. This tip lands **stub** `CREATE` / `DOES>`: `CREATE <name>` creates a named dict entry and prints a greppable `[create]` marker; `DOES>` marks a does-body stub on the most recent CREATE (or open defining frame) **without** real XT chaining or child runtime body. Smoke via **`create-demo`**. Dict presence greppable via `WORDS` / `find` / `entry-find`. Not real DOES> threaded child or REKIA emit rewrite. HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**; full arena still out). Deferred-word stubs (`DEFER` / `IS` / `ACTION-OF`) → `docs/DEFER-IS.md` (wave16 **1**; name + bind markers only — Forth mirrors; rekia `defer`/`is` untouched).
+Colon body markers and named-cell stubs (`VARIABLE`/`CONSTANT`/`VALUE`) exist; defining-word surface does not. This tip lands **stub** `CREATE` / `DOES>`: `CREATE <name>` creates a named dict entry and prints a greppable `[create]` marker; `DOES>` marks a does-body stub on the most recent CREATE (or open defining frame) **without** real XT chaining or child runtime body. Smoke via **`create-demo`**. Dict presence greppable via `WORDS` / `find` / `entry-find`. Not real DOES> threaded child or REKIA emit rewrite. HERE/ALLOT pointer stubs → `docs/ALLOT-HERE.md` (wave14 **1**; full arena still out). Deferred-word stubs (`DEFER` / `IS` / `ACTION-OF`) → `docs/DEFER-IS.md` (wave16 **1**; name + bind markers only — Forth mirrors; rekia `defer`/`is` untouched). Name-map stubs (`SYNONYM` / `ALIAS`) → `docs/SYNONYM-ALIAS.md` (wave17 **1**; name→name only — not a CREATE child XT / DOES> chain).
 
 ## 2. Words / Surfaces
 
@@ -81,6 +81,7 @@ CREATE + DOES> markers and dict presence are required. Depth/cs families from pr
 - Full ALLOT / HERE arena / pool / free / linked cell memory (pointer stubs → `docs/ALLOT-HERE.md` wave14 **1**)
 - REKIA emit rewrite (FORTH-BASE-REFERENCES models CREATE-DOES> as emit target — stub surface only this tip)
 - `DEFER` / `IS` / `ACTION-OF` deferred-word stubs → `docs/DEFER-IS.md` (wave16 **1**; mirrors only — do not redefine rekia `defer`/`is`)
+- `SYNONYM` / `ALIAS` name-map stubs → `docs/SYNONYM-ALIAS.md` (wave17 **1**; name→name only — not CREATE/DOES> XT)
 - String literals `S"` / `."` (done — wave13 **4**)
 - Docs cites pass (wave13 **5** done; wave16 **5** later)
 - VALUE / TO (done — wave13 **1**); CASE / OF / ENDOF / ENDCASE (done — wave13 **2**)
@@ -98,7 +99,7 @@ CREATE + DOES> markers and dict presence are required. Depth/cs families from pr
 
 ## 9. Cite
 
-- `docs/COLON.md` (wave9 **4**), `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/KERNEL.md` (wave7 **5**), `docs/VALUE-TO.md` (wave13 **1**), `docs/CASE-OF.md` (wave13 **2**), `docs/ALLOT-HERE.md` (wave14 **1**), `docs/DEFER-IS.md` (wave16 **1**)
+- `docs/COLON.md` (wave9 **4**), `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/KERNEL.md` (wave7 **5**), `docs/VALUE-TO.md` (wave13 **1**), `docs/CASE-OF.md` (wave13 **2**), `docs/ALLOT-HERE.md` (wave14 **1**), `docs/DEFER-IS.md` (wave16 **1**), `docs/SYNONYM-ALIAS.md` (wave17 **1**)
 - `forth/tritium/kernel.fs`
 - ANS Forth `CREATE` / `DOES>` (stub only); Dusk defining-word / REKIA emit model (stub surface only — see `docs/FORTH-BASE-REFERENCES.md`)
 - Base tip: `7fd97dd` / `7fd97ddada221a0e1cd9929a2c43678b1cb78013`

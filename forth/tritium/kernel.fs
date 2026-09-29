@@ -71,6 +71,11 @@ create ENTRY-MARKER-DICT MAX-ENTRIES cells allot \ captured ENTRY-COUNT
 create ENTRY-BUFFER? MAX-ENTRIES cells allot  \ 1 = BUFFER: named slot (wave16 item 3)
 create ENTRY-BUFFER-N MAX-ENTRIES cells allot \ size n of named buffer
 create ENTRY-BUFFER-ADDR MAX-ENTRIES cells allot \ offset into fill cap
+\ synonym/alias name-map side-table (wave17 item 1) — name→name only; not linked XT
+16 constant MAX-SYNONYMS
+create SYN-NEW MAX-SYNONYMS NAMELEN * allot
+create SYN-OLD MAX-SYNONYMS NAMELEN * allot
+variable SYN-COUNT  0 SYN-COUNT !
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
@@ -93,6 +98,8 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : entry-buffer?[] ( i -- addr ) cells ENTRY-BUFFER? + ;
 : entry-buffer-n[] ( i -- addr ) cells ENTRY-BUFFER-N + ;
 : entry-buffer-addr[] ( i -- addr ) cells ENTRY-BUFFER-ADDR + ;
+: syn-new[] ( i -- c-addr ) NAMELEN * SYN-NEW + ;
+: syn-old[] ( i -- c-addr ) NAMELEN * SYN-OLD + ;
 \ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
@@ -147,6 +154,9 @@ variable _buffer-next
   MAX-ENTRIES 0 do 0 i entry-buffer?[] ! loop
   MAX-ENTRIES 0 do 0 i entry-buffer-n[] ! loop
   MAX-ENTRIES 0 do 0 i entry-buffer-addr[] ! loop
+  0 SYN-COUNT !
+  MAX-SYNONYMS 0 do i syn-new[] NAMELEN bl fill loop
+  MAX-SYNONYMS 0 do i syn-old[] NAMELEN bl fill loop
   0 _colon-def !
   -1 _colon-idx !
   0 _colon-toks !
@@ -2071,6 +2081,126 @@ create (bf-buf) 3 c, char b c, char u c, char f c,
   ." [exit-demo] OK" cr ;
 
 
+\ === SYNONYM / ALIAS name-map stubs (wave17 item 1) ===
+\ Prefer greppable markers; name→name side-table only. No linked XT / FIND rewrite / execute-through.
+\ Forth mirrors: synonym-map / alias-map / synonym-resolve
+\ Host binds SYNONYM / ALIAS; shared map table.
+
+create (sy-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t c,
+create (sy-gadget) 6 c, char g c, char a c, char d c, char g c, char e c, char t c,
+create (sy-widget2) 7 c, char w c, char i c, char d c, char g c, char e c, char t c, char 2 c,
+
+\ syn-name! ( c-addr u dest -- )  store name into NAMELEN slot
+: syn-name! ( c-addr u dest -- )
+  >r r@ NAMELEN bl fill
+  NAMELEN min
+  r> swap cmove ;
+
+\ synonym-find ( c-addr u -- i )  find new-name in map; -1 if missing
+: synonym-find ( c-addr u -- i )
+  SYN-COUNT @ 0 ?do
+    2dup i syn-new[] NAMELEN name-trim cstr= if
+      2drop i unloop exit
+    then
+  loop
+  2drop -1 ;
+
+\ synonym-map-from ( na nu oa ou -- )  record new→old; print SYNONYM marker
+: synonym-map-from ( na nu oa ou -- )
+  2dup entry-find 0< if
+    2drop 2drop
+    ." [synonym] FAIL reason=miss" cr exit
+  then
+  2swap                                   \ oa ou na nu
+  2dup synonym-find dup 0< if
+    drop
+    SYN-COUNT @ MAX-SYNONYMS >= if
+      2drop 2drop
+      ." [synonym] FAIL reason=miss" cr exit
+    then
+    SYN-COUNT @ >r
+    r@ syn-new[] syn-name!                \ na nu → new slot (consumes)
+    r@ syn-old[] syn-name!                \ oa ou → old slot
+    1 SYN-COUNT +!
+    ." [synonym] SYNONYM new=" r@ syn-new[] NAMELEN name-trim type
+    ."  old=" r@ syn-old[] NAMELEN name-trim type cr
+    r> drop
+  else
+    >r                                    \ idx ; stack: oa ou na nu
+    2drop                                 \ drop na nu (already mapped)
+    r@ syn-old[] syn-name!                \ update old
+    ." [synonym] SYNONYM new=" r@ syn-new[] NAMELEN name-trim type
+    ."  old=" r@ syn-old[] NAMELEN name-trim type cr
+    r> drop
+  then ;
+
+\ synonym-map ( "new" "old" -- )  parse two names + SYNONYM stub
+: synonym-map ( "new" "old" -- )
+  bl word count bl word count synonym-map-from ;
+
+\ alias-map-from ( na nu oa ou -- )  same map; print ALIAS marker
+: alias-map-from ( na nu oa ou -- )
+  2dup entry-find 0< if
+    2drop 2drop
+    ." [synonym] FAIL reason=miss" cr exit
+  then
+  2swap
+  2dup synonym-find dup 0< if
+    drop
+    SYN-COUNT @ MAX-SYNONYMS >= if
+      2drop 2drop
+      ." [synonym] FAIL reason=miss" cr exit
+    then
+    SYN-COUNT @ >r
+    r@ syn-new[] syn-name!
+    r@ syn-old[] syn-name!
+    1 SYN-COUNT +!
+    ." [synonym] ALIAS new=" r@ syn-new[] NAMELEN name-trim type
+    ."  old=" r@ syn-old[] NAMELEN name-trim type cr
+    r> drop
+  else
+    >r
+    2drop
+    r@ syn-old[] syn-name!
+    ." [synonym] ALIAS new=" r@ syn-new[] NAMELEN name-trim type
+    ."  old=" r@ syn-old[] NAMELEN name-trim type cr
+    r> drop
+  then ;
+
+\ alias-map ( "new" "old" -- )  parse two names + ALIAS stub
+: alias-map ( "new" "old" -- )
+  bl word count bl word count alias-map-from ;
+
+\ synonym-resolve-from ( c-addr u -- )  lookup/print bound old; no XT execute
+: synonym-resolve-from ( c-addr u -- )
+  2dup synonym-find dup 0< if
+    drop 2drop
+    ." [synonym] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [synonym] resolve new=" r@ syn-new[] NAMELEN name-trim type
+  ."  old=" r@ syn-old[] NAMELEN name-trim type cr
+  r> drop ;
+
+\ synonym-resolve ( "new" -- )  parse + resolve stub
+: synonym-resolve ( "new" -- )
+  bl word count synonym-resolve-from ;
+
+\ synonym-demo ( -- )  dict-reset → create old → SYNONYM → resolve → ALIAS → OK
+: synonym-demo ( -- )
+  ." [synonym-demo] dict-reset + SYNONYM widget gadget + resolve" cr
+  dict-reset
+  (sy-gadget) count entry-create-from drop
+  (sy-gadget) count entry-find 0< if
+    ." [synonym-demo] FAIL" cr exit
+  then
+  (sy-widget) count (sy-gadget) count synonym-map-from
+  (sy-widget) count synonym-resolve-from
+  (sy-widget2) count (sy-gadget) count alias-map-from
+  (sy-widget2) count synonym-resolve-from
+  ." [synonym-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2101,6 +2231,7 @@ create (bf-buf) 3 c, char b c, char u c, char f c,
 \ - MARKER restore-mark stubs + marker-demo (wave16 item 2) — landed
 \ - BUFFER: named-buffer stubs + buffer-demo (wave16 item 3) — landed
 \ - EXIT/QUIT thin control markers + exit-demo (wave16 item 4) — landed
+\ - SYNONYM/ALIAS name-map stubs + synonym-demo (wave17 item 1) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

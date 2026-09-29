@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# synonym-demo — Lab smoke for SYNONYM/ALIAS name-map stubs (wave17 item 1 / docs/SYNONYM-ALIAS.md)
+# Mirrors forth/tritium/kernel.fs synonym-demo + Linux host synonym_demo.
+# Name→name side-table only — NOT linked XT / FIND rewrite / executing old through new.
+# Forth mirrors: synonym-map / alias-map / synonym-resolve.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: synonym-demo"
+  echo "  dict-reset → ensure old → SYNONYM new old → resolve → [synonym-demo] OK"
+  echo "  Markers: [synonym] SYNONYM/ALIAS/resolve new= old= → [synonym-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[synonym-demo] FAIL"
+  exit 1
+}
+
+# --- tiny dict + synonym name-map side-table ---
+declare -a NAMES=()
+declare -a SYN_NEW=()
+declare -a SYN_OLD=()
+LATEST=-1
+LAST_IDX=-1
+
+dict_reset() {
+  NAMES=()
+  SYN_NEW=()
+  SYN_OLD=()
+  LATEST=-1
+  LAST_IDX=-1
+}
+
+entry_find() {
+  local name=$1 i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      LAST_IDX=$i
+      return 0
+    fi
+  done
+  LAST_IDX=-1
+  return 1
+}
+
+entry_create() {
+  local name=$1
+  if entry_find "$name"; then
+    echo "[kernel] entry exists #$LAST_IDX"
+    return 0
+  fi
+  LAST_IDX=${#NAMES[@]}
+  NAMES+=("$name")
+  echo "[kernel] created #$LAST_IDX"
+}
+
+synonym_find() {
+  local new=$1 i
+  for i in "${!SYN_NEW[@]}"; do
+    if [[ "${SYN_NEW[$i]}" == "$new" ]]; then
+      LAST_IDX=$i
+      return 0
+    fi
+  done
+  LAST_IDX=-1
+  return 1
+}
+
+synonym_map() {
+  local new=${1:-}
+  local old=${2:-}
+  if [[ -z "$new" || -z "$old" ]]; then
+    echo "[synonym] FAIL reason=miss"
+    return 1
+  fi
+  # Prefer existing old name so demo avoids miss
+  if ! entry_find "$old"; then
+    echo "[synonym] FAIL reason=miss"
+    return 1
+  fi
+  if synonym_find "$new"; then
+    SYN_OLD[$LAST_IDX]="$old"
+  else
+    SYN_NEW+=("$new")
+    SYN_OLD+=("$old")
+    LAST_IDX=$(( ${#SYN_NEW[@]} - 1 ))
+  fi
+  echo "[synonym] SYNONYM new=$new old=$old"
+}
+
+alias_map() {
+  local new=${1:-}
+  local old=${2:-}
+  if [[ -z "$new" || -z "$old" ]]; then
+    echo "[synonym] FAIL reason=miss"
+    return 1
+  fi
+  if ! entry_find "$old"; then
+    echo "[synonym] FAIL reason=miss"
+    return 1
+  fi
+  if synonym_find "$new"; then
+    SYN_OLD[$LAST_IDX]="$old"
+  else
+    SYN_NEW+=("$new")
+    SYN_OLD+=("$old")
+    LAST_IDX=$(( ${#SYN_NEW[@]} - 1 ))
+  fi
+  echo "[synonym] ALIAS new=$new old=$old"
+}
+
+synonym_resolve() {
+  local new=${1:-}
+  if [[ -z "$new" ]]; then
+    echo "[synonym] FAIL reason=miss"
+    return 1
+  fi
+  if ! synonym_find "$new"; then
+    echo "[synonym] FAIL reason=miss"
+    return 1
+  fi
+  local old=${SYN_OLD[$LAST_IDX]}
+  echo "[synonym] resolve new=$new old=$old"
+}
+
+echo "[synonym-demo] dict-reset + SYNONYM widget gadget + resolve"
+dict_reset
+
+# 1) Ensure known old name exists
+entry_create gadget || fail
+entry_find gadget || fail
+
+# 2) SYNONYM new→old
+synonym_map widget gadget || fail
+synonym_find widget || fail
+[[ "${SYN_OLD[$LAST_IDX]}" == "gadget" ]] || fail
+
+# 3) Resolve — name map only (no XT execute)
+synonym_resolve widget || fail
+
+# 4) ALIAS sibling (shared side-table)
+alias_map widget2 gadget || fail
+synonym_resolve widget2 || fail
+
+# Happy path must not emit miss FAIL
+echo "[synonym-demo] OK"
+exit 0

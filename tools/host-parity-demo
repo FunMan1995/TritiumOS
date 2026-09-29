@@ -37,6 +37,7 @@ REQUIRED_DEMOS=(
   marker-demo
   buffer-demo
   exit-demo
+  synonym-demo
 )
 
 usage() {
