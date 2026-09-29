@@ -3,11 +3,11 @@
 **Status:** Shipper-ready stub spec (wave11 item **1**)
 **Canonical brief:** Dusk loop compile (thin stub); `docs/CONTROL.md` (wave10 **2**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `control.fs` / `loop.fs`); Linux host REPL
-**Companions:** `docs/CONTROL.md` (thin amend this tip), `docs/COLON.md`, `docs/INTERPRET.md`, `docs/DO-LOOP.md` (wave12 **1**)
+**Companions:** `docs/CONTROL.md` (thin amend this tip), `docs/COLON.md`, `docs/INTERPRET.md`, `docs/DO-LOOP.md` (wave12 **1**), `docs/LEAVE-AGAIN.md` (wave12 **4**)
 
 ## 1. Purpose
 
-`IF`/`THEN`/`ELSE` stubs exist (cs balance). This tip adds **loop stubs**: `BEGIN` / `UNTIL` / `WHILE` / `REPEAT` that push/pop loop frames on the same (or sibling) control stack, print greppable markers, and smoke via **`loop-demo`**. Not real back-branch XT patching. Counted-loop stubs (`DO`/`LOOP`/`+LOOP`/`I`) → `docs/DO-LOOP.md` (wave12 **1`).
+`IF`/`THEN`/`ELSE` stubs exist (cs balance). This tip adds **loop stubs**: `BEGIN` / `UNTIL` / `WHILE` / `REPEAT` that push/pop loop frames on the same (or sibling) control stack, print greppable markers, and smoke via **`loop-demo`**. Not real back-branch XT patching. Counted-loop stubs (`DO`/`LOOP`/`+LOOP`/`I`) → `docs/DO-LOOP.md` (wave12 **1`). Early-exit / infinite-close stubs (`LEAVE` / `AGAIN`) → `docs/LEAVE-AGAIN.md` (wave12 **4**).
 
 ## 2. Words
 
@@ -30,6 +30,7 @@ Host note: bind names on Linux REPL; Forth mirrors `control-*` if collisions.
 - No requirement to re-execute body tokens this tip — markers + depth balance are enough (optional `again=` / `cont=` from flag if present).
 - `IF`/`THEN`/`ELSE` from wave10 still work; nest stubs OK if depth returns to 0 at demo end.
 - Counted-loop stubs (`DO`/`LOOP`/`+LOOP`/`I`) → `docs/DO-LOOP.md` (wave12 **1`).
+- `LEAVE` marks an open BEGIN frame but does not pop it; `AGAIN` pops one BEGIN frame under `[loop]` — `docs/LEAVE-AGAIN.md` (wave12 **4**).
 
 ## 4. Markers
 
@@ -44,6 +45,8 @@ Host note: bind names on Linux REPL; Forth mirrors `control-*` if collisions.
 ```
 
 Lab greps `[loop-demo] OK` plus `BEGIN` and at least one of `UNTIL` or `REPEAT` (prefer both patterns).
+
+`AGAIN` (wave12 **4**) reuses this `[loop]` namespace: `[loop] AGAIN depth=<n>` — see `docs/LEAVE-AGAIN.md`. Not part of the `loop-demo` grep.
 
 ## 5. `loop-demo`
 
@@ -62,7 +65,7 @@ Lab greps `[loop-demo] OK` plus `BEGIN` and at least one of `UNTIL` or `REPEAT` 
 ## 7. Non-goals
 
 - Real compile-time branch / XT lists / counted loops
-- `LEAVE` / `AGAIN` (wave12 **4**); counted `DO`/`LOOP`/`+LOOP`/`I` stubs: see `docs/DO-LOOP.md` (wave12 **1**)
+- `LEAVE` / `AGAIN` stubs: see `docs/LEAVE-AGAIN.md` (wave12 **4**); counted `DO`/`LOOP`/`+LOOP`/`I` stubs: see `docs/DO-LOOP.md` (wave12 **1**)
 - Assistant-s0 / words-vocab / AppImage hang (wave11 **2–4**)
 - Full Win/Android Forth VM
 
@@ -79,3 +82,4 @@ Lab greps `[loop-demo] OK` plus `BEGIN` and at least one of `UNTIL` or `REPEAT` 
 - `forth/tritium/kernel.fs`
 - Dusk loop words (stub only)
 - `docs/DO-LOOP.md` (wave12 **1**)
+- `docs/LEAVE-AGAIN.md` (wave12 **4**)

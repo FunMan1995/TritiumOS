@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave12 item **1**)
 **Canonical brief:** Dusk counted-loop compile (thin stub); `docs/BEGIN-UNTIL.md` (wave11 **1**), `docs/CONTROL.md` (wave10 **2**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `control.fs` / `loop.fs`); Linux host REPL
-**Companions:** `docs/BEGIN-UNTIL.md` (thin amend this tip), `docs/CONTROL.md` (thin amend this tip), `docs/COLON.md`, `docs/INTERPRET.md`, `docs/VARIABLE-CONST.md` (wave12 **2**)
+**Companions:** `docs/BEGIN-UNTIL.md` (thin amend this tip), `docs/CONTROL.md` (thin amend this tip), `docs/COLON.md`, `docs/INTERPRET.md`, `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/LEAVE-AGAIN.md` (wave12 **4**)
 **Base tip SHA:** `23fe4e5` (wave11 tip5 CLOSED / #51)
 
 ## 1. Purpose
@@ -30,7 +30,7 @@ Host note: bind `DO`/`LOOP`/`+LOOP`/`I` on Linux REPL; Forth mirrors `control-do
 - Unbalanced LOOP/+LOOP/I → `[do-loop] FAIL` reason=unbalanced.
 - No requirement to re-execute body tokens this tip — markers + depth balance are enough (optional `index=` / `step=` from stack if present).
 - Nest with `IF`/`THEN`/`ELSE` and `BEGIN`/`UNTIL`/`WHILE`/`REPEAT` stubs OK if each depth family returns to 0 at demo end (do-loop depth independent of BEGIN loop-depth preferred; shared counter acceptable if demos stay balanced).
-- Still no real compile-time branch / XT lists / `LEAVE` / `AGAIN` (later tips).
+- Still no real compile-time branch / XT lists. `LEAVE` may mark an open DO frame and does not pop it (`LOOP` / `+LOOP` still close); `AGAIN` is a BEGIN closer — `docs/LEAVE-AGAIN.md` (wave12 **4**).
 
 ## 4. Markers
 
@@ -72,8 +72,8 @@ Lab greps `[do-loop-demo] OK` plus `[do-loop]` depth/index lines: at least one `
 ## 7. Non-goals
 
 - Real compile-time branch / XT lists / runtime counted re-exec
-- `LEAVE` / `AGAIN` (wave12 **4**)
-- `VARIABLE` / `CONSTANT` stubs: see `docs/VARIABLE-CONST.md` (wave12 **2**); comment-parse (wave12 **3**); docs cites (wave12 **5**)
+- `LEAVE` / `AGAIN` stubs: see `docs/LEAVE-AGAIN.md` (wave12 **4**)
+- `VARIABLE` / `CONSTANT` stubs: see `docs/VARIABLE-CONST.md` (wave12 **2**); comment-parse: see `docs/COMMENT-PARSE.md` (wave12 **3**); docs cites (wave12 **5**)
 - Real crypto / network fleet
 - Full Win/Android Forth VM (CONTRACT acceptable)
 
@@ -91,3 +91,4 @@ Lab greps `[do-loop-demo] OK` plus `[do-loop]` depth/index lines: at least one `
 - `forth/tritium/kernel.fs`
 - Dusk counted-loop words (stub only)
 - Base tip: `23fe4e5`
+- `docs/LEAVE-AGAIN.md` (wave12 **4**)

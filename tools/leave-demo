@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# leave-demo — Lab smoke for LEAVE/AGAIN stubs (wave12 item 4 / docs/LEAVE-AGAIN.md)
+# Mirrors forth/tritium/kernel.fs leave-demo + Linux host leave_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: leave-demo"
+  echo "  dict-reset → BEGIN…LEAVE…UNTIL → DO…LEAVE…LOOP → BEGIN…AGAIN"
+  echo "  Markers: [leave] LEAVE + [loop] AGAIN → [leave-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[leave-demo] FAIL"
+  exit 1
+}
+
+LOOP_DEPTH=0
+DO_LOOP_DEPTH=0
+DO_LOOP_INDEX=0
+
+dict_reset() {
+  LOOP_DEPTH=0
+  DO_LOOP_DEPTH=0
+  DO_LOOP_INDEX=0
+}
+
+loop_cs_depth() {
+  echo "$LOOP_DEPTH"
+}
+
+do_loop_depth() {
+  echo "$DO_LOOP_DEPTH"
+}
+
+control_begin() {
+  LOOP_DEPTH=$((LOOP_DEPTH + 1))
+  echo "[loop] BEGIN depth=$LOOP_DEPTH"
+}
+
+control_until() {
+  local flag=${1:-0}
+  if [[ "$LOOP_DEPTH" -eq 0 ]]; then
+    echo "[loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  LOOP_DEPTH=$((LOOP_DEPTH - 1))
+  if [[ "$flag" -ne 0 ]]; then
+    echo "[loop] UNTIL again=1"
+  else
+    echo "[loop] UNTIL again=0"
+  fi
+}
+
+control_do() {
+  local limit=${1:-0}
+  local start=${2:-0}
+  DO_LOOP_INDEX=$start
+  DO_LOOP_DEPTH=$((DO_LOOP_DEPTH + 1))
+  echo "[do-loop] DO depth=$DO_LOOP_DEPTH index=$DO_LOOP_INDEX"
+}
+
+control_loop() {
+  if [[ "$DO_LOOP_DEPTH" -eq 0 ]]; then
+    echo "[do-loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  DO_LOOP_DEPTH=$((DO_LOOP_DEPTH - 1))
+  echo "[do-loop] LOOP depth=$DO_LOOP_DEPTH"
+}
+
+control_leave() {
+  if [[ "$DO_LOOP_DEPTH" -gt 0 ]]; then
+    echo "[leave] LEAVE depth=$DO_LOOP_DEPTH frame=do"
+    return 0
+  fi
+  if [[ "$LOOP_DEPTH" -gt 0 ]]; then
+    echo "[leave] LEAVE depth=$LOOP_DEPTH frame=begin"
+    return 0
+  fi
+  echo "[leave] FAIL reason=unbalanced"
+  return 1
+}
+
+control_again() {
+  if [[ "$LOOP_DEPTH" -eq 0 ]]; then
+    echo "[loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  LOOP_DEPTH=$((LOOP_DEPTH - 1))
+  echo "[loop] AGAIN depth=$LOOP_DEPTH"
+}
+
+echo "[leave-demo] dict-reset + BEGIN…LEAVE…UNTIL + DO…LEAVE…LOOP + BEGIN…AGAIN"
+dict_reset
+
+# Stream A: BEGIN … LEAVE … UNTIL
+control_begin
+control_leave
+control_until 0
+[[ "$(loop_cs_depth)" -eq 0 ]] || fail
+
+# Stream B: DO … LEAVE … LOOP
+control_do 10 0
+control_leave
+control_loop
+[[ "$(do_loop_depth)" -eq 0 ]] || fail
+
+# Stream C: BEGIN … AGAIN
+control_begin
+control_again
+[[ "$(loop_cs_depth)" -eq 0 ]] || fail
+
+echo "[leave-demo] OK"
+exit 0

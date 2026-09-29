@@ -679,6 +679,56 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
   then
   ." [do-loop-demo] OK" cr ;
 
+
+\ === LEAVE / AGAIN stubs (wave12 item 4) ===
+\ LEAVE marks open BEGIN or DO frame (prefer DO); does NOT pop.
+\ AGAIN pops one BEGIN frame (UNTIL-always-false shape); [loop] marker.
+\ Forth mirrors: control-leave / control-again (host binds LEAVE/AGAIN).
+
+\ control-leave ( -- )  mark only; prefer DO if both open
+: control-leave ( -- )
+  _do-loop-depth @ 0> if
+    ." [leave] LEAVE depth=" _do-loop-depth @ . ." frame=do" cr exit
+  then
+  _loop-depth @ 0> if
+    ." [leave] LEAVE depth=" _loop-depth @ . ." frame=begin" cr exit
+  then
+  ." [leave] FAIL reason=unbalanced" cr ;
+
+\ control-again ( -- )  pop one BEGIN frame; print post-pop depth
+: control-again ( -- )
+  _loop-depth @ 0= if
+    ." [loop] FAIL reason=unbalanced" cr exit
+  then
+  -1 _loop-depth +!
+  ." [loop] AGAIN depth=" _loop-depth @ . cr ;
+
+\ leave-demo ( -- )  BEGIN…LEAVE…UNTIL + DO…LEAVE…LOOP + BEGIN…AGAIN → OK
+: leave-demo ( -- )
+  ." [leave-demo] dict-reset + BEGIN…LEAVE…UNTIL + DO…LEAVE…LOOP + BEGIN…AGAIN" cr
+  dict-reset
+  \ Stream A: BEGIN … LEAVE … UNTIL
+  control-begin
+  control-leave
+  0 control-until
+  loop-cs-depth 0<> if
+    ." [leave-demo] FAIL" cr exit
+  then
+  \ Stream B: DO … LEAVE … LOOP
+  10 0 control-do
+  control-leave
+  control-loop
+  do-loop-depth 0<> if
+    ." [leave-demo] FAIL" cr exit
+  then
+  \ Stream C: BEGIN … AGAIN
+  control-begin
+  control-again
+  loop-cs-depth 0<> if
+    ." [leave-demo] FAIL" cr exit
+  then
+  ." [leave-demo] OK" cr ;
+
 \ words-demo ( -- )  dict-reset → entry-create alpha+beta → WORDS → count≥2 → OK
 \ wave11 item 3 / docs/WORDS-VOCAB.md
 : words-demo ( -- )
@@ -851,6 +901,7 @@ create (cm-comment) 7 c, char c c, char o c, char m c, char m c, char e c, char 
 \ - WORDS / words-demo dict-list smoke (wave11 item 3) — landed
 \ - VARIABLE/CONSTANT named-cell stubs (wave12 item 2) — landed
 \ - comment-parse \\ / ( ) skip + comment-demo (wave12 item 3) — landed
+\ - LEAVE/AGAIN stubs + leave-demo (wave12 item 4) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
