@@ -56,6 +56,7 @@ create ENTRY-IDS    MAX-ENTRIES cells allot
 create ENTRY-GIDS   MAX-ENTRIES cells allot   \ -1 = global/flat; >=0 = group-scoped (Dusk-style unit)
 create ENTRY-BODY   MAX-ENTRIES cells allot   \ 0 = create-only; 1 = body-present (wave9 item 4)
 create ENTRY-BTOKS  MAX-ENTRIES cells allot   \ body token count when body-present
+create ENTRY-CELLS  MAX-ENTRIES cells allot   \ VARIABLE/CONSTANT stub cell (wave12 item 2)
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
@@ -63,6 +64,7 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
 : entry-gid[]  ( i -- addr )   cells ENTRY-GIDS + ;
 : entry-body[] ( i -- addr )   cells ENTRY-BODY + ;
 : entry-btoks[] ( i -- addr )  cells ENTRY-BTOKS + ;
+: entry-cell[] ( i -- addr )   cells ENTRY-CELLS + ;
 \ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
 variable _colon-def    \ nonzero while defining after :
 variable _colon-idx    \ entry index being defined (-1 none)
@@ -87,6 +89,7 @@ variable _do-loop-index  \ stub index for I (start value)
   MAX-ENTRIES 0 do -1 i entry-gid[] ! loop
   MAX-ENTRIES 0 do 0 i entry-body[] ! loop
   MAX-ENTRIES 0 do 0 i entry-btoks[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-cell[] ! loop
   0 _colon-def !
   -1 _colon-idx !
   0 _colon-toks !
@@ -147,6 +150,7 @@ variable _do-loop-index  \ stub index for I (start value)
   -1 r@ entry-gid[] !          \ global / flat
   0 r@ entry-body[] !          \ create-only until ;
   0 r@ entry-btoks[] !
+  0 r@ entry-cell[] !          \ VARIABLE/CONSTANT stub init
   1 ENTRY-COUNT +!
   ." [kernel] created #" r@ . cr
   r> ;
@@ -193,6 +197,7 @@ variable _gec-gid
   _gec-gid @ r@ entry-gid[] !
   0 r@ entry-body[] !
   0 r@ entry-btoks[] !
+  0 r@ entry-cell[] !
   1 ENTRY-COUNT +!
   ." [kernel] group-entry #" r@ . ." gid=" _gec-gid @ . cr
   r> ;
@@ -648,6 +653,81 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
   then
   ." [words-demo] OK" cr ;
 
+\ === VARIABLE / CONSTANT named-cell stubs (wave12 item 2) ===
+\ Prefer greppable markers; stub cell via ENTRY-CELLS (no HERE/ALLOT arena).
+\ Forth mirrors: var-create / const-create (host binds VARIABLE / CONSTANT).
+
+\ var-create-from ( c-addr u -- i )  named cell stub; init 0
+: var-create-from ( c-addr u -- i )
+  2dup entry-create-from dup 0< if nip nip exit then
+  >r
+  0 r@ entry-cell[] !
+  ." [var] VARIABLE name=" type cr
+  r> ;
+
+\ const-create-from ( n c-addr u -- i )  named constant stub
+: const-create-from ( n c-addr u -- i )
+  2dup entry-create-from dup 0< if nip nip nip exit then
+  >r
+  rot r@ entry-cell[] !
+  ." [var] CONSTANT name=" type ."  value=" r@ entry-cell[] @ . cr
+  r> ;
+
+\ var-create ( "name" -- )  parse + VARIABLE stub
+: var-create ( "name" -- )
+  bl word count var-create-from drop ;
+
+\ const-create ( n "name" -- )  parse + CONSTANT stub
+: const-create ( n "name" -- )
+  bl word count const-create-from drop ;
+
+\ var-find ( c-addr u -- i )  thin alias of entry-find
+: var-find ( c-addr u -- i ) entry-find ;
+
+\ var-fetch-from ( c-addr u -- )  optional @ stub
+: var-fetch-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [var] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [var] @ name=" r@ entry-name[] NAMELEN name-trim type
+  ."  value=" r@ entry-cell[] @ . cr
+  r> drop ;
+
+\ var-store-from ( n c-addr u -- )  optional ! stub
+: var-store-from ( n c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop drop
+    ." [var] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  r@ entry-cell[] !
+  ." [var] ! name=" r@ entry-name[] NAMELEN name-trim type
+  ."  value=" r@ entry-cell[] @ . cr
+  r> drop ;
+
+create (vd-foo) 3 c, char f c, char o c, char o c,
+create (vd-bar) 3 c, char b c, char a c, char r c,
+
+\ var-demo ( -- )  dict-reset → VARIABLE foo → CONSTANT bar 42 → find/WORDS → OK
+: var-demo ( -- )
+  ." [var-demo] dict-reset + VARIABLE foo + CONSTANT bar value=42" cr
+  dict-reset
+  (vd-foo) count var-create-from drop
+  42 (vd-bar) count const-create-from drop
+  WORDS
+  (vd-foo) count entry-find 0< if
+    ." [var-demo] FAIL" cr exit
+  then
+  (vd-bar) count entry-find 0< if
+    ." [var-demo] FAIL" cr exit
+  then
+  words-count 2 < if
+    ." [var-demo] FAIL" cr exit
+  then
+  ." [var-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -659,6 +739,7 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
 \ - BEGIN/UNTIL/WHILE/REPEAT loop stubs (wave11 item 1) — landed
 \ - DO/LOOP/+LOOP/I do-loop stubs (wave12 item 1) — landed
 \ - WORDS / words-demo dict-list smoke (wave11 item 3) — landed
+\ - VARIABLE/CONSTANT named-cell stubs (wave12 item 2) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

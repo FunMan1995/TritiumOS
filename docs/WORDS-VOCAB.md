@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave11 item **3**)
 **Canonical brief:** Dusk `words` / dict list; `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (`.words`); Linux `host_words()` in `tritiumos.c`
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`, `docs/VARIABLE-CONST.md` (wave12 **2**)
 
 ## 1. Purpose
 
@@ -36,6 +36,7 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - Empty dict → `words (0):` still OK (demo creates first).
 - Truncate/pad names stay NAMELEN policy from KERNEL.
 - No requirement to dump body markers or XT.
+- VARIABLE/CONSTANT names (wave12 **2**) appear in the flat list after create — see `docs/VARIABLE-CONST.md`.
 
 ## 5. `words-demo`
 
@@ -72,3 +73,4 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - `docs/KERNEL.md`, `docs/INTERPRET.md`
 - `forth/tritium/kernel.fs` (`.words`)
 - Dusk `fs/mem/dict.fs` words (stub list only)
+- `docs/VARIABLE-CONST.md` (wave12 **2**)

@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# var-demo — Lab smoke for VARIABLE/CONSTANT named-cell stubs (wave12 item 2 / docs/VARIABLE-CONST.md)
+# Mirrors forth/tritium/kernel.fs var-demo + Linux host var_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: var-demo"
+  echo "  dict-reset → VARIABLE foo → CONSTANT bar value=42 → find/WORDS"
+  echo "  Markers: [var] VARIABLE/CONSTANT → [var-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[var-demo] FAIL"
+  exit 1
+}
+
+declare -a NAMES=()
+declare -A CELLS=()
+
+dict_reset() {
+  NAMES=()
+  CELLS=()
+}
+
+entry_find() {
+  local name=$1
+  local i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      echo "$i"
+      return 0
+    fi
+  done
+  echo "-1"
+}
+
+var_create() {
+  local name=$1
+  NAMES+=("$name")
+  CELLS["$name"]=0
+  echo "[kernel] created #$(( ${#NAMES[@]} - 1 ))"
+  echo "[var] VARIABLE name=$name"
+}
+
+const_create() {
+  local name=$1
+  local value=$2
+  NAMES+=("$name")
+  CELLS["$name"]=$value
+  echo "[kernel] created #$(( ${#NAMES[@]} - 1 ))"
+  echo "[var] CONSTANT name=$name value=$value"
+}
+
+words() {
+  local n=${#NAMES[@]}
+  printf '[kernel] words (%d): ' "$n"
+  local name
+  for name in "${NAMES[@]}"; do
+    printf '%s ' "$name"
+  done
+  printf '\n'
+}
+
+echo "[var-demo] dict-reset + VARIABLE foo + CONSTANT bar value=42"
+dict_reset
+var_create foo
+const_create bar 42
+
+out="$(words)"
+echo "$out"
+
+[[ "$(entry_find foo)" != "-1" ]] || fail
+[[ "$(entry_find bar)" != "-1" ]] || fail
+[[ "${#NAMES[@]}" -ge 2 ]] || fail
+echo "$out" | grep -q 'foo' || fail
+echo "$out" | grep -q 'bar' || fail
+echo "$out" | grep -q 'words (' || fail
+
+echo "[var-demo] OK"
+exit 0

@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave12 item **1**)
 **Canonical brief:** Dusk counted-loop compile (thin stub); `docs/BEGIN-UNTIL.md` (wave11 **1**), `docs/CONTROL.md` (wave10 **2**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `control.fs` / `loop.fs`); Linux host REPL
-**Companions:** `docs/BEGIN-UNTIL.md` (thin amend this tip), `docs/CONTROL.md` (thin amend this tip), `docs/COLON.md`, `docs/INTERPRET.md`
+**Companions:** `docs/BEGIN-UNTIL.md` (thin amend this tip), `docs/CONTROL.md` (thin amend this tip), `docs/COLON.md`, `docs/INTERPRET.md`, `docs/VARIABLE-CONST.md` (wave12 **2**)
 **Base tip SHA:** `23fe4e5` (wave11 tip5 CLOSED / #51)
 
 ## 1. Purpose
@@ -73,7 +73,7 @@ Lab greps `[do-loop-demo] OK` plus `[do-loop]` depth/index lines: at least one `
 
 - Real compile-time branch / XT lists / runtime counted re-exec
 - `LEAVE` / `AGAIN` (wave12 **4**)
-- `VARIABLE` / `CONSTANT` (wave12 **2**); comment-parse (wave12 **3**); docs cites (wave12 **5**)
+- `VARIABLE` / `CONSTANT` stubs: see `docs/VARIABLE-CONST.md` (wave12 **2**); comment-parse (wave12 **3**); docs cites (wave12 **5**)
 - Real crypto / network fleet
 - Full Win/Android Forth VM (CONTRACT acceptable)
 

@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave7 item **5**)  
 **Canonical brief:** `TritiumOS.txt` Phase 2; Dusk `fs/doc/kernel.txt` + `fs/mem/dict.fs` (see `docs/FORTH-BASE-REFERENCES.md`)  
 **Sources of truth (code):** `forth/tritium/kernel.fs`; Linux host mirrors for demos  
-**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`, `docs/COLON.md` (wave9 **4**), `docs/CONTROL.md` (wave10 **2**); `docs/WORDS-VOCAB.md` (wave11 **3**)
+**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`, `docs/COLON.md` (wave9 **4**), `docs/CONTROL.md` (wave10 **2**); `docs/WORDS-VOCAB.md` (wave11 **3**); `docs/VARIABLE-CONST.md` (wave12 **2**)
 **See also:** `docs/INTERPRET.md` (wave8 **1** — interpret loop deepen); `docs/COLON.md` (wave9 **4** — colon body/marker stub).
 
 ## 1. Purpose
@@ -29,6 +29,8 @@ Not a full VM, linked dict, or xcomp.
 | `words` / `.words` | `( -- )` | List table |
 | `.words` / `WORDS` / `words` | `( -- )` | List flat names — see `WORDS-VOCAB.md` (wave11 **3**) |
 | `words-demo` | `( -- )` | Create ≥2 + list → OK (`WORDS-VOCAB.md`) |
+| `VARIABLE` / `CONSTANT` | (see tip) | Named-cell stubs — see `VARIABLE-CONST.md` (wave12 **2**) |
+| `var-demo` | `( -- )` | ≥1 VARIABLE + ≥1 CONSTANT → OK (`VARIABLE-CONST.md`) |
 | `dict-reset` | `( -- )` | Empty table |
 | `cold-boot` | `( -- )` | sysvars + dict-reset + edition default + markers |
 | `abort` / `(abort")` | soft | Existing; no hard exit |
@@ -65,6 +67,7 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 ## 5. Non-goals (this tip)
 
 - Full SEARCH-WORDLIST / linked dict — list-only `WORDS` is wave11 **3** (`WORDS-VOCAB.md`)
+- Named-cell stubs (`VARIABLE`/`CONSTANT`) → `docs/VARIABLE-CONST.md` (wave12 **2**); real ALLOT/HERE / VALUE/TO / DOES> still later
 - Full colon compiler / real branch XT (minimal `interpret` loop → `docs/INTERPRET.md`; `IF`/`THEN`/`ELSE` stubs → `docs/CONTROL.md`)
 - Linked-list ENTRYSZ / forget / units objects (Dusk full)
 - Replacing host C#/Kotlin VMs
@@ -73,7 +76,7 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 ## 6. Acceptance (Test Lab)
 
 1. `docs/KERNEL.md` present (Research byte-copy OK).
-2. `kernel-demo` → OK; `find`/`findentry` miss path greppable; wave11 **3**: `words-demo` → OK.
+2. `kernel-demo` → OK; `find`/`findentry` miss path greppable; wave11 **3**: `words-demo` → OK; wave12 **2**: `var-demo` → OK.
 3. Full regression green (esp. group-nested / group-vocab-persist / rekia / s3-reserved / cold path).
 4. No merge.
 
@@ -83,3 +86,4 @@ Linux host SoT preferred (mirror table already used for group entries); Forth wo
 - `docs/FORTH-BASE-REFERENCES.md` (Dusk kernel.txt / mem/dict.fs)
 - `forth/tritium/kernel.fs`
 - `docs/GROUPS-NESTED.md`, `docs/ARCHITECTURE.md`
+- `docs/VARIABLE-CONST.md` (wave12 **2**)
