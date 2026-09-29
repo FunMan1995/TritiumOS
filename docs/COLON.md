@@ -1,13 +1,13 @@
 # COLON — Deepen `:` beyond create-only (body marker)
 
-**Status:** Shipper-ready stub spec (wave9 item **4**; thin amend wave15 **4** IMMEDIATE-POSTPONE)
+**Status:** Shipper-ready stub spec (wave9 item **4**; thin amend wave15 **4** IMMEDIATE-POSTPONE; thin amend wave16 **4** EXIT-QUIT)
 **Canonical brief:** Dusk colon compile (thin stub); `docs/INTERPRET.md` (wave8 **1**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (`colon-create*`); Linux host REPL `:` bind
-**Companions:** `docs/INTERPRET.md` (thin amend wave9 **4**), `docs/KERNEL.md`, `docs/CONTROL.md` (wave10 **2**), `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**)
+**Companions:** `docs/INTERPRET.md` (thin amend wave9 **4**), `docs/KERNEL.md`, `docs/CONTROL.md` (wave10 **2**), `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**), `docs/EXIT-QUIT.md` (wave16 **4**)
 
 ## 1. Purpose
 
-Wave8 `:` / `colon-create` is **create-only** (name into dict, no body). This tip adds a **body/marker stub**: open with `:`, accept body tokens until `;`, mark the entry as having a body, and on exec print a greppable body marker. Not a real threaded compiler, not `IF`/`THEN`/`DO`.
+Wave8 `:` / `colon-create` is **create-only** (name into dict, no body). This tip adds a **body/marker stub**: open with `:`, accept body tokens until `;`, mark the entry as having a body, and on exec print a greppable body marker. Not a real threaded compiler, not `IF`/`THEN`/`DO`. Wave16 **4** adds thin `EXIT` / `QUIT` control markers that may optionally observe a colon-frame mark — see `docs/EXIT-QUIT.md` (mark-only; **not** a real early-return / RS unwind; do not redefine host `exit`).
 
 ## 2. Words
 
@@ -17,6 +17,9 @@ Wave8 `:` / `colon-create` is **create-only** (name into dict, no body). This ti
 | `colon-create-from` | `( c-addr u -- )` | Same from counted/addr pair (demos) |
 | `;` / `semicolon` | `( -- )` | End colon-def; store **body-present** (and optional body-token count); leave interpret state |
 | `colon-body?` | `( i -- flag )` | Entry index has body marker (optional helper) |
+| `EXIT` / `exit-mark` | `( -- )` | Thin control marker — see `EXIT-QUIT.md` (wave16 **4**); optional colon-frame mark; Forth mirror `exit-mark` |
+| `QUIT` / `quit-mark` | `( -- )` | Interpret-reset stub mark — see `EXIT-QUIT.md` (wave16 **4**); Forth mirror `quit-mark` |
+| `exit-demo` | `( -- )` | EXIT + QUIT smoke (`EXIT-QUIT.md`) |
 | `colon-demo` | `( -- )` | See §5 |
 
 While in colon-def state, each subsequent token (until `;`) increments a body-token counter and may print `[colon] body + <tok>` — **no** real compile XT list required this tip. A single fixed body string `"BODY"` stored on the entry is enough if counting tokens is awkward on host.
@@ -67,6 +70,7 @@ Also keep `[interpret] : created <name>` if useful for back-compat, or replace w
 ## 7. Non-goals
 
 - Immediate vs compile state machine beyond colon-def flag + immediate-bit — flag + name mark stubs → `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**); still no linked XT list / executing postponed XT
+- `EXIT` / `QUIT` thin control markers → `docs/EXIT-QUIT.md` (wave16 **4**); mark-only mirrors (`exit-mark` / `quit-mark`); still no real RS unwind / RECURSE self-XT / host `exit` redefine
 - Control flow beyond stubs — see `docs/CONTROL.md` (wave10 **2**) for `IF`/`THEN`/`ELSE` stubs; `DO`/`BEGIN` still out
 - Named-cell stubs (`VARIABLE`/`CONSTANT`) → `docs/VARIABLE-CONST.md` (wave12 **2**); CREATE/DOES> defining-word stubs → `docs/CREATE-DOES.md` (wave13 **3**; markers only, no real XT child)
 - Linked XT lists / Dusk `comp/` emitter
@@ -75,7 +79,7 @@ Also keep `[interpret] : created <name>` if useful for back-compat, or replace w
 ## 8. Acceptance (Test Lab)
 
 1. `docs/COLON.md` present (Research byte-copy OK); `INTERPRET.md` thin amend present.
-2. `colon-demo` → OK (markers §4); `interpret-demo` + `kernel-demo` still OK; wave15 **4**: `imm-demo` → OK.
+2. `colon-demo` → OK (markers §4); `interpret-demo` + `kernel-demo` still OK; wave15 **4**: `imm-demo` → OK; wave16 **4**: `exit-demo` → OK.
 3. Regression green (`assistant-state-demo`, `economy-wire-demo`, `trit-math-demo`, …).
 4. No merge.
 
@@ -88,3 +92,4 @@ Also keep `[interpret] : created <name>` if useful for back-compat, or replace w
 - `docs/VARIABLE-CONST.md` (wave12 **2**)
 - `docs/CREATE-DOES.md` (wave13 **3**)
 - `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**)
+- `docs/EXIT-QUIT.md` (wave16 **4**)

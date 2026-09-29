@@ -36,6 +36,7 @@ REQUIRED_DEMOS=(
   defer-demo
   marker-demo
   buffer-demo
+  exit-demo
 )
 
 usage() {

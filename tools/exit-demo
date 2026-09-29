@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# exit-demo — Lab smoke for EXIT/QUIT thin control markers (wave16 item 4 / docs/EXIT-QUIT.md)
+# Mirrors forth/tritium/kernel.fs exit-demo + Linux host exit_demo.
+# Flag + marker only — NOT real RS unwind / interpret restart VM / RECURSE XT.
+# Forth mirrors: exit-mark / quit-mark. Do NOT redefine host exit / quit.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: exit-demo"
+  echo "  dict-reset → exit-mark → quit-mark → [exit-demo] OK"
+  echo "  Markers: [exit] EXIT [depth=] / [exit] QUIT → [exit-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[exit-demo] FAIL"
+  exit 1
+}
+
+CATCH_DEPTH=0
+COLON_DEF=0
+
+dict_reset() {
+  CATCH_DEPTH=0
+  COLON_DEF=0
+}
+
+exit_mark() {
+  # optional depth= from catch-depth stub; does not hard-abort
+  echo "[exit] EXIT depth=$CATCH_DEPTH"
+}
+
+quit_mark() {
+  # interpret-reset stub — prefer mark-only (no flag clear)
+  echo "[exit] QUIT"
+}
+
+echo "[exit-demo] dict-reset + exit-mark + quit-mark"
+dict_reset
+
+# 1) EXIT / exit-mark — greppable marker; session continues
+exit_mark || fail
+
+# 2) QUIT / quit-mark — greppable interpret-reset stub
+quit_mark || fail
+
+# Happy path must not emit noframe FAIL; host session continues
+echo "[exit-demo] OK"
+exit 0

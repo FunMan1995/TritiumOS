@@ -2049,6 +2049,28 @@ create (bf-buf) 3 c, char b c, char u c, char f c,
   ." [buffer-demo] OK" cr ;
 
 
+\ === EXIT / QUIT thin control markers (wave16 item 4) ===
+\ Prefer greppable markers; flag + marker only. NOT real RS unwind / interpret restart.
+\ Forth mirrors: exit-mark / quit-mark — do NOT redefine host exit / quit
+\ (in-tree early-returns across kernel.fs / rekia.fs stay the host primitive).
+
+\ exit-mark ( -- )  print [exit] EXIT + optional depth= (catch-depth stub); no hard abort
+: exit-mark ( -- )
+  ." [exit] EXIT depth=" _catch-depth @ . cr ;
+
+\ quit-mark ( -- )  print [exit] QUIT; interpret-reset stub mark-only (no flag clear)
+: quit-mark ( -- )
+  ." [exit] QUIT" cr ;
+
+\ exit-demo ( -- )  dict-reset → exit-mark → quit-mark → OK
+: exit-demo ( -- )
+  ." [exit-demo] dict-reset + exit-mark + quit-mark" cr
+  dict-reset
+  exit-mark
+  quit-mark
+  ." [exit-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2078,6 +2100,7 @@ create (bf-buf) 3 c, char b c, char u c, char f c,
 \ - DEFER/IS/ACTION-OF stubs + defer-demo (wave16 item 1) — landed
 \ - MARKER restore-mark stubs + marker-demo (wave16 item 2) — landed
 \ - BUFFER: named-buffer stubs + buffer-demo (wave16 item 3) — landed
+\ - EXIT/QUIT thin control markers + exit-demo (wave16 item 4) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

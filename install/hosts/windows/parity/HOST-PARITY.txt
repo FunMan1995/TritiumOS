@@ -31,3 +31,4 @@ imm-demo CONTRACT
 defer-demo CONTRACT
 marker-demo CONTRACT
 buffer-demo CONTRACT
+exit-demo CONTRACT

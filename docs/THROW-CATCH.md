@@ -1,14 +1,14 @@
 # THROW-CATCH — Stub `CATCH` / `THROW` (+ optional `ABORT"`) + `throw-demo`
 
-**Status:** Shipper-ready stub spec (wave14 item **4**)
+**Status:** Shipper-ready stub spec (wave14 item **4**; thin amend wave16 **4** EXIT-QUIT)
 **Canonical brief:** ANS-shaped `CATCH` / `THROW` (thin stub); optional `ABORT"`; `docs/CONTROL.md` (wave10 **2**), `docs/KERNEL.md` (wave7 **5**), `docs/STRING-LIT.md` (wave13 **4**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `throw.fs` / `control.fs`); Linux host REPL
-**Companions:** `docs/CONTROL.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/STRING-LIT.md` (thin amend this tip — optional `ABORT"`), `docs/INTERPRET.md` (wave8 **1**; ABORT" may ride interpret/stream path)
+**Companions:** `docs/CONTROL.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/STRING-LIT.md` (thin amend this tip — optional `ABORT"`), `docs/INTERPRET.md` (wave8 **1**; ABORT" may ride interpret/stream path), `docs/EXIT-QUIT.md` (wave16 **4**)
 **Base tip SHA:** `238258b` (wave14 tip3 CLOSED / #64 2VARIABLE) / full `238258bafa82d818beebd572a7cadc3739204531`
 
 ## 1. Purpose
 
-Control / loop / cell / string stubs exist; exception frame does not. This tip lands **stub** `CATCH` / `THROW` (optional thin `ABORT"`): `CATCH` pushes a catch-depth / frame mark, `THROW 0` is a no-op (depth unchanged), `THROW n` (n≠0) pops one catch frame and prints greppable `[throw]` markers, and smokes via **`throw-demo`**. Optional `ABORT"` = parse-until-`"` + THROW-equivalent marker (reuse string-lit parse path). **Frame-mark only** — not a real exception stack, RS unwind, or frame restore. Independent of tips 1–3; closes useful abort surface without real unwind. Soft `abort` / `(abort")` already in KERNEL remain; this tip adds ANS-shaped CATCH/THROW markers beside them.
+Control / loop / cell / string stubs exist; exception frame does not. This tip lands **stub** `CATCH` / `THROW` (optional thin `ABORT"`): `CATCH` pushes a catch-depth / frame mark, `THROW 0` is a no-op (depth unchanged), `THROW n` (n≠0) pops one catch frame and prints greppable `[throw]` markers, and smokes via **`throw-demo`**. Optional `ABORT"` = parse-until-`"` + THROW-equivalent marker (reuse string-lit parse path). **Frame-mark only** — not a real exception stack, RS unwind, or frame restore. Independent of tips 1–3; closes useful abort surface without real unwind. Soft `abort` / `(abort")` already in KERNEL remain; this tip adds ANS-shaped CATCH/THROW markers beside them. Wave16 **4** adds sibling thin `EXIT` / `QUIT` control markers — see `docs/EXIT-QUIT.md` (mark-only; **not** a real RS unwind / frame restore; prefer mark-only QUIT — optional catch-depth clear not required; `ABORT"` polish already optional here — not reopened).
 
 ## 2. Words / Surfaces
 
@@ -19,6 +19,9 @@ Control / loop / cell / string stubs exist; exception frame does not. This tip l
 | `ABORT"` / `abort-quote` (optional) | `( -- )` *or* parse stream | Parse until `"`; print `[throw] ABORT" …` (content or `length=`) + THROW-equivalent nonzero code marker; reuse string-lit parse path |
 | `catch-depth` | `( -- n )` | Optional helper; open catch frames |
 | `throw-demo` | `( -- )` | See §5 |
+| `EXIT` / `exit-mark` | `( -- )` | Thin control marker — see `EXIT-QUIT.md` (wave16 **4**); sibling of CATCH/THROW mark-only; Forth mirror `exit-mark` |
+| `QUIT` / `quit-mark` | `( -- )` | Interpret-reset stub — see `EXIT-QUIT.md` (wave16 **4**); prefer mark-only (optional catch-depth clear not required) |
+| `exit-demo` | `( -- )` | EXIT + QUIT smoke (`EXIT-QUIT.md`) |
 
 Host note: bind `CATCH` / `THROW` (and optional `ABORT"`) on Linux REPL; Forth mirrors `catch-mark` / `throw-code` / `abort-quote` if host Forth names collide (host Forth often has real `CATCH`/`THROW`). Soft KERNEL `abort` / `(abort")` stay as-is — do **not** replace with hard exit. Missing CATCH when THROW n≠0 → `[throw] FAIL` reason=uncaught (demo must avoid — always CATCH then THROW).
 
@@ -30,7 +33,7 @@ Host note: bind `CATCH` / `THROW` (and optional `ABORT"`) on Linux REPL; Forth m
 - Uncaught THROW (depth 0 / no CATCH) → `[throw] FAIL` reason=uncaught (demo must avoid).
 - Optional **`ABORT"`** → parse-until-`"` (same line preferred; reuse `STRING-LIT.md` scanner); print `[throw] ABORT" <content>` **or** `[throw] ABORT" length=<n>`; act as THROW-equivalent (nonzero code, pop catch if open). Must **not** `entry-create` the literal text. Unclosed → `[throw] FAIL` reason=unclosed (demo avoids) **or** reuse string FAIL form.
 - Nest with prior control / loop / allot / 2var / string / colon stubs OK; `dict-reset` may clear catch-depth to 0 (or leave host counter — demo resets explicitly if needed).
-- Still no real exception RS unwind / frame restore, IMMEDIATE/POSTPONE, real branch XT, full Win/Android Forth VM — those → non-goals / later.
+- Still no real exception RS unwind / frame restore, IMMEDIATE/POSTPONE, real branch XT, full Win/Android Forth VM — those → non-goals / later. EXIT/QUIT thin control markers → `docs/EXIT-QUIT.md` (wave16 **4**; sibling mark-only; do not redefine host `exit`).
 
 ## 4. Markers
 
@@ -85,6 +88,7 @@ CATCH + nonzero THROW markers under an open catch frame are required. Optional `
 ## 7. Non-goals
 
 - Real exception stack / RS unwind / frame restore / stack picture restore beyond mark-stub
+- `EXIT` / `QUIT` thin control markers → `docs/EXIT-QUIT.md` (wave16 **4**); mark-only mirrors; still no host `exit` redefine / RECURSE XT / interpret restart VM
 - Full `ABORT"` counted-string heap (parse + marker only if optional wired)
 - `IMMEDIATE` / `POSTPONE` / linked XT compiler
 - Real branch XT / runtime counted re-exec / LEAVE jump
@@ -97,7 +101,7 @@ CATCH + nonzero THROW markers under an open catch frame are required. Optional `
 ## 8. Acceptance (Test Lab)
 
 1. `docs/THROW-CATCH.md` present (Research byte-copy OK); `CONTROL.md` + `KERNEL.md` + `STRING-LIT.md` thin amends present.
-2. `throw-demo` → OK (markers §4); prior `2var-demo` + `unloop-demo` + `allot-demo` + `leave-demo` + `do-loop-demo` + `loop-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `create-demo` + `string-demo` + `colon-demo` still OK.
+2. `throw-demo` → OK (markers §4); prior `2var-demo` + `unloop-demo` + `allot-demo` + `leave-demo` + `do-loop-demo` + `loop-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `create-demo` + `string-demo` + `colon-demo` still OK; wave16 **4**: `exit-demo` → OK.
 3. Regression green (wave14 **1–3** + wave13 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `throw-demo CONTRACT` OK).
 5. No merge. Stay out of Mango.
@@ -110,3 +114,4 @@ CATCH + nonzero THROW markers under an open catch frame are required. Optional `
 - ANS Forth `CATCH` / `THROW` / `ABORT"` (stub only); Dusk / soft-abort surface (mark only)
 - Base tip: `238258b` / `238258bafa82d818beebd572a7cadc3739204531`
 - Wave14 proposal: `/workspace/tritium-research-docs/WAVE14-PROPOSAL.md`
+- `docs/EXIT-QUIT.md` (wave16 **4**)
