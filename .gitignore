@@ -97,3 +97,6 @@ evolve/lineos-manifest-scaffold.json
 
 # Runtime tritium-integrate scaffold (demo path; keep install/hosts/_template)
 evolve/integrate/
+
+# Runtime master mint output (scaffold keys; never commit)
+evolve/master/

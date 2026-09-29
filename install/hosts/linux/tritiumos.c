@@ -58,6 +58,11 @@ void lineos_graduate_demo(void);
 void become_lineos(void);
 void tritium_integrate(const char* platform);
 void tritium_integrate_demo(void);
+/* Master mint/verify scaffold (§5a.5) — format-only; no crypto */
+void master_mint_license(int slots);
+void master_mint_worker(const char* device_id);
+int master_verify(const char* key);
+void master_demo(void);
 int assimilate_epoch(void);
 int assimilate_fragment(int group, int links);
 int assimilate_merge(int frag, unsigned proof);
@@ -145,6 +150,7 @@ void ensure_evolve_dir() {
     snprintf(sub, sizeof(sub), "%s/assimilate", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/assimilate/wallet", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/integrate", evolve_dir); mkdir(sub, 0755);
+    snprintf(sub, sizeof(sub), "%s/master", evolve_dir); mkdir(sub, 0755);
 }
 
 const char* get_evolve_dir() {
@@ -1871,6 +1877,126 @@ void tritium_integrate_demo(void) {
     }
 }
 
+/* --- master mint/verify scaffold (§5a.5) — GUID-style; format-only --- */
+static void master_rand_hex16(char* out /* 17 bytes */) {
+    unsigned char buf[8];
+    FILE* f = fopen("/dev/urandom", "rb");
+    if (f) {
+        if (fread(buf, 1, 8, f) != 8) memset(buf, 0xA5, 8);
+        fclose(f);
+    } else {
+        unsigned seed = (unsigned)time(NULL) ^ (unsigned)getpid();
+        for (int i = 0; i < 8; i++) {
+            seed = seed * 1103515245u + 12345u;
+            buf[i] = (unsigned char)((seed >> 16) & 0xff);
+        }
+    }
+    static const char* hexd = "0123456789ABCDEF";
+    for (int i = 0; i < 8; i++) {
+        out[i * 2] = hexd[(buf[i] >> 4) & 0xf];
+        out[i * 2 + 1] = hexd[buf[i] & 0xf];
+    }
+    out[16] = 0;
+}
+
+static void master_id_hash16(const char* id, char* out /* 17 bytes */) {
+    /* FNV-1a 64-bit fold → 16 hex (scaffold; not crypto) */
+    unsigned long long h = 14695981039346656037ull;
+    for (const unsigned char* p = (const unsigned char*)id; *p; p++) {
+        h ^= (unsigned long long)(*p);
+        h *= 1099511628211ull;
+    }
+    static const char* hexd = "0123456789ABCDEF";
+    for (int i = 15; i >= 0; i--) {
+        out[i] = hexd[h & 0xf];
+        h >>= 4;
+    }
+    out[16] = 0;
+}
+
+static int master_is_hex16(const char* s) {
+    for (int i = 0; i < 16; i++) {
+        char c = s[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')))
+            return 0;
+    }
+    return 1;
+}
+
+void master_mint_license(int slots) {
+    if (slots <= 0) slots = 10;
+    char hex[17];
+    master_rand_hex16(hex);
+    char key[48];
+    snprintf(key, sizeof(key), "TRIT-%s-DRACO", hex);
+    printf("[master] mint-license slots=%d key=%s\n", slots, key);
+    /* optional write under evolve/master/ (gitignored) */
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/master/last-license.key", get_evolve_dir());
+    FILE* f = fopen(path, "w");
+    if (f) { fprintf(f, "%s\n", key); fclose(f); }
+}
+
+void master_mint_worker(const char* device_id) {
+    if (!device_id || !*device_id) {
+        printf("[master] FAIL — device-id required (refuse empty id)\n");
+        printf("[master] mint-worker refuse empty id (§5a.5 scaffold)\n");
+        return;
+    }
+    char hex[17];
+    master_id_hash16(device_id, hex);
+    char key[56];
+    snprintf(key, sizeof(key), "TRIT-W-%s-DRACO", hex);
+    printf("[master] mint-worker device=%s key=%s\n", device_id, key);
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/master/last-worker.key", get_evolve_dir());
+    FILE* f = fopen(path, "w");
+    if (f) { fprintf(f, "%s\n", key); fclose(f); }
+}
+
+int master_verify(const char* key) {
+    /* Format-only: TRIT-<16hex>-DRACO or TRIT-W-<16hex>-DRACO */
+    int ok = 0;
+    if (key && *key) {
+        size_t n = strlen(key);
+        if (n == 4 + 1 + 16 + 1 + 5 && strncmp(key, "TRIT-", 5) == 0 &&
+            strcmp(key + 5 + 16, "-DRACO") == 0 && master_is_hex16(key + 5)) {
+            ok = 1;
+        } else if (n == 6 + 1 + 16 + 1 + 5 && strncmp(key, "TRIT-W-", 7) == 0 &&
+                   strcmp(key + 7 + 16, "-DRACO") == 0 && master_is_hex16(key + 7)) {
+            ok = 1;
+        }
+    }
+    if (ok)
+        printf("[master] verify OK format-only (§5a.5 scaffold)\n");
+    else
+        printf("[master] verify FAIL format-only (§5a.5 scaffold)\n");
+    return ok;
+}
+
+void master_demo(void) {
+    char hex[17];
+    char lic[48], worker[56];
+    master_rand_hex16(hex);
+    snprintf(lic, sizeof(lic), "TRIT-%s-DRACO", hex);
+    printf("[master] mint-license slots=10 key=%s\n", lic);
+    master_id_hash16("demo-device-1", hex);
+    snprintf(worker, sizeof(worker), "TRIT-W-%s-DRACO", hex);
+    printf("[master] mint-worker device=demo-device-1 key=%s\n", worker);
+    int ok = 1;
+    if (!master_verify(lic)) ok = 0;
+    if (!master_verify(worker)) ok = 0;
+    /* malformed must FAIL */
+    if (master_verify("NOT-A-KEY")) ok = 0;
+    if (ok)
+        printf("[master-demo] OK\n\n");
+    else
+        printf("[master-demo] FAIL\n\n");
+}
+
+
+
+
 
 void bootstrap_demo() {
     printf("Running bootstrap-host demo (full-stack host OS optimization from refined intelligence)...\n");
@@ -2242,7 +2368,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -2378,6 +2504,25 @@ int main(int argc, char** argv) {
             tritium_integrate(arg);
         } else if (strcasecmp(line, "tritium-integrate") == 0) {
             printf("[tritium-integrate] FAIL — platform required\n");
+        } else if (strcasecmp(line, "master-demo") == 0) {
+            master_demo();
+        } else if (strncasecmp(line, "master-mint-license", 19) == 0) {
+            const char* arg = line + 19;
+            while (*arg == ' ') arg++;
+            int slots = (*arg) ? atoi(arg) : 10;
+            master_mint_license(slots);
+        } else if (strncasecmp(line, "master-mint-worker ", 19) == 0) {
+            const char* arg = line + 19;
+            while (*arg == ' ') arg++;
+            master_mint_worker(arg);
+        } else if (strcasecmp(line, "master-mint-worker") == 0) {
+            master_mint_worker("");
+        } else if (strncasecmp(line, "master-verify ", 14) == 0) {
+            const char* arg = line + 14;
+            while (*arg == ' ') arg++;
+            master_verify(arg);
+        } else if (strcasecmp(line, "master-verify") == 0) {
+            master_verify("");
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {

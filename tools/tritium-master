@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# tritium-master — root trust mint/verify scaffold (TritiumOS.txt §5a.5)
+# GUID-style keys only — no real crypto, no master-root, no fleet sync.
+# See docs/MASTER.md. Windows helper: master/mint-license.ps1
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+MASTER_ROOT="${TRITIUM_MASTER_ROOT:-$ROOT/evolve/master}"
+DEFAULT_SLOTS=10
+
+usage() {
+  echo "Usage: tritium-master mint-license [slots] | mint-worker <device-id> | verify <key> | demo"
+  echo "  mint-license [slots]   emit TRIT-<16hex>-DRACO (default slots=$DEFAULT_SLOTS)"
+  echo "  mint-worker <device-id> emit TRIT-W-<idhash>-DRACO; refuse empty id"
+  echo "  verify <key>           format-only check (prefix/shape); not cryptographic"
+  echo "  demo                   mint license→worker→verify both → [master-demo] OK"
+  echo "Optional write: TRITIUM_MASTER_WRITE=1 → under $MASTER_ROOT (gitignored)"
+}
+
+rand_hex16() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 8 | tr 'a-f' 'A-F'
+  else
+    od -An -N8 -tx1 /dev/urandom | tr -d ' \n' | tr 'a-f' 'A-F'
+  fi
+}
+
+id_hash16() {
+  local id="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    printf '%s' "$id" | sha256sum | awk '{print substr($1,1,16)}' | tr 'a-f' 'A-F'
+  elif command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$id" | shasum -a 256 | awk '{print substr($1,1,16)}' | tr 'a-f' 'A-F'
+  else
+    python3 -c 'import sys; h=5381
+for c in sys.argv[1].encode():
+ h=((h*33)^c)&0xffffffffffffffff
+print(f"{h:016X}"[:16])' "$id"
+  fi
+}
+
+maybe_write() {
+  local name="$1" key="$2"
+  if [[ "${TRITIUM_MASTER_WRITE:-0}" == "1" ]]; then
+    mkdir -p "$MASTER_ROOT"
+    printf '%s\n' "$key" > "$MASTER_ROOT/$name"
+    echo "[master] wrote $MASTER_ROOT/$name (gitignored; scaffold only)"
+  fi
+}
+
+# Print marker; echo key on stdout last line for capture
+cmd_mint_license() {
+  local slots="${1:-$DEFAULT_SLOTS}"
+  if ! [[ "$slots" =~ ^[0-9]+$ ]]; then
+    echo "[master] FAIL — slots must be integer" >&2
+    return 2
+  fi
+  local hex key
+  hex="$(rand_hex16)"
+  key="TRIT-${hex}-DRACO"
+  echo "[master] mint-license slots=${slots} key=${key}"
+  maybe_write "last-license.key" "$key"
+  echo "$key"
+}
+
+cmd_mint_worker() {
+  local id="${1:-}"
+  if [[ -z "$id" ]]; then
+    echo "[master] FAIL — device-id required (refuse empty id)" >&2
+    echo "[master] mint-worker refuse empty id (§5a.5 scaffold)"
+    return 2
+  fi
+  local h key
+  h="$(id_hash16 "$id")"
+  key="TRIT-W-${h}-DRACO"
+  echo "[master] mint-worker device=${id} key=${key}"
+  maybe_write "last-worker.key" "$key"
+  echo "$key"
+}
+
+cmd_verify() {
+  local key="${1:-}"
+  if [[ -z "$key" ]]; then
+    echo "[master] verify FAIL format-only (§5a.5 scaffold)"
+    return 1
+  fi
+  if [[ "$key" =~ ^TRIT-[0-9A-Fa-f]{16}-DRACO$ ]] || \
+     [[ "$key" =~ ^TRIT-W-[0-9A-Fa-f]{16}-DRACO$ ]]; then
+    echo "[master] verify OK format-only (§5a.5 scaffold)"
+    return 0
+  fi
+  echo "[master] verify FAIL format-only (§5a.5 scaffold)"
+  return 1
+}
+
+cmd_demo() {
+  local lic worker ok=1 tmp
+  # Optional write under gitignored evolve/master/ (never commit keys)
+  TRITIUM_MASTER_WRITE=1
+  export TRITIUM_MASTER_WRITE
+  tmp="$(mktemp)"
+
+  cmd_mint_license "$DEFAULT_SLOTS" | tee "$tmp"
+  lic="$(awk '/^TRIT-[0-9A-Fa-f][0-9A-Fa-f]*-DRACO$/{print; exit}' "$tmp")"
+  cmd_mint_worker "demo-device-1" | tee "$tmp"
+  worker="$(awk '/^TRIT-W-/{print; exit}' "$tmp")"
+  rm -f "$tmp"
+
+  if ! cmd_verify "$lic"; then ok=0; fi
+  if ! cmd_verify "$worker"; then ok=0; fi
+
+  # Malformed must FAIL (expect non-zero)
+  if cmd_verify "NOT-A-KEY"; then
+    ok=0
+  fi
+
+  if [[ "$ok" -eq 1 && -n "$lic" && -n "$worker" ]]; then
+    echo "[master-demo] OK"
+    return 0
+  fi
+  echo "[master-demo] FAIL"
+  return 1
+}
+
+main() {
+  local cmd="${1:-}"
+  case "$cmd" in
+    ""|-h|--help|help) usage; exit 2 ;;
+    mint-license)
+      shift || true
+      cmd_mint_license "${1:-$DEFAULT_SLOTS}"
+      ;;
+    mint-worker)
+      shift || true
+      cmd_mint_worker "${1:-}"
+      ;;
+    verify)
+      shift || true
+      cmd_verify "${1:-}"
+      ;;
+    demo|master-demo)
+      cmd_demo
+      ;;
+    *)
+      echo "Unknown command: $cmd" >&2
+      usage
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"

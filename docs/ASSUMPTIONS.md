@@ -37,6 +37,9 @@ lineos-graduate-demo
 tritium-integrate-demo
 \ expect: [tritium-integrate-demo] OK
 
+master-demo
+\ expect: [master-demo] OK
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -122,7 +125,7 @@ edition-demo
 - Registry: `evolve/license-slots.json` (created if missing; runtime — not committed).
 - **Installer / CLI refuses slot 11** (and any registration when already 10/10).
 - CLI: `tools/tritium-license status` → prints `N/10`; `register <device-id>` registers or refuses.
-- Scaffold only (no crypto / master-verify yet); `license/validator.ps1` mirrors the same slot gate.
+- Scaffold only (no crypto signing yet); `master-verify` is format-only — see `docs/MASTER.md`; `license/validator.ps1` mirrors the slot gate.
 - Linux host REPL: `license-status`, `license-register <id>` (optional; same refuse-11 contract).
 
 Smoke:
@@ -168,3 +171,11 @@ tools/tritium-license status          # expect 10/10
 - Surfaces: Linux host C SoT + CLI `tools/tritium-integrate`; Forth `forth/tritium/integrate.fs` (+ poly / Android mirrors).
 - Demo: force free-slot path → greppable `[tritium-integrate-demo] OK`.
 - Cite: `docs/INTEGRATE.md`, `docs/INSTALL.md`, `TritiumOS.txt` §5a.2 / Phase 8.
+
+## Master mint/verify stub (§5a.5)
+
+- Surfaces: `master-mint-license` (default slots=10) → `TRIT-<16hex>-DRACO`; `master-mint-worker <device-id>` → `TRIT-W-<idhash>-DRACO` (refuse empty); `master-verify` format-only; `master-demo` → `[master-demo] OK`.
+- SoT: Linux host C + CLI `tools/tritium-master` + Forth `forth/tritium/master.fs` (poly / Android mirrors). Windows helper: `master/mint-license.ps1`.
+- Optional write under `evolve/master/` (gitignored); never commit keys.
+- Non-goals: real crypto, master-root, fleet sync, production escrow.
+- Cite: `docs/MASTER.md`, `TritiumOS.txt` §5a.5 / Phase 6.

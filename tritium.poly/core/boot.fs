@@ -9,4 +9,5 @@ include queue.fs
 include assimilate.fs
 include lineos.fs
 include integrate.fs
+include master.fs
 ." boot ok — run rekia-demo for smoke" cr

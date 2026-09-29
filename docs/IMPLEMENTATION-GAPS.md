@@ -35,11 +35,10 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Needed (Phase 1+):** Route chat → R.E.K.I.A. refine path + D.R.E.N.A. step. Store state. Show "refined reply + neuron count". Make `rename` + first-run call into Forth words (`assistant-name@` etc.).
 
 4. **No real license / master / device slots enforcement in ship artifacts**
-   - `master/mint-license.ps1`: just generates "TRIT-...-DRACO" (clipboard).
-   - `license/validator.ps1`: accepts any >=8 chars (scaffold comment says "replace with master-verify").
-   - Hosts do their own `if (key.Length < 8)` — no call to validator, no crypto/signature, no slot registry (`evolve/license-slots.json` is referenced but inert), no 10-device hard limit.
-   - **Spec (Phase 5-6):** Master mints signed keys; installers reject unsigned / slot 11; status shows N/10; worker keys for queue.
-   - `master-mint-license`, `master-mint-worker`, `master-verify` (Forth + host side).
+   - **Master mint/verify scaffold landed (wave7 item 1, §5a.5):** `master-mint-license` / `master-mint-worker` / `master-verify` / `master-demo` (CLI `tools/tritium-master` + Linux host + Forth); format-only verify — **no** real crypto / master-root. See `docs/MASTER.md`. `master/mint-license.ps1` remains Windows helper.
+   - `license/validator.ps1`: slot gate stub (replace later with signed `master-verify`).
+   - Slot registry stub landed earlier (`tools/tritium-license` + host); signing / escrow still later.
+   - **Still needed (Phase 6+):** real signatures; master-root materialization; fleet sync; production escrow.
 
 ### Wave4 items 4+5 (landed stub)
 - **`group-link!`** (Forth + Linux SoT demo): typed `LINK-INTER` inter-group bridge; `group-link-demo` → `[group-link-demo] OK — inter-group bridge`.
@@ -56,10 +55,11 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - Graph persist exists (`evolve/user-graph.trit`); full fleet sync / irreversible UX confirm packs still later.
    - Needed later: real splash/about branding pack; irreversible confirm UX; fleet session counts.
 
-7. **Integrate / install docs (wave6 items 4+5)**
+7. **Integrate / install docs (wave6 items 4+5)** / **Master stub (wave7 item 1)**
    - **Integrate stub landed:** `tritium-integrate` / `tritium-integrate-demo` (Linux host + CLI + Forth); scaffold from `_template` → `evolve/integrate/<platform>/`; slot gate via license helpers. See `docs/INTEGRATE.md`.
    - **INSTALL.md landed:** bootstrap / host install checklist. See `docs/INSTALL.md`.
-   - Needed later: real cross-host evolve sync; production packaging for new OS adapters.
+   - **Master mint/verify stub landed (wave7 item 1):** `docs/MASTER.md` + `tools/tritium-master` + host/Forth; `[master-demo] OK`. Format-only — no crypto.
+   - Needed later: real cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
 - Real first-run bootstrap of core (extract + start TritiumForth + engines) inside the .exe / .apk.
@@ -75,7 +75,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
 All of these are called out explicitly in `TritiumOS.txt`:
 
 **Missing docs/ (none of the architecture ones exist):**
-- MASTER.md, ~~ASSIMILATE.md~~ landed (see `docs/ASSIMILATE.md`), ~~QUEUE.md~~ landed (see `docs/QUEUE.md`)
+- ~~MASTER.md~~ landed (see `docs/MASTER.md`), ~~ASSIMILATE.md~~ landed (see `docs/ASSIMILATE.md`), ~~QUEUE.md~~ landed (see `docs/QUEUE.md`)
 - ASSISTANT.md, LINEOS.md, ~~INSTALL.md~~ landed (see `docs/INSTALL.md`), LICENSE.md
 - ~~NEURON.md~~ / ~~REKIA.md~~ landed (see `docs/NEURON.md`, `docs/REKIA.md`); ~~DRENA.md~~ / ~~GROUPS.md~~ landed (see docs/)
 - ~~ARCHITECTURE.md~~ landed (see `docs/ARCHITECTURE.md`), ~~INTEGRATE.md~~ landed (see `docs/INTEGRATE.md`), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
