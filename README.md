@@ -23,7 +23,7 @@ It ships first as a cross-platform assistant (`TritiumOS.exe` / `TritiumOS.apk`)
 - `forth/` — Base TritiumForth sources (trit.fs, tritium/, drena/, rekia/)
 - `install/hosts/` — Platform installers (android, linux, windows) + templates
 - `tools/` — Build, compute, qwantum, and test scripts (PowerShell + Python)
-- `docs/` — Design, build, Qwantum, quantum providers, implementation notes; hosts↔Forth↔evolve map in `docs/ARCHITECTURE.md`; install/integrate in `docs/INSTALL.md` / `docs/INTEGRATE.md`
+- `docs/` — Design, build, Qwantum, quantum providers, implementation notes; hosts↔Forth↔evolve map in `docs/ARCHITECTURE.md`; install/integrate in `docs/INSTALL.md` / `docs/INTEGRATE.md`; fleet sync stub in `docs/FLEET.md`
 - `evolve/` — Runtime evolution state, refined Forth from qwantum dumps, assistant data
 - `refs/` — Upstream references (collapseos, duskos, grapheneos device trees + kernels)
 - `qwantum/` — Field schema + prompts for parallel-timeline refinement (Qwantum Compute)

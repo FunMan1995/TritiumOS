@@ -100,3 +100,6 @@ evolve/integrate/
 
 # Runtime master mint output (scaffold keys; never commit)
 evolve/master/
+
+# Runtime fleet evolve-sync blob (export/import stub; never commit)
+evolve/fleet/

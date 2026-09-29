@@ -38,7 +38,8 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Master mint/verify scaffold landed (wave7 item 1, §5a.5):** `master-mint-license` / `master-mint-worker` / `master-verify` / `master-demo` (CLI `tools/tritium-master` + Linux host + Forth); format-only verify — **no** real crypto / master-root. See `docs/MASTER.md`. `master/mint-license.ps1` remains Windows helper.
    - `license/validator.ps1`: slot gate stub (replace later with signed `master-verify`).
    - Slot registry stub landed earlier (`tools/tritium-license` + host); signing / escrow still later.
-   - **Still needed (Phase 6+):** real signatures; master-root materialization; fleet sync; production escrow.
+   - **Fleet evolve-sync stub landed (wave7 item 2, §§5a.2–5a.4):** `fleet-export` / `fleet-import` / `fleet-demo` (CLI `tools/tritium-fleet` + Linux host + Forth); same-key gate only — **no** network/encryption/auto-sync. See `docs/FLEET.md`.
+   - **Still needed (Phase 6+):** real signatures; master-root materialization; networked fleet sync; production escrow.
 
 ### Wave4 items 4+5 (landed stub)
 - **`group-link!`** (Forth + Linux SoT demo): typed `LINK-INTER` inter-group bridge; `group-link-demo` → `[group-link-demo] OK — inter-group bridge`.
@@ -52,14 +53,15 @@ These prevent any real "TritiumOS" behavior per the product definition.
 
 6. **Graduation / L.I.N.E.O.S. / evolution persistence**
    - **Graduation stub landed (wave5 items 4+5, §1a.1):** `evolve/graduation.json` (+ `.example`); `lineos-graduate` / `lineos-graduate-demo` / `become-lineos` (Forth + Linux host); scaffold `product_id=lineos` under `evolve/` — **not** a production branding release. See `docs/LINEOS.md`.
-   - Graph persist exists (`evolve/user-graph.trit`); full fleet sync / irreversible UX confirm packs still later.
-   - Needed later: real splash/about branding pack; irreversible confirm UX; fleet session counts.
+   - Graph persist exists (`evolve/user-graph.trit`); local fleet export/import stub landed (wave7 **2**); networked sync / irreversible UX confirm packs still later.
+   - Needed later: real splash/about branding pack; irreversible confirm UX; fleet session counts / network sync.
 
-7. **Integrate / install docs (wave6 items 4+5)** / **Master stub (wave7 item 1)**
+7. **Integrate / install docs (wave6 items 4+5)** / **Master stub (wave7 item 1)** / **Fleet stub (wave7 item 2)**
    - **Integrate stub landed:** `tritium-integrate` / `tritium-integrate-demo` (Linux host + CLI + Forth); scaffold from `_template` → `evolve/integrate/<platform>/`; slot gate via license helpers. See `docs/INTEGRATE.md`.
    - **INSTALL.md landed:** bootstrap / host install checklist. See `docs/INSTALL.md`.
    - **Master mint/verify stub landed (wave7 item 1):** `docs/MASTER.md` + `tools/tritium-master` + host/Forth; `[master-demo] OK`. Format-only — no crypto.
-   - Needed later: real cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
+   - **Fleet evolve-sync stub landed (wave7 item 2):** `docs/FLEET.md` + `tools/tritium-fleet` + host/Forth; `[fleet-demo] OK`. Same-key local only — no network.
+   - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)
 - Real first-run bootstrap of core (extract + start TritiumForth + engines) inside the .exe / .apk.
@@ -75,7 +77,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
 All of these are called out explicitly in `TritiumOS.txt`:
 
 **Missing docs/ (none of the architecture ones exist):**
-- ~~MASTER.md~~ landed (see `docs/MASTER.md`), ~~ASSIMILATE.md~~ landed (see `docs/ASSIMILATE.md`), ~~QUEUE.md~~ landed (see `docs/QUEUE.md`)
+- ~~MASTER.md~~ landed (see `docs/MASTER.md`), ~~FLEET.md~~ landed (see `docs/FLEET.md`), ~~ASSIMILATE.md~~ landed (see `docs/ASSIMILATE.md`), ~~QUEUE.md~~ landed (see `docs/QUEUE.md`)
 - ASSISTANT.md, LINEOS.md, ~~INSTALL.md~~ landed (see `docs/INSTALL.md`), LICENSE.md
 - ~~NEURON.md~~ / ~~REKIA.md~~ landed (see `docs/NEURON.md`, `docs/REKIA.md`); ~~DRENA.md~~ / ~~GROUPS.md~~ landed (see docs/)
 - ~~ARCHITECTURE.md~~ landed (see `docs/ARCHITECTURE.md`), ~~INTEGRATE.md~~ landed (see `docs/INTEGRATE.md`), ASSUMPTIONS.md (for RESERVED S3=11 etc.)
@@ -106,7 +108,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 - Bare metal / QEMU / ISO path (Phase 10, optional for polyglot milestone).
 - Full success criteria checklist (see TritiumOS.txt §11) — currently only the UI first-run + about pieces are done.
 - Unit tests for trit math, neuron header packing, drena growth, rekiA refine (spec suggests on QEMU or host Forth).
-- Sync of evolve state across fleet (licensed devices, opt-in).
+- Sync of evolve state across fleet (licensed devices, opt-in) — **local stub landed** (wave7 item 2); network/peer still open.
 - Proper error handling / fallbacks when queue or collective jobs used.
 
 ## Already Partially / Well Implemented (don't duplicate effort)

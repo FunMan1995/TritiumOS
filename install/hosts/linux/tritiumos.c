@@ -63,6 +63,10 @@ void master_mint_license(int slots);
 void master_mint_worker(const char* device_id);
 int master_verify(const char* key);
 void master_demo(void);
+/* Fleet evolve-sync stub (§§5a.2–5a.4) — local export/import; same-key only */
+void fleet_export(const char* device_id);
+int fleet_import(void);
+void fleet_demo(void);
 int assimilate_epoch(void);
 int assimilate_fragment(int group, int links);
 int assimilate_merge(int frag, unsigned proof);
@@ -151,6 +155,7 @@ void ensure_evolve_dir() {
     snprintf(sub, sizeof(sub), "%s/assimilate/wallet", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/integrate", evolve_dir); mkdir(sub, 0755);
     snprintf(sub, sizeof(sub), "%s/master", evolve_dir); mkdir(sub, 0755);
+    snprintf(sub, sizeof(sub), "%s/fleet", evolve_dir); mkdir(sub, 0755);
 }
 
 const char* get_evolve_dir() {
@@ -1996,6 +2001,194 @@ void master_demo(void) {
 
 
 
+/* --- Fleet evolve-sync stub (§§5a.2–5a.4 / docs/FLEET.md) — no network/crypto --- */
+static char fleet_context_fp[64] = {0};
+
+static void fleet_ensure_dir(void) {
+    ensure_evolve_dir();
+    char sub[MAX_PATH];
+    snprintf(sub, sizeof(sub), "%s/fleet", get_evolve_dir());
+    mkdir(sub, 0755);
+}
+
+static int fleet_read_file_trim(const char* path, char* out, size_t outsz) {
+    FILE* f = fopen(path, "r");
+    if (!f) return 0;
+    if (!fgets(out, (int)outsz, f)) { fclose(f); return 0; }
+    fclose(f);
+    /* trim whitespace/newline */
+    size_t n = strlen(out);
+    while (n > 0 && (out[n - 1] == '\n' || out[n - 1] == '\r' || out[n - 1] == ' ' || out[n - 1] == '\t')) {
+        out[--n] = 0;
+    }
+    return n > 0;
+}
+
+static int fleet_load_context(char* out, size_t outsz) {
+    const char* env = getenv("TRITIUM_LICENSE_FINGERPRINT");
+    if (env && *env) {
+        snprintf(out, outsz, "%s", env);
+        return 1;
+    }
+    if (fleet_context_fp[0]) {
+        snprintf(out, outsz, "%s", fleet_context_fp);
+        return 1;
+    }
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/fleet/.license-context", get_evolve_dir());
+    if (fleet_read_file_trim(path, out, outsz)) return 1;
+    snprintf(path, sizeof(path), "%s/master/last-license.key", get_evolve_dir());
+    if (fleet_read_file_trim(path, out, outsz)) return 1;
+    return 0;
+}
+
+static void fleet_set_context(const char* fp) {
+    fleet_ensure_dir();
+    snprintf(fleet_context_fp, sizeof(fleet_context_fp), "%s", fp ? fp : "");
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/fleet/.license-context", get_evolve_dir());
+    FILE* f = fopen(path, "w");
+    if (f) { fprintf(f, "%s\n", fleet_context_fp); fclose(f); }
+}
+
+static void fleet_iso_now(char* out, size_t outsz) {
+    time_t t = time(NULL);
+    struct tm tm;
+    gmtime_r(&t, &tm);
+    strftime(out, outsz, "%Y-%m-%dT%H:%M:%SZ", &tm);
+}
+
+void fleet_export(const char* device_id) {
+    if (!device_id || !*device_id) device_id = "dev1";
+    char fp[64];
+    if (!fleet_load_context(fp, sizeof(fp))) {
+        printf("[fleet] FAIL — no license context\n");
+        return;
+    }
+    fleet_ensure_dir();
+    char path[MAX_PATH];
+    char src[MAX_PATH];
+    snprintf(src, sizeof(src), "%s/user-graph.trit", get_evolve_dir());
+    snprintf(path, sizeof(path), "%s/fleet/user-graph.trit", get_evolve_dir());
+    FILE* in = fopen(src, "r");
+    FILE* out = fopen(path, "w");
+    if (out) {
+        if (in) {
+            char buf[4096];
+            size_t n;
+            while ((n = fread(buf, 1, sizeof(buf), in)) > 0) fwrite(buf, 1, n, out);
+            fclose(in);
+        } else {
+            fprintf(out, "# TritiumOS user-graph.trit placeholder (fleet stub)\n");
+            fprintf(out, "# No live graph at export; placeholder OK per docs/FLEET.md\n");
+        }
+        fclose(out);
+    }
+    char exported[40];
+    fleet_iso_now(exported, sizeof(exported));
+    snprintf(path, sizeof(path), "%s/fleet/manifest.json", get_evolve_dir());
+    out = fopen(path, "w");
+    if (out) {
+        fprintf(out,
+            "{\n"
+            "  \"keyFingerprint\": \"%s\",\n"
+            "  \"deviceId\": \"%s\",\n"
+            "  \"exportedAt\": \"%s\",\n"
+            "  \"paths\": [\"user-graph.trit\"]\n"
+            "}\n",
+            fp, device_id, exported);
+        fclose(out);
+    }
+    snprintf(path, sizeof(path), "%s/fleet/MARKER.txt", get_evolve_dir());
+    out = fopen(path, "w");
+    if (out) {
+        fprintf(out, "fleet export key=%s device=%s\n", fp, device_id);
+        fclose(out);
+    }
+    printf("[fleet] export → evolve/fleet/ key=%s\n", fp);
+}
+
+static int fleet_manifest_fp(char* out, size_t outsz) {
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/fleet/manifest.json", get_evolve_dir());
+    FILE* f = fopen(path, "r");
+    if (!f) return 0;
+    char buf[2048];
+    size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+    fclose(f);
+    buf[n] = 0;
+    const char* key = "\"keyFingerprint\"";
+    char* p = strstr(buf, key);
+    if (!p) return 0;
+    p = strchr(p + strlen(key), '"');
+    if (!p) return 0;
+    p++;
+    char* end = strchr(p, '"');
+    if (!end) return 0;
+    size_t len = (size_t)(end - p);
+    if (len >= outsz) len = outsz - 1;
+    memcpy(out, p, len);
+    out[len] = 0;
+    return 1;
+}
+
+int fleet_import(void) {
+    char fp[64];
+    if (!fleet_load_context(fp, sizeof(fp))) {
+        printf("[fleet] FAIL — no license context for import\n");
+        return 0;
+    }
+    char blob_fp[64];
+    if (!fleet_manifest_fp(blob_fp, sizeof(blob_fp))) {
+        printf("[fleet] FAIL — missing export path / manifest.json\n");
+        return 0;
+    }
+    if (strcmp(blob_fp, fp) != 0) {
+        printf("[fleet] refuse — key mismatch (§5a.4)\n");
+        return 0;
+    }
+    /* restore graph */
+    char src[MAX_PATH], dst[MAX_PATH];
+    snprintf(src, sizeof(src), "%s/fleet/user-graph.trit", get_evolve_dir());
+    snprintf(dst, sizeof(dst), "%s/user-graph.trit", get_evolve_dir());
+    FILE* in = fopen(src, "r");
+    if (in) {
+        FILE* out = fopen(dst, "w");
+        if (out) {
+            char buf[4096];
+            size_t n;
+            while ((n = fread(buf, 1, sizeof(buf), in)) > 0) fwrite(buf, 1, n, out);
+            fclose(out);
+        }
+        fclose(in);
+    }
+    printf("[fleet] import OK same-key\n");
+    return 1;
+}
+
+void fleet_demo(void) {
+    char hex[17], key_a[48], key_b[48];
+    master_rand_hex16(hex);
+    snprintf(key_a, sizeof(key_a), "TRIT-%s-DRACO", hex);
+    master_rand_hex16(hex);
+    snprintf(key_b, sizeof(key_b), "TRIT-%s-DRACO", hex);
+    if (strcmp(key_a, key_b) == 0) {
+        master_rand_hex16(hex);
+        snprintf(key_b, sizeof(key_b), "TRIT-%s-DRACO", hex);
+    }
+    int ok = 1;
+    fleet_set_context(key_a);
+    fleet_export("demo-device-1");
+    if (!fleet_import()) ok = 0;
+    fleet_set_context(key_b);
+    if (fleet_import()) ok = 0; /* must refuse */
+    if (ok)
+        printf("[fleet-demo] OK\n\n");
+    else
+        printf("[fleet-demo] FAIL\n\n");
+}
+
+
 
 
 void bootstrap_demo() {
@@ -2368,7 +2561,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -2523,6 +2716,16 @@ int main(int argc, char** argv) {
             master_verify(arg);
         } else if (strcasecmp(line, "master-verify") == 0) {
             master_verify("");
+        } else if (strcasecmp(line, "fleet-demo") == 0) {
+            fleet_demo();
+        } else if (strncasecmp(line, "fleet-export ", 13) == 0) {
+            const char* arg = line + 13;
+            while (*arg == ' ') arg++;
+            fleet_export(arg);
+        } else if (strcasecmp(line, "fleet-export") == 0) {
+            fleet_export("dev1");
+        } else if (strcasecmp(line, "fleet-import") == 0) {
+            fleet_import();
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {

@@ -40,6 +40,9 @@ tritium-integrate-demo
 master-demo
 \ expect: [master-demo] OK
 
+fleet-demo
+\ expect: [fleet-demo] OK
+
 s3-reserved-demo
 \ expect: before=3, rewire skipped, after=3
 
@@ -179,3 +182,12 @@ tools/tritium-license status          # expect 10/10
 - Optional write under `evolve/master/` (gitignored); never commit keys.
 - Non-goals: real crypto, master-root, fleet sync, production escrow.
 - Cite: `docs/MASTER.md`, `TritiumOS.txt` §5a.5 / Phase 6.
+
+## Fleet evolve-sync stub (§§5a.2–5a.4 / Phase 8 optional)
+
+- Opt-in local export↔import under `evolve/fleet/` (manifest.json + user-graph.trit + MARKER.txt).
+- Surfaces: `fleet-export` / `fleet-import` / `fleet-demo` via `tools/tritium-fleet` + Linux host + Forth `forth/tritium/fleet.fs` (poly / Android mirrors).
+- Same-key gate: stamp `keyFingerprint` from current license context; refuse import on mismatch → `[fleet] refuse — key mismatch (§5a.4)`.
+- Non-goals: network, encryption, auto-sync, CRDT, LINEOS branding.
+- Cite: `docs/FLEET.md`, `docs/LICENSE.md`, `docs/MASTER.md`, `TritiumOS.txt` §§5a.2–5a.4 / Phase 8.
+

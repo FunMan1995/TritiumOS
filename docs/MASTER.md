@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave7 item **1**)  
 **Canonical brief:** `TritiumOS.txt` §5a.5, Phase 6  
 **Sources of truth (code):** `master/mint-license.ps1` (existing scaffold); new `tools/tritium-master` and/or `forth/tritium/master.fs` + Linux host mirrors  
-**Companions:** `docs/LICENSE.md` (slots), `docs/QUEUE.md` / `docs/ASSIMILATE.md` (worker-key consumers)
+**Companions:** `docs/LICENSE.md` (slots), `docs/FLEET.md` (evolve sync stub), `docs/QUEUE.md` / `docs/ASSIMILATE.md` (worker-key consumers)
 
 ## 1. Purpose
 
@@ -47,7 +47,7 @@ Existing `master/mint-license.ps1` may remain as a Windows helper; prefer one So
 
 - Real signatures / `master-root` materialization
 - Binding verify to `license/validator.ps1` crypto
-- Fleet sync (wave7 **2**)
+- Fleet sync (wave7 **2** — local stub: see `docs/FLEET.md`)
 - Production key escrow
 
 ## 6. Acceptance (Test Lab)

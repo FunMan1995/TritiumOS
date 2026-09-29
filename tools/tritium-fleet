@@ -1,0 +1,203 @@
+#!/usr/bin/env bash
+# tritium-fleet — opt-in evolve sync stub (TritiumOS.txt §§5a.2–5a.4 / docs/FLEET.md)
+# Local export↔import under evolve/fleet/; same-key gate only.
+# No network, no encryption, no auto-sync, no CRDT, no LINEOS branding.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+FLEET_ROOT="${TRITIUM_FLEET_ROOT:-$ROOT/evolve/fleet}"
+MASTER_ROOT="${TRITIUM_MASTER_ROOT:-$ROOT/evolve/master}"
+EVOLVE_ROOT="$(dirname "$FLEET_ROOT")"
+CONTEXT_FILE="${TRITIUM_FLEET_CONTEXT:-$FLEET_ROOT/.license-context}"
+DEFAULT_DEVICE="dev1"
+
+usage() {
+  echo "Usage: tritium-fleet export [deviceId] | import | demo | context <fingerprint>"
+  echo "  export [deviceId]   write evolve/fleet/ blob stamped with current license fingerprint"
+  echo "  import             read blob; same-key restore; refuse on mismatch (§5a.4)"
+  echo "  demo               export→import same key → OK; wrong fingerprint → refuse → [fleet-demo] OK"
+  echo "  context <fp>       set current license fingerprint context (scaffold)"
+  echo "Out: $FLEET_ROOT (gitignored)"
+}
+
+# Resolve current license fingerprint from: env → context file → master last-license.key
+current_fingerprint() {
+  if [[ -n "${TRITIUM_LICENSE_FINGERPRINT:-}" ]]; then
+    printf '%s' "$TRITIUM_LICENSE_FINGERPRINT"
+    return 0
+  fi
+  if [[ -f "$CONTEXT_FILE" ]]; then
+    tr -d ' \t\r\n' < "$CONTEXT_FILE"
+    return 0
+  fi
+  if [[ -f "$MASTER_ROOT/last-license.key" ]]; then
+    tr -d ' \t\r\n' < "$MASTER_ROOT/last-license.key"
+    return 0
+  fi
+  return 1
+}
+
+set_context() {
+  local fp="${1:-}"
+  if [[ -z "$fp" ]]; then
+    echo "[fleet] FAIL — fingerprint required" >&2
+    return 2
+  fi
+  mkdir -p "$FLEET_ROOT"
+  printf '%s\n' "$fp" > "$CONTEXT_FILE"
+  echo "[fleet] context key=$fp"
+}
+
+iso_now() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "stub-exportedAt"
+}
+
+cmd_export() {
+  local device="${1:-$DEFAULT_DEVICE}"
+  local fp
+  if ! fp="$(current_fingerprint)"; then
+    echo "[fleet] FAIL — no license context (set TRITIUM_LICENSE_FINGERPRINT or run context / master-mint)" >&2
+    return 2
+  fi
+  mkdir -p "$FLEET_ROOT"
+
+  # Pack user-graph.trit if present; else placeholder
+  local src_graph="$EVOLVE_ROOT/user-graph.trit"
+  if [[ -f "$src_graph" ]]; then
+    cp -a "$src_graph" "$FLEET_ROOT/user-graph.trit"
+  else
+    printf '%s\n' '# TritiumOS user-graph.trit placeholder (fleet stub)' > "$FLEET_ROOT/user-graph.trit"
+    printf '%s\n' '# No live graph at export; placeholder OK per docs/FLEET.md' >> "$FLEET_ROOT/user-graph.trit"
+  fi
+
+  # manifest.json (no secrets beyond fingerprint)
+  python3 - "$FLEET_ROOT/manifest.json" "$fp" "$device" "$(iso_now)" <<'PY'
+import json, sys
+path, fp, device, exported = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+data = {
+    "keyFingerprint": fp,
+    "deviceId": device,
+    "exportedAt": exported,
+    "paths": ["user-graph.trit"],
+}
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+
+  printf '%s\n' "fleet export key=$fp device=$device" > "$FLEET_ROOT/MARKER.txt"
+  echo "[fleet] export → evolve/fleet/ key=${fp}"
+  return 0
+}
+
+cmd_import() {
+  local fp
+  if ! fp="$(current_fingerprint)"; then
+    echo "[fleet] FAIL — no license context for import" >&2
+    return 2
+  fi
+  local manifest="$FLEET_ROOT/manifest.json"
+  if [[ ! -f "$manifest" ]]; then
+    echo "[fleet] FAIL — missing export path / manifest.json" >&2
+    return 1
+  fi
+
+  local blob_fp
+  blob_fp="$(python3 - "$manifest" <<'PY'
+import json, sys
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+print(data.get("keyFingerprint", ""))
+PY
+)"
+
+  if [[ -z "$blob_fp" ]]; then
+    echo "[fleet] FAIL — manifest missing keyFingerprint" >&2
+    return 1
+  fi
+
+  if [[ "$blob_fp" != "$fp" ]]; then
+    echo "[fleet] refuse — key mismatch (§5a.4)"
+    return 1
+  fi
+
+  # Restore graph into evolve/
+  mkdir -p "$EVOLVE_ROOT"
+  if [[ -f "$FLEET_ROOT/user-graph.trit" ]]; then
+    cp -a "$FLEET_ROOT/user-graph.trit" "$EVOLVE_ROOT/user-graph.trit"
+  fi
+  echo "[fleet] import OK same-key"
+  return 0
+}
+
+rand_hex16() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 8 | tr 'a-f' 'A-F'
+  else
+    od -An -N8 -tx1 /dev/urandom | tr -d ' \n' | tr 'a-f' 'A-F'
+  fi
+}
+
+cmd_demo() {
+  local ok=1
+  local key_a key_b
+  key_a="TRIT-$(rand_hex16)-DRACO"
+  key_b="TRIT-$(rand_hex16)-DRACO"
+  # Ensure distinct
+  while [[ "$key_b" == "$key_a" ]]; do
+    key_b="TRIT-$(rand_hex16)-DRACO"
+  done
+
+  rm -rf "$FLEET_ROOT"
+  mkdir -p "$FLEET_ROOT" "$EVOLVE_ROOT"
+
+  # Same-key path
+  set_context "$key_a" >/dev/null
+  if ! cmd_export "demo-device-1"; then ok=0; fi
+  if ! cmd_import; then ok=0; fi
+
+  # Wrong fingerprint → refuse (keep blob; change context)
+  set_context "$key_b" >/dev/null
+  if cmd_import; then
+    # import succeeded but should have refused
+    ok=0
+  else
+    # expect refuse marker already printed
+    :
+  fi
+
+  if [[ "$ok" -eq 1 ]]; then
+    echo "[fleet-demo] OK"
+    return 0
+  fi
+  echo "[fleet-demo] FAIL"
+  return 1
+}
+
+main() {
+  local cmd="${1:-}"
+  case "$cmd" in
+    ""|-h|--help|help) usage; exit 2 ;;
+    export|fleet-export)
+      shift || true
+      cmd_export "${1:-$DEFAULT_DEVICE}"
+      ;;
+    import|fleet-import)
+      cmd_import
+      ;;
+    demo|fleet-demo)
+      cmd_demo
+      ;;
+    context)
+      shift || true
+      set_context "${1:-}"
+      ;;
+    *)
+      echo "Unknown command: $cmd" >&2
+      usage
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"

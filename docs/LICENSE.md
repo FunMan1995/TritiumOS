@@ -3,7 +3,7 @@
 **Status:** Shipper-ready spec (wave5 item **1**; matches PR #19 license stub)  
 **Canonical brief:** `TritiumOS.txt` §5a.4–5a.5  
 **Sources of truth (code):** `tools/tritium-license`; Linux `license_status` / `license_register` in `install/hosts/linux/tritiumos.c`; `license/validator.ps1`  
-**Companions:** `docs/ASSUMPTIONS.md` (slot policy), `docs/ASSISTANT.md` (first-run license step), `docs/MASTER.md` (mint/verify scaffold), `docs/QUEUE.md` / `docs/ASSIMILATE.md`
+**Companions:** `docs/ASSUMPTIONS.md` (slot policy), `docs/ASSISTANT.md` (first-run license step), `docs/MASTER.md` (mint/verify scaffold), `docs/FLEET.md` (opt-in evolve sync stub), `docs/QUEUE.md` / `docs/ASSIMILATE.md`
 
 ## 1. Purpose
 
@@ -17,7 +17,7 @@ Technical enforcement for the **shared license key**: one user-facing key unlock
 | Slot 11 | **Always refused** (and any register when already 10/10) |
 | Registry | `evolve/license-slots.json` (runtime; **not** committed) |
 | De-register | Frees a slot; local `evolve/` blob may remain on device |
-| Sync | Optional fleet sync only among slots sharing the same key (not implemented yet) |
+| Sync | Optional fleet sync only among slots sharing the same key — local stub in `docs/FLEET.md` (wave7 item **2**; no network) |
 | Crypto | Scaffold only — `master-verify` is **format-only** (§5a.5); no signed payload yet |
 
 Never commit secrets, license keys, or populated `license-slots.json`.
@@ -94,4 +94,5 @@ User installers accept **license-key**; queue / Assimilate prefer **worker-key**
 
 - `TritiumOS.txt` §§5a.4–5a.5
 - `docs/ASSUMPTIONS.md` (Shared license slots)
+- `docs/FLEET.md` (opt-in evolve sync stub)
 - `tools/tritium-license`; `install/hosts/linux/tritiumos.c`; `license/validator.ps1`
