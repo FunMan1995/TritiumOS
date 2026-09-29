@@ -48,6 +48,7 @@ void group_nested_demo(void);
 void group_vocab_persist_demo(void);
 void kernel_demo(void);
 void interpret_demo(void);
+void colon_demo(void);
 void license_status(void);
 void license_register(const char* device_id);
 void queue_demo(void);
@@ -240,13 +241,23 @@ static int host_links_s3[HOST_MAX_LINKS];
 static int host_entry_count = 0;
 static char host_entry_names[HOST_MAX_GENTRIES][HOST_NAMELEN];
 static int host_entry_gids[HOST_MAX_GENTRIES];
+static int host_entry_body[HOST_MAX_GENTRIES];   /* 0=create-only; 1=body-present */
+static int host_entry_btoks[HOST_MAX_GENTRIES];  /* body token count */
+static int host_colon_def = 0;
+static int host_colon_idx = -1;
+static int host_colon_toks = 0;
 
 static void host_dict_reset(void) {
     host_entry_count = 0;
     for (int i = 0; i < HOST_MAX_GENTRIES; i++) {
         host_entry_names[i][0] = 0;
         host_entry_gids[i] = -1;
+        host_entry_body[i] = 0;
+        host_entry_btoks[i] = 0;
     }
+    host_colon_def = 0;
+    host_colon_idx = -1;
+    host_colon_toks = 0;
 }
 
 static int host_group_entry_find(const char* name, int gid) {
@@ -271,6 +282,8 @@ static int host_group_entry_create(const char* name, int gid) {
     strncpy(host_entry_names[i], name, HOST_NAMELEN - 1);
     host_entry_names[i][HOST_NAMELEN - 1] = 0;
     host_entry_gids[i] = gid;
+    host_entry_body[i] = 0;
+    host_entry_btoks[i] = 0;
     printf("[kernel] group-entry #%d gid=%d\n", i, gid);
     return i;
 }
@@ -306,6 +319,8 @@ static int host_entry_create(const char* name) {
     strncpy(host_entry_names[i], name, HOST_NAMELEN - 1);
     host_entry_names[i][HOST_NAMELEN - 1] = 0;
     host_entry_gids[i] = -1; /* global / flat */
+    host_entry_body[i] = 0;
+    host_entry_btoks[i] = 0;
     printf("[kernel] created #%d\n", i);
     return i;
 }
@@ -328,11 +343,53 @@ static void host_words(void) {
     printf("\n");
 }
 
-/* wave8 item 1: interpret loop — whitespace-split → find → exec stub or miss (continue) */
+/* wave8 item 1 + wave9 item 4: interpret + colon body/marker stub */
 static int host_interp_misses = 0;
 static int host_interp_hits = 0;
 
+static void host_colon_abandon(void) {
+    if (host_colon_def) {
+        host_colon_def = 0;
+        host_colon_idx = -1;
+        host_colon_toks = 0;
+    }
+}
+
+static int host_colon_body_p(int i) {
+    return (i >= 0 && i < host_entry_count && host_entry_body[i] != 0);
+}
+
+static void host_colon_body_tok(const char* tok) {
+    if (!host_colon_def)
+        return;
+    printf("[colon] body + %s\n", tok);
+    host_colon_toks++;
+}
+
+static void host_semicolon(void) {
+    if (!host_colon_def) {
+        printf("[colon] ; (not in colon-def)\n");
+        return;
+    }
+    if (host_colon_idx < 0 || host_colon_idx >= host_entry_count) {
+        printf("[colon] ; bad idx\n");
+        host_colon_abandon();
+        return;
+    }
+    int k = host_colon_toks;
+    if (k == 0)
+        k = 1; /* fixed BODY */
+    host_entry_btoks[host_colon_idx] = k;
+    host_entry_body[host_colon_idx] = 1;
+    printf("[colon] ; name=%s tokens=%d\n",
+           host_entry_names[host_colon_idx], k);
+    host_colon_def = 0;
+    host_colon_idx = -1;
+    host_colon_toks = 0;
+}
+
 static void host_interpret(const char* s) {
+    host_colon_abandon(); /* open : without ; → create-only */
     host_interp_misses = 0;
     host_interp_hits = 0;
     const char* p = s;
@@ -356,27 +413,70 @@ static void host_interpret(const char* s) {
             host_interp_misses++;
         } else {
             printf("[interpret] exec #%d name=%s\n", i, tok);
+            if (host_colon_body_p(i)) {
+                printf("[colon] run body name=%s tokens=%d\n",
+                       host_entry_names[i], host_entry_btoks[i]);
+            }
             host_interp_hits++;
         }
     }
 }
 
-/* : create-only stub — entry-create next name; no body compile */
+/* : name [body…] [;] — create + colon-def; body tokens until ; mark body-present */
 static int host_colon_create(const char* name) {
+    host_colon_abandon();
     while (*name == ' ')
         name++;
     if (!name[0]) {
+        printf("[colon] : \n");
         printf("[interpret] : created \n");
         return -1;
     }
+    /* first token = name; remaining until ';' = body toks (one-liner support) */
     char buf[HOST_NAMELEN];
-    strncpy(buf, name, HOST_NAMELEN - 1);
-    buf[HOST_NAMELEN - 1] = 0;
-    /* trim trailing whitespace */
-    for (int i = (int)strlen(buf) - 1; i >= 0 && (buf[i] == ' ' || buf[i] == '\t'); i--)
-        buf[i] = 0;
+    const char* p = name;
+    size_t n = 0;
+    while (*p && *p != ' ' && *p != '\t' && n < HOST_NAMELEN - 1)
+        buf[n++] = *p++;
+    buf[n] = 0;
+    if (!buf[0]) {
+        printf("[colon] : \n");
+        printf("[interpret] : created \n");
+        return -1;
+    }
     int idx = host_entry_create(buf);
+    if (idx < 0)
+        return -1;
+    host_colon_idx = idx;
+    host_colon_def = 1;
+    host_colon_toks = 0;
+    host_entry_body[idx] = 0;
+    host_entry_btoks[idx] = 0;
+    printf("[colon] : %s\n", buf);
     printf("[interpret] : created %s\n", buf);
+
+    while (*p == ' ' || *p == '\t')
+        p++;
+    while (*p) {
+        while (*p == ' ' || *p == '\t')
+            p++;
+        if (!*p)
+            break;
+        if (*p == ';' && (p[1] == 0 || p[1] == ' ' || p[1] == '\t')) {
+            host_semicolon();
+            break;
+        }
+        char tok[HOST_NAMELEN];
+        size_t tn = 0;
+        while (*p && *p != ' ' && *p != '\t' && tn < HOST_NAMELEN - 1)
+            tok[tn++] = *p++;
+        tok[tn] = 0;
+        if (strcmp(tok, ";") == 0) {
+            host_semicolon();
+            break;
+        }
+        host_colon_body_tok(tok);
+    }
     return idx;
 }
 
@@ -1627,6 +1727,38 @@ void interpret_demo(void) {
         return;
     }
     printf("[interpret-demo] OK\n\n");
+}
+
+void colon_demo(void) {
+    /* wave9 item 4: colon body/marker stub */
+    printf("[colon-demo] dict-reset + : body ; + interpret + create-only\n");
+    host_dict_reset();
+    if (host_colon_create("square dup * ;") < 0) {
+        printf("[colon-demo] FAIL\n\n");
+        return;
+    }
+    int isq = host_entry_find("square");
+    if (isq < 0 || !host_colon_body_p(isq) || host_entry_btoks[isq] < 1) {
+        printf("[colon-demo] FAIL\n\n");
+        return;
+    }
+    host_interpret("square");
+    if (host_interp_hits < 1) {
+        printf("[colon-demo] FAIL\n\n");
+        return;
+    }
+    /* create-only path (no ;) */
+    if (host_colon_create("only") < 0) {
+        printf("[colon-demo] FAIL\n\n");
+        return;
+    }
+    host_colon_abandon();
+    int io = host_entry_find("only");
+    if (io < 0 || host_colon_body_p(io)) {
+        printf("[colon-demo] FAIL\n\n");
+        return;
+    }
+    printf("[colon-demo] OK\n\n");
 }
 
 /* --- License slot stub (TritiumOS.txt §5a.4): max 10; refuse slot 11 --- */
@@ -3780,7 +3912,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  : <name> - create-only stub (entry into dict; no body)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n  assistant-state-demo - v2 task/reminder/note persist → greppable OK\n  assistant-state! / assistant-state@ - save/load evolve/assistant-state.trit v2\n  assistant-task! / assistant-reminder! / assistant-note! - upsert hooks\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  colon-demo - : body ; marker stub + run body\n  : <name> [body…] ; - colon-def body/marker stub (wave9)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n  trit-math-demo - trit+ clamp + trit* + pack round-trip → greppable OK\n  economy-wire-demo - queue-prove!→assimilate-merge! e2e → greppable OK\n  queue-assim-demo - alias for economy-wire-demo\n  assistant-state-demo - v2 task/reminder/note persist → greppable OK\n  assistant-state! / assistant-state@ - save/load evolve/assistant-state.trit v2\n  assistant-task! / assistant-reminder! / assistant-note! - upsert hooks\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -3873,8 +4005,12 @@ int main(int argc, char** argv) {
             kernel_demo();
         } else if (strcasecmp(line, "interpret-demo") == 0) {
             interpret_demo();
-        } else if (strncmp(line, ": ", 2) == 0) {
-            host_colon_create(line + 2);
+        } else if (strcasecmp(line, "colon-demo") == 0) {
+            colon_demo();
+        } else if (strcmp(line, ";") == 0) {
+            host_semicolon();
+        } else if (strncmp(line, ": ", 2) == 0 || strcmp(line, ":") == 0) {
+            host_colon_create(line[0] == ':' && line[1] == ' ' ? line + 2 : line + 1);
         } else if (strcasecmp(line, "license-status") == 0) {
             license_status();
         } else if (strncasecmp(line, "license-register ", 17) == 0) {

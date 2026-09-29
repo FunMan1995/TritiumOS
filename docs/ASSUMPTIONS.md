@@ -219,6 +219,13 @@ tools/tritium-license status          # expect 10/10
 - Non-goals: full interpret `:`, linked dict, forget/units, host VM replace.
 - Cite: `docs/KERNEL.md`, `docs/GROUPS-NESTED.md`, `docs/ARCHITECTURE.md`, `docs/ASSUMPTIONS.md`.
 
+## Colon body/marker stub (wave9 item 4)
+
+- `:` / `colon-create` enter colon-def; body tokens until `;` store body-present + token count.
+- Exec of body entry prints `[colon] run body name=… tokens=…`. Create-only (no `;`) unchanged.
+- Non-goals: real XT compiler, IF/THEN/DO, immediate/compile beyond colon-def flag.
+- Cite: `docs/COLON.md`, `docs/INTERPRET.md`.
+
 ## Interpret loop deepen (wave8 item 1)
 
 - `interpret` (c-addr u): whitespace-split → find → hit `[interpret] exec #N name=…` / miss marker + continue (count misses).

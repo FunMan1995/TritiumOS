@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# colon-demo — Lab smoke for colon body/marker stub (wave9 item 4 / docs/COLON.md)
+# Mirrors forth/tritium/kernel.fs colon-demo + Linux host colon_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: colon-demo"
+  echo "  dict-reset → : square body ; → interpret → create-only path"
+  echo "  Markers: [colon] :/;/run body → [colon-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[colon-demo] FAIL"
+  exit 1
+}
+
+# --- tiny dict stub ---
+declare -a NAMES=()
+declare -a BODY=()
+declare -a BTOKS=()
+COLON_DEF=0
+COLON_IDX=-1
+COLON_TOKS=0
+HITS=0
+MISSES=0
+LAST_IDX=-1
+
+dict_reset() {
+  NAMES=()
+  BODY=()
+  BTOKS=()
+  COLON_DEF=0
+  COLON_IDX=-1
+  COLON_TOKS=0
+  LAST_IDX=-1
+}
+
+entry_find() {
+  local name=$1 i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      LAST_IDX=$i
+      return 0
+    fi
+  done
+  LAST_IDX=-1
+  return 1
+}
+
+entry_create() {
+  local name=$1
+  if entry_find "$name"; then
+    echo "[kernel] entry exists #$LAST_IDX"
+    return 0
+  fi
+  LAST_IDX=${#NAMES[@]}
+  NAMES+=("$name")
+  BODY+=(0)
+  BTOKS+=(0)
+  echo "[kernel] created #$LAST_IDX"
+}
+
+colon_abandon() {
+  COLON_DEF=0
+  COLON_IDX=-1
+  COLON_TOKS=0
+}
+
+colon_create() {
+  # args: name [body toks...] [;]
+  colon_abandon
+  local name=$1
+  shift || true
+  entry_create "$name"
+  local idx=$LAST_IDX
+  [[ "$idx" -ge 0 ]] || fail
+  COLON_IDX=$idx
+  COLON_DEF=1
+  COLON_TOKS=0
+  BODY[$idx]=0
+  BTOKS[$idx]=0
+  echo "[colon] : $name"
+  echo "[interpret] : created $name"
+  local tok
+  for tok in "$@"; do
+    if [[ "$tok" == ";" ]]; then
+      local k=$COLON_TOKS
+      (( k == 0 )) && k=1
+      BTOKS[$idx]=$k
+      BODY[$idx]=1
+      echo "[colon] ; name=$name tokens=$k"
+      colon_abandon
+      return 0
+    fi
+    echo "[colon] body + $tok"
+    COLON_TOKS=$((COLON_TOKS + 1))
+  done
+}
+
+interpret() {
+  colon_abandon
+  HITS=0
+  MISSES=0
+  local tok
+  for tok in "$@"; do
+    if entry_find "$tok"; then
+      local idx=$LAST_IDX
+      echo "[interpret] exec #$idx name=$tok"
+      if [[ "${BODY[$idx]}" -ne 0 ]]; then
+        echo "[colon] run body name=${NAMES[$idx]} tokens=${BTOKS[$idx]}"
+      fi
+      HITS=$((HITS + 1))
+    else
+      echo "[interpret] miss name=$tok"
+      MISSES=$((MISSES + 1))
+    fi
+  done
+}
+
+echo "[colon-demo] dict-reset + : body ; + interpret + create-only"
+dict_reset
+
+colon_create square dup '*' ';'
+entry_find square || fail
+[[ "${BODY[$LAST_IDX]}" -ne 0 ]] || fail
+[[ "${BTOKS[$LAST_IDX]}" -ge 1 ]] || fail
+
+interpret square
+(( HITS >= 1 )) || fail
+
+# create-only (no ;)
+colon_create only
+colon_abandon
+entry_find only || fail
+[[ "${BODY[$LAST_IDX]}" -eq 0 ]] || fail
+
+echo "[colon-demo] OK"
+exit 0

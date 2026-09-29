@@ -43,7 +43,7 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 |------|------|
 | S0 assist | Free-text → `drena-step` + `rekiA-refine` → `evolve/forth/refined/` + live word (`ASSISTANT.md`) |
 | Topology | spawn / link / grow / step / groups / `group-link!` / nested find (`DRENA.md`, `GROUPS.md`, `GROUPS-NESTED.md`) |
-| Interpret | token stream → `interpret` / `:` create-only (`KERNEL.md`, `INTERPRET.md`) |
+| Interpret | token stream → `interpret` / `:` body/marker (`KERNEL.md`, `INTERPRET.md`, `COLON.md`) |
 | Persist | `graph-save` / assistant-state / edition / license-slots / vocab graph lines |
 | Economy | non-local job → queue cue → prove → assimilate merge → simti (`QUEUE.md`, `ASSIMILATE.md`) |
 | Trust | format mint/verify scaffold (`MASTER.md`); slot gate (`LICENSE.md`) |
@@ -59,7 +59,7 @@ TritiumOS ships as a **personal assistant** that co-evolves with the user and ma
 |------|-----|
 | Neuron / trit / S3 | `NEURON.md`, `ASSUMPTIONS.md` |
 | Topology | `DRENA.md`, `GROUPS.md`, `GROUPS-NESTED.md` (wave7 **4**) |
-| Kernel / interpret | `KERNEL.md` (wave7 **5**); `INTERPRET.md` (wave8 **1**) |
+| Kernel / interpret | `KERNEL.md` (wave7 **5**); `INTERPRET.md` (wave8 **1**); `COLON.md` (wave9 **4**) |
 | Refine | `REKIA.md`, `QWANTUM-REKIA.md` |
 | Assistant S0 | `ASSISTANT.md` |
 | License / master | `LICENSE.md`; `MASTER.md` (wave7 **1**) |

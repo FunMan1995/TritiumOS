@@ -3,8 +3,8 @@
 **Status:** Shipper-ready stub spec (wave7 item **5**)  
 **Canonical brief:** `TritiumOS.txt` Phase 2; Dusk `fs/doc/kernel.txt` + `fs/mem/dict.fs` (see `docs/FORTH-BASE-REFERENCES.md`)  
 **Sources of truth (code):** `forth/tritium/kernel.fs`; Linux host mirrors for demos  
-**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`
-**See also:** `docs/INTERPRET.md` (wave8 **1** — interpret loop deepen).
+**Companions:** `docs/GROUPS-NESTED.md` (ENTRY-GIDS), `docs/ARCHITECTURE.md`, `docs/NEURON.md`, `docs/COLON.md` (wave9 **4**)
+**See also:** `docs/INTERPRET.md` (wave8 **1** — interpret loop deepen); `docs/COLON.md` (wave9 **4** — colon body/marker stub).
 
 ## 1. Purpose
 

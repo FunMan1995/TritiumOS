@@ -57,6 +57,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Groups nested + vocab persist landed (wave7 item 4):** `group-find-nested` / `vocab` graph lines; `[group-nested-demo] OK` / `[group-vocab-persist-demo] OK`. See `docs/GROUPS-NESTED.md`.
    - **Kernel find/interpret stub landed (wave7 item 5):** `[kernel-demo] OK`; see `docs/KERNEL.md`.
    - **Interpret loop deepen landed (wave8 item 1):** `interpret` + `:` create-only + `[interpret-demo] OK`; see `docs/INTERPRET.md`.
+   - **Colon body/marker stub landed (wave9 item 4):** `:` body until `;` + `[colon] run body` + `[colon-demo] OK`; see `docs/COLON.md`.
    - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo`; refuse without confirm; see `docs/LINEOS-CONFIRM.md`.
    - **Userland scaffold landed (wave8 item 3):** `userland/` tree + `docs/USERLAND.md` + `userland-demo`; see `docs/USERLAND.md`.
    - **Host parity contracts landed (wave8 item 4):** Win/Android `parity/HOST-PARITY.txt` + `docs/HOST-PARITY.md` + `host-parity-demo`; see `docs/HOST-PARITY.md`.
@@ -111,7 +112,7 @@ All of these are called out explicitly in `TritiumOS.txt`:
 **Other spec items:**
 - `evolve/graduation.json` (configurable thresholds).
 - Full neuron record layout + linking data binary/Forth structures (append-only links.bin etc.).
-- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; wave7 item **4** nested find + vocab persist landed — see `docs/GROUPS-NESTED.md`). Wave7 item **5** kernel find/interpret stub landed — see `docs/KERNEL.md`. Wave8 item **1** interpret loop deepen landed — see `docs/INTERPRET.md`. Full SEARCH-WORDLIST / linked dict / colon compiler still later.
+- `GROUP-<label>/` searchable vocab unit (wave4 item 2 landed: scoped `group-find`; wave7 item **4** nested find + vocab persist landed — see `docs/GROUPS-NESTED.md`). Wave7 item **5** kernel find/interpret stub landed — see `docs/KERNEL.md`. Wave8 item **1** interpret loop deepen landed — see `docs/INTERPRET.md`. Wave9 item **4** colon body/marker stub landed — see `docs/COLON.md`. Full SEARCH-WORDLIST / linked dict / real colon compiler still later.
 - Environment vars and Forth naming conventions (§8).
 - Open: S3 code `11` RESERVED + “D.R.E.N.A. with ______” continuation (document, do not invent).
 

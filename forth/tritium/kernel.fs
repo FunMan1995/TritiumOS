@@ -54,11 +54,20 @@ NAMELEN cell + constant ENTRY-BYTES
 create ENTRY-NAMES  MAX-ENTRIES NAMELEN * allot
 create ENTRY-IDS    MAX-ENTRIES cells allot
 create ENTRY-GIDS   MAX-ENTRIES cells allot   \ -1 = global/flat; >=0 = group-scoped (Dusk-style unit)
+create ENTRY-BODY   MAX-ENTRIES cells allot   \ 0 = create-only; 1 = body-present (wave9 item 4)
+create ENTRY-BTOKS  MAX-ENTRIES cells allot   \ body token count when body-present
 variable ENTRY-COUNT  0 ENTRY-COUNT !
 
 : entry-name[] ( i -- c-addr ) NAMELEN * ENTRY-NAMES + ;
 : entry-id[]   ( i -- addr )   cells ENTRY-IDS + ;
 : entry-gid[]  ( i -- addr )   cells ENTRY-GIDS + ;
+: entry-body[] ( i -- addr )   cells ENTRY-BODY + ;
+: entry-btoks[] ( i -- addr )  cells ENTRY-BTOKS + ;
+\ colon-def stub state (wave9 item 4) — body/marker; not a real compiler
+variable _colon-def    \ nonzero while defining after :
+variable _colon-idx    \ entry index being defined (-1 none)
+variable _colon-toks   \ body tokens accumulated
+
 
 : entry-name-clear ( i -- )
   entry-name[] NAMELEN bl fill ;
@@ -67,7 +76,12 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
   0 ENTRY-COUNT !
   MAX-ENTRIES 0 do i entry-name-clear loop
   MAX-ENTRIES 0 do 0 i entry-id[] ! loop
-  MAX-ENTRIES 0 do -1 i entry-gid[] ! loop ;
+  MAX-ENTRIES 0 do -1 i entry-gid[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-body[] ! loop
+  MAX-ENTRIES 0 do 0 i entry-btoks[] ! loop
+  0 _colon-def !
+  -1 _colon-idx !
+  0 _colon-toks ! ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -118,6 +132,8 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
   ( c-addr u ) r@ entry-name!
   r@ 1+ r@ entry-id[] !
   -1 r@ entry-gid[] !          \ global / flat
+  0 r@ entry-body[] !          \ create-only until ;
+  0 r@ entry-btoks[] !
   1 ENTRY-COUNT +!
   ." [kernel] created #" r@ . cr
   r> ;
@@ -162,6 +178,8 @@ variable _gec-gid
   ( c-addr u ) r@ entry-name!
   r@ 1+ r@ entry-id[] !
   _gec-gid @ r@ entry-gid[] !
+  0 r@ entry-body[] !
+  0 r@ entry-btoks[] !
   1 ENTRY-COUNT +!
   ." [kernel] group-entry #" r@ . ." gid=" _gec-gid @ . cr
   r> ;
@@ -257,10 +275,10 @@ create (kd-miss) 6 c, char n c, char o c, char s c, char u c, char c c, char h c
   then
   ." [kernel-demo] OK" cr ;
 
-\ === interpret loop deepen (wave8 item 1) ===
+\ === interpret loop deepen (wave8 item 1) + colon body/marker (wave9 item 4) ===
 \ interpret ( c-addr u -- )  whitespace-split → find → exec stub or miss (continue)
-\ : create-only stub cannot redefine host Forth colon while boot includes follow —
-\   Forth mirror is colon-create / colon-create-from; host REPL binds ": <name>".
+\ : / colon-create enter colon-def; body tokens until ; mark body-present.
+\ Forth mirror is colon-create / colon-create-from / semicolon; host REPL binds ": … ;".
 
 variable _interp-misses
 variable _interp-hits
@@ -280,7 +298,43 @@ variable _interp-hits
       r> 1+ >r
   repeat drop r> ;
 
+\ colon-body? ( i -- flag )
+: colon-body? ( i -- flag )
+  entry-body[] @ 0<> ;
+
+\ Finalize open colon-def as create-only (no body) — keeps prior create-only behavior
+: colon-abandon ( -- )
+  _colon-def @ if
+    0 _colon-def !
+    -1 _colon-idx !
+    0 _colon-toks !
+  then ;
+
+\ colon-body-tok ( c-addr u -- )  while colon-def: count token + optional marker
+: colon-body-tok ( c-addr u -- )
+  _colon-def @ 0= if 2drop exit then
+  ." [colon] body + " type cr
+  1 _colon-toks +! ;
+
+\ semicolon ( -- )  end colon-def; store body-present + token count
+: semicolon ( -- )
+  _colon-def @ 0= if
+    ." [colon] ; (not in colon-def)" cr exit
+  then
+  _colon-idx @ dup 0< if drop ." [colon] ; bad idx" cr exit then
+  >r
+  _colon-toks @ dup 0= if drop 1 then   \ fixed BODY ⇒ at least 1 if empty
+  dup r@ entry-btoks[] !
+  1 r@ entry-body[] !
+  ." [colon] ; name=" r@ entry-name[] NAMELEN name-trim type
+  ."  tokens=" . cr
+  r> drop
+  0 _colon-def !
+  -1 _colon-idx !
+  0 _colon-toks ! ;
+
 : interpret ( c-addr u -- )
+  colon-abandon                 \ open : without ; → create-only
   0 _interp-misses !
   0 _interp-hits !
   begin
@@ -295,6 +349,11 @@ variable _interp-hits
     else
       >r                       \ R: toklen idx
       ." [interpret] exec #" r@ . ." name=" type cr
+      r@ colon-body? if
+        ." [colon] run body name="
+        r@ entry-name[] NAMELEN name-trim type
+        ."  tokens=" r@ entry-btoks[] @ . cr
+      then
       r> drop
       1 _interp-hits +!
     then
@@ -302,12 +361,24 @@ variable _interp-hits
     r@ - swap r> + swap
   again ;
 
-\ colon-create-from ( c-addr u -- )  create-only stub body (prints interpret marker)
+\ colon-create-from ( c-addr u -- )  create + enter colon-def (body until ;)
 : colon-create-from ( c-addr u -- )
-  2dup entry-create-from drop
-  ." [interpret] : created " type cr ;
+  colon-abandon                 \ prior open : stays create-only
+  2dup entry-create-from dup 0< if
+    drop 2drop exit
+  then
+  ( c-addr u idx )
+  dup _colon-idx !
+  1 _colon-def !
+  0 _colon-toks !
+  0 over entry-body[] !
+  0 over entry-btoks[] !
+  >r
+  ." [colon] : " 2dup type cr
+  ." [interpret] : created " type cr
+  r> drop ;
 
-\ colon-create ( "name" -- )  parse next word; create-only (no ] body)
+\ colon-create ( "name" -- )  parse next word; enter colon-def
 : colon-create ( "name" -- )
   bl word count colon-create-from ;
 
@@ -319,6 +390,13 @@ create (id-src) 17 c,
   char a c, char l c, char p c, char h c, char a c, bl c,
   char b c, char e c, char t c, char a c, bl c,
   char n c, char o c, char s c, char u c, char c c, char h c,
+
+\ Fixtures for colon-demo — "square" / body toks "dup" "*" / exec "square"
+create (cd-name) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
+create (cd-t1) 3 c, char d c, char u c, char p c,
+create (cd-t2) 1 c, char * c,
+create (cd-only) 4 c, char o c, char n c, char l c, char y c,
+create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
 
 \ interpret-demo ( -- )  dict-reset → : two names → interpret hits+miss → OK
 : interpret-demo ( -- )
@@ -335,12 +413,42 @@ create (id-src) 17 c,
   then
   ." [interpret-demo] OK" cr ;
 
+\ colon-demo ( -- )  body path + create-only path → [colon] run body → OK
+: colon-demo ( -- )
+  ." [colon-demo] dict-reset + : body ; + interpret + create-only" cr
+  dict-reset
+  (cd-name) count colon-create-from
+  (cd-t1) count colon-body-tok
+  (cd-t2) count colon-body-tok
+  semicolon
+  (cd-name) count findentry dup 0< if
+    drop ." [colon-demo] FAIL" cr exit
+  then
+  colon-body? 0= if
+    ." [colon-demo] FAIL" cr exit
+  then
+  (cd-run) count interpret
+  _interp-hits @ 1 < if
+    ." [colon-demo] FAIL" cr exit
+  then
+  \ create-only path (no ;)
+  (cd-only) count colon-create-from
+  colon-abandon
+  (cd-only) count findentry dup 0< if
+    drop ." [colon-demo] FAIL" cr exit
+  then
+  colon-body? if
+    ." [colon-demo] FAIL" cr exit
+  then
+  ." [colon-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
-\ - Full colon compiler / control flow (beyond interpret + : create-only stub)
+\ - Full colon compiler / control flow (beyond body/marker stub)
 \ - Group-scoped entries via ENTRY-GIDS + group-entry-find (wave4 item 2) — landed
 \ - findentry / find aliases + interpret-token stub (wave7 item 5) — landed
 \ - interpret loop deepen + : create-only (wave8 item 1) — landed
+\ - colon body/marker stub (wave9 item 4) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
