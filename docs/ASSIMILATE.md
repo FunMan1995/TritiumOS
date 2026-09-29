@@ -1,9 +1,9 @@
 # ASSIMILATE — Collective puzzle + ASIM/simti
 
-**Status:** Shipper-ready spec (wave6 item **2**; matches PR #22 assimilate stub)  
+**Status:** Shipper-ready spec (wave6 item **2**; thin amend wave9 **2** economy-wire)  
 **Canonical brief:** `TritiumOS.txt` §5b.2–5b.4  
 **Sources of truth (code):** `forth/tritium/assimilate.fs`; Linux host assimilate path; `assimilate/README.txt`  
-**Companions:** `docs/QUEUE.md` (prove → merge handoff), `docs/ASSUMPTIONS.md`, `docs/LICENSE.md` (worker-key later)
+**Companions:** `docs/QUEUE.md`, `docs/ECONOMY-WIRE.md` (wave9 **2** e2e), `docs/ASSUMPTIONS.md`, `docs/LICENSE.md`
 
 ## 1. Purpose
 
@@ -67,6 +67,8 @@ Conceptual flow (`TritiumOS.txt` §5b.4):
 
 `assimilate-demo` **stands alone** (does not require queue-demo).
 
+Wired path (wave9 **2**): `economy-wire-demo` runs queue prove → `assimilate-merge!` (§5b.4). See `docs/ECONOMY-WIRE.md`.
+
 ## 6. Smoke
 
 ```
@@ -86,7 +88,7 @@ Also: second merge with same proof → zero credit; `assimilate-balance` prints 
 
 1. `docs/ASSIMILATE.md` present; ASSUMPTIONS / QUEUE may keep one-line cites.
 2. `assimilate-demo` (+ optional `queue-demo`) still OK; suite green.
-3. Docs-only tip: no Forth behavior change required for item **2** alone.
+3. Wave9 **2**: `economy-wire-demo` OK (see `ECONOMY-WIRE.md`).
 
 ## 9. Cite
 

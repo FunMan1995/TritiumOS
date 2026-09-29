@@ -5,3 +5,6 @@ Stub (wave5 item 2): local cue only — no fleet crypto / network.
 Persist: evolve/queue/jobs.jsonl (JSON lines; runtime under ~/.tritiumos/evolve/queue/).
 Linux REPL: queue-demo (+ queue-local? / queue-enqueue! / queue-pull / queue-prove!).
 Smoke: queue-demo → [queue-demo] OK — local cue (evolve/queue/; no fleet crypto)
+
+E2E (wave9 item 2): economy-wire-demo → queue-prove! → assimilate-merge! (see docs/ECONOMY-WIRE.md)
+Optional: queue-reward! marks Q-REWARDED after merge.

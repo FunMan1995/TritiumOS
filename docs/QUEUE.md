@@ -1,9 +1,9 @@
 # QUEUE — Collective cue (local stub)
 
-**Status:** Shipper-ready spec (wave6 item **1**; matches PR #21 queue stub)  
+**Status:** Shipper-ready spec (wave6 item **1**; thin amend wave9 **2** economy-wire)  
 **Canonical brief:** `TritiumOS.txt` §5b.1  
 **Sources of truth (code):** `forth/tritium/queue.fs`; Linux host queue path in `install/hosts/linux/tritiumos.c`; `queue/README.txt`  
-**Companions:** `docs/ASSUMPTIONS.md` (queue stub), `docs/ASSIMILATE.md` (wave6 **2** — prove → merge), `docs/LICENSE.md` (worker-key later)
+**Companions:** `docs/ASSUMPTIONS.md`, `docs/ASSIMILATE.md`, `docs/ECONOMY-WIRE.md` (wave9 **2** e2e), `docs/LICENSE.md`
 
 ## 1. Purpose
 
@@ -57,12 +57,15 @@ queue-demo
 
 Forced path: `queue-local?` false → pull → prove with stub score.
 
+E2E with Assimilate: `economy-wire-demo` (see `docs/ECONOMY-WIRE.md`, wave9 **2**).
+
 ## 5. Out of scope (this stub)
 
 - Fleet network / remote pull
 - Real proof crypto / master settlement
-- Automatic `assimilate-merge!` after prove (see ASSIMILATE; demos may stand alone)
 - Worker-key gating (LICENSE / MASTER later)
+
+Prove → merge handoff is **in scope** via `economy-wire-demo` (wave9 **2**); standalone `queue-demo` remains.
 
 ## 6. Acceptance (Test Lab — docs tip)
 

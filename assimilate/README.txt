@@ -17,3 +17,6 @@ Linux REPL: assimilate-demo (+ assimilate-epoch / assimilate-fragment / assimila
 Smoke: assimilate-demo → [assimilate-demo] OK — simti credited (evolve/assimilate/; no crypto)
 
 May follow queue-prove! conceptually; demo stands alone.
+
+Wired e2e (wave9 item 2): economy-wire-demo / queue-assim-demo (docs/ECONOMY-WIRE.md).
+Standalone assimilate-demo remains.

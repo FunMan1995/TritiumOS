@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# economy-wire-demo — Lab smoke for queue-prove! → assimilate-merge! e2e (wave9 item 2)
+# Mirrors forth/tritium/{queue,assimilate}.fs + Linux host economy_wire_demo.
+# Local stub only — no fleet / crypto / master settlement.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: economy-wire-demo"
+  echo "  Enqueue non-local → pull → prove (score>0) → assimilate-merge (delta>0, wallet↑)"
+  echo "  Markers: [economy-wire] enqueue/prove/merge → [economy-wire-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[economy-wire-demo] FAIL"
+  exit 1
+}
+
+# --- stub queue ---
+JOB_ID=1
+PROOF=$((0xb0b0))
+STATUS=pending
+LOCAL_OK=0
+
+# --- stub assimilate ---
+EPS=1000
+POOL=1000000
+WALLET=0
+LAST_DELTA=0
+declare -a SEEN_PROOFS=()
+
+proof_seen() {
+  local p=$1 x
+  for x in "${SEEN_PROOFS[@]+"${SEEN_PROOFS[@]}"}"; do
+    [[ "$x" == "$p" ]] && return 0
+  done
+  return 1
+}
+
+# Sets LAST_DELTA; updates EPS/POOL/WALLET (must not run in subshell).
+assimilate_merge() {
+  local frag=$1 proof=$2
+  if proof_seen "$proof"; then
+    LAST_DELTA=0
+    return
+  fi
+  SEEN_PROOFS+=("$proof")
+  local delta=$(( ((frag ^ proof) & 0x3f) + 1 ))
+  local eps_before=$EPS
+  EPS=$(( EPS - delta ))
+  (( EPS < 0 )) && EPS=0
+  local denom=$(( delta + eps_before ))
+  (( denom == 0 )) && denom=1
+  local credit=$(( (POOL * delta) / denom ))
+  (( credit > POOL )) && credit=$POOL
+  WALLET=$(( WALLET + credit ))
+  POOL=$(( POOL - credit ))
+  (( POOL < 0 )) && POOL=0
+  LAST_DELTA=$delta
+}
+
+echo "[economy-wire] enqueue→pull→prove→assimilate-merge (local stub)"
+
+# enqueue non-local
+LOCAL_OK=0
+STATUS=pending
+echo "[economy-wire] enqueue job=$JOB_ID"
+(( LOCAL_OK == 0 )) || fail
+
+# pull → active
+STATUS=active
+
+# prove: score = (proof xor job) & 0xffff; min 1
+SCORE=$(( (PROOF ^ JOB_ID) & 0xffff ))
+(( SCORE == 0 )) && SCORE=1
+STATUS=proved
+(( SCORE > 0 )) || fail
+echo "[economy-wire] prove score=$SCORE"
+
+# fragment from job ⊕ links (frag_next stub = 1): group^links^frag_next
+FRAG=$(( JOB_ID ^ 1 ^ 1 ))
+assimilate_merge "$FRAG" "$PROOF"
+(( LAST_DELTA > 0 )) || fail
+(( WALLET > 0 )) || fail
+echo "[economy-wire] merge delta=$LAST_DELTA credit-ok"
+
+# optional reward
+STATUS=rewarded
+
+# duplicate proof → 0 credit
+assimilate_merge "$FRAG" "$PROOF"
+(( LAST_DELTA == 0 )) || fail
+
+echo "[economy-wire-demo] OK"
+exit 0

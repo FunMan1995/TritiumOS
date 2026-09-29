@@ -135,3 +135,14 @@ variable _qe-sub  variable _qe-pay  variable _qe-why  variable _qe-lok
   r@ $a5a5 queue-prove! drop
   ." [queue-demo] OK — local cue (evolve/queue/; no fleet crypto)" cr
   r> drop ;
+
+\ queue-reward! ( job -- )  mark Q-REWARDED after successful merge (stub)
+: queue-reward! ( job -- )
+  q-find-id dup 0< if
+    drop ." [QUEUE] reward! unknown job" cr exit then
+  q-rec >r
+  r@ q-status@ Q-PROVED = 0= if
+    r> drop ." [QUEUE] reward! not proved" cr exit then
+  Q-REWARDED r@ q-status!
+  ." [QUEUE] reward! job=" r@ q-id@ . ." status=rewarded" cr
+  r> drop ;

@@ -119,3 +119,51 @@ variable asim-proof-n  0 asim-proof-n !
   assimilate-balance
   ." [assimilate-demo] OK — simti credited (evolve/assimilate/; no crypto)" cr
   r> drop ;
+
+\ --- economy-wire-demo: queue-prove! → assimilate-merge! e2e (wave9 §5b.4) ---
+\ Alias queue-assim-demo prints same OK marker.
+: economy-wire-demo ( -- )
+  ." [economy-wire] enqueue→pull→prove→assimilate-merge (local stub)" cr
+  \ reset queue cue
+  0 q-count !
+  1 q-next-id !
+  \ reset assimilate wallet/epoch/proofs
+  1 asim-epoch-id !
+  1000 asim-epsilon !
+  0 asim-wallet !
+  ASIM-STUB-POOL asim-pool !
+  1 asim-frag-next !
+  0 asim-proof-n !
+  0 asim-last-delta !
+  \ mint non-local job (why=OPTIN, local-ok=0)
+  42 77 Q-WHY-OPTIN 0 queue-make >r   \ R: job-id
+  r@ 0= if
+    ." [economy-wire-demo] FAIL" cr r> drop exit then
+  ." [economy-wire] enqueue job=" r@ . cr
+  r@ queue-local? if
+    ." [economy-wire-demo] FAIL" cr r> drop exit then
+  queue-pull dup 0= if
+    ." [economy-wire-demo] FAIL" cr r> drop exit then
+  drop
+  \ stub proof (nonzero)
+  r@ $b0b0 queue-prove!               \ score
+  dup 0<= if
+    ." [economy-wire-demo] FAIL" cr drop r> drop exit then
+  ." [economy-wire] prove score=" . cr
+  \ fragment from job id ⊕ fixed links
+  r@ 1 assimilate-fragment >r         \ R: job  frag
+  r@ $b0b0 assimilate-merge!          \ delta
+  dup 0<= if
+    ." [economy-wire-demo] FAIL" cr drop r> drop r> drop exit then
+  asim-wallet @ 0= if
+    ." [economy-wire-demo] FAIL" cr drop r> drop r> drop exit then
+  ." [economy-wire] merge delta=" . ." credit-ok" cr
+  \ optional reward
+  r> drop                             \ drop frag; R: job
+  r@ queue-reward!
+  \ duplicate proof still 0 credit
+  r@ 1 assimilate-fragment $b0b0 assimilate-merge! drop
+  ." [economy-wire-demo] OK" cr
+  r> drop ;
+
+: queue-assim-demo ( -- ) economy-wire-demo ;
