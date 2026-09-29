@@ -72,6 +72,9 @@ variable _cs-depth     \ open IF count
 variable _cs-side      \ 0=IF side; 1=ELSE side (stub flip)
 \ loop-stack stub (wave11 item 1) — sibling of cs; no XT patching
 variable _loop-depth  \ open BEGIN count
+\ do-loop stub (wave12 item 1) — sibling of BEGIN loop-depth; no XT patching
+variable _do-loop-depth  \ open DO count
+variable _do-loop-index  \ stub index for I (start value)
 
 
 : entry-name-clear ( i -- )
@@ -89,7 +92,9 @@ variable _loop-depth  \ open BEGIN count
   0 _colon-toks !
   0 _cs-depth !
   0 _cs-side !
-  0 _loop-depth ! ;
+  0 _loop-depth !
+  0 _do-loop-depth !
+  0 _do-loop-index ! ;
 
 \ entry-name! ( c-addr u i -- )  store name into slot i (truncate/pad to NAMELEN)
 : entry-name! ( c-addr u i -- )
@@ -568,6 +573,62 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
   then
   ." [loop-demo] OK" cr ;
 
+\ === do-loop DO/LOOP/+LOOP/I stubs (wave12 item 1) ===
+\ Sibling _do-loop-depth (independent of BEGIN _loop-depth); no counted re-exec.
+\ Forth mirrors are control-do / control-loop / control-plus-loop / control-i
+\ (host binds DO/LOOP/+LOOP/I).
+
+: do-loop-depth ( -- n ) _do-loop-depth @ ;
+
+\ control-do ( limit start -- )  +1 do-loop; stash start as I index
+: control-do ( limit start -- )
+  _do-loop-index !
+  drop
+  1 _do-loop-depth +!
+  ." [do-loop] DO depth=" _do-loop-depth @ . ." index=" _do-loop-index @ . cr ;
+
+\ control-loop ( -- )  close do-loop (+1 step stub); -1 depth
+: control-loop ( -- )
+  _do-loop-depth @ 0= if
+    ." [do-loop] FAIL reason=unbalanced" cr exit
+  then
+  -1 _do-loop-depth +!
+  ." [do-loop] LOOP depth=" _do-loop-depth @ . cr ;
+
+\ control-plus-loop ( n -- )  close do-loop with step stub; -1 depth
+: control-plus-loop ( n -- )
+  _do-loop-depth @ 0= if
+    drop
+    ." [do-loop] FAIL reason=unbalanced" cr exit
+  then
+  -1 _do-loop-depth +!
+  ." [do-loop] +LOOP depth=" _do-loop-depth @ . ." step=" . cr ;
+
+\ control-i ( -- )  print stub index; depth unchanged
+: control-i ( -- )
+  _do-loop-depth @ 0= if
+    ." [do-loop] FAIL reason=unbalanced" cr exit
+  then
+  ." [do-loop] I index=" _do-loop-index @ . cr ;
+
+\ do-loop-demo ( -- )  DO…I…LOOP + DO…I…+LOOP → OK
+: do-loop-demo ( -- )
+  ." [do-loop-demo] dict-reset + DO…I…LOOP + DO…I…+LOOP" cr
+  dict-reset
+  10 0 control-do
+  control-i
+  control-loop
+  do-loop-depth 0<> if
+    ." [do-loop-demo] FAIL" cr exit
+  then
+  5 0 control-do
+  control-i
+  1 control-plus-loop
+  do-loop-depth 0<> if
+    ." [do-loop-demo] FAIL" cr exit
+  then
+  ." [do-loop-demo] OK" cr ;
+
 \ words-demo ( -- )  dict-reset → entry-create alpha+beta → WORDS → count≥2 → OK
 \ wave11 item 3 / docs/WORDS-VOCAB.md
 : words-demo ( -- )
@@ -589,13 +650,14 @@ create (cd-run) 6 c, char s c, char q c, char u c, char a c, char r c, char e c,
 
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
-\ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop stubs)
+\ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
 \ - Group-scoped entries via ENTRY-GIDS + group-entry-find (wave4 item 2) — landed
 \ - findentry / find aliases + interpret-token stub (wave7 item 5) — landed
 \ - interpret loop deepen + : create-only (wave8 item 1) — landed
 \ - colon body/marker stub (wave9 item 4) — landed
 \ - IF/THEN/ELSE control stubs (wave10 item 2) — landed
 \ - BEGIN/UNTIL/WHILE/REPEAT loop stubs (wave11 item 1) — landed
+\ - DO/LOOP/+LOOP/I do-loop stubs (wave12 item 1) — landed
 \ - WORDS / words-demo dict-list smoke (wave11 item 3) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs

@@ -3,11 +3,11 @@
 **Status:** Shipper-ready stub spec (wave11 item **1**)
 **Canonical brief:** Dusk loop compile (thin stub); `docs/CONTROL.md` (wave10 **2**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `control.fs` / `loop.fs`); Linux host REPL
-**Companions:** `docs/CONTROL.md` (thin amend this tip), `docs/COLON.md`, `docs/INTERPRET.md`
+**Companions:** `docs/CONTROL.md` (thin amend this tip), `docs/COLON.md`, `docs/INTERPRET.md`, `docs/DO-LOOP.md` (wave12 **1**)
 
 ## 1. Purpose
 
-`IF`/`THEN`/`ELSE` stubs exist (cs balance). This tip adds **loop stubs**: `BEGIN` / `UNTIL` / `WHILE` / `REPEAT` that push/pop loop frames on the same (or sibling) control stack, print greppable markers, and smoke via **`loop-demo`**. Not real back-branch XT patching, not `DO`/`LOOP`/`+LOOP`.
+`IF`/`THEN`/`ELSE` stubs exist (cs balance). This tip adds **loop stubs**: `BEGIN` / `UNTIL` / `WHILE` / `REPEAT` that push/pop loop frames on the same (or sibling) control stack, print greppable markers, and smoke via **`loop-demo`**. Not real back-branch XT patching. Counted-loop stubs (`DO`/`LOOP`/`+LOOP`/`I`) → `docs/DO-LOOP.md` (wave12 **1`).
 
 ## 2. Words
 
@@ -29,7 +29,7 @@ Host note: bind names on Linux REPL; Forth mirrors `control-*` if collisions.
 - Unbalanced UNTIL/REPEAT/WHILE → `[loop] FAIL` reason=unbalanced.
 - No requirement to re-execute body tokens this tip — markers + depth balance are enough (optional `again=` / `cont=` from flag if present).
 - `IF`/`THEN`/`ELSE` from wave10 still work; nest stubs OK if depth returns to 0 at demo end.
-- Still no `DO`/`LOOP`/`+LOOP` (later wave).
+- Counted-loop stubs (`DO`/`LOOP`/`+LOOP`/`I`) → `docs/DO-LOOP.md` (wave12 **1`).
 
 ## 4. Markers
 
@@ -56,13 +56,13 @@ Lab greps `[loop-demo] OK` plus `BEGIN` and at least one of `UNTIL` or `REPEAT` 
 ## 6. Thin amend — `docs/CONTROL.md`
 
 - Companions: add `BEGIN-UNTIL.md`.
-- §3 / Non-goals: strike blanket “no BEGIN/UNTIL”; point to wave11 **1** for loop stubs; keep `DO`/`LOOP` out.
+- §3 / Non-goals: strike blanket “no BEGIN/UNTIL”; point to wave11 **1** for loop stubs; `DO`/`LOOP` → wave12 **1** (`docs/DO-LOOP.md`).
 - Cite: `docs/BEGIN-UNTIL.md`.
 
 ## 7. Non-goals
 
 - Real compile-time branch / XT lists / counted loops
-- `DO` / `LOOP` / `+LOOP` / `LEAVE`
+- `LEAVE` / `AGAIN` (wave12 **4**); counted `DO`/`LOOP`/`+LOOP`/`I` stubs: see `docs/DO-LOOP.md` (wave12 **1**)
 - Assistant-s0 / words-vocab / AppImage hang (wave11 **2–4**)
 - Full Win/Android Forth VM
 
@@ -78,3 +78,4 @@ Lab greps `[loop-demo] OK` plus `BEGIN` and at least one of `UNTIL` or `REPEAT` 
 - `docs/CONTROL.md`, `docs/COLON.md`, `docs/KERNEL.md`
 - `forth/tritium/kernel.fs`
 - Dusk loop words (stub only)
+- `docs/DO-LOOP.md` (wave12 **1**)

@@ -17,6 +17,7 @@ REQUIRED_DEMOS=(
   lineos-confirm-demo
   host-boot-demo
   refined-boot-demo
+  do-loop-demo
 )
 
 usage() {

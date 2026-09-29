@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# do-loop-demo — Lab smoke for DO/LOOP/+LOOP/I counted-loop stubs (wave12 item 1 / docs/DO-LOOP.md)
+# Mirrors forth/tritium/kernel.fs do-loop-demo + Linux host do_loop_demo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: do-loop-demo"
+  echo "  dict-reset → DO…I…LOOP → DO…I…+LOOP → do-loop-depth 0"
+  echo "  Markers: [do-loop] DO/I/LOOP/+LOOP → [do-loop-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[do-loop-demo] FAIL"
+  exit 1
+}
+
+DO_LOOP_DEPTH=0
+DO_LOOP_INDEX=0
+
+dict_reset() {
+  DO_LOOP_DEPTH=0
+  DO_LOOP_INDEX=0
+}
+
+do_loop_depth() {
+  echo "$DO_LOOP_DEPTH"
+}
+
+control_do() {
+  local limit=${1:-0}
+  local start=${2:-0}
+  DO_LOOP_INDEX=$start
+  DO_LOOP_DEPTH=$((DO_LOOP_DEPTH + 1))
+  echo "[do-loop] DO depth=$DO_LOOP_DEPTH index=$DO_LOOP_INDEX"
+}
+
+control_loop() {
+  if [[ "$DO_LOOP_DEPTH" -eq 0 ]]; then
+    echo "[do-loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  DO_LOOP_DEPTH=$((DO_LOOP_DEPTH - 1))
+  echo "[do-loop] LOOP depth=$DO_LOOP_DEPTH"
+}
+
+control_plus_loop() {
+  local step=${1:-1}
+  if [[ "$DO_LOOP_DEPTH" -eq 0 ]]; then
+    echo "[do-loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  DO_LOOP_DEPTH=$((DO_LOOP_DEPTH - 1))
+  echo "[do-loop] +LOOP depth=$DO_LOOP_DEPTH step=$step"
+}
+
+control_i() {
+  if [[ "$DO_LOOP_DEPTH" -eq 0 ]]; then
+    echo "[do-loop] FAIL reason=unbalanced"
+    return 1
+  fi
+  echo "[do-loop] I index=$DO_LOOP_INDEX"
+}
+
+echo "[do-loop-demo] dict-reset + DO…I…LOOP + DO…I…+LOOP"
+dict_reset
+
+control_do 10 0
+control_i
+control_loop
+[[ "$(do_loop_depth)" -eq 0 ]] || fail
+
+control_do 5 0
+control_i
+control_plus_loop 1
+[[ "$(do_loop_depth)" -eq 0 ]] || fail
+
+echo "[do-loop-demo] OK"
+exit 0

@@ -12,3 +12,4 @@ lineos-confirm-demo CONTRACT
 host-boot-demo CONTRACT
 refined-boot-demo CONTRACT
 words-demo CONTRACT
+do-loop-demo CONTRACT
