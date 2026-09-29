@@ -159,3 +159,6 @@ Deferred Forth words `platform-write-refined` / `platform-include-refined` (`doc
 
 Smoke: `rekia-demo` then confirm artifact on disk; `s3-reserved-demo` for S3=`11` leave-alone.
 
+## Host parity contracts (wave8 item 4)
+
+Greppable Win/Android parity markers live under `install/hosts/{windows,android}/parity/` — see `docs/HOST-PARITY.md`. Tip does not require Android SDK/emulator in CI.

@@ -23,7 +23,7 @@ It ships first as a cross-platform assistant (`TritiumOS.exe` / `TritiumOS.apk`)
 - `forth/` — Base TritiumForth sources (trit.fs, tritium/, drena/, rekia/)
 - `install/hosts/` — Platform installers (android, linux, windows) + templates
 - `tools/` — Build, compute, qwantum, and test scripts (PowerShell + Python)
-- `docs/` — Design, build, Qwantum, quantum providers, implementation notes; hosts↔Forth↔evolve map in `docs/ARCHITECTURE.md`; install/integrate in `docs/INSTALL.md` / `docs/INTEGRATE.md`; fleet sync stub in `docs/FLEET.md`; LINEOS brand markers in `docs/LINEOS-BRAND.md`; userland scaffold in `docs/USERLAND.md`
+- `docs/` — Design, build, Qwantum, quantum providers, implementation notes; hosts↔Forth↔evolve map in `docs/ARCHITECTURE.md`; install/integrate in `docs/INSTALL.md` / `docs/INTEGRATE.md`; fleet sync stub in `docs/FLEET.md`; LINEOS brand markers in `docs/LINEOS-BRAND.md`; userland scaffold in `docs/USERLAND.md`; host parity in `docs/HOST-PARITY.md`
 - `evolve/` — Runtime evolution state, refined Forth from qwantum dumps, assistant data
 - `refs/` — Upstream references (collapseos, duskos, grapheneos device trees + kernels)
 - `qwantum/` — Field schema + prompts for parallel-timeline refinement (Qwantum Compute)
@@ -70,3 +70,11 @@ For the full project brief and history, read [TritiumOS.txt](TritiumOS.txt).
 ## Repository Note
 
 This workspace was imported from an offline copy at `C:\Google\Setup\TritiumOS`.
+
+## Host parity Win/Android contracts (wave8 item 4)
+
+- Contract files: `install/hosts/{windows,android}/parity/HOST-PARITY.txt` (demo → OK|CONTRACT|SKIP).
+- Surfaces: `tools/host-parity-demo` + Linux host `host-parity-demo`; optional Win/Android stubs print CONTRACT markers.
+- Markers: `[host-parity] linux SoT` → `[host-parity] windows …` / `android …` → `[host-parity-demo] OK`.
+- Policy: Linux SoT demos stay green; Android CONTRACT-only OK without SDK; never fail tip solely for missing SDK.
+- Cite: `docs/HOST-PARITY.md`, `docs/BUILD.md`, `docs/INSTALL.md`, `docs/SYSTEM-DESIGN-INITIAL-PLATFORMS.md`.

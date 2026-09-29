@@ -78,6 +78,8 @@ int fleet_import(void);
 void fleet_demo(void);
 /* userland scaffold presence demo (wave8 item 3) */
 void userland_demo(void);
+/* host parity Win/Android contracts (wave8 item 4) */
+void host_parity_demo(void);
 int assimilate_epoch(void);
 int assimilate_fragment(int group, int links);
 int assimilate_merge(int frag, unsigned proof);
@@ -2904,6 +2906,169 @@ void userland_demo(void) {
     }
 }
 
+
+/* --- host parity Win/Android contracts (wave8 item 4 / docs/HOST-PARITY.md) --- */
+static const char* HOST_PARITY_REQUIRED[] = {
+    "kernel-demo",
+    "fleet-demo",
+    "master-demo",
+    "lineos-brand-demo",
+    "group-nested-demo",
+    "group-vocab-persist-demo",
+    "interpret-demo",
+    "userland-demo",
+    "lineos-confirm-demo",
+    NULL
+};
+
+static int find_repo_root_for_parity(char* out, size_t outsz) {
+    char cand[MAX_PATH];
+    char resolved[MAX_PATH];
+    char try_path[MAX_PATH];
+    struct stat st;
+    const char* env = getenv("TRITIUM_ROOT");
+    if (env && *env) {
+        snprintf(try_path, sizeof(try_path), "%s/install/hosts/windows/parity/HOST-PARITY.txt", env);
+        if (stat(try_path, &st) == 0) {
+            snprintf(out, outsz, "%s", env);
+            return 1;
+        }
+    }
+    if (core_dir[0]) {
+        snprintf(cand, sizeof(cand), "%s/../..", core_dir);
+        if (realpath(cand, resolved) != NULL) {
+            snprintf(try_path, sizeof(try_path), "%s/install/hosts/windows/parity/HOST-PARITY.txt", resolved);
+            if (stat(try_path, &st) == 0) {
+                snprintf(out, outsz, "%s", resolved);
+                return 1;
+            }
+        }
+        snprintf(cand, sizeof(cand), "%s/../../..", core_dir);
+        if (realpath(cand, resolved) != NULL) {
+            snprintf(try_path, sizeof(try_path), "%s/install/hosts/windows/parity/HOST-PARITY.txt", resolved);
+            if (stat(try_path, &st) == 0) {
+                snprintf(out, outsz, "%s", resolved);
+                return 1;
+            }
+        }
+    }
+    if (getcwd(cand, sizeof(cand)) != NULL) {
+        char walk[MAX_PATH];
+        snprintf(walk, sizeof(walk), "%s", cand);
+        for (int i = 0; i < 6; i++) {
+            snprintf(try_path, sizeof(try_path), "%s/install/hosts/windows/parity/HOST-PARITY.txt", walk);
+            if (stat(try_path, &st) == 0) {
+                snprintf(out, outsz, "%s", walk);
+                return 1;
+            }
+            char* slash = strrchr(walk, '/');
+            if (!slash || slash == walk) break;
+            *slash = '\0';
+        }
+    }
+    out[0] = 0;
+    return 0;
+}
+
+/* Returns 1 on OK; prints [host-parity] <host> <status|FAIL>. Aggregate: SKIP > CONTRACT > OK. */
+static int host_parity_check_file(const char* host, const char* path) {
+    FILE* f;
+    char line[256];
+    char names[16][64];
+    char statuses[16][16];
+    int n = 0;
+    int i, j;
+    int has_skip = 0, has_contract = 0, has_ok = 0;
+    const char* agg;
+
+    f = fopen(path, "r");
+    if (!f) {
+        printf("[host-parity] %s FAIL\n", host);
+        return 0;
+    }
+    while (fgets(line, sizeof(line), f) && n < 16) {
+        char* p = line;
+        char* hash;
+        char name[64];
+        char status[16];
+        while (*p == ' ' || *p == '\t') p++;
+        hash = strchr(p, '#');
+        if (hash) *hash = '\0';
+        {
+            size_t len = strlen(p);
+            while (len > 0 && (p[len - 1] == '\n' || p[len - 1] == '\r' ||
+                               p[len - 1] == ' ' || p[len - 1] == '\t')) {
+                p[--len] = '\0';
+            }
+        }
+        if (!*p) continue;
+        if (sscanf(p, "%63s %15s", name, status) != 2) {
+            fclose(f);
+            printf("[host-parity] %s FAIL\n", host);
+            return 0;
+        }
+        for (char* s = status; *s; s++) {
+            if (*s >= 'a' && *s <= 'z') *s = (char)(*s - 'a' + 'A');
+        }
+        if (strcmp(status, "OK") != 0 && strcmp(status, "CONTRACT") != 0 &&
+            strcmp(status, "SKIP") != 0) {
+            fclose(f);
+            printf("[host-parity] %s FAIL\n", host);
+            return 0;
+        }
+        snprintf(names[n], sizeof(names[n]), "%s", name);
+        snprintf(statuses[n], sizeof(statuses[n]), "%s", status);
+        n++;
+    }
+    fclose(f);
+
+    for (i = 0; HOST_PARITY_REQUIRED[i]; i++) {
+        int found = 0;
+        for (j = 0; j < n; j++) {
+            if (strcmp(names[j], HOST_PARITY_REQUIRED[i]) == 0) {
+                found = 1;
+                if (strcmp(statuses[j], "SKIP") == 0) has_skip = 1;
+                else if (strcmp(statuses[j], "CONTRACT") == 0) has_contract = 1;
+                else if (strcmp(statuses[j], "OK") == 0) has_ok = 1;
+                break;
+            }
+        }
+        if (!found) {
+            printf("[host-parity] %s FAIL\n", host);
+            return 0;
+        }
+    }
+    (void)has_ok;
+    if (has_skip) agg = "SKIP";
+    else if (has_contract) agg = "CONTRACT";
+    else agg = "OK";
+    printf("[host-parity] %s %s\n", host, agg);
+    return 1;
+}
+
+void host_parity_demo(void) {
+    char root[MAX_PATH];
+    char win_path[MAX_PATH];
+    char and_path[MAX_PATH];
+    int ok_win, ok_and;
+    printf("[host-parity] linux SoT\n");
+    if (!find_repo_root_for_parity(root, sizeof(root))) {
+        printf("[host-parity] windows FAIL\n");
+        printf("[host-parity] android FAIL\n");
+        printf("[host-parity-demo] FAIL\n\n");
+        return;
+    }
+    snprintf(win_path, sizeof(win_path), "%s/install/hosts/windows/parity/HOST-PARITY.txt", root);
+    snprintf(and_path, sizeof(and_path), "%s/install/hosts/android/parity/HOST-PARITY.txt", root);
+    ok_win = host_parity_check_file("windows", win_path);
+    ok_and = host_parity_check_file("android", and_path);
+    if (ok_win && ok_and) {
+        printf("[host-parity-demo] OK\n\n");
+    } else {
+        printf("[host-parity-demo] FAIL\n\n");
+    }
+}
+
 void bootstrap_demo() {
     printf("Running bootstrap-host demo (full-stack host OS optimization from refined intelligence)...\n");
     bootstrap_host_optimization();
@@ -3274,7 +3439,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  : <name> - create-only stub (entry into dict; no body)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  interpret-demo - interpret loop + : create-only stub\n  : <name> - create-only stub (entry into dict; no body)\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-confirm - set userConfirmed; marker [LINEOS] confirm set\n  lineos-confirm-demo - refuse without confirm → confirm → graduate OK\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n  userland-demo - assert userland/{init,shell,demos}/ scaffold → greppable OK\n  host-parity-demo - Win/Android HOST-PARITY.txt contracts → greppable OK\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -3461,6 +3626,8 @@ int main(int argc, char** argv) {
             fleet_import();
         } else if (strcasecmp(line, "userland-demo") == 0) {
             userland_demo();
+        } else if (strcasecmp(line, "host-parity-demo") == 0) {
+            host_parity_demo();
         } else if (strcasecmp(line, "qwantum-atoms-load") == 0) {
             qwantum_atoms_load();
         } else if (strcasecmp(line, "qwantum-atoms-demo") == 0) {

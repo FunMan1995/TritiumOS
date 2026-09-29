@@ -59,6 +59,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Interpret loop deepen landed (wave8 item 1):** `interpret` + `:` create-only + `[interpret-demo] OK`; see `docs/INTERPRET.md`.
    - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo`; refuse without confirm; see `docs/LINEOS-CONFIRM.md`.
    - **Userland scaffold landed (wave8 item 3):** `userland/` tree + `docs/USERLAND.md` + `userland-demo`; see `docs/USERLAND.md`.
+   - **Host parity contracts landed (wave8 item 4):** Win/Android `parity/HOST-PARITY.txt` + `docs/HOST-PARITY.md` + `host-parity-demo`; see `docs/HOST-PARITY.md`.
    - Graph persist exists (`evolve/user-graph.trit`); local fleet export/import stub landed (wave7 **2**); networked sync still later.
    - Needed later: real splash/about branding pack (assets); real GUI irreversible confirm modal; fleet session counts / network sync.
 
@@ -73,6 +74,7 @@ These prevent any real "TritiumOS" behavior per the product definition.
    - **Interpret loop deepen landed (wave8 item 1):** `interpret` token stream + `:` create-only stub + `interpret-demo`; see `docs/INTERPRET.md`. Full colon compiler / control flow / linked dict still later.
    - **LINEOS confirm UX stub landed (wave8 item 2):** `lineos-confirm` / `lineos-confirm-demo` + `docs/LINEOS-CONFIRM.md`. Stub only — no GUI modal.
    - **Userland scaffold landed (wave8 item 3):** `docs/USERLAND.md` + `userland/` + `tools/userland-demo` / host; `[userland-demo] OK`. Not a full shell / `/boot`.
+   - **Host parity contracts landed (wave8 item 4):** `docs/HOST-PARITY.md` + Win/Android `parity/HOST-PARITY.txt` + `tools/host-parity-demo` / host; `[host-parity-demo] OK`. CONTRACT-only OK without SDK — not a full C#/Kotlin port.
    - Needed later: networked cross-host evolve sync; production packaging for new OS adapters; real master-root / escrow.
 
 ## Priority 1 — Required for "Personal Assistant S0" + Ship Milestone (Phase 1 + 5)

@@ -92,3 +92,7 @@ Bundle: `tritium.poly` + `manifest.json` (`product_id: tritium` until graduation
 - `TritiumOS.txt` §§5a.1–5a.2, Phase 8, §11
 - `docs/BUILD.md`, `docs/LICENSE.md`, `docs/ASSISTANT.md`, `docs/INTEGRATE.md`, `docs/ARCHITECTURE.md`
 - `install/hosts/_template/README.txt`
+
+## Host parity (wave8 item 4)
+
+Win/Android demo contract markers: see `docs/HOST-PARITY.md` (`install/hosts/{windows,android}/parity/HOST-PARITY.txt`). Linux SoT demos remain the Lab gate; Android CONTRACT-only is OK without SDK.

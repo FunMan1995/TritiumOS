@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# host-parity-demo — verify Win/Android parity contracts (wave8 item 4 / docs/HOST-PARITY.md)
+# Linux SoT: print SoT note + verify both HOST-PARITY.txt files → greppable OK.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+REQUIRED_DEMOS=(
+  kernel-demo
+  fleet-demo
+  master-demo
+  lineos-brand-demo
+  group-nested-demo
+  group-vocab-persist-demo
+  interpret-demo
+  userland-demo
+  lineos-confirm-demo
+)
+
+usage() {
+  echo "Usage: host-parity-demo"
+  echo "  Verify install/hosts/{windows,android}/parity/HOST-PARITY.txt"
+  echo "  Print [host-parity] linux SoT + windows/android status → [host-parity-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+echo "[host-parity] linux SoT"
+
+WIN_FILE="$ROOT/install/hosts/windows/parity/HOST-PARITY.txt"
+AND_FILE="$ROOT/install/hosts/android/parity/HOST-PARITY.txt"
+
+fail=0
+
+# Parse HOST-PARITY.txt → set associative status for known demos; echo aggregate.
+# Aggregate: SKIP if any SKIP; else CONTRACT if any CONTRACT; else OK if all OK; else FAIL.
+parse_parity() {
+  local host="$1"
+  local file="$2"
+  local -A st=()
+  local line name status agg missing
+
+  if [[ ! -f "$file" ]]; then
+    echo "[host-parity] $host FAIL" >&2
+    echo "[host-parity] missing: $file" >&2
+    return 1
+  fi
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # strip comments / trim
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" ]] && continue
+    name="${line%%[[:space:]]*}"
+    status="${line#"$name"}"
+    status="${status#"${status%%[![:space:]]*}"}"
+    status="${status%"${status##*[![:space:]]}"}"
+    status="$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')"
+    case "$status" in
+      OK|CONTRACT|SKIP) st["$name"]="$status" ;;
+      *) echo "[host-parity] $host bad status for $name: $status" >&2; return 1 ;;
+    esac
+  done < "$file"
+
+  missing=0
+  for d in "${REQUIRED_DEMOS[@]}"; do
+    if [[ -z "${st[$d]:-}" ]]; then
+      echo "[host-parity] $host missing demo line: $d" >&2
+      missing=1
+    fi
+  done
+  if [[ "$missing" -ne 0 ]]; then
+    echo "[host-parity] $host FAIL"
+    return 1
+  fi
+
+  agg="OK"
+  for d in "${REQUIRED_DEMOS[@]}"; do
+    case "${st[$d]}" in
+      SKIP) agg="SKIP" ;;
+      CONTRACT)
+        [[ "$agg" != "SKIP" ]] && agg="CONTRACT"
+        ;;
+      OK) ;;
+    esac
+  done
+
+  echo "[host-parity] $host $agg"
+  return 0
+}
+
+if ! parse_parity windows "$WIN_FILE"; then
+  fail=1
+fi
+if ! parse_parity android "$AND_FILE"; then
+  fail=1
+fi
+
+if [[ "$fail" -eq 0 ]]; then
+  echo "[host-parity-demo] OK"
+  exit 0
+fi
+echo "[host-parity-demo] FAIL"
+exit 1

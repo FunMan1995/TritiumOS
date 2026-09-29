@@ -1,0 +1,11 @@
+# Host parity contract — Windows (docs/HOST-PARITY.md)
+# Schema: demo-name OK|CONTRACT|SKIP  (one demo per line; # comments ok)
+kernel-demo CONTRACT
+fleet-demo CONTRACT
+master-demo CONTRACT
+lineos-brand-demo CONTRACT
+group-nested-demo CONTRACT
+group-vocab-persist-demo CONTRACT
+interpret-demo CONTRACT
+userland-demo CONTRACT
+lineos-confirm-demo CONTRACT

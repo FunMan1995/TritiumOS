@@ -250,3 +250,7 @@ This completes the polyglot vision: .exe (Win11), .apk (komodo), .AppImage (Linu
 
 Slogan: *The line tread between madness and genius.*
 TritiumOS by Draco.
+
+## Host parity contracts (wave8 item 4)
+
+Priority-1 hosts (Win11 / Android komodo) report demo status via contract files — see `docs/HOST-PARITY.md`. Linux remains Lab source of truth; full Forth→C#/Kotlin port is a non-goal for this tip.

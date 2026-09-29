@@ -243,6 +243,15 @@ tools/tritium-license status          # expect 10/10
 - Tree: `userland/{init,shell,demos}/` + READMEs + `init.txt` / `shell.txt` / `userland-demo.txt`; optional `userland/integrate.md` → `docs/INTEGRATE.md`.
 - Surfaces: `tools/userland-demo` + Linux host `userland-demo` (assert dirs + key files relative to repo root / AppDir).
 - Markers: `[userland] init/ OK` / `shell/ OK` / `demos/ OK` → `[userland-demo] OK`.
-- Non-goals: real interactive shell, `/boot`, relocating demos, host parity (wave8 **4**).
+- Non-goals: real interactive shell, `/boot`, relocating demos, host parity (wave8 **4** — separate tip).
 - Cite: `docs/USERLAND.md`, `docs/ARCHITECTURE.md`, `TritiumOS.txt` §7.
+
+## Host parity Win/Android contracts (wave8 item 4)
+
+- Contract files: `install/hosts/windows/parity/HOST-PARITY.txt` + `install/hosts/android/parity/HOST-PARITY.txt` (demo → OK|CONTRACT|SKIP).
+- Surfaces: `tools/host-parity-demo` + Linux host `host-parity-demo`; optional Win/Android stubs print CONTRACT markers.
+- Markers: `[host-parity] linux SoT` → `[host-parity] windows …` / `android …` → `[host-parity-demo] OK`.
+- Policy: Linux SoT demos stay green; Android CONTRACT-only OK without SDK; never fail tip solely for missing SDK.
+- Non-goals: porting all Forth demos to C#/Kotlin; requiring emulator/SDK in CI; changing Linux SoT.
+- Cite: `docs/HOST-PARITY.md`, `docs/BUILD.md`, `docs/INSTALL.md`, `docs/SYSTEM-DESIGN-INITIAL-PLATFORMS.md`.
 
