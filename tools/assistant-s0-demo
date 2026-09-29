@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# assistant-s0-demo — Lab smoke for S0 deepen + neurons= (wave11 tip2 / docs/ASSISTANT-S0.md)
+# Prefers Linux host binary (s0 path is host SoT). Falls back to documenting host command.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: assistant-s0-demo"
+  echo "  Fixed query hello tritium through S0 → refined live + neurons=≥1; no scaffold"
+  echo "  Markers: [S0] assist done … neurons=<n> → [assistant-s0-demo] OK"
+  echo "Root: $ROOT"
+  echo "Lab may also pipe: printf 'assistant-s0-demo\\nquit\\n' | <host-tritiumos>"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[assistant-s0-demo] FAIL${1:+ — $1}"
+  exit 1
+}
+
+resolve_host() {
+  local candidates=(
+    "$ROOT/dist/TritiumOS.AppDir/usr/bin/tritiumos"
+    "$ROOT/dist/tritiumos"
+    "$ROOT/install/hosts/linux/tritiumos"
+  )
+  local c
+  for c in "${candidates[@]}"; do
+    if [[ -x "$c" ]]; then
+      echo "$c"
+      return 0
+    fi
+  done
+  return 1
+}
+
+HOST="$(resolve_host || true)"
+if [[ -z "${HOST}" ]]; then
+  echo "[assistant-s0-demo] no host binary; build with: bash tools/build-linux.sh"
+  echo "[assistant-s0-demo] Lab should run host command: assistant-s0-demo"
+  fail "host binary missing"
+fi
+
+# Isolate evolve so smoke does not clobber user state
+SMOKE_HOME="$(mktemp -d "${TMPDIR:-/tmp}/tritium-assistant-s0-XXXXXX")"
+cleanup() { rm -rf "$SMOKE_HOME"; }
+trap cleanup EXIT
+export HOME="$SMOKE_HOME"
+
+OUT="$(printf 'assistant-s0-demo\nquit\n' | "$HOST" 2>&1 || true)"
+printf '%s\n' "$OUT"
+
+echo "$OUT" | grep -q '\[S0\] assist done — refined word live neurons=[0-9][0-9]*' || fail "missing neurons= on done-line"
+echo "$OUT" | grep -Eq 'neurons=[1-9][0-9]*' || fail "neurons= must be integer ≥1"
+echo "$OUT" | grep -qi 'scaffold reply' && fail "forbidden: scaffold reply"
+echo "$OUT" | grep -qi 'connect R.E.K.I.A. next' && fail "forbidden: connect R.E.K.I.A. next"
+echo "$OUT" | grep -q 'Example response' && fail "forbidden: Example response"
+echo "$OUT" | grep -q '\[assistant-s0-demo\] OK' || fail "missing OK marker"
+
+exit 0

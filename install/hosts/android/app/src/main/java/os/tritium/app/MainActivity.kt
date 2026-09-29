@@ -171,6 +171,7 @@ class MainActivity : AppCompatActivity() {
             }
             "host-hw-info" -> append(vm?.evaluate("host-hw-info") ?: "")
             "s0-assist-demo" -> append(vm?.s0AssistDemo() ?: "VM not ready\n")
+            "assistant-s0-demo" -> append(vm?.assistantS0Demo() ?: "VM not ready\n")
             "load-refined" -> loadRefinedModules()
             else -> {
                 // Free-text → real S0 assist (Linux s0_assist). No parity-print-only stub.

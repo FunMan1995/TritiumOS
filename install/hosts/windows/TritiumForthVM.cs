@@ -428,6 +428,7 @@ public sealed class TritiumForthVM
         });
         Def("groups-demo", () => RunGroupsDemo());
         Def("s0-assist-demo", () => S0AssistDemo());
+        Def("assistant-s0-demo", () => AssistantS0Demo());
 
         Def("qwantum-atoms-load", () =>
         {
@@ -767,7 +768,10 @@ public sealed class TritiumForthVM
 
         _refinedLive = true;
         _lastRefinedLabel = label;
-        EmitLine("[S0] assist done — refined word live");
+        int neurons = (_hostNextId > 1) ? (_hostNextId - 1) : 1;
+        if (neurons < 1) neurons = 1;
+        EmitLine($"[S0] assist done — refined word live neurons={neurons}");
+        EmitLine($"[assistant-s0] neurons={neurons}");
         EmitLine();
         return _output.ToString();
     }
@@ -782,10 +786,35 @@ public sealed class TritiumForthVM
             ? ""
             : Path.Combine(_evolveDir, "forth", "refined", "refined-1.fs");
         bool ok = !string.IsNullOrEmpty(path) && File.Exists(path) && _refinedLive && !string.IsNullOrEmpty(_lastRefinedLabel);
-        if (ok)
+        string outText = _output.ToString();
+        if (ok && !outText.Contains("scaffold reply") && !outText.Contains("connect R.E.K.I.A. next") && !outText.Contains("Example response"))
             EmitLine("[s0-assist-demo] OK — refined written; word live");
         else
             EmitLine("[s0-assist-demo] FAIL — expected refined-1.fs + live flag");
+        EmitLine();
+        return _output.ToString();
+    }
+
+    /// <summary>Wave11 tip2: S0 deepen + neurons= ≥1 (Linux assistant_s0_demo).</summary>
+    public string AssistantS0Demo()
+    {
+        _output.Clear();
+        EmitLine("[assistant-s0-demo] feed fixed query through S0 path");
+        S0AssistCore("hello tritium", clearOutput: false);
+        string path = string.IsNullOrEmpty(_evolveDir)
+            ? ""
+            : Path.Combine(_evolveDir, "forth", "refined", "refined-1.fs");
+        int neurons = (_hostNextId > 1) ? (_hostNextId - 1) : 0;
+        string outText = _output.ToString();
+        bool ok = !string.IsNullOrEmpty(path) && File.Exists(path) && _refinedLive
+            && !string.IsNullOrEmpty(_lastRefinedLabel) && neurons >= 1
+            && !outText.Contains("scaffold reply")
+            && !outText.Contains("connect R.E.K.I.A. next")
+            && !outText.Contains("Example response");
+        if (ok)
+            EmitLine("[assistant-s0-demo] OK");
+        else
+            EmitLine("[assistant-s0-demo] FAIL");
         EmitLine();
         return _output.ToString();
     }

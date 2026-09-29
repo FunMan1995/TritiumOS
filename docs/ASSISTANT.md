@@ -1,9 +1,9 @@
 # ASSISTANT — On-demand S0 path
 
-**Status:** Shipper-ready spec (wave4 **1**+**3**; thin amend wave9 **3** assistant-state)  
-**Canonical brief:** `TritiumOS.txt` §§1, 5a (bootstrap), evolution ladder  
-**Sources of truth (code):** Linux `s0_assist` / `s0_assist_demo` in `install/hosts/linux/tritiumos.c`; Win `TritiumForthVM.S0Assist` / Android `s0Assist`; Forth pipeline `drena-step` + `rekiA-refine`  
-**Companions:** `docs/REKIA.md`, `docs/DRENA.md`, `docs/GROUPS.md`, `docs/ASSUMPTIONS.md`, `docs/ASSISTANT-STATE.md` (wave9 **3**)
+**Status:** Shipper-ready spec (wave4 **1**+**3**; thin amend wave9 **3** assistant-state; wave11 **2** S0 deepen)
+**Canonical brief:** `TritiumOS.txt` §§1, 5a (bootstrap), evolution ladder
+**Sources of truth (code):** Linux `s0_assist` / `s0_assist_demo` in `install/hosts/linux/tritiumos.c`; Win `TritiumForthVM.S0Assist` / Android `s0Assist`; Forth pipeline `drena-step` + `rekiA-refine`
+**Companions:** `docs/REKIA.md`, `docs/DRENA.md`, `docs/GROUPS.md`, `docs/ASSUMPTIONS.md`, `docs/ASSISTANT-STATE.md` (wave9 **3**), `docs/ASSISTANT-S0.md` (wave11 **2**)
 
 ## 1. Purpose
 
@@ -42,7 +42,7 @@ free-text query
   → wrote+include evolve/forth/refined/refined-<id>.fs
   → live vocab word
   → assistant-state! + graph-save
-  → [S0] assist done — refined word live
+  → [S0] assist done — refined word live neurons=<n>   \ wave11 **2**
 ```
 
 Query bytes may fold into the contracted trit signature / emitted constant (Linux host stand-in); semantics stay pure-math / deterministic given the same query + graph seed policy.
@@ -52,6 +52,7 @@ Query bytes may fold into the contracted trit signature / emitted constant (Linu
 | Demo | Expect |
 |------|--------|
 | `s0-assist-demo` | Fixed query `hello tritium` → `[S0] assist` → wrote+include `refined-1.fs` → word live; no scaffold |
+| `assistant-s0-demo` | Wave11 **2**: same path + greppable `neurons=<n>`; forbid scaffold strings — see `ASSISTANT-S0.md` |
 | Free-text REPL | Same markers as demo for one-input → refined live word |
 
 Gate platforms: **Linux** (AppImage SoT) + **Windows** / **Android** host twins (wave4 **3**).
@@ -66,6 +67,7 @@ Non-exhaustive; keep demos green every tip:
 |---------|------|
 | free-text | S0 assist path (§3) |
 | `s0-assist-demo` | Fixed free-text smoke |
+| `assistant-s0-demo` | S0 deepen + neuron-count (`ASSISTANT-S0.md`) |
 | `assistant-state-demo` | Persist v2 hooks (wave9 **3**; see `ASSISTANT-STATE.md`) |
 | `rekia-demo` / `rekiA-demo` | Engine refine without chat wrapper |
 | `groups-demo` / `groups-persist-demo` / `groups-status` / `group-vocab-demo` | Labeled groups + searchable vocab unit |
@@ -96,7 +98,7 @@ Boot loads assistant-state + user-graph + refined includes so live words and gro
 ## 7. Acceptance (Test Lab — docs tip)
 
 1. `docs/ASSISTANT.md` present; one-line cite from `docs/REKIA.md` (S0) and/or README OK.
-2. Linux suite green: `s0-assist-demo`, `assistant-state-demo` (wave9 **3**), `rekia-demo`, `s3-reserved-demo`, `groups-demo` / persist, `grow-step-demo`, `qwantum-atoms-demo`, `edition-demo`.
+2. Linux suite green: `assistant-s0-demo` (wave11 **2**), `s0-assist-demo`, `assistant-state-demo` (wave9 **3**), `rekia-demo`, `s3-reserved-demo`, `groups-demo` / persist, `grow-step-demo`, `qwantum-atoms-demo`, `edition-demo`.
 3. Win and/or Android: free-text → real S0 (no parity-print stub); `s0-assist-demo` OK line greppable; prefer headless Win smoke when SDK absent.
 
 ## 8. Cite

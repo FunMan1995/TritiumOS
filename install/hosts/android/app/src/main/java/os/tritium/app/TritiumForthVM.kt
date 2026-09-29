@@ -206,7 +206,10 @@ class TritiumForthVM(private val context: Context) {
 
         refinedLive = true
         lastRefinedLabel = label
-        emitLine("[S0] assist done — refined word live")
+        var neurons = if (hostNextId > 1) hostNextId - 1 else 1
+        if (neurons < 1) neurons = 1
+        emitLine("[S0] assist done — refined word live neurons=$neurons")
+        emitLine("[assistant-s0] neurons=$neurons")
         emitLine()
         return output.toString()
     }
@@ -217,9 +220,32 @@ class TritiumForthVM(private val context: Context) {
         emitLine("[s0-assist-demo] feed fixed query through S0 path")
         s0AssistCore("hello tritium", clearOutput = false)
         val path = File(getEvolveDir(), "forth/refined/refined-1.fs")
+        val outText = output.toString()
         val ok = path.exists() && refinedLive && lastRefinedLabel.isNotEmpty()
+            && !outText.contains("scaffold reply")
+            && !outText.contains("connect R.E.K.I.A. next")
+            && !outText.contains("Example response")
         if (ok) emitLine("[s0-assist-demo] OK — refined written; word live")
         else emitLine("[s0-assist-demo] FAIL — expected refined-1.fs + live flag")
+        emitLine()
+        return output.toString()
+    }
+
+    /** Wave11 tip2: S0 deepen + neurons= ≥1 (Linux assistant_s0_demo). */
+    fun assistantS0Demo(): String {
+        output.clear()
+        emitLine("[assistant-s0-demo] feed fixed query through S0 path")
+        s0AssistCore("hello tritium", clearOutput = false)
+        val path = File(getEvolveDir(), "forth/refined/refined-1.fs")
+        val neurons = if (hostNextId > 1) hostNextId - 1 else 0
+        val outText = output.toString()
+        val ok = path.exists() && refinedLive && lastRefinedLabel.isNotEmpty()
+            && neurons >= 1
+            && !outText.contains("scaffold reply")
+            && !outText.contains("connect R.E.K.I.A. next")
+            && !outText.contains("Example response")
+        if (ok) emitLine("[assistant-s0-demo] OK")
+        else emitLine("[assistant-s0-demo] FAIL")
         emitLine()
         return output.toString()
     }
@@ -291,6 +317,7 @@ class TritiumForthVM(private val context: Context) {
             lower == "load-core" -> loadCore()
             lower == "load-refined" -> { /* handled in activity */ }
             lower == "s0-assist-demo" -> { s0AssistDemo() }
+            lower == "assistant-s0-demo" -> { assistantS0Demo() }
             else -> {
                 // Host REPL free-text is wired in MainActivity to s0Assist.
                 // Direct evaluate of demo words / Forth still goes to interpret.
@@ -543,6 +570,7 @@ class TritiumForthVM(private val context: Context) {
         def("grow-step-demo") { runGrowStepDemo() }
         def("groups-demo") { runGroupsDemo() }
         def("s0-assist-demo") { s0AssistDemo() }
+        def("assistant-s0-demo") { assistantS0Demo() }
         def("qwantum-atoms-load") { runQwantumAtomsLoad() }
         def("qwantum-atoms-demo") { runQwantumAtomsDemo() }
 

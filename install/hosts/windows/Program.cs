@@ -202,6 +202,10 @@ sealed class MainForm : Form
                 if (_vm != null) _vm.S0AssistDemo();
                 else Append("VM not ready" + Environment.NewLine);
                 break;
+            case "assistant-s0-demo":
+                if (_vm != null) _vm.AssistantS0Demo();
+                else Append("VM not ready" + Environment.NewLine);
+                break;
             case "load-refined":
                 LoadRefinedModules();
                 break;
