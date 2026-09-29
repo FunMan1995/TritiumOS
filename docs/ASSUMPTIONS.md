@@ -31,6 +31,9 @@ group-nested-demo
 group-vocab-persist-demo
 \ expect: [group-vocab-persist-demo] OK — vocab restored from graph
 
+kernel-demo
+\ expect: [kernel-demo] OK ; greppable [kernel] find miss + find hit
+
 queue-demo
 \ expect: [queue-demo] OK — local cue (evolve/queue/; no fleet crypto)
 
@@ -200,4 +203,12 @@ tools/tritium-license status          # expect 10/10
 - Same-key gate: stamp `keyFingerprint` from current license context; refuse import on mismatch → `[fleet] refuse — key mismatch (§5a.4)`.
 - Non-goals: network, encryption, auto-sync, CRDT, LINEOS branding.
 - Cite: `docs/FLEET.md`, `docs/LICENSE.md`, `docs/MASTER.md`, `TritiumOS.txt` §§5a.2–5a.4 / Phase 8.
+
+## Kernel find/interpret stub (wave7 item 5)
+
+- `findentry` / `find` aliases of `entry-find`; `interpret-token` lookup-only stub; `kernel-demo` → `[kernel-demo] OK`.
+- SoT: Linux host C (shares ENTRY-GIDS / host entry table with groups); Forth `forth/tritium/kernel.fs` (+ poly / Android mirrors).
+- Caps: `MAX-ENTRIES` ≥ 32; cold-boot / soft abort unchanged.
+- Non-goals: full interpret `:`, linked dict, forget/units, host VM replace.
+- Cite: `docs/KERNEL.md`, `docs/GROUPS-NESTED.md`, `docs/ARCHITECTURE.md`, `docs/ASSUMPTIONS.md`.
 

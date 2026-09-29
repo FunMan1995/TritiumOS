@@ -46,6 +46,7 @@ void group_vocab_demo(void);
 void group_link_demo(void);
 void group_nested_demo(void);
 void group_vocab_persist_demo(void);
+void kernel_demo(void);
 void license_status(void);
 void license_register(const char* device_id);
 void queue_demo(void);
@@ -247,6 +248,51 @@ static void host_group_vocab_add(const char* name, int gid) {
         printf("[DRENA] group-vocab-add failed\n");
     else
         printf("[DRENA] group-vocab-add #%d under gid=%d\n", i, gid);
+}
+
+/* Flat dict find/create (mirrors Forth entry-find / entry-create-from; shares ENTRY-GIDS table) */
+static int host_entry_find(const char* name) {
+    for (int i = 0; i < host_entry_count; i++) {
+        if (strcmp(host_entry_names[i], name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+static int host_entry_create(const char* name) {
+    int ex = host_entry_find(name);
+    if (ex >= 0) {
+        printf("[kernel] entry exists #%d\n", ex);
+        return ex;
+    }
+    if (host_entry_count >= HOST_MAX_GENTRIES) {
+        printf("[kernel] dict full\n");
+        return -1;
+    }
+    int i = host_entry_count++;
+    strncpy(host_entry_names[i], name, HOST_NAMELEN - 1);
+    host_entry_names[i][HOST_NAMELEN - 1] = 0;
+    host_entry_gids[i] = -1; /* global / flat */
+    printf("[kernel] created #%d\n", i);
+    return i;
+}
+
+/* interpret-token stub: lookup-only; hit → true + marker; miss → false + soft miss */
+static int host_interpret_token(const char* name) {
+    int i = host_entry_find(name);
+    if (i < 0) {
+        printf("[kernel] find miss\n");
+        return 0;
+    }
+    printf("[kernel] find hit #%d name=%s\n", i, name);
+    return 1;
+}
+
+static void host_words(void) {
+    printf("[kernel] words (%d): ", host_entry_count);
+    for (int i = 0; i < host_entry_count; i++)
+        printf("%s ", host_entry_names[i]);
+    printf("\n");
 }
 
 static void host_groups_reset(void) {
@@ -1247,6 +1293,34 @@ void group_vocab_persist_demo(void) {
     printf("[group-vocab-persist-demo] OK — vocab restored from graph\n\n");
 }
 
+void kernel_demo(void) {
+    /* wave7 item 5: flat find/findentry aliases + interpret-token stub */
+    printf("[kernel-demo] dict-reset + two names + find/interpret stub\n");
+    host_dict_reset();
+    if (host_entry_create("alpha") < 0 || host_entry_create("beta") < 0) {
+        printf("[kernel-demo] FAIL\n\n");
+        return;
+    }
+    int ia = host_entry_find("alpha");
+    int ib = host_entry_find("beta");
+    if (ia < 0 || ib < 0) {
+        printf("[kernel-demo] FAIL\n\n");
+        return;
+    }
+    printf("[kernel] find hit #%d name=alpha\n", ia);
+    printf("[kernel] find hit #%d name=beta\n", ib);
+    if (host_entry_find("nosuch") >= 0) {
+        printf("[kernel-demo] FAIL\n\n");
+        return;
+    }
+    printf("[kernel] find miss\n");
+    host_words();
+    if (!host_interpret_token("alpha")) {
+        printf("[kernel-demo] FAIL\n\n");
+        return;
+    }
+    printf("[kernel-demo] OK\n\n");
+}
 
 /* --- License slot stub (TritiumOS.txt §5a.4): max 10; refuse slot 11 --- */
 #define LICENSE_MAX_SLOTS 10
@@ -2906,7 +2980,7 @@ void show_help() {
     printf("  help          - this help\n");
     printf("  status        - show state\n");
     printf("  drena-demo    - run DRENA engine (hardware refinement)\n");
-    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
+    printf("  rekiA-demo    - run REKIA engine (refine to Forth + assistance)\n  rekia-demo    - alias: spawn→rewire→φ-link→refine→write evolve/forth/refined/*.fs\n  s3-reserved-demo - spawn S3=11 then rewire; mode must stay 3\n  grow-step-demo - spawn0→grow→step; RESERVED grow+step skipped\n  groups-demo   - create group, join 2 neurons, persist members + GROUP-<label>/\n  groups-status - show restored host groups + GROUP-<label>/ + members\n  groups-persist-demo - groups-demo then reload graph (restart surrogate)\n  group-vocab-demo - GROUP-<label>/ searchable vocab unit; scoped find\n  group-link-demo - two groups + group-link! LINK-INTER bridge\n  group-nested-demo - nested find via LINK-INTER neighbors\n  group-vocab-persist-demo - vocab lines survive graph reload\n  kernel-demo - flat find/findentry + interpret-token stub\n  s0-assist-demo - fixed free-text → S0 (drena-step + rekiA-refine)\n  edition-demo - show edition/id-width + spawn (clamped)\n  edition 32|64 - set-edition + persist evolve/edition.trit\n  license-status - show N/10 device slots (§5a.4)\n  license-register <id> - register device; refuses slot 11\n  queue-demo   - §5b.1 local cue: enqueue non-local → pull → prove\n  queue-local? <job> / queue-enqueue! <job> / queue-pull / queue-prove! <job> <proof>\n  assimilate-demo - §5b.2–5b.3 fragment → merge → simti credit (no crypto)\n  assimilate-epoch / assimilate-fragment <g> <l> / assimilate-merge! <frag> <proof>\n  assimilate-balance / assimilate-solved?\n  lineos-graduate-demo - §1a.1 force-ready → scaffold product_id=lineos\n  lineos-graduate / become-lineos — graduation gates + scaffold flip\n  lineos-splash / lineos-about - brand markers (refuse splash if not graduated)\n  lineos-brand-demo - force brand markers → assert slogan/name/edition → OK\n  tritium-integrate <platform> - §5a.2 scaffold from _template → evolve/integrate/\n  tritium-integrate-demo - force free-slot → platform=demo; greppable OK\n  master-mint-license [slots] - §5a.5 TRIT-<16hex>-DRACO (default 10)\n  master-mint-worker <device-id> - §5a.5 TRIT-W-<idhash>-DRACO; refuse empty\n  master-verify <key> - format-only check (not crypto)\n  master-demo - mint license→worker→verify both → greppable OK\n  fleet-export [deviceId] - §§5a.2–5a.4 write evolve/fleet/ blob (same-key stamp)\n  fleet-import - same-key restore; refuse mismatch (§5a.4)\n  fleet-demo - export→import OK; wrong fingerprint refuse → greppable OK\n");
     printf("  qwantum-atoms-load - dump text → K influence for extract only (no vocab)\n");
     printf("  qwantum-atoms-demo - seed sample01test → load → refine; dump not vocab\n");
     printf("  assimilate    - assimilate host software (Forth via C bridge for all SW on this HW)\n");
@@ -2995,6 +3069,8 @@ int main(int argc, char** argv) {
             group_nested_demo();
         } else if (strcasecmp(line, "group-vocab-persist-demo") == 0) {
             group_vocab_persist_demo();
+        } else if (strcasecmp(line, "kernel-demo") == 0) {
+            kernel_demo();
         } else if (strcasecmp(line, "license-status") == 0) {
             license_status();
         } else if (strncasecmp(line, "license-register ", 17) == 0) {

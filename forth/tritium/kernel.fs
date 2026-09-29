@@ -100,25 +100,33 @@ variable ENTRY-COUNT  0 ENTRY-COUNT !
   loop
   2drop -1 ;
 
+\ Dusk-aligned aliases (wave7 item 5) — same stack as entry-find
+: findentry ( c-addr u -- i ) entry-find ;
+: find ( c-addr u -- i ) entry-find ;
+
+\ entry-create-from ( c-addr u -- i )
+\ Stack form of entry-create (for demos / host bridges). Returns index or -1.
+: entry-create-from ( c-addr u -- i )
+  2dup entry-find dup 0< 0= if
+    nip nip
+    ." [kernel] entry exists #" dup . cr exit
+  then drop
+  ENTRY-COUNT @ MAX-ENTRIES >= if
+    2drop ." [kernel] dict full" cr -1 exit
+  then
+  ENTRY-COUNT @ >r
+  ( c-addr u ) r@ entry-name!
+  r@ 1+ r@ entry-id[] !
+  -1 r@ entry-gid[] !          \ global / flat
+  1 ENTRY-COUNT +!
+  ." [kernel] created #" r@ . cr
+  r> ;
+
 \ entry-create ( "name" -- )
 \ Parse next word; allocate slot + sequential id if new.
 \ Table full → warn; existing name → report index. No redefine.
 : entry-create ( "name" -- )
-  bl word count
-  2dup entry-find dup 0< 0= if
-    nip nip
-    ." [kernel] entry exists #" . cr exit
-  then drop
-  ENTRY-COUNT @ MAX-ENTRIES >= if
-    2drop ." [kernel] dict full" cr exit
-  then
-  ENTRY-COUNT @ >r
-  ( c-addr u ) r@ entry-name!
-  r@ 1+ r@ entry-id[] !        \ simple id = 1-based index
-  -1 r@ entry-gid[] !          \ global / flat
-  1 ENTRY-COUNT +!
-  r> drop
-  ." [kernel] created #" ENTRY-COUNT @ . cr ;
+  bl word count entry-create-from drop ;
 
 \ .words / words ( -- )  list names in the tiny table
 : .words ( -- )
@@ -203,10 +211,57 @@ variable _gec-gid
 \ On real bootstrap the host (C# / Kotlin / Linux C) calls cold-boot after loading sources.
 \ Poly/AppImage load must remain safe: no endless abort stub.
 
+\ === interpret-token stub (wave7 item 5) — lookup-only; no : / control-flow ===
+\ interpret-token ( c-addr u -- flag )
+\ Hit: print [kernel] find hit #N name=… → true
+\ Miss: print [kernel] find miss → false (soft; no abort)
+: interpret-token ( c-addr u -- flag )
+  2dup findentry dup 0< if
+    drop 2drop
+    ." [kernel] find miss" cr
+    false
+  else
+    ( c-addr u i )
+    >r
+    ." [kernel] find hit #" r@ . ." name=" type cr
+    r> drop
+    true
+  then ;
+
+\ Counted-string fixtures for kernel-demo (host SoT preferred; Forth = poly contract)
+create (kd-a) 5 c, char a c, char l c, char p c, char h c, char a c,
+create (kd-b) 4 c, char b c, char e c, char t c, char a c,
+create (kd-miss) 6 c, char n c, char o c, char s c, char u c, char c c, char h c,
+
+\ kernel-demo ( -- )  dict-reset → create 2 names → find hits + miss → words → interpret-token → OK
+: kernel-demo ( -- )
+  ." [kernel-demo] dict-reset + two names + find/interpret stub" cr
+  dict-reset
+  (kd-a) count entry-create-from drop
+  (kd-b) count entry-create-from drop
+  (kd-a) count findentry dup 0< if
+    drop ." [kernel-demo] FAIL" cr exit
+  then
+  ." [kernel] find hit #" dup . ." name=" (kd-a) count type cr drop
+  (kd-b) count find dup 0< if
+    drop ." [kernel-demo] FAIL" cr exit
+  then
+  ." [kernel] find hit #" dup . ." name=" (kd-b) count type cr drop
+  (kd-miss) count findentry 0< 0= if
+    ." [kernel-demo] FAIL" cr exit
+  then
+  ." [kernel] find miss" cr
+  words
+  (kd-a) count interpret-token 0= if
+    ." [kernel-demo] FAIL" cr exit
+  then
+  ." [kernel-demo] OK" cr ;
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
-\ - Minimal interpret loop + findentry (kernel.txt)
-\ - Group-scoped entries via ENTRY-GIDS + group-entry-find (wave4 item 2)
+\ - Full interpret loop with : / control flow (beyond interpret-token stub)
+\ - Group-scoped entries via ENTRY-GIDS + group-entry-find (wave4 item 2) — landed
+\ - findentry / find aliases + interpret-token stub (wave7 item 5) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
