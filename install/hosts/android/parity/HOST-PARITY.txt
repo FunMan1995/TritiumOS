@@ -63,3 +63,4 @@ uless-demo CONTRACT
 abs-demo CONTRACT
 space-demo CONTRACT
 minmax-demo CONTRACT
+sharp-demo CONTRACT

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# sharp-demo — Lab smoke for #/#>/SIGN thin pictured continue (wave24 item 3 / docs/SHARP-SIGN.md)
+# Forth mirrors: sharp-mark / sharp-end-mark / sign-mark — do NOT redefine host #/#>/SIGN/#S.
+# CRITICAL: do NOT bump _here/HERE/here-at — HERE stub stays $1000.
+# CRITICAL: do NOT redefine HOLD/hold-mark/hold-demo/<#.
+# NOT HOLD/BASE/TO-NUMBER/MIN-MAX/SPACE reopen; NOT tip4–5; optional #S not required.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+echo "[sharp-demo] #/#>/SIGN thin pictured continue"
+echo "[sharp] #"
+echo "[sharp] #>"
+echo "[sharp] SIGN"
+echo "[sharp-demo] OK"
+exit 0

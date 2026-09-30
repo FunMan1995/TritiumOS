@@ -2870,6 +2870,25 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [minmax-demo] OK" cr ;
 
 
+\ === # / #> / SIGN thin pictured continue (wave24 item 3) ===
+\ Forth mirrors: sharp-mark / sharp-end-mark / sign-mark — do NOT redefine host #/#>/SIGN/#S.
+\ CRITICAL: do NOT bump _here/HERE/here-at — HERE stub stays $1000.
+\ CRITICAL: do NOT redefine HOLD/hold-mark/hold-demo/<#.
+\ NOT HOLD/BASE/TO-NUMBER/MIN-MAX/SPACE reopen; NOT tip4–5; optional #S not required.
+: sharp-mark ( -- )
+  ." [sharp] #" cr ;
+: sharp-end-mark ( -- )
+  ." [sharp] #>" cr ;
+: sign-mark ( -- )
+  ." [sharp] SIGN" cr ;
+: sharp-demo ( -- )
+  ." [sharp-demo] #/#>/SIGN thin pictured continue" cr
+  sharp-mark
+  sharp-end-mark
+  sign-mark
+  ." [sharp-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
