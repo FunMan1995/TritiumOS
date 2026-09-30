@@ -1,14 +1,14 @@
 # ALLOT-HERE — `HERE` / `ALLOT` dictionary-pointer stubs + `allot-demo`
 
-**Status:** Shipper-ready stub spec (wave14 item **1**)
+**Status:** Shipper-ready stub spec (wave14 item **1**; thin amend wave19 **2** TO-BODY companion cite)
 **Canonical brief:** ANS-shaped `HERE` / `ALLOT` (thin pointer stub); `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `allot.fs` / `here.fs`); Linux host REPL
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/CREATE-DOES.md` (thin amend this tip), `docs/CELL-CELLS.md` (wave15 **1**), `docs/FILL-MOVE.md` (wave15 **3**), `docs/MARKER.md` (wave16 **2**), `docs/BUFFER-COLON.md` (wave16 **3**)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/CREATE-DOES.md` (thin amend this tip), `docs/CELL-CELLS.md` (wave15 **1**), `docs/FILL-MOVE.md` (wave15 **3**), `docs/MARKER.md` (wave16 **2**), `docs/BUFFER-COLON.md` (wave16 **3**); `docs/TO-BODY.md` (wave19 **2** — CREATE-body address mark companion cite)
 **Base tip SHA:** `b2c8e7d` (wave13 tip5 CLOSED / #61) / full `b2c8e7d2de370ca822c49bc9f3a8c9f84d77598b`
 
 ## 1. Purpose
 
-Named-cell / CREATE surfaces (VARIABLE / CONSTANT / VALUE / CREATE) deferred **ALLOT / HERE**. This tip lands **stub** dictionary-pointer markers: `HERE` reports a host-held pointer (or byte-bump counter) with a greppable `[allot] HERE addr=` line; `ALLOT` bumps that pointer by `n` and prints `[allot] ALLOT n=`. Optional `,` / `C,` cell/char-store stubs may bump + mark if cheap. Smoke via **`allot-demo`**. **Not** a Dusk arena/pool, free/fragmentation model, or linked cell memory — a host int / counter is enough. Builds on wave12–13 named-cell / CREATE surface; DRENA docs already reference HERE allocation.
+Named-cell / CREATE surfaces (VARIABLE / CONSTANT / VALUE / CREATE) deferred **ALLOT / HERE**. This tip lands **stub** dictionary-pointer markers: `HERE` reports a host-held pointer (or byte-bump counter) with a greppable `[allot] HERE addr=` line; `ALLOT` bumps that pointer by `n` and prints `[allot] ALLOT n=`. Optional `,` / `C,` cell/char-store stubs may bump + mark if cheap. Smoke via **`allot-demo`**. **Not** a Dusk arena/pool, free/fragmentation model, or linked cell memory — a host int / counter is enough. Builds on wave12–13 named-cell / CREATE surface; DRENA docs already reference HERE allocation. Wave19 tip **2** lands `>BODY` as a sibling CREATE-body **stub offset / echo** (`docs/TO-BODY.md`) — **not** a HERE bump / arena reopen / mapped dictionary image.
 
 ## 2. Words / Surfaces
 
@@ -33,7 +33,7 @@ Host note: bind `HERE` / `ALLOT` on Linux REPL; Forth mirrors `here-at` / `allot
 - Dictionary-restore `MARKER` snapshot (HERE + optional entry index) → `docs/MARKER.md` (wave16 **2**). Snapshot mark only — **not** arena rewind / real forget of XT bodies.
 - Named buffer `BUFFER:` slots (size + offset into fill cap and/or HERE bump) → `docs/BUFFER-COLON.md` (wave16 **3**). Named slot only — **not** an arena / ALLOCATE / FILL-buffer redefine.
 - Nest with prior VARIABLE / VALUE / CREATE / colon / control / string stubs OK; `dict-reset` may reset the pointer to base (optional; demo may record before/after without requiring reset).
-- Still no real DOES> XT chain, UNLOOP/J, THROW/CATCH, 2VARIABLE, full Win/Android Forth VM; those → later wave14 tips / non-goals.
+- Still no real DOES> XT chain, UNLOOP/J, THROW/CATCH, 2VARIABLE, full Win/Android Forth VM; those → later wave14 tips / non-goals. CREATE-body address mark → `docs/TO-BODY.md` (wave19 **2**; stub offset / echo — does **not** bump HERE / reopen arena).
 
 ## 4. Markers
 
@@ -90,6 +90,7 @@ HERE + ALLOT markers and a visible bump are required. Optional comma words are n
 - `CELL` / `CELLS` / `ALIGN` / `ALIGNED` dictionary-unit markers → `docs/CELL-CELLS.md` (wave15 **1**); fixed host-buffer FILL/ERASE/MOVE/CMOVE → `docs/FILL-MOVE.md` (wave15 **3**); `MARKER` restore-mark stubs → `docs/MARKER.md` (wave16 **2**); `BUFFER:` named buffer stubs → `docs/BUFFER-COLON.md` (wave16 **3**); IMMEDIATE/POSTPONE already stubbed (wave15 **4**). Full arena stays out
 - Real linked cell memory / buffer-backed `,`/`C,` heap
 - Real DOES> XT chaining / threaded child runtime body
+- `>BODY` CREATE-body address mark → `docs/TO-BODY.md` (wave19 **2**; stub offset / echo only — not HERE bump / arena / body image / DOES> XT)
 - UNLOOP / J (wave14 **2** candidate)
 - 2VARIABLE / 2CONSTANT (wave14 **3** candidate)
 - THROW / CATCH / ABORT" (wave14 **4** candidate)
@@ -101,7 +102,7 @@ HERE + ALLOT markers and a visible bump are required. Optional comma words are n
 ## 8. Acceptance (Test Lab)
 
 1. `docs/ALLOT-HERE.md` present (Research byte-copy OK); `KERNEL.md` + `VARIABLE-CONST.md` + `CREATE-DOES.md` thin amends present.
-2. `allot-demo` → OK (markers §4); prior `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK.
+2. `allot-demo` → OK (markers §4); prior `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave19 **2**: `body-demo` → OK (retains `allot-demo` + `create-demo`; >BODY does not bump HERE).
 3. Regression green (wave13 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `allot-demo CONTRACT` OK).
 5. No merge. Stay out of Mango.
@@ -117,3 +118,4 @@ HERE + ALLOT markers and a visible bump are required. Optional comma words are n
 - `docs/FILL-MOVE.md` (wave15 **3**)
 - `docs/MARKER.md` (wave16 **2**)
 - `docs/BUFFER-COLON.md` (wave16 **3**)
+- `docs/TO-BODY.md` (wave19 **2** — CREATE-body address mark; not HERE bump / arena)

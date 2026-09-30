@@ -1,9 +1,9 @@
 # VARIABLE-CONST — `VARIABLE` / `CONSTANT` named-cell stubs + `var-demo`
 
-**Status:** Shipper-ready stub spec (wave12 item **2**)
+**Status:** Shipper-ready stub spec (wave12 item **2**; thin amend wave19 **2** TO-BODY companion cite)
 **Canonical brief:** Dusk `variable` / `const` (thin stub); `docs/KERNEL.md` (wave7 **5**), `docs/WORDS-VOCAB.md` (wave11 **3**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `var.fs`); Linux host REPL
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DO-LOOP.md` (wave12 **1**), `docs/VALUE-TO.md` (wave13 **1**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/ALLOT-HERE.md` (wave14 **1**), `docs/2VARIABLE.md` (wave14 **3**), `docs/CELL-CELLS.md` (wave15 **1**), `docs/DEFER-IS.md` (wave16 **1**), `docs/BUFFER-COLON.md` (wave16 **3**)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DO-LOOP.md` (wave12 **1**), `docs/VALUE-TO.md` (wave13 **1**), `docs/CREATE-DOES.md` (wave13 **3**), `docs/ALLOT-HERE.md` (wave14 **1**), `docs/2VARIABLE.md` (wave14 **3**), `docs/CELL-CELLS.md` (wave15 **1**), `docs/DEFER-IS.md` (wave16 **1**), `docs/BUFFER-COLON.md` (wave16 **3**); `docs/TO-BODY.md` (wave19 **2** — CREATE-body address mark companion cite)
 **Base tip SHA:** `132f99e` (wave12 tip1 CLOSED / #52)
 
 ## 1. Purpose
@@ -89,7 +89,7 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 - `CELL` / `CELLS` / `ALIGN` / `ALIGNED` unit markers → `docs/CELL-CELLS.md` (wave15 **1**; not a dictionary image)
 - `DEFER` / `IS` / `ACTION-OF` deferred-word stubs → `docs/DEFER-IS.md` (wave16 **1**; mirrors only — do not redefine rekia `defer`/`is`)
 - `BUFFER:` named buffer stubs → `docs/BUFFER-COLON.md` (wave16 **3**; not a VARIABLE body / arena)
-- VALUE / TO stubs: see `docs/VALUE-TO.md` (wave13 **1**); CREATE / DOES> stubs: see `docs/CREATE-DOES.md` (wave13 **3**; no real XT chaining); HERE/ALLOT stubs: see `docs/ALLOT-HERE.md` (wave14 **1**); `2VARIABLE` / `2CONSTANT` stubs: see `docs/2VARIABLE.md` (wave14 **3**)
+- VALUE / TO stubs: see `docs/VALUE-TO.md` (wave13 **1**); CREATE / DOES> stubs: see `docs/CREATE-DOES.md` (wave13 **3**; no real XT chaining); HERE/ALLOT stubs: see `docs/ALLOT-HERE.md` (wave14 **1**); `2VARIABLE` / `2CONSTANT` stubs: see `docs/2VARIABLE.md` (wave14 **3**); `>BODY` CREATE-body address mark: see `docs/TO-BODY.md` (wave19 **2**; stub offset / echo only — not VARIABLE body / DOES> XT / arena)
 - Comment-parse: see `docs/COMMENT-PARSE.md` (wave12 **3**); leave-again: see `docs/LEAVE-AGAIN.md` (wave12 **4**); docs cites (wave12 **5**)
 - Real crypto / network fleet
 - Full Win/Android Forth VM (CONTRACT acceptable)
@@ -97,7 +97,7 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 ## 8. Acceptance (Test Lab)
 
 1. `docs/VARIABLE-CONST.md` present (Research byte-copy OK); `KERNEL.md` + `COLON.md` + `WORDS-VOCAB.md` thin amends present (DO-LOOP one-line optional).
-2. `var-demo` → OK (markers §4); `do-loop-demo` + `words-demo` + `colon-demo` still OK.
+2. `var-demo` → OK (markers §4); `do-loop-demo` + `words-demo` + `colon-demo` still OK; wave19 **2**: `body-demo` → OK (retains `var-demo` + `create-demo`).
 3. Regression green (wave12 **1** + wave11 demos).
 4. Win/Android: CONTRACT acceptable (parity line `var-demo CONTRACT` OK).
 5. No merge. Stay out of Mango.
@@ -115,3 +115,4 @@ Lab greps `[var-demo] OK` plus at least one `[var] VARIABLE name=` and one `[var
 - `docs/CELL-CELLS.md` (wave15 **1**)
 - `docs/DEFER-IS.md` (wave16 **1**)
 - `docs/BUFFER-COLON.md` (wave16 **3**)
+- `docs/TO-BODY.md` (wave19 **2**)
