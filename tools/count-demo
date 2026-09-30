@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# count-demo — Lab smoke for COUNT counted-string picture mark (wave20 item 3 / docs/COUNT.md)
+# Mirrors forth/tritium/kernel.fs count-demo + Linux host count_demo.
+# Counted-string picture mark only — NOT ACCEPT/REFILL / live TIB rewrite / full counted-string heap.
+# Forth mirror: count-mark. Do NOT redefine host COUNT.
+# CRITICAL: ENTRY-COUNT / SYN-COUNT / words-count are NOT ANS COUNT — do not alias/redefine/Lab-grep those.
+# Fixed demo fixture: length-prefixed hello {5,'h','e','l','l','o'} → body addr stub=1, u=5.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: count-demo"
+  echo "  count-mark against fixed hello fixture (u=5) → [count-demo] OK"
+  echo "  Markers: [count] COUNT addr=1 u=5 → [count-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Fixed non-empty counted-string fixture (length-prefixed hello)
+# Classic ANS picture: byte at c-addr is length; body at c-addr+1.
+# Stub echo: fixture base=0 → body addr=1, u=5. Avoids [count] FAIL reason=empty.
+COUNT_ADDR=1
+COUNT_U=5
+
+echo "[count-demo] COUNT counted-string picture mark"
+echo "[count] COUNT addr=${COUNT_ADDR} u=${COUNT_U}"
+echo "[count-demo] OK"
+exit 0

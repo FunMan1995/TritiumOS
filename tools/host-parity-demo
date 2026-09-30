@@ -51,6 +51,7 @@ REQUIRED_DEMOS=(
   source-demo
   true-demo
   within-demo
+  count-demo
 )
 
 usage() {

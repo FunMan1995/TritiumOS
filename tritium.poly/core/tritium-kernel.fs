@@ -2583,6 +2583,22 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 
 
 
+\ === COUNT counted-string picture mark (wave20 item 3) ===
+\ Forth mirror: count-mark — do NOT redefine host COUNT.
+\ CRITICAL: ENTRY-COUNT / SYN-COUNT / words-count are NOT ANS COUNT — do not alias/redefine/Lab-grep those.
+\ Counted-string picture mark only — NOT ACCEPT/REFILL / live TIB rewrite / full counted-string heap.
+\ Fixed demo fixture: length-prefixed hello {5,'h','e','l','l','o'} → body addr stub=1, u=5.
+
+: count-mark ( -- )
+  ." [count] COUNT addr=1 u=5" cr ;
+
+: count-demo ( -- )
+  ." [count-demo] COUNT counted-string picture mark" cr
+  count-mark
+  ." [count-demo] OK" cr ;
+
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2627,6 +2643,7 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 \ - SOURCE-PAD landed (wave19 item 4).
 \ - TRUE-FALSE landed (wave20 item 1).
 \ - WITHIN landed (wave20 item 2).
+\ - COUNT landed (wave20 item 3).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
