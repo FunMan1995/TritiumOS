@@ -2639,6 +2639,29 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 
 
 
+\ === BASE/HEX/DECIMAL radix marks (wave21 item 2) ===
+\ Forth mirrors: base-mark / hex-mark / decimal-mark — do NOT redefine host BASE/HEX/DECIMAL.
+\ Numeric radix marks only — NOT number parser / >NUMBER / pictured numeric.
+\ CRITICAL: do NOT redefine/alias/bump _here / HERE / here-at / HERE stub base $1000.
+\ Optional OCTAL out — not required this tip.
+
+: base-mark ( -- )
+  ." [base] BASE u=10 rad=10" cr ;
+
+: hex-mark ( -- )
+  ." [base] HEX rad=16" cr ;
+
+: decimal-mark ( -- )
+  ." [base] DECIMAL rad=10" cr ;
+
+: base-demo ( -- )
+  ." [base-demo] BASE + HEX + DECIMAL radix marks" cr
+  base-mark
+  hex-mark
+  decimal-mark
+  ." [base-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2686,6 +2709,7 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 \ - COUNT landed (wave20 item 3).
 \ - EXECUTE landed (wave20 item 4).
 \ - ACCEPT-REFILL landed (wave21 item 1).
+\ - BASE-HEX landed (wave21 item 2).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

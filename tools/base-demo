@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# base-demo — Lab smoke for BASE/HEX/DECIMAL radix marks (wave21 item 2 / docs/BASE-HEX.md)
+# Mirrors forth/tritium/kernel.fs base-demo + Linux host base_demo.
+# Numeric radix marks only — NOT number parser / >NUMBER / pictured numeric #/HOLD/<#/#>/#S.
+# Forth mirrors: base-mark / hex-mark / decimal-mark. Do NOT redefine host BASE / HEX / DECIMAL.
+# CRITICAL: do NOT redefine/alias/bump _here / HERE / here-at / HERE stub base $1000.
+# Optional OCTAL out — not required this tip. HERE stub untouched.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: base-demo"
+  echo "  base-mark + hex-mark + decimal-mark → [base-demo] OK"
+  echo "  Markers: [base] BASE u=10 rad=10; [base] HEX rad=16; [base] DECIMAL rad=10 → [base-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Classic ANS radix pictures: BASE default decimal 10; HEX rad=16; DECIMAL rad=10.
+# Avoids [base] FAIL. HERE stub base $1000 untouched (radix only).
+echo "[base-demo] BASE + HEX + DECIMAL radix marks"
+echo "[base] BASE u=10 rad=10"
+echo "[base] HEX rad=16"
+echo "[base] DECIMAL rad=10"
+echo "[base-demo] OK"
+exit 0

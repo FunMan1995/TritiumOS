@@ -1,14 +1,14 @@
 # TRUE-FALSE — `TRUE` / `FALSE` constant marks + `true-demo`
 
-**Status:** Shipper-ready stub spec (wave20 item **1**; thin amend wave20 **2** WITHIN companion cite)
+**Status:** Shipper-ready stub spec (wave20 item **1**; thin amend wave20 **2** WITHIN companion cite; thin amend wave21 **2** BASE-HEX companion cite)
 **Canonical brief:** ANS-shaped `TRUE` / `FALSE` (thin constant marks only); `docs/KERNEL.md` (wave7 **5**); `docs/CELL-CELLS.md` (wave15 **1** — unit/cell picture companion for optional `u=` / flag echo); `docs/PICK-ROLL.md` (wave15 **2** — stack/?DUP flag-picture companion); optional `docs/CONTROL.md` (wave10 **2**) / `docs/HOST-PARITY.md` (wave8 **4**); `docs/WITHIN.md` (wave20 **2** — range-check mark companion; pairs with this tip's flag picture — not boolean cell / branch XT); explicit WAVE18 / WAVE19 / WAVE20 deferral closed as constant marks only (not real boolean cell rewrite / `0=` / flag algebra deepen / WITHIN)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `true.fs` / `true-false.fs`); Linux host REPL; **do not** redefine host `TRUE` / `FALSE` that already bind on the load path
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/CELL-CELLS.md` (thin amend this tip), `docs/PICK-ROLL.md` (thin amend this tip); optional light cite `docs/CONTROL.md` / `docs/HOST-PARITY.md`; `docs/WITHIN.md` (wave20 **2** — thin companion cite from tip2)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/CELL-CELLS.md` (thin amend this tip), `docs/PICK-ROLL.md` (thin amend this tip); optional light cite `docs/CONTROL.md` / `docs/HOST-PARITY.md`; `docs/WITHIN.md` (wave20 **2** — thin companion cite from tip2); `docs/BASE-HEX.md` (wave21 **2** — thin companion cite; radix marks — not boolean cell / `0=` / BITWISE reopen)
 **Base tip SHA:** `e93c44a` (wave19 tip5 CLOSED / #91 DOCS-CITES) / full `e93c44af21bb3310b3fc5a7351ec2f257b50f2bb`
 
 ## 1. Purpose
 
-WAVE12 landed named-cell stubs (`docs/VARIABLE-CONST.md`); WAVE15 landed cell-unit + stack/?DUP flag pictures (`docs/CELL-CELLS.md`, `docs/PICK-ROLL.md`); WAVE18 / WAVE19 / WAVE20 explicitly deferred `TRUE` / `FALSE` (constant marks; not real boolean cell rewrite). This tip lands **stub** constant marks only: `TRUE` (or Forth mirror `true-mark`) prints `[true] TRUE` (+ optional `flag=` / `u=` — classic all-bits-set / `-1` picture welcome); `FALSE` (or Forth mirror `false-mark`) prints `[true] FALSE` (+ optional `flag=` / `u=` — classic `0` picture). Smoke via **`true-demo`**. Forth mirrors **`true-mark` / `false-mark`** so host `TRUE`/`FALSE` stay safe (or a single shared `true-false` helper if Shipper prefers — document). **Not** a real boolean cell / flag algebra rewrite, not `0=` reopen, not WITHIN this tip. Thinnest constant surface deferred since wave18/19 GAPS — flag picture before wave20 tip2 WITHIN / tip3 COUNT / tip4 EXECUTE. Pairs with cell/stack flag pictures without promoting either to a real compare/branch machine. Wave20 tip **2** lands `WITHIN` range-check mark (`docs/WITHIN.md`): sibling range-check that may echo optional `flag=<0|1>` — **not** a TRUE/FALSE reopen / boolean cell rewrite / `0=` deepen / branch XT.
+WAVE12 landed named-cell stubs (`docs/VARIABLE-CONST.md`); WAVE15 landed cell-unit + stack/?DUP flag pictures (`docs/CELL-CELLS.md`, `docs/PICK-ROLL.md`); WAVE18 / WAVE19 / WAVE20 explicitly deferred `TRUE` / `FALSE` (constant marks; not real boolean cell rewrite). This tip lands **stub** constant marks only: `TRUE` (or Forth mirror `true-mark`) prints `[true] TRUE` (+ optional `flag=` / `u=` — classic all-bits-set / `-1` picture welcome); `FALSE` (or Forth mirror `false-mark`) prints `[true] FALSE` (+ optional `flag=` / `u=` — classic `0` picture). Smoke via **`true-demo`**. Forth mirrors **`true-mark` / `false-mark`** so host `TRUE`/`FALSE` stay safe (or a single shared `true-false` helper if Shipper prefers — document). **Not** a real boolean cell / flag algebra rewrite, not `0=` reopen, not WITHIN this tip. Thinnest constant surface deferred since wave18/19 GAPS — flag picture before wave20 tip2 WITHIN / tip3 COUNT / tip4 EXECUTE. Pairs with cell/stack flag pictures without promoting either to a real compare/branch machine. Wave20 tip **2** lands `WITHIN` range-check mark (`docs/WITHIN.md`): sibling range-check that may echo optional `flag=<0|1>` — **not** a TRUE/FALSE reopen / boolean cell rewrite / `0=` deepen / branch XT. Wave21 tip **2** lands `BASE` / `HEX` / `DECIMAL` base marks (`docs/BASE-HEX.md`): sibling **radix** marks — **not** a TRUE/FALSE reopen / boolean cell rewrite / `0=` deepen / BITWISE reopen / number parser.
 
 ## 2. Words / Surfaces
 
@@ -103,6 +103,14 @@ Both `TRUE` and `FALSE` markers are required. Optional `flag=` / `u=` echo is no
 - Acceptance: Lab smokes `within-demo` (retains `true-demo`).
 - Cite: `docs/WITHIN.md`.
 
+### `docs/BASE-HEX.md` (wave21 **2** thin companion cite)
+
+- Companions / Status: add light `BASE-HEX.md` (wave21 **2**) cite; **keep** WITHIN / KERNEL / CELL-CELLS / PICK-ROLL cites — do not wipe wave20 TRUE-FALSE content.
+- Purpose: `BASE` / `HEX` / `DECIMAL` are sibling **radix marks** — **not** a TRUE/FALSE reopen / boolean cell rewrite / `0=` deepen / BITWISE reopen / number parser.
+- Non-goals: `BASE` / `HEX` / `DECIMAL` → `docs/BASE-HEX.md` (wave21 **2**). TRUE/FALSE stay on this tip (already landed). BITWISE still later (wave21 **4**).
+- Acceptance: Lab smokes `base-demo` (retains `true-demo` + `within-demo`).
+- Cite: `docs/BASE-HEX.md`.
+
 Do **not** wipe tip1 TRUE-FALSE content when tip2 amends this file thinly. Do **not** wipe wave19 tip1–4 CHAR-CHARS / TO-BODY / ENVIRONMENT-QUERY / SOURCE-PAD cites or wave18 tip1–4 TICK / FIND / WORD-BL / STATE-COMPILE cites or wave17 tip1–4 SYNONYM / PARSE / EVALUATE / RECURSE cites or wave16 DEFER / MARKER / BUFFER / EXIT cites or wave15 CELL / IMMEDIATE / FILL / PICK prior content. Tip1 primary amends were KERNEL + CELL-CELLS + PICK-ROLL + optional CONTROL / HOST-PARITY; tip2 thin-amends this file as companion only (checksum CHANGES — expected). Leave CHAR-CHARS / TO-BODY / ENVIRONMENT-QUERY / SOURCE-PAD / ARCHITECTURE / IMPLEMENTATION-GAPS untouched for tip2. Tip5 cites come after 1–4 PASS.
 
 ## 7. Non-goals
@@ -110,6 +118,7 @@ Do **not** wipe tip1 TRUE-FALSE content when tip2 amends this file thinly. Do **
 - Real boolean cell rewrite / live flag storage / VARIABLE-as-boolean
 - `0=` / `AND` / `OR` / `INVERT` / flag algebra deepen
 - `WITHIN` range-check mark → `docs/WITHIN.md` (wave20 **2**; sibling range-check — not a TRUE/FALSE reopen / boolean cell / branch XT)
+- `BASE` / `HEX` / `DECIMAL` base marks → `docs/BASE-HEX.md` (wave21 **2**; sibling radix marks — not a TRUE/FALSE reopen / boolean cell / `0=` / BITWISE reopen / number parser; do not break HERE stub base)
 - ANS `COUNT` c-addr picture (wave20 **3**); host `ENTRY-COUNT` / `SYN-COUNT` / `words-count` are **not** ANS COUNT
 - `EXECUTE` xt-id invoke mark (wave20 **4**); not real XT execute
 - Docs cites pass (wave20 **5** — ARCHITECTURE + GAPS after 1–4 PASS)
@@ -135,7 +144,7 @@ Do **not** wipe tip1 TRUE-FALSE content when tip2 amends this file thinly. Do **
 1. `docs/TRUE-FALSE.md` present (Research byte-copy OK); `KERNEL.md` + `CELL-CELLS.md` + `PICK-ROLL.md` thin amends present (+ optional `CONTROL.md` / `HOST-PARITY.md`); wave19 tip1–4 CHAR-CHARS / TO-BODY / ENVIRONMENT-QUERY / SOURCE-PAD cites, wave18 tip1–4 cites, wave17 tip1–4 cites, wave16 DEFER/MARKER/BUFFER/EXIT cites, and wave15 CELL/IMMEDIATE/COLON/KERNEL prior text retained; host `TRUE`/`FALSE` untouched via mirrors; CHAR-CHARS / TO-BODY / ENVIRONMENT-QUERY / SOURCE-PAD / ARCHITECTURE / IMPLEMENTATION-GAPS byte-copy unchanged.
 2. `true-demo` → OK (markers §4; `[true] TRUE` and `[true] FALSE` greppable; optional `flag=` / `u=` welcome — classic `-1` / `0` picture; no FAIL on happy path; no real boolean cell / `0=` deepen / WITHIN / branch XT). Prior `source-demo` + `env-demo` + `body-demo` + `char-demo` + `state-demo` + `word-demo` + `find-demo` + `tick-demo` + `recurse-demo` + `eval-demo` + `parse-demo` + `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` + `refined-boot-demo` + `host-boot-demo` + `interpret-demo` + `kernel-demo` still OK.
 3. Regression green (wave19 tip1–5 + wave18 tip1–5 + wave17 tip1–5 + wave16 tip1–5 + wave15 tip1–5 + wave14 demos + prior).
-4. Win/Android: CONTRACT acceptable (parity line `true-demo CONTRACT` OK). Wave20 **2**: `within-demo` → OK (retains `true-demo`).
+4. Win/Android: CONTRACT acceptable (parity line `true-demo CONTRACT` OK). Wave20 **2**: `within-demo` → OK (retains `true-demo`). Wave21 **2**: `base-demo` → OK (retains `true-demo` + `within-demo`).
 5. No merge. Stay out of Mango. No opaque-weight ML. Skip 2DUP-FAMILY + ABORT" polish.
 
 ## 9. Cite
@@ -156,4 +165,5 @@ Do **not** wipe tip1 TRUE-FALSE content when tip2 amends this file thinly. Do **
 - Explicit deferral: WAVE18-PROPOSAL + WAVE19-PROPOSAL + WAVE20-PROPOSAL (`TRUE` / `FALSE` — constant marks; not boolean cell rewrite)
 - Base tip: `e93c44a` / `e93c44af21bb3310b3fc5a7351ec2f257b50f2bb` (#91 wave19 tip5 DOCS-CITES CLOSED)
 - `docs/WITHIN.md` (wave20 **2** — range-check mark companion; pairs with this tip's flag picture)
+- `docs/BASE-HEX.md` (wave21 **2** — radix marks companion; not boolean cell / `0=` / BITWISE reopen)
 - Wave20 proposal: `/workspace/tritium-research-docs/WAVE20-PROPOSAL.md`

@@ -54,6 +54,7 @@ REQUIRED_DEMOS=(
   count-demo
   exec-demo
   accept-demo
+  base-demo
 )
 
 usage() {
