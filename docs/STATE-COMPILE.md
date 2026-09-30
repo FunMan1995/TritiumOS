@@ -1,14 +1,16 @@
 # STATE-COMPILE — Stub `STATE` / `COMPILE,` markers + `state-demo`
 
-**Status:** Shipper-ready stub spec (wave18 item **4**)
-**Canonical brief:** ANS-shaped `STATE` / `COMPILE,` (thin compile-state query + compile-comma mark only); `docs/IMMEDIATE-POSTPONE.md` (wave15 **4** — flag + name mark sibling); `docs/COLON.md` (wave9 **4** — colon-def flag); `docs/INTERPRET.md` (wave8 **1**); `docs/KERNEL.md` (wave7 **5**); optional `docs/TICK.md` (wave18 **1** — stub `xt=` ids stay consistent); explicit WAVE17 / WAVE18 deferral closed as STATE query + COMPILE, mark only (not linked XT compiler / real compile-vs-interpret machine / real STATE cell in dictionary image)
+**Status:** Shipper-ready stub spec (wave18 item **4**; thin amend wave20 **4** EXECUTE companion cite)
+**Canonical brief:** ANS-shaped `STATE` / `COMPILE,` (thin compile-state query + compile-comma mark only); `docs/IMMEDIATE-POSTPONE.md` (wave15 **4** — flag + name mark sibling); `docs/COLON.md` (wave9 **4** — colon-def flag); `docs/INTERPRET.md` (wave8 **1**); `docs/KERNEL.md` (wave7 **5**); optional `docs/TICK.md` (wave18 **1** — stub `xt=` ids stay consistent); explicit WAVE17 / WAVE18 deferral closed as STATE query + COMPILE, mark only (not linked XT compiler / real compile-vs-interpret machine / real STATE cell in dictionary image); wave20 **4** EXECUTE companion cite (invoke mark — not linked XT / real XT execute)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `state.fs` / `compile.fs`); Linux host REPL; **do not** redefine host assistant-state / host `STATE` (if any) / host EXIT
-**Companions:** `docs/IMMEDIATE-POSTPONE.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/INTERPRET.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); optional `docs/TICK.md` (thin amend this tip — companion cite)
+**Companions:** `docs/IMMEDIATE-POSTPONE.md` (thin amend this tip), `docs/COLON.md` (thin amend this tip), `docs/INTERPRET.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); optional `docs/TICK.md` (thin amend this tip — companion cite); `docs/EXECUTE.md` (wave20 **4** — xt-id invoke mark companion cite; not linked XT / real XT execute)
 **Base tip SHA:** `88f3b91` (wave18 tip3 WORD-BL PASS / #84) / full `88f3b911266cdb356b95861cd426b148865c6dae`
 
 ## 1. Purpose
 
 WAVE15 IMMEDIATE/POSTPONE landed compile-only **flag + name mark** stubs beside the colon-def flag; WAVE17/WAVE18 explicitly deferred a real compile-vs-interpret machine and linked XT compiler. WAVE18 tip **4** closes that deferral as a **thin query + compile-comma mark** only: `STATE` prints `[state] STATE` (+ optional `flag=<0|1>` / `n=` echoing colon-def / compile stub flag — interpret=0 / compile=1 picture only); `COMPILE,` prints `[state] COMPILE,` (+ optional `xt=<id>` / `name=`) and does **not** append an XT to a body list or execute it (optional `[state] compile-only` when colon-def flag is set — Lab-optional). Smoke via **`state-demo`**. Outside any compile picture → still OK as mark; missing xt/name → `[state] FAIL reason=miss` optional (demo avoids). Forth mirrors **`state-flag` / `compile-comma`** so assistant-state / host names stay safe. **Not** a linked XT compiler, not FIND-then-compile, not POSTPONE reopen, not real STATE cell in a dictionary image. Builds on IMMEDIATE/POSTPONE + colon-def flag + tip1 stub `xt=` ids without promoting any to a real compile machine / XT body append.
+
+ Sibling xt-id invoke mark → `docs/EXECUTE.md` (wave20 **4**; Forth mirror `execute-mark` — mark only; **not** linked XT / XT body append / real XT execute).
 
 ## 2. Words / Surfaces
 
@@ -104,6 +106,7 @@ Do **not** wipe tip1 TICK cites or tip2 FIND cites or tip3 WORD-BL cites or wave
 
 ## 7. Non-goals
 
+- `EXECUTE` xt-id invoke mark → `docs/EXECUTE.md` (wave20 **4**; Forth mirror `execute-mark` — mark only; **not** linked XT / XT body append / real XT execute; COMPILE, mark does not append XT; EXECUTE mark does not run XT)
 - Linked XT compiler / FIND-then-compile / XT body append
 - Real compile-vs-interpret machine beyond colon-def flag + immediate-bit + this query mark
 - Real STATE cell in a dictionary image / VARIABLE named STATE / HERE bump for STATE
@@ -135,13 +138,14 @@ Do **not** wipe tip1 TICK cites or tip2 FIND cites or tip3 WORD-BL cites or wave
 ## 8. Acceptance (Test Lab)
 
 1. `docs/STATE-COMPILE.md` present (Research byte-copy OK); `IMMEDIATE-POSTPONE.md` + `COLON.md` + `INTERPRET.md` + `KERNEL.md` thin amends present (+ optional `TICK.md`); tip1 TICK cites, tip2 FIND cites, tip3 WORD-BL cites, wave17 tip1–4 cites, wave16 DEFER/MARKER/BUFFER/EXIT cites, and wave15 IMMEDIATE/COLON/KERNEL prior text retained; host assistant-state / host EXIT untouched via mirrors; no real STATE cell / linked XT append.
-2. `state-demo` → OK (markers §4; `[state] STATE` greppable; `[state] COMPILE,` greppable; optional `flag=` / `n=` / `xt=` / `name=` / `compile-only` welcome; no miss FAIL on happy path; no XT body append). Prior `word-demo` + `find-demo` + `tick-demo` + `recurse-demo` + `eval-demo` + `parse-demo` + `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` + `kernel-demo` + `refined-boot-demo` + `host-boot-demo` + `interpret-demo` + `assistant-state-demo` still OK.
+2. `state-demo` → OK (markers §4; `[state] STATE` greppable; `[state] COMPILE,` greppable; optional `flag=` / `n=` / `xt=` / `name=` / `compile-only` welcome; no miss FAIL on happy path; no XT body append). Wave20 **4**: `exec-demo` → OK (retains `state-demo` + `tick-demo`; not linked XT / real XT execute). Prior `word-demo` + `find-demo` + `tick-demo` + `recurse-demo` + `eval-demo` + `parse-demo` + `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` + `kernel-demo` + `refined-boot-demo` + `host-boot-demo` + `interpret-demo` + `assistant-state-demo` still OK.
 3. Regression green (wave18 tip1–3 + wave17 tip1–5 + wave16 tip1–5 + wave15 tip1–5 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `state-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML. Skip 2DUP-FAMILY + ABORT" polish.
 
 ## 9. Cite
 
+- `docs/EXECUTE.md` (wave20 **4** — invoke-mark companion; not linked XT / real XT execute)
 - `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**), `docs/COLON.md` (wave9 **4**), `docs/INTERPRET.md` (wave8 **1**), `docs/KERNEL.md` (wave7 **5**)
 - `docs/TICK.md` (wave18 **1**, optional companion — stub `xt=` ids)
 - `docs/WORD-BL.md` (wave18 **3**), `docs/FIND.md` (wave18 **2**)

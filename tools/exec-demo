@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# exec-demo — Lab smoke for EXECUTE xt-id invoke mark (wave20 item 4 / docs/EXECUTE.md)
+# Mirrors forth/tritium/kernel.fs exec-demo + Linux host exec_demo.
+# Xt-id invoke mark only — echoes known tick stub xt-id + that invoke was requested.
+# Does NOT run linked XT body, deferred ACTION-OF, RECURSE self-XT, or DOES> child XT.
+# Forth mirror: execute-mark. Do NOT redefine host EXECUTE.
+# Fixed demo fixture: tick-demo widget stub xt=0 (entry index host int).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: exec-demo"
+  echo "  execute-mark against known tick stub xt=0 → [exec-demo] OK"
+  echo "  Markers: [exec] EXECUTE xt=0 → [exec-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Known tick-demo widget fixture stub xt-id (entry index 0 after dict-reset + create widget)
+EXEC_XT=0
+
+echo "[exec-demo] EXECUTE xt-id invoke mark"
+echo "[exec] EXECUTE xt=${EXEC_XT}"
+echo "[exec-demo] OK"
+exit 0

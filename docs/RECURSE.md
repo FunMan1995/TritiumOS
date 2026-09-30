@@ -1,14 +1,16 @@
 # RECURSE — `RECURSE` mark-only + `recurse-demo`
 
-**Status:** Shipper-ready stub spec (wave17 item **4**)
+**Status:** Shipper-ready stub spec (wave17 item **4**; thin amend wave20 **4** EXECUTE companion cite)
 **Canonical brief:** ANS-shaped `RECURSE` (thin flag + marker only); `docs/COLON.md` (wave9 **4**); `docs/EXIT-QUIT.md` (wave16 **4**); `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**); `docs/KERNEL.md` (wave7 **5**); `docs/EVALUATE-INCLUDE.md` (wave17 **3**); `docs/PARSE-NAME.md` (wave17 **2**); `docs/SYNONYM-ALIAS.md` (wave17 **1**); explicit WAVE16 / EXIT-QUIT / WAVE17 deferral closed as mark-only stub (`recurse-mark`; not real self-XT)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `recurse.fs`); Linux host REPL; **do not** break `:` / `;` / `colon-demo`; **do not** redefine host `exit`
-**Companions:** `docs/COLON.md` (thin amend this tip), `docs/EXIT-QUIT.md` (thin amend this tip), `docs/IMMEDIATE-POSTPONE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip)
+**Companions:** `docs/COLON.md` (thin amend this tip), `docs/EXIT-QUIT.md` (thin amend this tip), `docs/IMMEDIATE-POSTPONE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); `docs/EXECUTE.md` (wave20 **4** — xt-id invoke mark companion cite; not RECURSE self-XT reopen / real XT execute)
 **Base tip SHA:** `3105624e` (wave17 tip3 CLOSED / #79 EVALUATE-INCLUDE) / full `3105624ec26c9f3f25507e1048252ed7f2b8177b`
 
 ## 1. Purpose
 
 WAVE16 EXIT-QUIT and WAVE17 explicitly deferred real `RECURSE` (self-XT / recursive colon body). Colon-def, IMMEDIATE/POSTPONE flag stubs, and EXIT/QUIT thin control markers already exist; a Forth-surface **recurse mark** does not. This tip lands a **stub** flag + marker only: `RECURSE` prints `[recurse] RECURSE` (+ optional `name=` of current colon-def stub / `depth=`) and does **not** compile or execute a self-XT. Prefer calling from inside a colon-def / demo fixture so optional name mark is meaningful. Smoke via **`recurse-demo`**. Forth mirror **`recurse-mark`** so Android/host wordlists that mention `recurse` and in-tree colon bodies stay safe. **Do not break colon** (`:` / `;` / `colon-demo` remain green). No real RS unwind beyond wave14/16 marks. Closes WAVE16 + EXIT-QUIT non-goal (“RECURSE real self-XT”) as a thin stub before tip5 cites.
+
+ Sibling xt-id invoke mark → `docs/EXECUTE.md` (wave20 **4**; Forth mirror `execute-mark` — mark only; **not** a RECURSE self-XT reopen / real XT execute).
 
 ## 2. Words / Surfaces
 
@@ -89,6 +91,7 @@ Do **not** wipe tip1 SYNONYM cites or tip2 PARSE cites or tip3 EVALUATE cites or
 
 ## 7. Non-goals
 
+- `EXECUTE` xt-id invoke mark → `docs/EXECUTE.md` (wave20 **4**; Forth mirror `execute-mark` — mark only; **not** a RECURSE self-XT reopen / real XT execute / linked XT)
 - Real `RECURSE` self-XT / recursive colon body / compiling current-definition XT
 - Breaking colon-def / `;` / `colon-demo` (must remain green)
 - Redefining host Forth `exit` / `quit` (wave16 EXIT-QUIT mirrors stay)
@@ -113,13 +116,14 @@ Do **not** wipe tip1 SYNONYM cites or tip2 PARSE cites or tip3 EVALUATE cites or
 ## 8. Acceptance (Test Lab)
 
 1. `docs/RECURSE.md` present (Research byte-copy OK); `COLON.md` + `EXIT-QUIT.md` + `IMMEDIATE-POSTPONE.md` + `KERNEL.md` thin amends present (wave9/16/15/7 text, tip1 SYNONYM cites, tip2 PARSE cites, tip3 EVALUATE cites, and wave16 DEFER/MARKER/BUFFER/EXIT cites retained; colon `:` / `;` / `colon-demo` remain green).
-2. `recurse-demo` → OK (markers §4; RECURSE greppable; optional `name=` / `depth=` welcome; no noframe FAIL on happy path). Prior `eval-demo` + `parse-demo` + `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` + `refined-boot-demo` + `host-boot-demo` + `interpret-demo` still OK.
+2. `recurse-demo` → OK; wave20 **4**: `exec-demo` → OK (retains `recurse-demo`; not self-XT reopen) (markers §4; RECURSE greppable; optional `name=` / `depth=` welcome; no noframe FAIL on happy path). Prior `eval-demo` + `parse-demo` + `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` + `refined-boot-demo` + `host-boot-demo` + `interpret-demo` still OK.
 3. Regression green (wave17 tip1–3 + wave16 tip1–5 + wave15 tip1–5 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `recurse-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML. Skip 2DUP-FAMILY + ABORT" polish.
 
 ## 9. Cite
 
+- `docs/EXECUTE.md` (wave20 **4** — invoke-mark companion; not RECURSE self-XT reopen)
 - `docs/COLON.md` (wave9 **4**), `docs/EXIT-QUIT.md` (wave16 **4**), `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**), `docs/KERNEL.md` (wave7 **5**)
 - `docs/EVALUATE-INCLUDE.md` (wave17 **3**), `docs/PARSE-NAME.md` (wave17 **2**), `docs/SYNONYM-ALIAS.md` (wave17 **1**)
 - `docs/DEFER-IS.md` (wave16 **1**), `docs/MARKER.md` (wave16 **2**), `docs/BUFFER-COLON.md` (wave16 **3**)
