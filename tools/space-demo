@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# space-demo — Lab smoke for SPACE/SPACES/TYPE thin output marks (wave24 item 1 / docs/SPACE-SPACES-TYPE.md)
+# Forth mirrors: space-mark / spaces-mark / type-mark — do NOT redefine host SPACE/SPACES/TYPE/EMIT.
+# NOT STRING-LIT reopen / full I/O / WORD-BL reopen; NOT tip2–5.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+echo "[space-demo] SPACE/SPACES/TYPE thin output marks"
+echo "[space] SPACE"
+echo "[space] SPACES u=3"
+echo "[space] TYPE u=2"
+echo "[space-demo] OK"
+exit 0

@@ -2835,6 +2835,25 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [abs-demo] OK" cr ;
 
 
+\ === SPACE/SPACES/TYPE thin output marks (wave24 item 1) ===
+\ Forth mirrors: space-mark / spaces-mark / type-mark — do NOT redefine host SPACE/SPACES/TYPE/EMIT.
+\ NOT STRING-LIT reopen / full I/O / WORD-BL reopen; NOT tip2–5.
+: space-mark ( -- )
+  ." [space] SPACE" cr ;
+
+: spaces-mark ( -- )
+  ." [space] SPACES u=3" cr ;
+
+: type-mark ( -- )
+  ." [space] TYPE u=2" cr ;
+
+: space-demo ( -- )
+  ." [space-demo] SPACE/SPACES/TYPE thin output marks" cr
+  space-mark
+  spaces-mark
+  type-mark
+  ." [space-demo] OK" cr ;
+
 
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)

@@ -61,3 +61,4 @@ charplus-demo CONTRACT
 hold-demo CONTRACT
 uless-demo CONTRACT
 abs-demo CONTRACT
+space-demo CONTRACT
