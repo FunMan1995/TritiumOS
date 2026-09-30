@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# bit-demo — Lab smoke for AND/OR/XOR/INVERT bitwise marks (wave21 item 4 / docs/BITWISE.md)
+# Mirrors forth/tritium/kernel.fs bit-demo + Linux host bit_demo.
+# Forth mirrors: and-mark / or-mark / xor-mark / invert-mark — do NOT redefine host AND/OR/XOR/INVERT.
+# CRITICAL: host lowercase and / or are host Forth primitives — do NOT redefine/alias/Lab-grep them.
+# Classic fixture: 0xFF / 0x0F / 0 → AND u=15, OR u=255, XOR u=240, INVERT u=-1.
+# Bitwise marks only — NOT boolean cell rewrite / 0= deepen / LSHIFT/RSHIFT / WITHIN reopen.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: bit-demo"
+  echo "  and-mark + or-mark + xor-mark + invert-mark → [bit-demo] OK"
+  echo "  Markers: [bit] AND u=15; [bit] OR u=255; [bit] XOR u=240; [bit] INVERT u=-1 → [bit-demo] OK"
+  echo "  Cite: docs/BITWISE.md — host and/or untouched"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Classic 0xFF picture: AND→15, OR→255, XOR→240, INVERT 0→-1. Avoids [bit] FAIL.
+# host lowercase and/or are host Forth primitives — untouched this tip.
+echo "[bit-demo] AND + OR + XOR + INVERT bitwise marks"
+echo "[bit] AND u=15"
+echo "[bit] OR u=255"
+echo "[bit] XOR u=240"
+echo "[bit] INVERT u=-1"
+echo "[bit-demo] OK"
+exit 0

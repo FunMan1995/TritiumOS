@@ -1,8 +1,8 @@
 # HOST-PARITY — Win / Android smoke markers (Linux SoT)
 
-**Status:** Shipper-ready stub spec (wave8 item **4**)  
+**Status:** Shipper-ready stub spec (wave8 item **4**; thin amend wave21 **4** BITWISE companion cite)  
 **Canonical brief:** Priority-1 hosts; Linux demos are Lab source of truth  
-**Companions:** `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/FLEET.md`, `docs/MASTER.md`, `docs/LINEOS-BRAND.md`, `docs/GROUPS-NESTED.md`, `docs/INTERPRET.md`, `docs/USERLAND.md`; `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — `env-demo` CONTRACT parity welcome); `docs/TRUE-FALSE.md` (wave20 **1** — `true-demo` CONTRACT parity welcome); `docs/BASE-HEX.md` (wave21 **2** — `base-demo` CONTRACT parity welcome)
+**Companions:** `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/FLEET.md`, `docs/MASTER.md`, `docs/LINEOS-BRAND.md`, `docs/GROUPS-NESTED.md`, `docs/INTERPRET.md`, `docs/USERLAND.md`; `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — `env-demo` CONTRACT parity welcome); `docs/TRUE-FALSE.md` (wave20 **1** — `true-demo` CONTRACT parity welcome); `docs/BASE-HEX.md` (wave21 **2** — `base-demo` CONTRACT parity welcome); `docs/BITWISE.md` (wave21 **4** — `bit-demo` CONTRACT parity welcome)
 
 ## 1. Purpose
 
@@ -70,6 +70,7 @@ Minimum for PASS: file present on Win + Android paths; every listed demo has a s
 - Full ANS `ENVIRONMENT?` table / SEARCH-WORDLIST on Win/Android — query mark only → `docs/ENVIRONMENT-QUERY.md` (wave19 **3**); `env-demo CONTRACT` acceptable
 - Real boolean cell / `TRUE`/`FALSE` rewrite on Win/Android — constant marks only → `docs/TRUE-FALSE.md` (wave20 **1**); `true-demo CONTRACT` acceptable
 - Real number parser / `BASE`/`HEX`/`DECIMAL` rewrite on Win/Android — base marks only → `docs/BASE-HEX.md` (wave21 **2**); `base-demo CONTRACT` acceptable; do not break HERE stub base
+- Real boolean / bitwise ALU rewrite on Win/Android — bitwise marks only → `docs/BITWISE.md` (wave21 **4**); `bit-demo CONTRACT` acceptable; do not redefine host lowercase `and`/`or`
 
 ## 7. Acceptance (Test Lab)
 
@@ -86,3 +87,4 @@ Minimum for PASS: file present on Win + Android paths; every listed demo has a s
 - `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — `env-demo` CONTRACT parity)
 - `docs/TRUE-FALSE.md` (wave20 **1** — `true-demo` CONTRACT parity)
 - `docs/BASE-HEX.md` (wave21 **2** — `base-demo` CONTRACT parity)
+- `docs/BITWISE.md` (wave21 **4** — `bit-demo` CONTRACT parity)

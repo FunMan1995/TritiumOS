@@ -1,9 +1,9 @@
 # WITHIN — `WITHIN` range-check mark + `within-demo`
 
-**Status:** Shipper-ready stub spec (wave20 item **2**; thin amend wave21 **3** COMPARE companion cite)
+**Status:** Shipper-ready stub spec (wave20 item **2**; thin amend wave21 **3** COMPARE companion cite; thin amend wave21 **4** BITWISE companion cite)
 **Canonical brief:** ANS-shaped `WITHIN` (thin range-check mark only); `docs/TRUE-FALSE.md` (wave20 **1** — flag-picture companion); `docs/CONTROL.md` (wave10 **2** — IF `taken=` companion; not IF/THEN reopen); `docs/KERNEL.md` (wave7 **5**); optional `docs/PICK-ROLL.md` (wave15 **2**) / `docs/CELL-CELLS.md` (wave15 **1**); explicit WAVE18 / WAVE19 / WAVE20 deferral closed as range-check mark only (not real branch XT / runtime compare re-exec / IF/THEN reopen)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `within.fs`); Linux host REPL; **do not** redefine host `WITHIN` that already binds on the load path
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/CONTROL.md` (thin amend this tip), `docs/TRUE-FALSE.md` (thin amend this tip); optional light cite `docs/PICK-ROLL.md` / `docs/CELL-CELLS.md`; `docs/COMPARE.md` (wave21 **3** — ANS COMPARE string-compare mark companion cite; host `cstr=` ≠ ANS COMPARE; **not** WITHIN reopen)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/CONTROL.md` (thin amend this tip), `docs/TRUE-FALSE.md` (thin amend this tip); optional light cite `docs/PICK-ROLL.md` / `docs/CELL-CELLS.md`; `docs/COMPARE.md` (wave21 **3** — ANS COMPARE string-compare mark companion cite; host `cstr=` ≠ ANS COMPARE; **not** WITHIN reopen); `docs/BITWISE.md` (wave21 **4** — bitwise marks companion cite; sibling bitwise marks — **not** WITHIN reopen / boolean cell / `0=` deepen)
 **Base tip SHA:** `6a6a87d` (wave20 tip1 PASS / #92 TRUE-FALSE) / full `6a6a87d2dc573211173f4c67d4d133c30418a0c7`
 
 ## 1. Purpose
@@ -30,7 +30,7 @@ Host note: bind `WITHIN` on the Linux REPL **only if** that name does not collid
 - **FAIL:** `[within] FAIL reason=<…>` optional (demo **must avoid**). Prefer not emitting `[within] FAIL` on the happy path. Miss is **not** FAIL — miss is `flag=0` or `[within] WITHIN miss`.
 - Storage: host ints / flag echo only. **No** real branch XT, no runtime compare re-exec, no IF/THEN reopen, no `0=` deepen, no HERE bump, no arena.
 - Nest with prior true / source / env / body / char / state / word / find / tick / create / allot / synonym / exit / buffer / marker / defer / imm / fill / pick / cell / throw / 2var / colon / control / string stubs OK. `dict-reset` unaffected (no new dict entries from range-check marks — fixed host fixtures, not dictionary).
-- Still no real boolean cell / `0=` deepen, no ACCEPT/REFILL reopen, no linked XT / real DOES> XT / real branch XT / full arena/heap / full Win/Android Forth VM. Tip1 TRUE-FALSE and wave19 tip1–4 (CHAR-CHARS / TO-BODY / ENVIRONMENT-QUERY / SOURCE-PAD) stay landed — keep cites; this tip does not reopen them. ANS `COUNT` → `docs/COUNT.md` (wave20 **3**). EXECUTE → `docs/EXECUTE.md` (wave20 **4**). ANS `COMPARE` string-compare mark → `docs/COMPARE.md` (wave21 **3**; Forth mirror `compare-mark` — **not** a WITHIN reopen / runtime compare re-exec; host `cstr=` ≠ ANS COMPARE). Those stay non-goals / later tips (COMPARE thin mark excepted as mark-only sibling).
+- Still no real boolean cell / `0=` deepen, no ACCEPT/REFILL reopen, no linked XT / real DOES> XT / real branch XT / full arena/heap / full Win/Android Forth VM. Tip1 TRUE-FALSE and wave19 tip1–4 (CHAR-CHARS / TO-BODY / ENVIRONMENT-QUERY / SOURCE-PAD) stay landed — keep cites; this tip does not reopen them. ANS `COUNT` → `docs/COUNT.md` (wave20 **3**). EXECUTE → `docs/EXECUTE.md` (wave20 **4**). ANS `COMPARE` string-compare mark → `docs/COMPARE.md` (wave21 **3**; Forth mirror `compare-mark` — **not** a WITHIN reopen / runtime compare re-exec; host `cstr=` ≠ ANS COMPARE). AND/OR/XOR/INVERT bitwise marks → `docs/BITWISE.md` (wave21 **4**; Forth mirrors `and-mark`/`or-mark`/`xor-mark`/`invert-mark` — **not** a WITHIN reopen / boolean cell / `0=` deepen / LSHIFT/RSHIFT; host lowercase `and`/`or` stay untouched). Those stay non-goals / later tips (COMPARE / BITWISE thin marks excepted as mark-only siblings).
 
 ## 4. Markers
 
@@ -104,10 +104,11 @@ Do **not** wipe tip1 TRUE-FALSE content or wave19 tip1–4 CHAR-CHARS / TO-BODY 
 - Real branch XT / runtime compare re-exec / LEAVE jump
 - `IF` / `THEN` / `ELSE` reopen as real branch XT (wave10 — already mark-only; keep cites)
 - Unsigned-wrap rewrite required (signed picture for fixed demo triple is enough)
-- `0=` / `AND` / `OR` / `INVERT` / flag algebra deepen
+- `0=` / flag algebra deepen (bitwise marks → `docs/BITWISE.md` wave21 **4** — sibling marks only; not a WITHIN reopen / boolean cell / `0=`)
 - Real boolean cell rewrite (tip1 TRUE-FALSE already stubbed; keep cites — do not wipe)
 - ANS `COUNT` c-addr picture (wave20 **3**); host `ENTRY-COUNT` / `SYN-COUNT` / `words-count` are **not** ANS COUNT
 - ANS `COMPARE` string-compare mark → `docs/COMPARE.md` (wave21 **3**; Forth mirror `compare-mark`); host `cstr=` is **not** ANS COMPARE; **not** a WITHIN reopen / runtime compare re-exec / SEARCH-WORDLIST
+- `AND` / `OR` / `XOR` / `INVERT` bitwise marks → `docs/BITWISE.md` (wave21 **4**; Forth mirrors `and-mark`/`or-mark`/`xor-mark`/`invert-mark`); **not** a WITHIN reopen / boolean cell / `0=` deepen / LSHIFT/RSHIFT; host lowercase `and`/`or` stay untouched
 - `EXECUTE` xt-id invoke mark (wave20 **4**); not real XT execute
 - Docs cites pass (wave20 **5** — ARCHITECTURE + GAPS after 1–4 PASS)
 - `TRUE` / `FALSE` reopen (wave20 **1** — already stubbed; keep cites; thin companion amend only)
@@ -129,7 +130,7 @@ Do **not** wipe tip1 TRUE-FALSE content or wave19 tip1–4 CHAR-CHARS / TO-BODY 
 ## 8. Acceptance (Test Lab)
 
 1. `docs/WITHIN.md` present (Research byte-copy OK); `KERNEL.md` + `CONTROL.md` + `TRUE-FALSE.md` thin amends present (+ optional `PICK-ROLL.md` / `CELL-CELLS.md`); tip1 TRUE-FALSE content retained (thin companion cite only — tip1 primary checksum CHANGES as expected); wave19 tip1–4 CHAR-CHARS / TO-BODY / ENVIRONMENT-QUERY / SOURCE-PAD cites, wave18 tip1–4 cites, wave17 tip1–4 cites, wave16 DEFER/MARKER/BUFFER/EXIT cites, and wave15 CELL/IMMEDIATE/COLON/KERNEL prior text retained; host `WITHIN` untouched via mirrors; CHAR-CHARS / TO-BODY / ENVIRONMENT-QUERY / SOURCE-PAD / ARCHITECTURE / IMPLEMENTATION-GAPS byte-copy unchanged.
-2. `within-demo` → OK (markers §4; `[within] WITHIN` hit greppable with `flag=1`; optional `n=` / `lo=` / `hi=`; optional miss `flag=0` or `[within] WITHIN miss`; no FAIL on happy path; no real branch XT / runtime compare re-exec / IF/THEN reopen / `0=` deepen). wave21 **3**: `compare-demo` → OK (retains `within-demo` + `true-demo` + `count-demo`; host `cstr=` ≠ ANS COMPARE; not WITHIN reopen). Prior `true-demo` + `source-demo` + `env-demo` + `body-demo` + `char-demo` + `state-demo` + `word-demo` + `find-demo` + `tick-demo` + `recurse-demo` + `eval-demo` + `parse-demo` + `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` + `refined-boot-demo` + `host-boot-demo` + `interpret-demo` + `kernel-demo` still OK.
+2. `within-demo` → OK (markers §4; `[within] WITHIN` hit greppable with `flag=1`; optional `n=` / `lo=` / `hi=`; optional miss `flag=0` or `[within] WITHIN miss`; no FAIL on happy path; no real branch XT / runtime compare re-exec / IF/THEN reopen / `0=` deepen). wave21 **3**: `compare-demo` → OK (retains `within-demo` + `true-demo` + `count-demo`; host `cstr=` ≠ ANS COMPARE; not WITHIN reopen). wave21 **4**: `bit-demo` → OK (retains `within-demo` + `true-demo` + `compare-demo`; WITHIN stays mark-only range-check — not reopen; host lowercase `and`/`or` untouched). Prior `true-demo` + `source-demo` + `env-demo` + `body-demo` + `char-demo` + `state-demo` + `word-demo` + `find-demo` + `tick-demo` + `recurse-demo` + `eval-demo` + `parse-demo` + `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` + `refined-boot-demo` + `host-boot-demo` + `interpret-demo` + `kernel-demo` still OK.
 3. Regression green (wave20 tip1 + wave19 tip1–5 + wave18 tip1–5 + wave17 tip1–5 + wave16 tip1–5 + wave15 tip1–5 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `within-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML. Skip 2DUP-FAMILY + ABORT" polish.
@@ -152,3 +153,4 @@ Do **not** wipe tip1 TRUE-FALSE content or wave19 tip1–4 CHAR-CHARS / TO-BODY 
 - Base tip: `6a6a87d` / `6a6a87d2dc573211173f4c67d4d133c30418a0c7` (#92 wave20 tip1 TRUE-FALSE PASS)
 - Wave20 proposal: `/workspace/tritium-research-docs/WAVE20-PROPOSAL.md`
 - `docs/COMPARE.md` (wave21 **3** — ANS COMPARE string mark companion; host `cstr=` ≠ ANS COMPARE; **not** WITHIN reopen)
+- `docs/BITWISE.md` (wave21 **4** — bitwise marks companion; sibling bitwise marks — **not** WITHIN reopen / boolean cell / `0=` deepen)

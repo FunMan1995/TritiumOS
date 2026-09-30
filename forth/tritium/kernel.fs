@@ -2681,6 +2681,34 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [compare-demo] OK" cr ;
 
 
+\ === AND/OR/XOR/INVERT bitwise marks (wave21 item 4) ===
+\ Forth mirrors: and-mark / or-mark / xor-mark / invert-mark — do NOT redefine host AND/OR/XOR/INVERT.
+\ CRITICAL: host lowercase and / or are host Forth primitives — do NOT redefine/alias/Lab-grep them.
+\ Classic fixture: 0xFF / 0x0F / 0 → AND u=15, OR u=255, XOR u=240, INVERT u=-1.
+\ Bitwise marks only — NOT boolean cell rewrite / 0= deepen / LSHIFT/RSHIFT / WITHIN reopen.
+
+: and-mark ( -- )
+  ." [bit] AND u=15" cr ;
+
+: or-mark ( -- )
+  ." [bit] OR u=255" cr ;
+
+: xor-mark ( -- )
+  ." [bit] XOR u=240" cr ;
+
+: invert-mark ( -- )
+  ." [bit] INVERT u=-1" cr ;
+
+: bit-demo ( -- )
+  ." [bit-demo] AND + OR + XOR + INVERT bitwise marks" cr
+  and-mark
+  or-mark
+  xor-mark
+  invert-mark
+  ." [bit-demo] OK" cr ;
+
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
