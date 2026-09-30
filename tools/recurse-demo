@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# recurse-demo — Lab smoke for RECURSE mark-only stub (wave17 item 4 / docs/RECURSE.md)
+# Mirrors forth/tritium/kernel.fs recurse-demo + Linux host recurse_demo.
+# Flag + marker only — NOT a real self-XT / recursive colon body.
+# Forth mirror: recurse-mark. Do NOT redefine host recurse; do NOT break colon.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: recurse-demo"
+  echo "  dict-reset → colon fixture → recurse-mark → ; → [recurse-demo] OK"
+  echo "  Markers: [recurse] RECURSE [name=] [depth=] → [recurse-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[recurse-demo] FAIL"
+  exit 1
+}
+
+CATCH_DEPTH=0
+COLON_DEF=0
+COLON_NAME=""
+
+dict_reset() {
+  CATCH_DEPTH=0
+  COLON_DEF=0
+  COLON_NAME=""
+}
+
+colon_open() {
+  COLON_DEF=1
+  COLON_NAME="$1"
+  echo "[colon] : $COLON_NAME"
+}
+
+colon_close() {
+  echo "[colon] ; name=$COLON_NAME"
+  COLON_DEF=0
+  COLON_NAME=""
+}
+
+recurse_mark() {
+  # Prefer inside colon-def so optional name= is meaningful; demo avoids noframe.
+  if [[ "$COLON_DEF" -eq 0 || -z "$COLON_NAME" ]]; then
+    echo "[recurse] FAIL reason=noframe"
+    return 1
+  fi
+  echo "[recurse] RECURSE name=$COLON_NAME depth=$CATCH_DEPTH"
+}
+
+echo "[recurse-demo] dict-reset + colon fixture + recurse-mark"
+dict_reset
+
+# 1) Open colon-def fixture so name= is meaningful
+colon_open "recurse-fixture" || fail
+
+# 2) RECURSE / recurse-mark — greppable marker; no self-XT
+recurse_mark || fail
+
+# 3) Close colon with ; — tip4 must keep : / ; / colon-demo green
+colon_close || fail
+
+# Happy path must not emit noframe FAIL; colon remains green
+echo "[recurse-demo] OK"
+exit 0

@@ -1,9 +1,9 @@
 # IMMEDIATE-POSTPONE — `IMMEDIATE` / `POSTPONE` compile-only stubs + `imm-demo`
 
-**Status:** Shipper-ready stub spec (wave15 item **4**)
-**Canonical brief:** ANS-shaped `IMMEDIATE` / `POSTPONE` (thin flag + name markers); `docs/COLON.md` (wave9 **4**); `docs/INTERPRET.md` (wave8 **1**); `docs/KERNEL.md` (wave7 **5**); explicit WAVE13 + WAVE14 deferral closed as flag stub only
+**Status:** Shipper-ready stub spec (wave15 item **4**; thin amend wave17 **4** RECURSE)
+**Canonical brief:** ANS-shaped `IMMEDIATE` / `POSTPONE` (thin flag + name markers); `docs/COLON.md` (wave9 **4**); `docs/INTERPRET.md` (wave8 **1**); `docs/KERNEL.md` (wave7 **5**); `docs/EXIT-QUIT.md` (wave16 **4**); `docs/RECURSE.md` (wave17 **4**); explicit WAVE13 + WAVE14 deferral closed as flag stub only
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `imm.fs` / `postpone.fs`); Linux host REPL
-**Companions:** `docs/COLON.md` (thin amend this tip), `docs/INTERPRET.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip)
+**Companions:** `docs/COLON.md` (thin amend wave15 **4**), `docs/INTERPRET.md` (thin amend wave15 **4**), `docs/KERNEL.md` (thin amend wave15 **4**), `docs/RECURSE.md` (wave17 **4** — sibling colon-side mark)
 **Base tip SHA:** `ee1d430` (wave15 tip3 CLOSED / #69 FILL-MOVE) / full `ee1d43066a24b262e70f2515313c2a64018c5115`
 
 ## 1. Purpose
@@ -26,9 +26,9 @@ Host note: bind `IMMEDIATE` / `POSTPONE` on the Linux REPL; Forth mirrors **`imm
 - **IMMEDIATE:** resolve target = latest colon/CREATE entry (or named entry). Set immediate-bit. Print `[imm] IMMEDIATE name=<name>`. No XT compile, no state-machine change beyond the bit.
 - **POSTPONE name:** look up / accept the name string; print `[imm] POSTPONE name=<name>`. **Do not** compile an XT, append to a body list, or execute the named word. If colon-def flag is currently set, optionally also print `[imm] compile-only` (Lab-optional — nice-to-have when cheap).
 - **Missing name / no latest entry:** `[imm] FAIL reason=miss` (demo **must avoid** — always IMMEDIATE after a named colon/CREATE, and POSTPONE a known name).
-- Storage: flag + name string only. **No** linked XT list, no FIND-then-compile, no postponed-XT queue, no RECURSE/EXIT redefinition.
-- Nest with prior fill / pick / cell / allot / throw / 2var / create / colon / control / string stubs OK. `dict-reset` clears entries (and thus bits) as usual.
-- Still no real compile/interpret state machine beyond colon-def flag + this bit, no executing postponed XT, no real DOES> XT, no real branch XT, no full Win/Android Forth VM. Those stay non-goals / later.
+- Storage: flag + name string only. **No** linked XT list, no FIND-then-compile, no postponed-XT queue, no EXIT redefinition. Real `RECURSE` self-XT stays out — wave17 **4** lands mark-only `recurse-mark` only (`docs/RECURSE.md`).
+- Nest with prior fill / pick / cell / allot / throw / 2var / create / colon / control / string stubs OK. `dict-reset` clears entries (and thus bits) as usual. Wave17 `recurse-demo` nests beside `imm-demo` without breaking colon.
+- Still no real compile/interpret state machine beyond colon-def flag + this bit, no executing postponed XT, no real RECURSE self-XT (mark-only stub → `RECURSE.md`), no real DOES> XT, no real branch XT, no full Win/Android Forth VM. Those stay non-goals / later.
 
 ## 4. Markers
 
@@ -87,8 +87,9 @@ Do **not** wipe tip1–3 / wave14 / COLON / INTERPRET prior content.
 - Linked XT compiler / FIND-then-compile / XT body append
 - Real compile/interpret state machine beyond colon-def flag + immediate-bit
 - Executing a postponed XT / postponed-XT queue / runtime compile semantics
-- `RECURSE` real self-XT; redefining host `EXIT` / `QUIT`
-- Docs cites pass (wave15 **5** — ARCHITECTURE + GAPS after 1–4 PASS)
+- `RECURSE` real self-XT — mark-only stub → `docs/RECURSE.md` (wave17 **4**; Forth mirror `recurse-mark`; still no self-XT)
+- Redefining host `EXIT` / `QUIT` — thin control markers → `docs/EXIT-QUIT.md` (wave16 **4**; mirrors only)
+- Docs cites pass (wave15 **5** — ARCHITECTURE + GAPS after 1–4 PASS; wave17 **5** after wave17 1–4 PASS)
 - CELL / CELLS / ALIGN / ALIGNED (wave15 **1** — already stubbed; do not reopen)
 - PICK / ROLL / DEPTH / ?DUP (wave15 **2** — already stubbed; do not reopen)
 - FILL / ERASE / MOVE / CMOVE (wave15 **3** — already stubbed; do not reopen)
@@ -101,7 +102,7 @@ Do **not** wipe tip1–3 / wave14 / COLON / INTERPRET prior content.
 ## 8. Acceptance (Test Lab)
 
 1. `docs/IMMEDIATE-POSTPONE.md` present (Research byte-copy OK); `COLON.md` + `INTERPRET.md` + `KERNEL.md` thin amends present (wave15 **1–3** cites and wave9/8/7 text retained).
-2. `imm-demo` → OK (markers §4; IMMEDIATE + POSTPONE greppable; no miss FAIL on happy path). Prior `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK.
+2. `imm-demo` → OK (markers §4; IMMEDIATE + POSTPONE greppable; no miss FAIL on happy path). Prior `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave17 **4**: `recurse-demo` → OK (colon remains green).
 3. Regression green (wave15 tip1–3 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `imm-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML.
@@ -110,6 +111,7 @@ Do **not** wipe tip1–3 / wave14 / COLON / INTERPRET prior content.
 
 - `docs/COLON.md` (wave9 **4**), `docs/INTERPRET.md` (wave8 **1**), `docs/KERNEL.md` (wave7 **5**)
 - `docs/FILL-MOVE.md` (wave15 **3**), `docs/PICK-ROLL.md` (wave15 **2**), `docs/CELL-CELLS.md` (wave15 **1**)
+- `docs/EXIT-QUIT.md` (wave16 **4**), `docs/RECURSE.md` (wave17 **4**)
 - `forth/tritium/kernel.fs`
 - ANS Forth `IMMEDIATE` / `POSTPONE` (flag + name mark only — no XT compile/run)
 - Explicit deferral: WAVE13-PROPOSAL + WAVE14-PROPOSAL (`IMMEDIATE` / `POSTPONE` / linked XT); THROW-CATCH non-goal called this out as later

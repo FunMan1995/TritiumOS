@@ -2256,6 +2256,35 @@ create (inc-name) 16 c, char e c, char v c, char a c, char l c, char - c, char d
   ." [eval-demo] OK" cr ;
 
 
+\ === RECURSE mark-only stub (wave17 item 4) ===
+\ Prefer greppable markers; flag + marker only. NOT a real self-XT / recursive colon body.
+\ Forth mirror: recurse-mark — do NOT redefine host recurse if it would break
+\ Android/host wordlists; do NOT break colon (: / ; / colon-demo stay green).
+\ Prefer calling from inside a colon-def so optional name= is meaningful.
+\ No real RS unwind beyond wave14/16 marks.
+
+\ Demo fixture name for optional name= mark
+create (rc-name) 15 c, char r c, char e c, char c c, char u c, char r c, char s c, char e c, char - c, char f c, char i c, char x c, char t c, char u c, char r c, char e c,
+
+\ recurse-mark ( -- )  print [recurse] RECURSE (+ optional name= / depth=); no self-XT
+: recurse-mark ( -- )
+  _colon-def @ 0= if
+    ." [recurse] FAIL reason=noframe" cr exit
+  then
+  ." [recurse] RECURSE name="
+  _colon-idx @ entry-name[] NAMELEN name-trim type
+  ."  depth=" _catch-depth @ . cr ;
+
+\ recurse-demo ( -- )  dict-reset → colon fixture → recurse-mark → ; → OK
+: recurse-demo ( -- )
+  ." [recurse-demo] dict-reset + colon fixture + recurse-mark" cr
+  dict-reset
+  (rc-name) count colon-create-from
+  recurse-mark
+  semicolon
+  ." [recurse-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2289,6 +2318,7 @@ create (inc-name) 16 c, char e c, char v c, char a c, char l c, char - c, char d
 \ - SYNONYM/ALIAS name-map stubs + synonym-demo (wave17 item 1) — landed
 \ - PARSE/PARSE-NAME token-parse markers + parse-demo (wave17 item 2) — landed
 \ - EVALUATE/INCLUDE mark-only echo + eval-demo (wave17 item 3) — landed
+\ - RECURSE mark-only + recurse-demo (wave17 item 4) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

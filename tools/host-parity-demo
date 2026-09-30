@@ -40,6 +40,7 @@ REQUIRED_DEMOS=(
   synonym-demo
   parse-demo
   eval-demo
+  recurse-demo
 )
 
 usage() {
