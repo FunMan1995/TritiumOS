@@ -1,14 +1,14 @@
 # CELL-CELLS — `CELL` / `CELLS` / `ALIGN` / `ALIGNED` dictionary-unit stubs + `cell-demo`
 
-**Status:** Shipper-ready stub spec (wave15 item **1**; thin amend wave19 **1** CHAR-CHARS companion cite; thin amend wave19 **3** ENVIRONMENT-QUERY companion cite)
+**Status:** Shipper-ready stub spec (wave15 item **1**; thin amend wave19 **1** CHAR-CHARS companion cite; thin amend wave19 **3** ENVIRONMENT-QUERY companion cite; thin amend wave20 **1** TRUE-FALSE companion cite)
 **Canonical brief:** ANS-shaped `CELL` / `CELLS` / `ALIGN` / `ALIGNED` (thin unit markers); `docs/ALLOT-HERE.md` (wave14 **1**), `docs/KERNEL.md` (wave7 **5**), `docs/VARIABLE-CONST.md` (wave12 **2**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `cell.fs`); Linux host REPL
-**Companions:** `docs/ALLOT-HERE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip); `docs/CHAR-CHARS.md` (wave19 **1** — char-unit companion cite); `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — query-mark companion cite; optional stub values picture address/cell/char units)
+**Companions:** `docs/ALLOT-HERE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip); `docs/CHAR-CHARS.md` (wave19 **1** — char-unit companion cite); `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — query-mark companion cite; optional stub values picture address/cell/char units); `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion cite; optional `flag=` / `u=` picture cell-width flag values)
 **Base tip SHA:** `201d14b` (wave14 tip5 CLOSED / #66 docs cites) / full `201d14bc6818a8e1985f98507b5f9de136ad2291`
 
 ## 1. Purpose
 
-Wave14 **1** landed `HERE` / `ALLOT` as a **byte** bump on a host-held pointer (`docs/ALLOT-HERE.md`). Dictionary-unit words never landed: there is no `CELL`, no `CELLS`, and no align-up of that stub pointer. This tip adds **stub** markers only: `CELL` reports a host cell size, `CELLS` scales a count by that size, `ALIGN` rounds the wave14 HERE stub up to a cell boundary, `ALIGNED` rounds a passed (or stub) address the same way, and smokes via **`cell-demo`**. **Not** a real dictionary image, not aligned physical memory, and not an arena. Pairs with wave14 HERE/ALLOT — the byte counter already exists; unit words do not. Named cells (`VARIABLE` / `CONSTANT`) stay host ints; this tip does not allocate them. Wave19 tip **1** lands the char-unit companion (`CHAR` / `CHARS` / `[CHAR]` + `char-demo` — `docs/CHAR-CHARS.md`): pairs with this tip the way `CHARS` pairs with `CELLS` — **not** an ALIGN/ALIGNED reopen / cell-size rewrite / CHAR+ / unicode. Wave19 tip **3** lands `ENVIRONMENT?` query mark (`docs/ENVIRONMENT-QUERY.md`): optional stub values may picture address/cell/char units (`ADDRESS-UNIT-BITS` / `MAX-CHAR`) — **not** a CELL/ALIGN reopen / cell-size rewrite / real env table.
+Wave14 **1** landed `HERE` / `ALLOT` as a **byte** bump on a host-held pointer (`docs/ALLOT-HERE.md`). Dictionary-unit words never landed: there is no `CELL`, no `CELLS`, and no align-up of that stub pointer. This tip adds **stub** markers only: `CELL` reports a host cell size, `CELLS` scales a count by that size, `ALIGN` rounds the wave14 HERE stub up to a cell boundary, `ALIGNED` rounds a passed (or stub) address the same way, and smokes via **`cell-demo`**. **Not** a real dictionary image, not aligned physical memory, and not an arena. Pairs with wave14 HERE/ALLOT — the byte counter already exists; unit words do not. Named cells (`VARIABLE` / `CONSTANT`) stay host ints; this tip does not allocate them. Wave19 tip **1** lands the char-unit companion (`CHAR` / `CHARS` / `[CHAR]` + `char-demo` — `docs/CHAR-CHARS.md`): pairs with this tip the way `CHARS` pairs with `CELLS` — **not** an ALIGN/ALIGNED reopen / cell-size rewrite / CHAR+ / unicode. Wave19 tip **3** lands `ENVIRONMENT?` query mark (`docs/ENVIRONMENT-QUERY.md`): optional stub values may picture address/cell/char units (`ADDRESS-UNIT-BITS` / `MAX-CHAR`) — **not** a CELL/ALIGN reopen / cell-size rewrite / real env table. Wave20 tip **1** lands `TRUE` / `FALSE` constant marks (`docs/TRUE-FALSE.md`): optional stub `flag=` / `u=` may picture cell-width flag values (classic all-bits-set / `-1` / `0`) — **not** a CELL/ALIGN reopen / cell-size rewrite / real boolean cell.
 
 ## 2. Words / Surfaces
 
@@ -39,7 +39,7 @@ Host note: bind `CELL` / `CELLS` / `ALIGN` / `ALIGNED` on the Linux REPL; Forth 
 - Demo must **show** a round-up: if HERE is already aligned (often 0 or a fixed base), bump **one byte** with existing `ALLOT` (`1 ALLOT`) or pass `base+1` into `ALIGNED` so the printed addr is strictly greater and a multiple of `n`. Example on Linux SoT with base 0: unaligned `1` → `addr=8`.
 - Storage: the existing wave14 host int is enough. **No** arena, pool, free, real aligned physical memory, or dictionary image.
 - Nest with prior HERE/ALLOT / VARIABLE / VALUE / CREATE / colon / control / string / throw stubs OK. `dict-reset` may reset the pointer to base (optional).
-- Still no FILL/MOVE buffer, IMMEDIATE/POSTPONE, real DOES> XT, real branch XT, full Win/Android Forth VM. PICK/ROLL is wave15 **2** (independent). Char-unit companion → `docs/CHAR-CHARS.md` (wave19 **1**). ENVIRONMENT? query mark → `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — thin query mark; optional stub values may picture units — not a CELL reopen / env table). Those stay non-goals here.
+- Still no FILL/MOVE buffer, IMMEDIATE/POSTPONE, real DOES> XT, real branch XT, full Win/Android Forth VM. PICK/ROLL is wave15 **2** (independent). Char-unit companion → `docs/CHAR-CHARS.md` (wave19 **1**). ENVIRONMENT? query mark → `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — thin query mark; optional stub values may picture units — not a CELL reopen / env table). TRUE/FALSE constant marks → `docs/TRUE-FALSE.md` (wave20 **1** — constant marks; optional `flag=` / `u=` may picture cell-width flags — not a CELL reopen / boolean cell rewrite). Those stay non-goals here.
 
 ## 4. Markers
 
@@ -97,6 +97,7 @@ Lab greps `[cell-demo] OK` plus `[cell] CELL bytes=` (Linux SoT: `bytes=8`), one
 - Real aligned physical memory / dictionary image / page-size probe
 - `CHAR` / `CHARS` / `[CHAR]` char-unit stubs → `docs/CHAR-CHARS.md` (wave19 **1**; char-unit companion — not CHAR+/unicode / ALIGN reopen / cell-size rewrite)
 - `ENVIRONMENT?` query mark → `docs/ENVIRONMENT-QUERY.md` (wave19 **3**; thin query mark — optional stub values may picture address/cell/char units; not a CELL/ALIGN reopen / real env table / SEARCH-WORDLIST)
+- `TRUE` / `FALSE` constant marks → `docs/TRUE-FALSE.md` (wave20 **1**; constant marks — optional `flag=` / `u=` may picture cell-width flag values; not a CELL/ALIGN reopen / real boolean cell / `0=` deepen / WITHIN)
 - Buffer-backed FILL / ERASE / MOVE / CMOVE (wave15 **3** — already stubbed; keep cites)
 - PICK / ROLL / DEPTH / ?DUP (wave15 **2**; independent)
 - IMMEDIATE / POSTPONE (wave15 **4** candidate)
@@ -110,7 +111,7 @@ Lab greps `[cell-demo] OK` plus `[cell] CELL bytes=` (Linux SoT: `bytes=8`), one
 ## 8. Acceptance (Test Lab)
 
 1. `docs/CELL-CELLS.md` present (Research byte-copy OK); `ALLOT-HERE.md` + `KERNEL.md` + `VARIABLE-CONST.md` thin amends present (wave14 text retained).
-2. `cell-demo` → OK (markers §4; Linux SoT `CELL` `bytes=8`; `CELLS` bytes = `k*n`; ALIGN and ALIGNED `addr=` show round-up). Prior `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave19 **1**: `char-demo` → OK (retains `cell-demo`); wave19 **3**: `env-demo` → OK (retains `cell-demo` + `char-demo`).
+2. `cell-demo` → OK (markers §4; Linux SoT `CELL` `bytes=8`; `CELLS` bytes = `k*n`; ALIGN and ALIGNED `addr=` show round-up). Prior `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave19 **1**: `char-demo` → OK (retains `cell-demo`); wave19 **3**: `env-demo` → OK (retains `cell-demo` + `char-demo`); wave20 **1**: `true-demo` → OK (retains `cell-demo` + `char-demo` + `env-demo`).
 3. Regression green (wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `cell-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML.
@@ -123,4 +124,5 @@ Lab greps `[cell-demo] OK` plus `[cell] CELL bytes=` (Linux SoT: `bytes=8`), one
 - Base tip: `201d14b` / `201d14bc6818a8e1985f98507b5f9de136ad2291` (#66 wave14 tip5)
 - `docs/CHAR-CHARS.md` (wave19 **1** — char-unit companion; CHAR pairs with CELL the way CHARS pairs with CELLS)
 - `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — query-mark companion; optional stub values picture address/cell/char units)
+- `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion; optional `flag=` / `u=` picture cell-width flag values)
 - Wave15 proposal: `/workspace/tritium-research-docs/WAVE15-PROPOSAL.md`

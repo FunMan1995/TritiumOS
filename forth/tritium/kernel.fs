@@ -2544,6 +2544,25 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [source-demo] OK" cr ;
 
 
+\ === TRUE/FALSE constant marks (wave20 item 1) ===
+\ Forth mirrors: true-mark / false-mark — do NOT redefine host TRUE / FALSE.
+\ Constant marks only — NOT real boolean cell rewrite / 0= deepen / WITHIN / branch XT.
+\ Classic pictures: TRUE all-bits-set / -1; FALSE 0. Optional flag=/u= host ints only.
+
+: true-mark ( -- )
+  ." [true] TRUE flag=-1 u=-1" cr ;
+
+: false-mark ( -- )
+  ." [true] FALSE flag=0 u=0" cr ;
+
+: true-demo ( -- )
+  ." [true-demo] TRUE + FALSE constant marks" cr
+  true-mark
+  false-mark
+  ." [true-demo] OK" cr ;
+
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2586,6 +2605,7 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 \ - TO-BODY landed (wave19 item 2).
 \ - ENVIRONMENT-QUERY landed (wave19 item 3).
 \ - SOURCE-PAD landed (wave19 item 4).
+\ - TRUE-FALSE landed (wave20 item 1).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
