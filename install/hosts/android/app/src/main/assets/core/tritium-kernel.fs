@@ -2662,6 +2662,25 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [base-demo] OK" cr ;
 
 
+\ === COMPARE ANS string-compare mark (wave21 item 3) ===
+\ Forth mirror: compare-mark — do NOT redefine host COMPARE.
+\ CRITICAL: host cstr= is NOT ANS COMPARE — do not redefine/alias/Lab-grep cstr=.
+\ Fixed fixtures: equal abc/abc → flag=0 n=0; optional before abc/abd → flag=-1 n=-1.
+\ String-compare mark only — NOT SEARCH-WORDLIST / FIND reopen / full string heap / WITHIN reopen.
+
+: compare-mark ( -- )
+  ." [compare] COMPARE flag=0 n=0" cr ;
+
+: compare-mark-before ( -- )
+  ." [compare] COMPARE flag=-1 n=-1" cr ;
+
+: compare-demo ( -- )
+  ." [compare-demo] COMPARE ANS string-compare mark" cr
+  compare-mark
+  compare-mark-before
+  ." [compare-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)

@@ -1,14 +1,14 @@
 # FILL-MOVE — `FILL` / `ERASE` / `MOVE` / `CMOVE` host-buffer stubs + `fill-demo`
 
-**Status:** Shipper-ready stub spec (wave15 item **3**; thin amend wave20 **3** COUNT companion cite)
+**Status:** Shipper-ready stub spec (wave15 item **3**; thin amend wave20 **3** COUNT companion cite; thin amend wave21 **3** COMPARE companion cite)
 **Canonical brief:** ANS-shaped `FILL` / `ERASE` / `MOVE` / `CMOVE` (thin fixed host-buffer markers); `docs/ALLOT-HERE.md` (wave14 **1**); `docs/KERNEL.md` (wave7 **5**); pairs with wave15 **1** `CELL-CELLS` (optional `CELLS` for `u` — not required for Lab OK)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `fill.fs`); Linux host REPL
-**Companions:** `docs/ALLOT-HERE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/BUFFER-COLON.md` (wave16 **3**); `docs/COUNT.md` (wave20 **3** — ANS COUNT counted-string picture companion cite; host ENTRY-COUNT ≠ ANS COUNT)
+**Companions:** `docs/ALLOT-HERE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/BUFFER-COLON.md` (wave16 **3**); `docs/COUNT.md` (wave20 **3** — ANS COUNT counted-string picture companion cite; host ENTRY-COUNT ≠ ANS COUNT); `docs/COMPARE.md` (wave21 **3** — ANS COMPARE string-compare mark companion cite; host `cstr=` ≠ ANS COMPARE)
 **Base tip SHA:** `3587fc2` (wave15 tip2 CLOSED / #68 PICK-ROLL) / full `3587fc274f6dc05221dfa8663ca625c699fddd36`
 
 ## 1. Purpose
 
-Wave14 **1** landed `HERE` / `ALLOT` as a byte pointer stub; wave15 **1** added unit markers. There is still no buffer-backed `FILL` / `ERASE` / `MOVE` / `CMOVE` surface. This tip adds **stub** markers over **one fixed host byte buffer** (small cap — document size; prefer **64** bytes): `FILL` writes a char across `u` bytes, `ERASE` clears with char 0, `MOVE` / `CMOVE` copy `u` bytes within (or across regions of) that buffer, and smokes via **`fill-demo`**. **Not** an arena, heap, free list, or real `ALLOCATE`. Does **not** redefine kernel-internal `cmove` used by dict copy in `kernel.fs` / `drena.fs`. Forth mirrors `fill-buf` / `erase-buf` / `move-buf` / `cmove-buf` so host `cmove` stays the primitive. Optional tie to tip1 `CELLS` for `u` — not required for Lab OK. Builds on the wave14 pointer stub without promoting it to a heap. Wave20 tip **3** lands ANS `COUNT` counted-string picture (`docs/COUNT.md` / Forth mirror `count-mark`) — sibling picture mark that may use a separate fixed demo fixture; **not** a FILL reopen / arena / ALLOCATE / counted-string heap; host `ENTRY-COUNT` / `SYN-COUNT` / `words-count` are **not** ANS COUNT; do **not** redefine kernel `cmove`.
+Wave14 **1** landed `HERE` / `ALLOT` as a byte pointer stub; wave15 **1** added unit markers. There is still no buffer-backed `FILL` / `ERASE` / `MOVE` / `CMOVE` surface. This tip adds **stub** markers over **one fixed host byte buffer** (small cap — document size; prefer **64** bytes): `FILL` writes a char across `u` bytes, `ERASE` clears with char 0, `MOVE` / `CMOVE` copy `u` bytes within (or across regions of) that buffer, and smokes via **`fill-demo`**. **Not** an arena, heap, free list, or real `ALLOCATE`. Does **not** redefine kernel-internal `cmove` used by dict copy in `kernel.fs` / `drena.fs`. Forth mirrors `fill-buf` / `erase-buf` / `move-buf` / `cmove-buf` so host `cmove` stays the primitive. Optional tie to tip1 `CELLS` for `u` — not required for Lab OK. Builds on the wave14 pointer stub without promoting it to a heap. Wave20 tip **3** lands ANS `COUNT` counted-string picture (`docs/COUNT.md` / Forth mirror `count-mark`) — sibling picture mark that may use a separate fixed demo fixture; **not** a FILL reopen / arena / ALLOCATE / counted-string heap; host `ENTRY-COUNT` / `SYN-COUNT` / `words-count` are **not** ANS COUNT; do **not** redefine kernel `cmove`. Wave21 tip **3** lands ANS `COMPARE` string-compare mark (`docs/COMPARE.md` / Forth mirror `compare-mark`) — sibling string-compare mark over fixed demo string pair fixtures; **not** a FILL reopen / arena / ALLOCATE / SEARCH-WORDLIST / FIND reopen / full string heap / WITHIN reopen; host `cstr=` is **not** ANS COMPARE; do **not** redefine kernel `cmove`.
 
 ## 2. Words / Surfaces
 
@@ -33,7 +33,7 @@ Host note: bind `FILL` / `ERASE` / `MOVE` / `CMOVE` on the Linux REPL; Forth mir
 - Named buffer `BUFFER:` slots may use offsets into this same cap → `docs/BUFFER-COLON.md` (wave16 **3**). Named slot only — **do not** redefine / replace this FILL host buffer; still **not** an arena / `ALLOCATE`.
 - Optional: `u` may be composed with tip1 `CELLS` (e.g. `2 CELLS` → 16 when cell=8) — **not** required for Lab OK.
 - Nest with prior pick / cell / allot / throw / 2var / create / colon / control / string stubs OK. `dict-reset` need not clear the buffer (demo seeds explicitly via FILL/ERASE).
-- Still no IMMEDIATE/POSTPONE, real DOES> XT, real branch XT, full Win/Android Forth VM. ANS `COUNT` counted-string picture → `docs/COUNT.md` (wave20 **3**; host ENTRY-COUNT ≠ ANS COUNT) — sibling mark only; not a FILL reopen. Those stay non-goals / later tips (COUNT thin mark excepted as mark-only).
+- Still no IMMEDIATE/POSTPONE, real DOES> XT, real branch XT, full Win/Android Forth VM. ANS `COUNT` counted-string picture → `docs/COUNT.md` (wave20 **3**; host ENTRY-COUNT ≠ ANS COUNT) — sibling mark only; not a FILL reopen. ANS `COMPARE` string-compare mark → `docs/COMPARE.md` (wave21 **3**; host `cstr=` ≠ ANS COMPARE) — sibling mark only; not a FILL reopen / SEARCH-WORDLIST. Those stay non-goals / later tips (COUNT / COMPARE thin marks excepted as mark-only).
 
 ## 4. Markers
 
@@ -84,6 +84,7 @@ Do **not** wipe CELL-CELLS / PICK-ROLL / ALLOT-HERE / THROW-CATCH / other wave14
 
 - Full Dusk arena / pool / free / fragmentation model (this tip = fixed host buffer stub only)
 - ANS `COUNT` counted-string picture → `docs/COUNT.md` (wave20 **3**; Forth mirror `count-mark`); host `ENTRY-COUNT` / `SYN-COUNT` / `words-count` are **not** ANS COUNT; full counted-string heap still later
+- ANS `COMPARE` string-compare mark → `docs/COMPARE.md` (wave21 **3**; Forth mirror `compare-mark`); host `cstr=` is **not** ANS COMPARE; SEARCH-WORDLIST / FIND reopen / full string heap / WITHIN reopen still later
 - Real `ALLOCATE` / `FREE` / `RESIZE`
 - `BUFFER:` named allot buffer stubs → `docs/BUFFER-COLON.md` (wave16 **3**; offsets into this cap OK — do not redefine FILL buffer)
 - Redefining kernel-internal `cmove` used by dict copy in `kernel.fs` / `drena.fs` (use mirrors `fill-buf` / `cmove-buf` / `move-buf` / `erase-buf`)
@@ -100,7 +101,7 @@ Do **not** wipe CELL-CELLS / PICK-ROLL / ALLOT-HERE / THROW-CATCH / other wave14
 ## 8. Acceptance (Test Lab)
 
 1. `docs/FILL-MOVE.md` present (Research byte-copy OK); `ALLOT-HERE.md` + `KERNEL.md` thin amends present (wave15 **1** CELL-CELLS + wave15 **2** PICK-ROLL cites and wave14 text retained).
-2. `fill-demo` → OK (markers §4; FILL / ERASE / MOVE-or-CMOVE greppable; post-image or `bytes=`; no bounds FAIL on happy path). wave20 **3**: `count-demo` → OK (retains `fill-demo`; host ENTRY-COUNT ≠ ANS COUNT). Prior `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK.
+2. `fill-demo` → OK (markers §4; FILL / ERASE / MOVE-or-CMOVE greppable; post-image or `bytes=`; no bounds FAIL on happy path). wave20 **3**: `count-demo` → OK (retains `fill-demo`; host ENTRY-COUNT ≠ ANS COUNT). wave21 **3**: `compare-demo` → OK (retains `fill-demo` + `count-demo` + `string-demo`; host `cstr=` ≠ ANS COMPARE). Prior `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK.
 3. Regression green (wave15 tip1–2 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `fill-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML.
@@ -114,3 +115,4 @@ Do **not** wipe CELL-CELLS / PICK-ROLL / ALLOT-HERE / THROW-CATCH / other wave14
 - Wave15 proposal: `/workspace/tritium-research-docs/WAVE15-PROPOSAL.md`
 - `docs/BUFFER-COLON.md` (wave16 **3**)
 - `docs/COUNT.md` (wave20 **3** — ANS COUNT picture companion; host ENTRY-COUNT ≠ ANS COUNT)
+- `docs/COMPARE.md` (wave21 **3** — ANS COMPARE string mark companion; host `cstr=` ≠ ANS COMPARE)

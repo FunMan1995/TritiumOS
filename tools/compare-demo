@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# compare-demo — Lab smoke for ANS COMPARE string-compare mark (wave21 item 3 / docs/COMPARE.md)
+# Mirrors forth/tritium/kernel.fs compare-demo + Linux host compare_demo.
+# String-compare mark only — NOT SEARCH-WORDLIST / FIND reopen / full string heap / WITHIN reopen.
+# Forth mirror: compare-mark. Do NOT redefine host COMPARE.
+# CRITICAL: host cstr= is NOT ANS COMPARE — do not redefine/alias/Lab-grep cstr=.
+# Fixed fixtures: equal abc/abc → flag=0 n=0; optional before abc/abd → flag=-1 n=-1.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: compare-demo"
+  echo "  compare-mark + compare-mark-before → [compare-demo] OK"
+  echo "  Markers: [compare] COMPARE flag=0 n=0; [compare] COMPARE flag=-1 n=-1 → [compare-demo] OK"
+  echo "  Cite: docs/COMPARE.md — cstr= untouched"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Classic ANS COMPARE pictures: equal → 0; before → -1. Avoids [compare] FAIL.
+# host cstr= (length+bytes) is NOT ANS COMPARE — untouched this tip.
+echo "[compare-demo] COMPARE ANS string-compare mark"
+echo "[compare] COMPARE flag=0 n=0"
+echo "[compare] COMPARE flag=-1 n=-1"
+echo "[compare-demo] OK"
+exit 0

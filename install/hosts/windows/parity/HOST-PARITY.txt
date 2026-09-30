@@ -50,3 +50,4 @@ count-demo CONTRACT
 exec-demo CONTRACT
 accept-demo CONTRACT
 base-demo CONTRACT
+compare-demo CONTRACT
