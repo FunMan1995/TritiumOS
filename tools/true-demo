@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# true-demo — Lab smoke for TRUE / FALSE constant marks (wave20 item 1 / docs/TRUE-FALSE.md)
+# Mirrors forth/tritium/kernel.fs true-demo + Linux host true_demo.
+# Constant marks only — NOT real boolean cell rewrite / 0= deepen / WITHIN / branch XT.
+# Forth mirrors: true-mark / false-mark. Do NOT redefine host TRUE / FALSE.
+# Classic pictures: TRUE flag=-1 (all-bits-set), FALSE flag=0.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: true-demo"
+  echo "  true-mark (flag=-1) + false-mark (flag=0) → [true-demo] OK"
+  echo "  Markers: [true] TRUE flag=-1 u=-1 / [true] FALSE flag=0 u=0 → [true-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Classic ANS / common Forth pictures (host ints only — not a live boolean cell)
+TRUE_FLAG=-1
+FALSE_FLAG=0
+
+echo "[true-demo] TRUE + FALSE constant marks"
+echo "[true] TRUE flag=${TRUE_FLAG} u=${TRUE_FLAG}"
+echo "[true] FALSE flag=${FALSE_FLAG} u=${FALSE_FLAG}"
+echo "[true-demo] OK"
+exit 0

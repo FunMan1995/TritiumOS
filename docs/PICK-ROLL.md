@@ -1,14 +1,14 @@
 # PICK-ROLL — `PICK` / `ROLL` / `DEPTH` / `?DUP` stack stubs + `pick-demo`
 
-**Status:** Shipper-ready stub spec (wave15 item **2**)
+**Status:** Shipper-ready stub spec (wave15 item **2**; thin amend wave20 **1** TRUE-FALSE companion cite)
 **Canonical brief:** ANS-shaped `PICK` / `ROLL` / `DEPTH` / `?DUP` (thin stack markers); `docs/KERNEL.md` (wave7 **5**); pairs with wave15 **1** `CELL-CELLS` (independent)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `pick.fs`); Linux host REPL
-**Companions:** `docs/KERNEL.md` (thin amend this tip only)
+**Companions:** `docs/KERNEL.md` (thin amend this tip only); `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion cite; sibling flag picture beside ?DUP — not PICK/?DUP reopen)
 **Base tip SHA:** `2e949e7` (wave15 tip1 CLOSED / #67 CELL-CELLS) / full `2e949e7392f911195e1aa8888437f12e28135ac9`
 
 ## 1. Purpose
 
-Core stack words never got a `[*demo]` surface. Host `2dup` / `2drop` / `2swap` already live inside `kernel.fs`; this tip does **not** redefine them. It adds **stub** markers only: `DEPTH` reports a host stack count, `PICK` copies the u-th item (tiny host array / TOS window picture), `ROLL` rotates that picture, `?DUP` duplicates TOS when nonzero, and smokes via **`pick-demo`**. Marker + tiny host stack picture only — **not** a real threaded data stack, not a return-stack walk, and not a buffer FILL. Independent of tip1 CELL-CELLS. Forth mirrors `pick-nth` / `roll-nth` / `stack-depth` / `qdup` so existing `2 pick` in `drena.fs` is **not** replaced.
+Core stack words never got a `[*demo]` surface. Host `2dup` / `2drop` / `2swap` already live inside `kernel.fs`; this tip does **not** redefine them. It adds **stub** markers only: `DEPTH` reports a host stack count, `PICK` copies the u-th item (tiny host array / TOS window picture), `ROLL` rotates that picture, `?DUP` duplicates TOS when nonzero, and smokes via **`pick-demo`**. Marker + tiny host stack picture only — **not** a real threaded data stack, not a return-stack walk, and not a buffer FILL. Independent of tip1 CELL-CELLS. Forth mirrors `pick-nth` / `roll-nth` / `stack-depth` / `qdup` so existing `2 pick` in `drena.fs` is **not** replaced. Wave20 tip **1** lands `TRUE` / `FALSE` constant marks (`docs/TRUE-FALSE.md`): sibling flag picture beside `?DUP flag=` — **not** a PICK/ROLL/?DUP reopen / real threaded stack / `0=` deepen / WITHIN.
 
 ## 2. Words / Surfaces
 
@@ -31,7 +31,7 @@ Host note: bind `PICK` / `ROLL` / `DEPTH` / `?DUP` on the Linux REPL; Forth mirr
 - **?DUP:** TOS = 0 → `flag=0` (no duplicate); TOS ≠ 0 → `flag=1` (duplicate). Print `[pick] ?DUP flag=<0|1>`. Demo must show **both** paths (zero and nonzero).
 - **Underflow / u past depth:** `[pick] FAIL reason=underflow` (demo **must avoid** — always seed enough items and keep `u` in range).
 - Nest with prior cell / allot / throw / 2var / create / colon / control / string stubs OK. `dict-reset` need not clear the host picture (demo seeds explicitly).
-- Still no FILL/MOVE buffer, IMMEDIATE/POSTPONE, real DOES> XT, real branch XT, full Win/Android Forth VM. Those stay non-goals / later tips.
+- Still no FILL/MOVE buffer, IMMEDIATE/POSTPONE, real DOES> XT, real branch XT, full Win/Android Forth VM. TRUE/FALSE constant marks → `docs/TRUE-FALSE.md` (wave20 **1** — sibling flag picture; not a PICK/?DUP reopen / boolean cell rewrite). Those stay non-goals / later tips.
 
 ## 4. Markers
 
@@ -70,7 +70,13 @@ DEPTH + PICK + ROLL markers and at least one `?DUP flag=` are required. Underflo
 - Acceptance: Lab smokes `pick-demo` (and retains `cell-demo`).
 - Cite: `docs/PICK-ROLL.md`.
 
-Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 content.
+### `docs/TRUE-FALSE.md` (wave20 **1** companion — cited from this tip)
+
+- Companions: PICK-ROLL cites TRUE-FALSE as sibling flag picture; TRUE-FALSE cites PICK-ROLL as stack/?DUP flag companion.
+- Purpose: `TRUE` / `FALSE` constant marks pair with `?DUP flag=` picture — **not** a PICK/ROLL/?DUP reopen / real threaded stack / `0=` deepen / WITHIN.
+- Cite: `docs/TRUE-FALSE.md`.
+
+Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 content. Do **not** wipe wave20 TRUE-FALSE companion cite once landed.
 
 ## 7. Non-goals
 
@@ -81,6 +87,7 @@ Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 conten
 - IMMEDIATE / POSTPONE (wave15 **4** candidate)
 - Docs cites pass (wave15 **5**)
 - CELL / CELLS / ALIGN / ALIGNED (wave15 **1** — already stubbed; do not reopen)
+- `TRUE` / `FALSE` constant marks → `docs/TRUE-FALSE.md` (wave20 **1**; sibling flag picture — not a PICK/?DUP reopen / real boolean cell / `0=` deepen / WITHIN)
 - Real DOES> XT chaining / threaded child runtime body
 - Real branch XT / LEAVE jump
 - Real crypto / network fleet / opaque-weight ML
@@ -89,8 +96,8 @@ Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 conten
 
 ## 8. Acceptance (Test Lab)
 
-1. `docs/PICK-ROLL.md` present (Research byte-copy OK); `KERNEL.md` thin amend present (wave15 **1** CELL-CELLS cites and wave14 text retained).
-2. `pick-demo` → OK (markers §4; DEPTH / PICK / ROLL / ?DUP greppable; no underflow FAIL on happy path). Prior `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK.
+1. `docs/PICK-ROLL.md` present (Research byte-copy OK); `KERNEL.md` thin amend present (wave15 **1** CELL-CELLS cites and wave14 text retained); wave20 **1** TRUE-FALSE companion cite present.
+2. `pick-demo` → OK (markers §4; DEPTH / PICK / ROLL / ?DUP greppable; no underflow FAIL on happy path). Prior `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave20 **1**: `true-demo` → OK (retains `pick-demo` + `cell-demo`).
 3. Regression green (wave15 tip1 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `pick-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML.
@@ -98,6 +105,7 @@ Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 conten
 ## 9. Cite
 
 - `docs/KERNEL.md` (wave7 **5**), `docs/CELL-CELLS.md` (wave15 **1**)
+- `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion; sibling flag picture beside ?DUP)
 - `forth/tritium/kernel.fs`, `forth/tritium/drena.fs` (`2 pick` stays — mirrors only)
 - ANS Forth `PICK` / `ROLL` / `DEPTH` / `?DUP` (stub markers + host picture only)
 - Base tip: `2e949e7` / `2e949e7392f911195e1aa8888437f12e28135ac9` (#67 wave15 tip1 CELL-CELLS)
