@@ -2489,6 +2489,38 @@ create (bd-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t
   ." [body-demo] OK" cr ;
 
 
+\ === ENVIRONMENT? query mark (wave19 item 3) ===
+\ Forth mirror: environment-query — do NOT redefine host ENVIRONMENT?.
+\ Fixed query set only — not full ANS env table / SEARCH-WORDLIST.
+
+create (eq-aub) 17 c, char A c, char D c, char D c, char R c, char E c, char S c, char S c, char - c, char U c, char N c, char I c, char T c, char - c, char B c, char I c, char T c, char S c,
+create (eq-max) 8 c, char M c, char A c, char X c, char - c, char C c, char H c, char A c, char R c,
+create (eq-trit) 12 c, char T c, char R c, char I c, char T c, char I c, char U c, char M c, char - c, char S c, char T c, char U c, char B c,
+create (eq-miss) 6 c, char N c, char O c, char S c, char U c, char C c, char H c,
+
+: environment-query-from ( c-addr u -- )
+  2dup (eq-aub) count cstr= if
+    2drop ." [env] ENVIRONMENT? query=ADDRESS-UNIT-BITS flag=1 u=8" cr exit
+  then
+  2dup (eq-max) count cstr= if
+    2drop ." [env] ENVIRONMENT? query=MAX-CHAR flag=1 u=255" cr exit
+  then
+  2dup (eq-trit) count cstr= if
+    2drop ." [env] ENVIRONMENT? query=TRITIUM-STUB flag=1 u=1" cr exit
+  then
+  2drop ." [env] ENVIRONMENT? miss" cr ;
+
+: environment-query ( "name" -- ) bl word count environment-query-from ;
+
+: env-demo ( -- )
+  ." [env-demo] ENVIRONMENT? fixed query set" cr
+  (eq-aub) count environment-query-from
+  (eq-max) count environment-query-from
+  (eq-trit) count environment-query-from
+  (eq-miss) count environment-query-from
+  ." [env-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2529,6 +2561,7 @@ create (bd-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t
 \ - STATE-COMPILE landed (wave18 item 4).
 \ - CHAR-CHARS landed (wave19 item 1).
 \ - TO-BODY landed (wave19 item 2).
+\ - ENVIRONMENT-QUERY landed (wave19 item 3).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

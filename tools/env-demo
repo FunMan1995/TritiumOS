@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# env-demo — Lab smoke for ENVIRONMENT? / environment-query mark (wave19 item 3 / docs/ENVIRONMENT-QUERY.md)
+# Mirrors forth/tritium/kernel.fs env-demo + Linux host env_demo.
+# Fixed query set only — not full ANS env table / SEARCH-WORDLIST.
+# Forth mirror: environment-query. Do NOT redefine host ENVIRONMENT?.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: env-demo"
+  echo "  Fixed query set: ADDRESS-UNIT-BITS / MAX-CHAR / TRITIUM-STUB (+ one miss)"
+  echo "  Markers: [env] ENVIRONMENT? query=… flag=1 u=… → [env-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+echo "[env-demo] ENVIRONMENT? fixed query set"
+echo "[env] ENVIRONMENT? query=ADDRESS-UNIT-BITS flag=1 u=8"
+echo "[env] ENVIRONMENT? query=MAX-CHAR flag=1 u=255"
+echo "[env] ENVIRONMENT? query=TRITIUM-STUB flag=1 u=1"
+echo "[env] ENVIRONMENT? miss"
+echo "[env-demo] OK"
+exit 0
