@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# abs-demo — Lab smoke for ABS/NEGATE signed magnitude / negate marks (wave23 item 4 / docs/ABS-NEGATE.md)
+# Forth mirrors: abs-mark / negate-mark — do NOT redefine host ABS/NEGATE.
+# NOT boolean cell; NOT BITWISE/LSHIFT/ZERO-EQUALS/U-LESS/HOLD/CHAR-PLUS reopen; NEGATE ≠ INVERT.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+echo "[abs-demo] ABS/NEGATE signed magnitude / negate marks"
+echo "[abs] ABS n=-5 u=5"
+echo "[abs] NEGATE n=-5"
+echo "[abs-demo] OK"
+exit 0

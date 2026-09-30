@@ -59,3 +59,4 @@ search-demo CONTRACT
 charplus-demo CONTRACT
 hold-demo CONTRACT
 uless-demo CONTRACT
+abs-demo CONTRACT

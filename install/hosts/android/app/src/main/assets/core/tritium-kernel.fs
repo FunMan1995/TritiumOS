@@ -2819,6 +2819,23 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [uless-demo] OK" cr ;
 
 
+\ === ABS/NEGATE signed magnitude / negate marks (wave23 item 4) ===
+\ Forth mirrors: abs-mark / negate-mark — do NOT redefine host ABS/NEGATE.
+\ NOT boolean cell; NOT BITWISE/LSHIFT/ZERO-EQUALS/U-LESS/HOLD/CHAR-PLUS reopen; NEGATE ≠ INVERT.
+: abs-mark ( -- )
+  ." [abs] ABS n=-5 u=5" cr ;
+
+: negate-mark ( -- )
+  ." [abs] NEGATE n=-5" cr ;
+
+: abs-demo ( -- )
+  ." [abs-demo] ABS/NEGATE signed magnitude / negate marks" cr
+  abs-mark
+  negate-mark
+  ." [abs-demo] OK" cr ;
+
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
