@@ -2709,6 +2709,26 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 
 
 
+\ === LSHIFT/RSHIFT shift marks (wave22 item 1) ===
+\ Forth mirrors: lshift-mark / rshift-mark — do NOT redefine host LSHIFT/RSHIFT.
+\ CRITICAL: host lowercase lshift / rshift untouched (trit.fs / drena.fs).
+\ Classic fixture: 1<<4 → 16; 16>>4 → 1.
+\ Shift marks only — NOT boolean cell / 0= / AND-OR / BITWISE reopen / WITHIN reopen.
+
+: lshift-mark ( -- )
+  ." [shift] LSHIFT u=16" cr ;
+
+: rshift-mark ( -- )
+  ." [shift] RSHIFT u=1" cr ;
+
+: shift-demo ( -- )
+  ." [shift-demo] LSHIFT + RSHIFT shift marks" cr
+  lshift-mark
+  rshift-mark
+  ." [shift-demo] OK" cr ;
+
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)

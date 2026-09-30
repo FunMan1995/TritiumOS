@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# shift-demo — Lab smoke for LSHIFT/RSHIFT shift marks (wave22 item 1 / docs/LSHIFT-RSHIFT.md)
+# Mirrors forth/tritium/kernel.fs shift-demo + Linux host shift_demo.
+# Forth mirrors: lshift-mark / rshift-mark — do NOT redefine host LSHIFT/RSHIFT.
+# CRITICAL: host lowercase lshift / rshift are host Forth primitives (trit.fs / drena.fs) — do NOT redefine/alias/Lab-grep them.
+# Classic fixture: 1 LSHIFT 4 → 16; 16 RSHIFT 4 → 1.
+# Shift marks only — NOT boolean cell rewrite / 0= deepen / AND-OR reopen / BITWISE reopen / WITHIN reopen.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: shift-demo"
+  echo "  lshift-mark + rshift-mark → [shift-demo] OK"
+  echo "  Markers: [shift] LSHIFT u=16; [shift] RSHIFT u=1 → [shift-demo] OK"
+  echo "  Cite: docs/LSHIFT-RSHIFT.md — host lshift/rshift untouched"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Classic 1<<4 / 16>>4 picture: LSHIFT→16, RSHIFT→1. Avoids [shift] FAIL.
+# host lowercase lshift/rshift are host Forth primitives — untouched this tip.
+echo "[shift-demo] LSHIFT + RSHIFT shift marks"
+echo "[shift] LSHIFT u=16"
+echo "[shift] RSHIFT u=1"
+echo "[shift-demo] OK"
+exit 0

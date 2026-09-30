@@ -1,14 +1,14 @@
 # PICK-ROLL — `PICK` / `ROLL` / `DEPTH` / `?DUP` stack stubs + `pick-demo`
 
-**Status:** Shipper-ready stub spec (wave15 item **2**; thin amend wave20 **1** TRUE-FALSE companion cite; thin amend wave20 **2** WITHIN companion cite; thin amend wave21 **4** BITWISE companion cite)
+**Status:** Shipper-ready stub spec (wave15 item **2**; thin amend wave20 **1** TRUE-FALSE companion cite; thin amend wave20 **2** WITHIN companion cite; thin amend wave21 **4** BITWISE companion cite; thin amend wave22 **1** LSHIFT-RSHIFT companion cite)
 **Canonical brief:** ANS-shaped `PICK` / `ROLL` / `DEPTH` / `?DUP` (thin stack markers); `docs/KERNEL.md` (wave7 **5**); pairs with wave15 **1** `CELL-CELLS` (independent)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `pick.fs`); Linux host REPL
-**Companions:** `docs/KERNEL.md` (thin amend this tip only); `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion cite; sibling flag picture beside ?DUP — not PICK/?DUP reopen); `docs/WITHIN.md` (wave20 **2** — range-check mark companion cite; sibling flag picture — not PICK/?DUP reopen / compare machine); `docs/BITWISE.md` (wave21 **4** — bitwise marks companion cite; sibling bitwise marks — not PICK/?DUP reopen / boolean cell / `0=` deepen)
+**Companions:** `docs/KERNEL.md` (thin amend this tip only); `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion cite; sibling flag picture beside ?DUP — not PICK/?DUP reopen); `docs/WITHIN.md` (wave20 **2** — range-check mark companion cite; sibling flag picture — not PICK/?DUP reopen / compare machine); `docs/BITWISE.md` (wave21 **4** — bitwise marks companion cite; sibling bitwise marks — not PICK/?DUP reopen / boolean cell / `0=` deepen); `docs/LSHIFT-RSHIFT.md` (wave22 **1** — shift marks companion cite; sibling shift marks — not PICK/?DUP reopen / boolean cell / `0=` deepen / BITWISE reopen)
 **Base tip SHA:** `2e949e7` (wave15 tip1 CLOSED / #67 CELL-CELLS) / full `2e949e7392f911195e1aa8888437f12e28135ac9`
 
 ## 1. Purpose
 
-Core stack words never got a `[*demo]` surface. Host `2dup` / `2drop` / `2swap` already live inside `kernel.fs`; this tip does **not** redefine them. It adds **stub** markers only: `DEPTH` reports a host stack count, `PICK` copies the u-th item (tiny host array / TOS window picture), `ROLL` rotates that picture, `?DUP` duplicates TOS when nonzero, and smokes via **`pick-demo`**. Marker + tiny host stack picture only — **not** a real threaded data stack, not a return-stack walk, and not a buffer FILL. Independent of tip1 CELL-CELLS. Forth mirrors `pick-nth` / `roll-nth` / `stack-depth` / `qdup` so existing `2 pick` in `drena.fs` is **not** replaced. Wave20 tip **1** lands `TRUE` / `FALSE` constant marks (`docs/TRUE-FALSE.md`): sibling flag picture beside `?DUP flag=` — **not** a PICK/ROLL/?DUP reopen / real threaded stack / `0=` deepen / WITHIN. Wave20 tip **2** lands `WITHIN` range-check mark (`docs/WITHIN.md`): sibling range-check flag mark — **not** a PICK/ROLL/?DUP reopen / real threaded stack / compare machine / branch XT. Wave21 tip **4** lands `AND` / `OR` / `XOR` / `INVERT` bitwise marks (`docs/BITWISE.md`): sibling **bitwise** marks — **not** a PICK/ROLL/?DUP reopen / real threaded stack / boolean cell / `0=` deepen / WITHIN reopen; host lowercase `and`/`or` stay untouched.
+Core stack words never got a `[*demo]` surface. Host `2dup` / `2drop` / `2swap` already live inside `kernel.fs`; this tip does **not** redefine them. It adds **stub** markers only: `DEPTH` reports a host stack count, `PICK` copies the u-th item (tiny host array / TOS window picture), `ROLL` rotates that picture, `?DUP` duplicates TOS when nonzero, and smokes via **`pick-demo`**. Marker + tiny host stack picture only — **not** a real threaded data stack, not a return-stack walk, and not a buffer FILL. Independent of tip1 CELL-CELLS. Forth mirrors `pick-nth` / `roll-nth` / `stack-depth` / `qdup` so existing `2 pick` in `drena.fs` is **not** replaced. Wave20 tip **1** lands `TRUE` / `FALSE` constant marks (`docs/TRUE-FALSE.md`): sibling flag picture beside `?DUP flag=` — **not** a PICK/ROLL/?DUP reopen / real threaded stack / `0=` deepen / WITHIN. Wave20 tip **2** lands `WITHIN` range-check mark (`docs/WITHIN.md`): sibling range-check flag mark — **not** a PICK/ROLL/?DUP reopen / real threaded stack / compare machine / branch XT. Wave21 tip **4** lands `AND` / `OR` / `XOR` / `INVERT` bitwise marks (`docs/BITWISE.md`): sibling **bitwise** marks — **not** a PICK/ROLL/?DUP reopen / real threaded stack / boolean cell / `0=` deepen / WITHIN reopen; host lowercase `and`/`or` stay untouched. Wave22 tip **1** lands `LSHIFT` / `RSHIFT` shift marks (`docs/LSHIFT-RSHIFT.md`): sibling **shift** marks — **not** a PICK/ROLL/?DUP reopen / real threaded stack / boolean cell / `0=` deepen / BITWISE reopen / WITHIN reopen; host lowercase `lshift`/`rshift` stay untouched.
 
 ## 2. Words / Surfaces
 
@@ -31,7 +31,7 @@ Host note: bind `PICK` / `ROLL` / `DEPTH` / `?DUP` on the Linux REPL; Forth mirr
 - **?DUP:** TOS = 0 → `flag=0` (no duplicate); TOS ≠ 0 → `flag=1` (duplicate). Print `[pick] ?DUP flag=<0|1>`. Demo must show **both** paths (zero and nonzero).
 - **Underflow / u past depth:** `[pick] FAIL reason=underflow` (demo **must avoid** — always seed enough items and keep `u` in range).
 - Nest with prior cell / allot / throw / 2var / create / colon / control / string stubs OK. `dict-reset` need not clear the host picture (demo seeds explicitly).
-- Still no FILL/MOVE buffer, IMMEDIATE/POSTPONE, real DOES> XT, real branch XT, full Win/Android Forth VM. TRUE/FALSE constant marks → `docs/TRUE-FALSE.md` (wave20 **1** — sibling flag picture; not a PICK/?DUP reopen / boolean cell rewrite). WITHIN range-check mark → `docs/WITHIN.md` (wave20 **2** — sibling range-check flag; not a PICK/?DUP reopen / compare machine / branch XT). AND/OR/XOR/INVERT bitwise marks → `docs/BITWISE.md` (wave21 **4** — sibling bitwise marks; not a PICK/?DUP reopen / boolean cell / `0=` deepen; host lowercase `and`/`or` stay untouched). Those stay non-goals / later tips.
+- Still no FILL/MOVE buffer, IMMEDIATE/POSTPONE, real DOES> XT, real branch XT, full Win/Android Forth VM. TRUE/FALSE constant marks → `docs/TRUE-FALSE.md` (wave20 **1** — sibling flag picture; not a PICK/?DUP reopen / boolean cell rewrite). WITHIN range-check mark → `docs/WITHIN.md` (wave20 **2** — sibling range-check flag; not a PICK/?DUP reopen / compare machine / branch XT). AND/OR/XOR/INVERT bitwise marks → `docs/BITWISE.md` (wave21 **4** — sibling bitwise marks; not a PICK/?DUP reopen / boolean cell / `0=` deepen; host lowercase `and`/`or` stay untouched). LSHIFT/RSHIFT shift marks → `docs/LSHIFT-RSHIFT.md` (wave22 **1** — sibling shift marks; not a PICK/?DUP reopen / boolean cell / `0=` deepen / BITWISE reopen; host lowercase `lshift`/`rshift` stay untouched). Those stay non-goals / later tips.
 
 ## 4. Markers
 
@@ -88,7 +88,13 @@ DEPTH + PICK + ROLL markers and at least one `?DUP flag=` are required. Underflo
 - Purpose: `AND` / `OR` / `XOR` / `INVERT` bitwise marks pair with `?DUP flag=` / TRUE/FALSE pictures — **not** a PICK/ROLL/?DUP reopen / real threaded stack / boolean cell / `0=` deepen / WITHIN reopen. Host lowercase `and`/`or` stay untouched.
 - Cite: `docs/BITWISE.md`.
 
-Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 content. Do **not** wipe wave20 TRUE-FALSE / WITHIN companion cites once landed. Do **not** wipe wave21 BITWISE companion cite once landed.
+### `docs/LSHIFT-RSHIFT.md` (wave22 **1** companion — cited from this tip)
+
+- Companions: PICK-ROLL cites LSHIFT-RSHIFT as sibling shift marks; LSHIFT-RSHIFT optionally cites PICK-ROLL.
+- Purpose: `LSHIFT` / `RSHIFT` shift marks pair with `?DUP flag=` / TRUE/FALSE / BITWISE pictures — **not** a PICK/ROLL/?DUP reopen / real threaded stack / boolean cell / `0=` deepen / BITWISE reopen / WITHIN reopen. Host lowercase `lshift`/`rshift` stay untouched.
+- Cite: `docs/LSHIFT-RSHIFT.md`.
+
+Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 content. Do **not** wipe wave20 TRUE-FALSE / WITHIN companion cites once landed. Do **not** wipe wave21 BITWISE / wave22 LSHIFT-RSHIFT companion cites once landed.
 
 ## 7. Non-goals
 
@@ -101,6 +107,7 @@ Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 conten
 - CELL / CELLS / ALIGN / ALIGNED (wave15 **1** — already stubbed; do not reopen)
 - `TRUE` / `FALSE` constant marks → `docs/TRUE-FALSE.md` (wave20 **1**; sibling flag picture — not a PICK/?DUP reopen / real boolean cell / `0=` deepen / WITHIN)
 - `AND` / `OR` / `XOR` / `INVERT` bitwise marks → `docs/BITWISE.md` (wave21 **4**; sibling bitwise marks — not a PICK/?DUP reopen / real boolean cell / `0=` deepen / LSHIFT/RSHIFT; host lowercase `and`/`or` stay untouched)
+- `LSHIFT` / `RSHIFT` shift marks → `docs/LSHIFT-RSHIFT.md` (wave22 **1**; sibling shift marks — not a PICK/?DUP reopen / real boolean cell / `0=` deepen / BITWISE reopen; host lowercase `lshift`/`rshift` stay untouched)
 - `WITHIN` range-check mark → `docs/WITHIN.md` (wave20 **2**; sibling range-check flag — not a PICK/?DUP reopen / compare machine / branch XT)
 - Real DOES> XT chaining / threaded child runtime body
 - Real branch XT / LEAVE jump
@@ -110,7 +117,7 @@ Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 conten
 
 ## 8. Acceptance (Test Lab)
 
-1. `docs/PICK-ROLL.md` present (Research byte-copy OK); `KERNEL.md` thin amend present (wave15 **1** CELL-CELLS cites and wave14 text retained); wave20 **1** TRUE-FALSE companion cite present; wave21 **4** BITWISE companion cite present.
+1. `docs/PICK-ROLL.md` present (Research byte-copy OK); `KERNEL.md` thin amend present (wave15 **1** CELL-CELLS cites and wave14 text retained); wave20 **1** TRUE-FALSE companion cite present; wave21 **4** BITWISE companion cite present; wave22 **1** LSHIFT-RSHIFT companion cite present.
 2. `pick-demo` → OK (markers §4; DEPTH / PICK / ROLL / ?DUP greppable; no underflow FAIL on happy path). Prior `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave20 **1**: `true-demo` → OK (retains `pick-demo` + `cell-demo`); wave20 **2**: `within-demo` → OK (retains `pick-demo` + `true-demo`).
 3. Regression green (wave15 tip1 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `pick-demo CONTRACT` OK).
@@ -121,6 +128,7 @@ Do **not** wipe CELL-CELLS / ALLOT-HERE / THROW-CATCH / other wave14–15 conten
 - `docs/KERNEL.md` (wave7 **5**), `docs/CELL-CELLS.md` (wave15 **1**)
 - `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion; sibling flag picture beside ?DUP)
 - `docs/BITWISE.md` (wave21 **4** — bitwise marks companion; sibling bitwise marks — not PICK/?DUP reopen)
+- `docs/LSHIFT-RSHIFT.md` (wave22 **1** — shift marks companion; sibling shift marks — not PICK/?DUP reopen)
 - `docs/WITHIN.md` (wave20 **2** — range-check mark companion; sibling flag picture — not PICK/?DUP reopen)
 - `forth/tritium/kernel.fs`, `forth/tritium/drena.fs` (`2 pick` stays — mirrors only)
 - ANS Forth `PICK` / `ROLL` / `DEPTH` / `?DUP` (stub markers + host picture only)
