@@ -2338,6 +2338,39 @@ create (tk-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t
   ." [tick-demo] OK" cr ;
 
 
+\ === FIND ANS-ish find markers (wave18 item 2) ===
+\ Forth mirrors: find-xt / find-mark — do NOT redefine host find/findentry/entry-find.
+\ Not SEARCH-WORDLIST / linked dict / execute-through / SYNONYM FIND rewrite.
+\ xt= = entry index (same tip1 TICK convention).
+
+create (fd-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t c,
+create (fd-miss) 6 c, char n c, char o c, char s c, char u c, char c c, char h c,
+
+: find-xt-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [find] FIND miss" cr exit
+  then
+  >r 2drop
+  ." [find] FIND name=" r@ entry-name[] NAMELEN name-trim type
+  ."  xt=" r@ .
+  ." flag=-1"
+  ." i=" r@ . cr
+  r> drop ;
+
+: find-xt ( "name" -- ) bl word count find-xt-from ;
+: find-mark ( "name" -- ) find-xt ;  \ optional alias
+
+: find-demo ( -- )
+  ." [find-demo] dict-reset + create widget + find-xt + miss" cr
+  dict-reset
+  (fd-widget) count entry-create-from drop
+  (fd-widget) count entry-find 0< if ." [find-demo] FAIL" cr exit then
+  (fd-widget) count find-xt-from
+  (fd-miss) count find-xt-from
+  ." [find-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2373,6 +2406,7 @@ create (tk-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t
 \ - EVALUATE/INCLUDE mark-only echo + eval-demo (wave17 item 3) — landed
 \ - RECURSE mark-only + recurse-demo (wave17 item 4) — landed
 \ - TICK name→stub-xt-id markers + tick-demo (wave18 item 1) — landed
+\ - FIND ANS-ish find markers + find-demo (wave18 item 2) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

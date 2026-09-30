@@ -3,12 +3,12 @@
 **Status:** Shipper-ready stub spec (wave17 item **1**)
 **Canonical brief:** ANS-shaped `SYNONYM` / `ALIAS` (thin name→name map markers only); `docs/WORDS-VOCAB.md` (wave11 **3**); `docs/DEFER-IS.md` (wave16 **1**); `docs/KERNEL.md` (wave7 **5**); `docs/CREATE-DOES.md` (wave13 **3**); explicit WAVE16 deferral closed as name-map stub only
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `synonym.fs`); Linux host REPL
-**Companions:** `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DEFER-IS.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); optional light cite `docs/CREATE-DOES.md`
+**Companions:** `docs/WORDS-VOCAB.md` (thin amend this tip), `docs/DEFER-IS.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); optional light cite `docs/CREATE-DOES.md`; `docs/FIND.md` (wave18 **2** — ANS-ish find mark sibling; not SYNONYM FIND rewrite)
 **Base tip SHA:** `d683662` (wave16 tip5 CLOSED / #76 docs cites) / full `d68366223298199849e957c83954017693ecbb86`
 
 ## 1. Purpose
 
-WAVE16 explicitly deferred `SYNONYM` / `ALIAS` (linked XT / FIND rewrite / executing aliased XT). Flat WORDS list and DEFER name-bind stubs already exist; a synonym name-map stub surface does not. This tip lands **stub** name→name markers only: `SYNONYM <new> <old>` (or `ALIAS <new> <old>`) records a stub binding and prints `[synonym] SYNONYM new= old=` (ALIAS may share the `[synonym]` prefix or print `[synonym] ALIAS new= old=`). Lookup/print of the alias name echoes the bound old name (`[synonym] resolve new= old=`). Smoke via **`synonym-demo`**. Forth mirrors **`synonym-map` / `alias-map`** so any host name collisions stay safe. **Not** a linked XT, not FIND rewrite, not executing the old word through the new name. Pairs with wave16 DEFER name-bind surface and wave11 WORDS list without promoting either to a real dict alias table.
+WAVE16 explicitly deferred `SYNONYM` / `ALIAS` (linked XT / FIND rewrite / executing aliased XT). Flat WORDS list and DEFER name-bind stubs already exist; a synonym name-map stub surface does not. This tip lands **stub** name→name markers only: `SYNONYM <new> <old>` (or `ALIAS <new> <old>`) records a stub binding and prints `[synonym] SYNONYM new= old=` (ALIAS may share the `[synonym]` prefix or print `[synonym] ALIAS new= old=`). Lookup/print of the alias name echoes the bound old name (`[synonym] resolve new= old=`). Smoke via **`synonym-demo`**. Forth mirrors **`synonym-map` / `alias-map`** so any host name collisions stay safe. **Not** a linked XT, not FIND rewrite, not executing the old word through the new name. Pairs with wave16 DEFER name-bind surface and wave11 WORDS list without promoting either to a real dict alias table. Wave18 tip **2** FIND deepen is a sibling ANS-ish find mark (`docs/FIND.md`) — **not** a SYNONYM FIND rewrite; host `find`/`findentry`/`entry-find` stay untouched.
 
 ## 2. Words / Surfaces
 
@@ -28,7 +28,7 @@ Host note: bind `SYNONYM` / `ALIAS` on the Linux REPL; Forth mirrors **`synonym-
 - **Missing old / unbound new:** `[synonym] FAIL reason=miss` (demo **must avoid** — always map a known existing `old` name, and resolve only after map). Optional miss on resolve of unbound `new` is OK if documented; prefer demo maps first.
 - Storage: name string pair (`new`, `old`). **No** linked XT, no FIND/entry-body rewrite, no executing old through new, no DEFER vector, no PARSE-NAME deepen.
 - Nest with prior exit / buffer / marker / defer / imm / fill / pick / cell / allot / throw / 2var / create / colon / control / string / words stubs OK. `dict-reset` clears synonym map entries as usual.
-- Still no linked XT / FIND rewrite / executing aliased XT, no DEFER vector reopen, no PARSE-NAME deepen, no EVALUATE/INCLUDE nested VM, no RECURSE self-XT, no real DOES> XT, no real branch XT, no full Win/Android Forth VM. Those stay non-goals / later tips.
+- Still no linked XT / SYNONYM FIND rewrite / executing aliased XT, no DEFER vector reopen. PARSE-NAME / EVALUATE / RECURSE closed as wave17 stubs (keep cites). FIND deepen closed as wave18 tip **2** mark (`docs/FIND.md` — host find untouched). Still no real DOES> XT / real branch XT / full Win/Android Forth VM. Those stay non-goals / later tips.
 
 ## 4. Markers
 
@@ -91,11 +91,13 @@ Do **not** wipe wave16 DEFER / MARKER / BUFFER / EXIT cites or wave15 / WORDS / 
 
 - Linked XT / executing aliased XT / FIND rewrite / entry-body rewrite
 - Redefining host FIND / entry bodies
+- `FIND` deepen (ANS-ish find mark — host find untouched) → `docs/FIND.md` (wave18 **2**; not a SYNONYM FIND rewrite)
 - DEFER vector reopen (wave16 **1** — already stubbed; keep cites; synonym is name→name, not XT bind)
-- `PARSE` / `PARSE-NAME` deepen (wave17 **2** candidate)
-- `EVALUATE` / `INCLUDE` nested interpret / file VM (wave17 **3** candidate — mark-only later; refined-boot stays)
-- `RECURSE` real self-XT (wave17 **4** candidate — mark-only `recurse-mark` later)
-- Docs cites pass (wave17 **5** — ARCHITECTURE + GAPS after 1–4 PASS)
+- `PARSE` / `PARSE-NAME` reopen (wave17 **2** — already stubbed; keep cites)
+- `EVALUATE` / `INCLUDE` reopen (wave17 **3** — already stubbed; keep cites)
+- `RECURSE` reopen (wave17 **4** — already mark-only; keep cites)
+- Docs cites pass (wave17 **5** CLOSED; wave18 **5** after 1–4 PASS)
+- `'` / `[']` tick reopen (wave18 **1** — already stubbed; keep cites)
 - `MARKER` / `BUFFER:` / `EXIT` / `QUIT` (wave16 **2–4** — already stubbed; keep cites)
 - IMMEDIATE / POSTPONE / FILL / PICK / CELL (wave15 — already stubbed)
 - Real DOES> XT chaining / threaded child runtime body
@@ -110,7 +112,7 @@ Do **not** wipe wave16 DEFER / MARKER / BUFFER / EXIT cites or wave15 / WORDS / 
 ## 8. Acceptance (Test Lab)
 
 1. `docs/SYNONYM-ALIAS.md` present (Research byte-copy OK); `WORDS-VOCAB.md` + `DEFER-IS.md` + `KERNEL.md` thin amends present (wave11/16/7 text and wave16 DEFER/MARKER/BUFFER/EXIT cites retained); optional light `CREATE-DOES.md` cite OK.
-2. `synonym-demo` → OK (markers §4; SYNONYM or ALIAS greppable with `new=`/`old=`; resolve greppable; no miss FAIL on happy path). Prior `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` still OK.
+2. `synonym-demo` → OK (markers §4; SYNONYM or ALIAS greppable with `new=`/`old=`; resolve greppable; no miss FAIL on happy path). Wave18 **2**: `find-demo` → OK (retains synonym; host find untouched). Prior `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` still OK.
 3. Regression green (wave16 tip1–5 + wave15 tip1–5 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `synonym-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML. Skip 2DUP-FAMILY + ABORT" polish.
@@ -125,3 +127,5 @@ Do **not** wipe wave16 DEFER / MARKER / BUFFER / EXIT cites or wave15 / WORDS / 
 - Explicit deferral: WAVE16-PROPOSAL / WAVE17-PROPOSAL (`SYNONYM` / `ALIAS` — name map; not linked XT)
 - Base tip: `d683662` / `d68366223298199849e957c83954017693ecbb86` (#76 wave16 tip5 docs cites)
 - Wave17 proposal: `/workspace/tritium-research-docs/WAVE17-PROPOSAL.md`
+- `docs/FIND.md` (wave18 **2** — ANS-ish find mark sibling; not SYNONYM FIND rewrite)
+- `docs/TICK.md` (wave18 **1** — stub xt= convention)

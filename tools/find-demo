@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# find-demo — Lab smoke for FIND / find-xt markers (wave18 item 2 / docs/FIND.md)
+# Mirrors forth/tritium/kernel.fs find-demo + Linux host find_demo.
+# ANS-ish find mark only — NOT SEARCH-WORDLIST / linked dict / execute-through.
+# Forth mirrors: find-xt / find-mark. Do NOT redefine host find/findentry/entry-find.
+# xt= = entry index (same tip1 TICK convention). flag=-1 non-immediate.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: find-demo"
+  echo "  dict-reset → create widget → find-xt hit → FIND miss → [find-demo] OK"
+  echo "  Markers: [find] FIND name= / [find] FIND miss → [find-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[find-demo] FAIL"
+  exit 1
+}
+
+declare -a NAMES=()
+
+dict_reset() {
+  NAMES=()
+}
+
+entry_find() {
+  local name=$1
+  local i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      echo "$i"
+      return 0
+    fi
+  done
+  echo "-1"
+}
+
+entry_create() {
+  local name=$1
+  NAMES+=("$name")
+  local idx=$(( ${#NAMES[@]} - 1 ))
+  echo "[kernel] created #$idx"
+}
+
+find_xt() {
+  local name=$1
+  local i
+  if [[ -z "$name" ]]; then
+    echo "[find] FIND miss"
+    return 0
+  fi
+  i=$(entry_find "$name")
+  if [[ "$i" == "-1" ]]; then
+    echo "[find] FIND miss"
+    return 0
+  fi
+  # stub xt id = entry index (host int only; not executable); flag=-1 non-immediate
+  echo "[find] FIND name=${NAMES[$i]} xt=$i flag=-1 i=$i"
+}
+
+echo "[find-demo] dict-reset + create widget + find-xt + miss"
+dict_reset
+
+# 1) Ensure a known name exists so hit path is exercised
+entry_create widget
+[[ "$(entry_find widget)" != "-1" ]] || fail
+
+# 2) find-xt hit — greppable name= (+ xt= / flag=-1 / i=); no host find redefine
+find_xt widget
+
+# 3) FIND miss — preferred over FAIL
+find_xt nosuch
+
+# Happy path must emit hit + miss markers; no SEARCH-WORDLIST / execute-through
+echo "[find-demo] OK"
+exit 0

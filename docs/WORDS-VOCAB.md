@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave11 item **3**)
 **Canonical brief:** Dusk `words` / dict list; `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (`.words`); Linux `host_words()` in `tritiumos.c`
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`, `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/MARKER.md` (wave16 **2**), `docs/SYNONYM-ALIAS.md` (wave17 **1**)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`, `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/MARKER.md` (wave16 **2**), `docs/SYNONYM-ALIAS.md` (wave17 **1**), `docs/FIND.md` (wave18 **2**)
 
 ## 1. Purpose
 
@@ -39,6 +39,7 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - VARIABLE/CONSTANT names (wave12 **2**) appear in the flat list after create — see `docs/VARIABLE-CONST.md`.
 - `MARKER` restore-mark stubs (wave16 **2**) may snapshot / restore stub entry-count — **not** a real wordlist prune or SEARCH-WORDLIST; see `docs/MARKER.md`.
 - `SYNONYM` / `ALIAS` name-map stubs (wave17 **1**) record name→name bindings only — **not** a real dict alias table / FIND rewrite / SEARCH-WORDLIST; see `docs/SYNONYM-ALIAS.md`.
+- `FIND` deepen (wave18 **2**) is an ANS-ish find mark via `find-xt` / `find-mark` — **not** SEARCH-WORDLIST / linked dict / WORDS rewrite; host `find`/`findentry`/`entry-find` stay; see `docs/FIND.md`.
 
 ## 5. `words-demo`
 
@@ -62,13 +63,14 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - Group-scoped `WORDS` filter (use `group-vocab-*` later)
 - Real forget-chain / wordlist prune beyond stub entry-count (`MARKER` restore-mark → `docs/MARKER.md` wave16 **2**)
 - `SYNONYM` / `ALIAS` name-map stubs → `docs/SYNONYM-ALIAS.md` (wave17 **1**; not FIND rewrite / linked XT)
+- `FIND` deepen → `docs/FIND.md` (wave18 **2**; ANS-ish find mark only — not SEARCH-WORDLIST / host find rewrite)
 - AppImage refined hang (wave11 **4**)
 - Docs cites (wave11 **5**)
 
 ## 8. Acceptance (Test Lab)
 
 1. `docs/WORDS-VOCAB.md` present (Research byte-copy OK); `KERNEL.md` thin amend present.
-2. `words-demo` → OK (markers §3); `kernel-demo` still OK.
+2. `words-demo` → OK (markers §3); `kernel-demo` still OK; wave18 **2**: `find-demo` → OK.
 3. Regression green (wave11 **1–2** + wave10).
 4. No merge.
 
@@ -80,3 +82,4 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - `docs/VARIABLE-CONST.md` (wave12 **2**)
 - `docs/MARKER.md` (wave16 **2**)
 - `docs/SYNONYM-ALIAS.md` (wave17 **1**)
+- `docs/FIND.md` (wave18 **2**)
