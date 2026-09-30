@@ -53,3 +53,4 @@ base-demo CONTRACT
 compare-demo CONTRACT
 bit-demo CONTRACT
 shift-demo CONTRACT
+zero-demo CONTRACT

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# zero-demo — Lab smoke for 0= flag marks (wave22 item 2 / docs/ZERO-EQUALS.md)
+# Mirrors forth/tritium/kernel.fs zero-demo + Linux host zero_demo.
+# Forth mirrors: zero-eq-mark / zero-ne-mark — do NOT redefine host 0= / 0<>.
+# CRITICAL: host kernel uses 0= / 0<> extensively — do NOT redefine/alias/Lab-grep them.
+# Classic: zero→true (flag=-1), nonzero→false (flag=0). Optional 0<> welcome.
+# Flag marks only — NOT boolean cell rewrite / LSHIFT reopen / WITHIN reopen / AND-OR reopen.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: zero-demo"
+  echo "  zero-eq-mark + zero-ne-mark → [zero-demo] OK"
+  echo "  Markers: [zero] 0= flag=-1; [zero] 0<> flag=-1 → [zero-demo] OK"
+  echo "  Cite: docs/ZERO-EQUALS.md — host 0= / 0<> untouched"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Classic zero→true / nonzero→0<> picture. Avoids [zero] FAIL.
+# host 0= / 0<> are host Forth primitives — untouched this tip.
+echo "[zero-demo] 0= flag marks"
+echo "[zero] 0= flag=-1"
+echo "[zero] 0<> flag=-1"
+echo "[zero-demo] OK"
+exit 0

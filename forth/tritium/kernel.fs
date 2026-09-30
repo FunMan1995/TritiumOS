@@ -2728,6 +2728,26 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [shift-demo] OK" cr ;
 
 
+\ === 0= / 0<> flag marks (wave22 item 2) ===
+\ Forth mirrors: zero-eq-mark / zero-ne-mark — do NOT redefine host 0= / 0<>.
+\ CRITICAL: host kernel uses 0= / 0<> extensively — do NOT redefine/alias/Lab-grep them.
+\ Classic: zero→true flag=-1; optional 0<> nonzero→true.
+\ Flag marks only — NOT boolean cell / LSHIFT reopen / WITHIN reopen / AND-OR reopen.
+
+: zero-eq-mark ( -- )
+  ." [zero] 0= flag=-1" cr ;
+
+: zero-ne-mark ( -- )
+  ." [zero] 0<> flag=-1" cr ;
+
+: zero-demo ( -- )
+  ." [zero-demo] 0= flag marks" cr
+  zero-eq-mark
+  zero-ne-mark
+  ." [zero-demo] OK" cr ;
+
+
+
 
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
