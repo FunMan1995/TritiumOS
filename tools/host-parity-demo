@@ -50,6 +50,7 @@ REQUIRED_DEMOS=(
   env-demo
   source-demo
   true-demo
+  within-demo
 )
 
 usage() {

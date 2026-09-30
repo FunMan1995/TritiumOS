@@ -1,13 +1,13 @@
 # CONTROL — `IF` / `THEN` / `ELSE` stubs
 
-**Status:** Shipper-ready stub spec (wave10 item **2**; thin amend wave20 **1** TRUE-FALSE companion cite)
+**Status:** Shipper-ready stub spec (wave10 item **2**; thin amend wave20 **1** TRUE-FALSE companion cite; thin amend wave20 **2** WITHIN companion cite)
 **Canonical brief:** Dusk control compile (thin stub); `docs/COLON.md` (wave9 **4**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `control.fs`); Linux host REPL
-**Companions:** `docs/COLON.md` (thin amend wave10 **2**), `docs/INTERPRET.md`, `docs/KERNEL.md`, `docs/BEGIN-UNTIL.md` (wave11 **1**), `docs/DO-LOOP.md` (wave12 **1**), `docs/CASE-OF.md` (wave13 **2**), `docs/THROW-CATCH.md` (wave14 **4**); `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion cite; flag picture beside IF `taken=` — not branch XT / IF reopen)
+**Companions:** `docs/COLON.md` (thin amend wave10 **2**), `docs/INTERPRET.md`, `docs/KERNEL.md`, `docs/BEGIN-UNTIL.md` (wave11 **1**), `docs/DO-LOOP.md` (wave12 **1**), `docs/CASE-OF.md` (wave13 **2**), `docs/THROW-CATCH.md` (wave14 **4**); `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion cite; flag picture beside IF `taken=` — not branch XT / IF reopen); `docs/WITHIN.md` (wave20 **2** — range-check mark companion cite; pairs with tip1 flag picture — not branch XT / IF/THEN reopen / runtime compare re-exec)
 
 ## 1. Purpose
 
-Colon body/marker exists; control words do not. This tip lands **stub** `IF` / `THEN` / `ELSE` (and optional `control-if` aliases) that recognize the words, maintain a tiny **cs** (control-stack) depth counter, and print greppable markers — **not** real branch XT patching or a threaded compiler. Multi-way select stubs (`CASE` / `OF` / `ENDOF` / `ENDCASE`) → `docs/CASE-OF.md` (wave13 **2**). Exception-frame stubs (`CATCH` / `THROW`, optional `ABORT"`) → `docs/THROW-CATCH.md` (wave14 **4**; mark-only). Wave20 tip **1** lands `TRUE` / `FALSE` constant marks (`docs/TRUE-FALSE.md`): flag picture that may companion control `taken=` — **not** a real branch XT / IF reopen / flag algebra deepen.
+Colon body/marker exists; control words do not. This tip lands **stub** `IF` / `THEN` / `ELSE` (and optional `control-if` aliases) that recognize the words, maintain a tiny **cs** (control-stack) depth counter, and print greppable markers — **not** real branch XT patching or a threaded compiler. Multi-way select stubs (`CASE` / `OF` / `ENDOF` / `ENDCASE`) → `docs/CASE-OF.md` (wave13 **2**). Exception-frame stubs (`CATCH` / `THROW`, optional `ABORT"`) → `docs/THROW-CATCH.md` (wave14 **4**; mark-only). Wave20 tip **1** lands `TRUE` / `FALSE` constant marks (`docs/TRUE-FALSE.md`): flag picture that may companion control `taken=` — **not** a real branch XT / IF reopen / flag algebra deepen. Wave20 tip **2** lands `WITHIN` range-check mark (`docs/WITHIN.md`): optional `flag=<0|1>` for a fixed demo triple — **not** a real branch XT / IF/THEN reopen / runtime compare re-exec.
 
 ## 2. Words
 
@@ -66,12 +66,13 @@ Lab greps `[control-demo] OK` plus at least one each of `IF` / `THEN` (ELSE pref
 - `CATCH` / `THROW` / optional `ABORT"` stubs: see `docs/THROW-CATCH.md` (wave14 **4**); real exception RS unwind / frame restore still out
 - Address-fold / refined-boot (wave10 **3–4**)
 - `TRUE` / `FALSE` constant marks → `docs/TRUE-FALSE.md` (wave20 **1**; flag picture beside IF `taken=` — not a real branch XT / IF reopen / `0=` deepen / WITHIN)
+- `WITHIN` range-check mark → `docs/WITHIN.md` (wave20 **2**; range-check mark beside tip1 flag picture — not a real branch XT / IF/THEN reopen / runtime compare re-exec)
 - Full Win/Android Forth VM
 
 ## 8. Acceptance (Test Lab)
 
 1. `docs/CONTROL.md` present (Research byte-copy OK); `COLON.md` thin amend present.
-2. `control-demo` → OK (markers §4); `colon-demo` + `interpret-demo` still OK; wave20 **1**: `true-demo` → OK (retains `control-demo`).
+2. `control-demo` → OK (markers §4); `colon-demo` + `interpret-demo` still OK; wave20 **1**: `true-demo` → OK (retains `control-demo`); wave20 **2**: `within-demo` → OK (retains `control-demo` + `true-demo`).
 3. Regression green (wave10 **1** + wave9 demos).
 4. No merge.
 
@@ -85,3 +86,4 @@ Lab greps `[control-demo] OK` plus at least one each of `IF` / `THEN` (ELSE pref
 - `docs/CASE-OF.md` (wave13 **2**)
 - `docs/THROW-CATCH.md` (wave14 **4**)
 - `docs/TRUE-FALSE.md` (wave20 **1** — constant-mark companion; flag picture beside IF `taken=`)
+- `docs/WITHIN.md` (wave20 **2** — range-check mark companion; pairs with tip1 flag picture — not IF/THEN reopen)
