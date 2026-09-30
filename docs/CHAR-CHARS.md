@@ -1,14 +1,14 @@
 # CHAR-CHARS — `CHAR` / `CHARS` / `[CHAR]` char-unit stubs + `char-demo`
 
-**Status:** Shipper-ready stub spec (wave19 item **1**)
-**Canonical brief:** ANS-shaped `CHAR` / `CHARS` / `[CHAR]` (thin char-unit markers); `docs/CELL-CELLS.md` (wave15 **1** — cell-unit companion); `docs/KERNEL.md` (wave7 **5**); `docs/STRING-LIT.md` (wave13 **4**); optional `docs/WORD-BL.md` (wave18 **3**) / `docs/PARSE-NAME.md` (wave17 **2**); explicit WAVE18 / WAVE19 deferral closed as char-unit mark only (not CHAR+ / unicode / XCHAR / ALIGN reopen)
+**Status:** Shipper-ready stub spec (wave19 item **1**; thin amend wave23 **1** CHAR-PLUS companion cite)
+**Canonical brief:** ANS-shaped `CHAR` / `CHARS` / `[CHAR]` (thin char-unit markers); `docs/CELL-CELLS.md` (wave15 **1** — cell-unit companion); `docs/KERNEL.md` (wave7 **5**); `docs/STRING-LIT.md` (wave13 **4**); optional `docs/WORD-BL.md` (wave18 **3**) / `docs/PARSE-NAME.md` (wave17 **2**); explicit WAVE18 / WAVE19 deferral closed as char-unit mark only (not unicode / XCHAR / ALIGN reopen); wave23 **1** CHAR-PLUS lands thin `CHAR+` advance sibling — **not** a CHAR-CHARS reopen; **do not** redefine CHAR/CHARS/[CHAR]/char-unit/chars-n/bracket-char
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `char.fs`); Linux host REPL; **do not** redefine host `CHAR` / `CHARS` / `[CHAR]` that already bind on the load path
-**Companions:** `docs/CELL-CELLS.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/STRING-LIT.md` (thin amend this tip); optional light cite `docs/WORD-BL.md` / `docs/PARSE-NAME.md`
+**Companions:** `docs/CELL-CELLS.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/STRING-LIT.md` (thin amend this tip); optional light cite `docs/WORD-BL.md` / `docs/PARSE-NAME.md`; `docs/CHAR-PLUS.md` (wave23 **1** — thin char-unit advance sibling cite; **not** a CHAR-CHARS reopen; prefer `char-plus-mark`; **do not** redefine CHAR/CHARS/[CHAR]/char-unit/chars-n/bracket-char)
 **Base tip SHA:** `e136713` (wave18 tip5 CLOSED / #86 DOCS-CITES) / full `e13671361caa98d2326ac8ad5542952438a58557`
 
 ## 1. Purpose
 
-WAVE15 landed `CELL` / `CELLS` / `ALIGN` / `ALIGNED` as dictionary-unit stubs (`docs/CELL-CELLS.md`); WAVE18 / WAVE19 explicitly deferred `CHAR` / `CHARS` / `[CHAR]` (char-unit companion to CELL; not CHAR+ heap / unicode). This tip lands **stub** char-unit markers only: `CHAR` takes a demo character from the next token / fixture and prints `[char] CHAR` (+ optional `char=<c>` / `u=`); `CHARS` scales a count by char size (**1** on Linux SoT) and prints `[char] CHARS n=<k> bytes=<k>` (scale mark only — does **not** bump HERE); `[CHAR]` is the compile-time sibling mark — prints `[char] [CHAR]` (+ optional `char=` / `u=`) as flag/echo only (does **not** compile a char literal into a body). Smoke via **`char-demo`**. Forth mirrors **`char-unit` / `chars-n` / `bracket-char`** so host `CHAR`/`CHARS`/`[CHAR]` stay safe. **Not** CHAR+ required, not unicode / XCHAR, not ALIGN/ALIGNED reopen, not cell-size rewrite. Pairs with the CELL unit surface the way `CHARS` pairs with `CELLS`.
+WAVE15 landed `CELL` / `CELLS` / `ALIGN` / `ALIGNED` as dictionary-unit stubs (`docs/CELL-CELLS.md`); WAVE18 / WAVE19 explicitly deferred `CHAR` / `CHARS` / `[CHAR]` (char-unit companion to CELL; not CHAR+ heap / unicode). This tip lands **stub** char-unit markers only: `CHAR` takes a demo character from the next token / fixture and prints `[char] CHAR` (+ optional `char=<c>` / `u=`); `CHARS` scales a count by char size (**1** on Linux SoT) and prints `[char] CHARS n=<k> bytes=<k>` (scale mark only — does **not** bump HERE); `[CHAR]` is the compile-time sibling mark — prints `[char] [CHAR]` (+ optional `char=` / `u=`) as flag/echo only (does **not** compile a char literal into a body). Smoke via **`char-demo`**. Forth mirrors **`char-unit` / `chars-n` / `bracket-char`** so host `CHAR`/`CHARS`/`[CHAR]` stay safe. **Not** unicode / XCHAR, not ALIGN/ALIGNED reopen, not cell-size rewrite. Pairs with the CELL unit surface the way `CHARS` pairs with `CELLS`. Wave23 tip **1** lands thin `CHAR+` advance sibling (`docs/CHAR-PLUS.md` + `charplus-demo`) — **not** a CHAR-CHARS reopen; **CRITICAL** do **not** redefine `CHAR` / `CHARS` / `[CHAR]` / `char-unit` / `chars-n` / `bracket-char`; prefer `char-plus-mark`.
 
 ## 2. Words / Surfaces
 
@@ -27,9 +27,9 @@ Host note: bind `CHAR` / `CHARS` / `[CHAR]` on the Linux REPL **only if** those 
 - **`CHAR` / `char-unit`:** take a demo character from the next token / fixture (classic `CHAR A` — first character of the following whitespace-delimited token, or a fixed demo fixture char). Print `[char] CHAR` and optionally `char=<c>` (printable form, e.g. `A`) and/or `u=<ord>` (ordinal, e.g. `65` for `A`). **Does not** bump HERE, compile into a body, allocate, or rewrite CELL size. Missing / empty next token → `[char] FAIL reason=empty` optional (demo **must avoid**).
 - **`CHARS` / `chars-n`:** `bytes = k * char-size`. With char-size=1: `bytes = k`. Print `[char] CHARS n=<k> bytes=<k>` (when char-size=1). `k=0` → `bytes=0` (legal). `k<0` → `[char] FAIL reason=neg` (demo must avoid). **Does not** bump HERE. Optional later composition `k CHARS ALLOT` is **not** required for Lab OK.
 - **`[CHAR]` / `bracket-char`:** same char resolve as compile-time sibling. Print `[char] [CHAR]` (+ optional `char=` / `u=`). Flag / char / ordinal echo only — does **not** append a char literal to a colon body, does not set STATE, does not execute. Optional `[char] compile-only` when colon-def flag is set is **not** required this tip.
-- Storage: host char / ordinal + scale math only. **No** CHAR+ deepen, no unicode / XCHAR, no ALIGN/ALIGNED reopen, no cell-size rewrite, no HERE bump, no heap.
+- Storage: host char / ordinal + scale math only. **No** unicode / XCHAR, no ALIGN/ALIGNED reopen, no cell-size rewrite, no HERE bump, no heap. Thin `CHAR+` advance → `docs/CHAR-PLUS.md` (wave23 **1**) — sibling mark only; not a CHAR-CHARS reopen / CHAR redefine.
 - Nest with prior cell / allot / string / word / parse / tick / find / state / synonym / exit / buffer / marker / defer / imm / fill / pick / throw / 2var / create / colon / control stubs OK. `dict-reset` unaffected (no new dict entries from char marks).
-- Still no CHAR+ / unicode / XCHAR, no ALIGN reopen (wave15 CELL already landed), no TO-BODY (wave19 **2**), no ENVIRONMENT? (wave19 **3**), no SOURCE/PAD (wave19 **4**), no ACCEPT/REFILL, no linked XT / real DOES> XT / real branch XT / full arena/heap / full Win/Android Forth VM. Those stay non-goals / later tips.
+- Still no unicode / XCHAR, no ALIGN reopen (wave15 CELL already landed), no TO-BODY (wave19 **2**), no ENVIRONMENT? (wave19 **3**), no SOURCE/PAD (wave19 **4**), no ACCEPT/REFILL, no linked XT / real DOES> XT / real branch XT / full arena/heap / full Win/Android Forth VM. Thin `CHAR+` advance → `docs/CHAR-PLUS.md` (wave23 **1** — sibling; not CHAR-CHARS reopen). Those stay non-goals / later tips where noted.
 
 ## 4. Markers
 
@@ -50,11 +50,11 @@ Lab greps `[char-demo] OK` plus at least one `[char] CHAR` (optional `char=` / `
 2. Invoke `CHAR` (or `char-unit`) on a known demo char (e.g. classic `CHAR A` / fixture `A`) → `[char] CHAR` (+ optional `char=A` / `u=65`).
 3. Invoke `CHARS` (or `chars-n`) with a positive `k` (e.g. `3 CHARS` or `3` then `CHARS`) → `[char] CHARS n=3 bytes=3` on Linux SoT (`bytes` must equal `k * char-size`; char-size=1 → `bytes=3`). Assert HERE was **not** bumped (marker-only is enough; optional HERE echo before/after welcome).
 4. Invoke `[CHAR]` (or `bracket-char`) on a known demo char (same or another) → `[char] [CHAR]` (+ optional `char=` / `u=`). Assert **no** char literal was compiled into a body (marker alone is enough).
-5. Assert no `[char] FAIL reason=empty` / `reason=neg` on the happy path. Assert char marks did **not** require CHAR+ / unicode / ALIGN reopen / cell-size rewrite (marker-only is enough).
+5. Assert no `[char] FAIL reason=empty` / `reason=neg` on the happy path. Assert char marks did **not** require unicode / ALIGN reopen / cell-size rewrite (marker-only is enough). Thin CHAR+ advance is wave23 **1** sibling (`charplus-demo`) — not required to redefine this tip’s surfaces.
 6. Prior `state-demo` / `word-demo` / `find-demo` / `tick-demo` / `recurse-demo` / `eval-demo` / `parse-demo` / `synonym-demo` / `exit-demo` / `buffer-demo` / `marker-demo` / `defer-demo` / `imm-demo` / `fill-demo` / `pick-demo` / `cell-demo` / `allot-demo` / `throw-demo` / `2var-demo` / `unloop-demo` / `string-demo` / `create-demo` / `case-demo` / `value-demo` / `var-demo` / `comment-demo` / `control-demo` / `leave-demo` / `do-loop-demo` / `colon-demo` / `words-demo` / `refined-boot-demo` / `host-boot-demo` / `interpret-demo` / `kernel-demo` still OK.
 7. `[char-demo] OK`.
 
-`CHAR` + `CHARS` + `[CHAR]` markers are required. Empty/neg FAIL paths are not exercised by the demo. Optional `char=` / `u=` echo is not required for Lab OK. No HERE bump. No char literal compiled into body. No CHAR+. No unicode. No ALIGN reopen.
+`CHAR` + `CHARS` + `[CHAR]` markers are required. Empty/neg FAIL paths are not exercised by the demo. Optional `char=` / `u=` echo is not required for Lab OK. No HERE bump. No char literal compiled into body. No unicode. No ALIGN reopen. Thin `CHAR+` → `docs/CHAR-PLUS.md` (wave23 **1**).
 
 ## 6. Thin amend — companions
 
@@ -102,7 +102,7 @@ Do **not** wipe wave18 tip1–4 TICK / FIND / WORD-BL / STATE-COMPILE cites or w
 
 ## 7. Non-goals
 
-- `CHAR+` deepen / char-address arithmetic required
+- `CHAR+` thin char-unit advance mark → `docs/CHAR-PLUS.md` (wave23 **1**; sibling advance — **not** a CHAR-CHARS reopen; **do not** redefine CHAR/CHARS/[CHAR]/char-unit/chars-n/bracket-char; prefer `char-plus-mark`; not unicode/XCHAR)
 - Unicode / XCHAR / multi-byte char width / locale probe
 - `ALIGN` / `ALIGNED` reopen (wave15 CELL already landed — keep cites; this tip is char-unit only)
 - Cell-size rewrite / `CELL` / `CELLS` reopen (wave15 — already stubbed; keep cites)

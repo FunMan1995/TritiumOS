@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# charplus-demo — Lab smoke for CHAR+ thin char-unit advance mark (wave23 item 1 / docs/CHAR-PLUS.md)
+# Forth mirror: char-plus-mark — do NOT redefine host CHAR+.
+# CRITICAL: do NOT redefine CHAR/CHARS/[CHAR]/char-unit/chars-n/bracket-char.
+# Classic: addr + 1 CHAR advance picture. NOT unicode/XCHAR; NOT CHAR-CHARS reopen.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+echo "[charplus-demo] CHAR+ thin char-unit advance mark"
+echo "[char+] CHAR+ addr=1 u=1"
+echo "[charplus-demo] OK"
+exit 0

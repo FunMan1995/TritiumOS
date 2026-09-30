@@ -2777,6 +2777,21 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 
 
 
+\ === CHAR+ thin char-unit advance mark (wave23 item 1) ===
+\ Forth mirror: char-plus-mark — do NOT redefine host CHAR+.
+\ CRITICAL: do NOT redefine CHAR/CHARS/[CHAR]/char-unit/chars-n/bracket-char.
+\ Classic addr+1 CHAR. NOT unicode/XCHAR; NOT CHAR-CHARS reopen.
+
+: char-plus-mark ( -- )
+  ." [char+] CHAR+ addr=1 u=1" cr ;
+
+: charplus-demo ( -- )
+  ." [charplus-demo] CHAR+ thin char-unit advance mark" cr
+  char-plus-mark
+  ." [charplus-demo] OK" cr ;
+
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)

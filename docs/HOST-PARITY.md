@@ -1,8 +1,8 @@
 # HOST-PARITY — Win / Android smoke markers (Linux SoT)
 
-**Status:** Shipper-ready stub spec (wave8 item **4**; thin amend wave21 **4** BITWISE companion cite; thin amend wave22 **1** LSHIFT-RSHIFT companion cite; thin amend wave22 **2** ZERO-EQUALS companion cite; thin amend wave22 **3** TO-NUMBER companion cite; thin amend wave22 **4** SEARCH-WORDLIST companion cite)  
+**Status:** Shipper-ready stub spec (wave8 item **4**; thin amend wave21 **4** BITWISE companion cite; thin amend wave22 **1** LSHIFT-RSHIFT companion cite; thin amend wave22 **2** ZERO-EQUALS companion cite; thin amend wave22 **3** TO-NUMBER companion cite; thin amend wave22 **4** SEARCH-WORDLIST companion cite; thin amend wave23 **1** CHAR-PLUS companion cite)  
 **Canonical brief:** Priority-1 hosts; Linux demos are Lab source of truth  
-**Companions:** `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/FLEET.md`, `docs/MASTER.md`, `docs/LINEOS-BRAND.md`, `docs/GROUPS-NESTED.md`, `docs/INTERPRET.md`, `docs/USERLAND.md`; `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — `env-demo` CONTRACT parity welcome); `docs/TRUE-FALSE.md` (wave20 **1** — `true-demo` CONTRACT parity welcome); `docs/BASE-HEX.md` (wave21 **2** — `base-demo` CONTRACT parity welcome); `docs/BITWISE.md` (wave21 **4** — `bit-demo` CONTRACT parity welcome); `docs/LSHIFT-RSHIFT.md` (wave22 **1** — `shift-demo` CONTRACT parity welcome); `docs/ZERO-EQUALS.md` (wave22 **2** — `zero-demo` CONTRACT parity welcome); `docs/TO-NUMBER.md` (wave22 **3** — `number-demo` CONTRACT parity welcome); `docs/SEARCH-WORDLIST.md` (wave22 **4** — `search-demo` CONTRACT parity welcome)
+**Companions:** `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/FLEET.md`, `docs/MASTER.md`, `docs/LINEOS-BRAND.md`, `docs/GROUPS-NESTED.md`, `docs/INTERPRET.md`, `docs/USERLAND.md`; `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — `env-demo` CONTRACT parity welcome); `docs/TRUE-FALSE.md` (wave20 **1** — `true-demo` CONTRACT parity welcome); `docs/BASE-HEX.md` (wave21 **2** — `base-demo` CONTRACT parity welcome); `docs/BITWISE.md` (wave21 **4** — `bit-demo` CONTRACT parity welcome); `docs/LSHIFT-RSHIFT.md` (wave22 **1** — `shift-demo` CONTRACT parity welcome); `docs/ZERO-EQUALS.md` (wave22 **2** — `zero-demo` CONTRACT parity welcome); `docs/TO-NUMBER.md` (wave22 **3** — `number-demo` CONTRACT parity welcome); `docs/SEARCH-WORDLIST.md` (wave22 **4** — `search-demo` CONTRACT parity welcome); `docs/CHAR-PLUS.md` (wave23 **1** — `charplus-demo` CONTRACT parity welcome)
 
 ## 1. Purpose
 
@@ -75,6 +75,7 @@ Minimum for PASS: file present on Win + Android paths; every listed demo has a s
 - Real boolean-cell / flag-ALU rewrite on Win/Android — flag marks only → `docs/ZERO-EQUALS.md` (wave22 **2**); `zero-demo CONTRACT` acceptable; do not redefine host `0=`/`0<>`
 - Real number parser / pictured numeric rewrite on Win/Android — thin number-parse mark only → `docs/TO-NUMBER.md` (wave22 **3**); `number-demo CONTRACT` acceptable; do not bump HERE stub base `$1000`; prefer `to-number-mark`; not BASE reopen
 - Real linked-dict / FIND reopen / wordlist-stack rewrite on Win/Android — thin vocab-search mark only → `docs/SEARCH-WORDLIST.md` (wave22 **4**); `search-demo CONTRACT` acceptable; do not redefine host find/find-xt/find-mark; prefer `search-wl-mark`; not FIND reopen
+- Real unicode / XCHAR / CHAR-CHARS reopen on Win/Android — thin char-unit advance mark only → `docs/CHAR-PLUS.md` (wave23 **1**); `charplus-demo CONTRACT` acceptable; do not redefine CHAR/CHARS/[CHAR]/char-unit/chars-n/bracket-char; prefer `char-plus-mark`; not unicode/XCHAR / CHAR-CHARS reopen / ALIGN reopen / HOLD
 
 ## 7. Acceptance (Test Lab)
 
@@ -96,3 +97,4 @@ Minimum for PASS: file present on Win + Android paths; every listed demo has a s
 - `docs/ZERO-EQUALS.md` (wave22 **2** — `zero-demo` CONTRACT parity)
 - `docs/TO-NUMBER.md` (wave22 **3** — `number-demo` CONTRACT parity)
 - `docs/SEARCH-WORDLIST.md` (wave22 **4** — `search-demo` CONTRACT parity)
+- `docs/CHAR-PLUS.md` (wave23 **1** — `charplus-demo` CONTRACT parity)
