@@ -2,7 +2,7 @@
 
 **Status:** Shipper-ready stub spec (wave8 item **4**)  
 **Canonical brief:** Priority-1 hosts; Linux demos are Lab source of truth  
-**Companions:** `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/FLEET.md`, `docs/MASTER.md`, `docs/LINEOS-BRAND.md`, `docs/GROUPS-NESTED.md`, `docs/INTERPRET.md`, `docs/USERLAND.md`, `docs/HOST-BOOT.md`
+**Companions:** `docs/BUILD.md`, `docs/INSTALL.md`, `docs/KERNEL.md`, `docs/FLEET.md`, `docs/MASTER.md`, `docs/LINEOS-BRAND.md`, `docs/GROUPS-NESTED.md`, `docs/INTERPRET.md`, `docs/USERLAND.md`; `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — `env-demo` CONTRACT parity welcome)
 
 ## 1. Purpose
 
@@ -40,7 +40,6 @@ group-vocab-persist-demo …
 interpret-demo …
 userland-demo …
 lineos-confirm-demo …
-host-boot-demo …   # wave10 item 1; see docs/HOST-BOOT.md
 ```
 
 Minimum for PASS: file present on Win + Android paths; every listed demo has a status; Linux suite still green.
@@ -68,6 +67,7 @@ Minimum for PASS: file present on Win + Android paths; every listed demo has a s
 - Porting every Forth demo into C#/Kotlin this tip
 - Requiring emulator/SDK in CI
 - Changing Linux SoT behavior
+- Full ANS `ENVIRONMENT?` table / SEARCH-WORDLIST on Win/Android — query mark only → `docs/ENVIRONMENT-QUERY.md` (wave19 **3**); `env-demo CONTRACT` acceptable
 
 ## 7. Acceptance (Test Lab)
 
@@ -81,3 +81,4 @@ Minimum for PASS: file present on Win + Android paths; every listed demo has a s
 
 - `docs/BUILD.md`, `docs/INSTALL.md`, `docs/SYSTEM-DESIGN-INITIAL-PLATFORMS.md`
 - Wave7–8 demo docs listed in §1 companions
+- `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — `env-demo` CONTRACT parity)

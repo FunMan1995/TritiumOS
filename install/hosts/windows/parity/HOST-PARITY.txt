@@ -42,3 +42,4 @@ word-demo CONTRACT
 state-demo CONTRACT
 char-demo CONTRACT
 body-demo CONTRACT
+env-demo CONTRACT
