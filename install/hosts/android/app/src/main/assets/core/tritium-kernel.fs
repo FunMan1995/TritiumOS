@@ -2462,6 +2462,33 @@ create (st-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t
   ." [char-demo] OK" cr ;
 
 
+\ === >BODY CREATE-body address mark (wave19 item 2) ===
+\ Forth mirror: to-body — do NOT redefine host >BODY.
+\ Address mark only — not DOES> XT / linked XT / HERE bump.
+
+create (bd-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t c,
+
+: to-body-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop ." [body] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [body] >BODY name=" r@ entry-name[] NAMELEN name-trim type
+  ."  addr=0"
+  ."  xt=" r@ . cr
+  r> drop ;
+
+: to-body ( "name" -- ) bl word count to-body-from ;
+
+: body-demo ( -- )
+  ." [body-demo] dict-reset + create widget + >BODY" cr
+  dict-reset
+  (bd-widget) count entry-create-from drop
+  (bd-widget) count entry-find 0< if ." [body-demo] FAIL" cr exit then
+  (bd-widget) count to-body-from
+  ." [body-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2501,6 +2528,7 @@ create (st-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t
 \ - WORD-BL landed (wave18 item 3).
 \ - STATE-COMPILE landed (wave18 item 4).
 \ - CHAR-CHARS landed (wave19 item 1).
+\ - TO-BODY landed (wave19 item 2).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

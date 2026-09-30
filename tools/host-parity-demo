@@ -46,6 +46,7 @@ REQUIRED_DEMOS=(
   word-demo
   state-demo
   char-demo
+  body-demo
 )
 
 usage() {
