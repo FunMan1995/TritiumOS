@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# within-demo — Lab smoke for WITHIN range-check mark (wave20 item 2 / docs/WITHIN.md)
+# Mirrors forth/tritium/kernel.fs within-demo + Linux host within_demo.
+# Range-check mark only — NOT real branch XT / runtime compare re-exec / IF/THEN reopen.
+# Forth mirror: within-mark. Do NOT redefine host WITHIN.
+# Classic signed picture: lo ≤ n < hi → flag=1; else flag=0.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: within-demo"
+  echo "  within-mark hit (n=5 lo=0 hi=10 flag=1) + optional miss → [within-demo] OK"
+  echo "  Markers: [within] WITHIN n=… lo=… hi=… flag=<0|1> → [within-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Fixed fixtures (host ints only — not a live compare/branch machine)
+HIT_N=5
+HIT_LO=0
+HIT_HI=10
+HIT_FLAG=1
+MISS_N=15
+MISS_LO=0
+MISS_HI=10
+MISS_FLAG=0
+
+echo "[within-demo] WITHIN range-check mark"
+echo "[within] WITHIN n=${HIT_N} lo=${HIT_LO} hi=${HIT_HI} flag=${HIT_FLAG}"
+echo "[within] WITHIN n=${MISS_N} lo=${MISS_LO} hi=${MISS_HI} flag=${MISS_FLAG}"
+echo "[within-demo] OK"
+exit 0

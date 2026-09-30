@@ -2563,6 +2563,26 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 
 
 
+
+\ === WITHIN range-check mark (wave20 item 2) ===
+\ Forth mirror: within-mark — do NOT redefine host WITHIN.
+\ Range-check mark only — NOT real branch XT / runtime compare re-exec / IF/THEN reopen.
+\ Classic signed picture: lo ≤ n < hi → flag=1; else flag=0. Fixed fixtures only.
+
+: within-mark ( -- )
+  ." [within] WITHIN n=5 lo=0 hi=10 flag=1" cr ;
+
+: within-mark-miss ( -- )
+  ." [within] WITHIN n=15 lo=0 hi=10 flag=0" cr ;
+
+: within-demo ( -- )
+  ." [within-demo] WITHIN range-check mark" cr
+  within-mark
+  within-mark-miss
+  ." [within-demo] OK" cr ;
+
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2606,6 +2626,7 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 \ - ENVIRONMENT-QUERY landed (wave19 item 3).
 \ - SOURCE-PAD landed (wave19 item 4).
 \ - TRUE-FALSE landed (wave20 item 1).
+\ - WITHIN landed (wave20 item 2).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
