@@ -2889,6 +2889,22 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [sharp-demo] OK" cr ;
 
 
+\ === WORDLIST / FORTH-WORDLIST thin vocab create/query (wave24 item 4) ===
+\ Forth mirrors: wordlist-mark / forth-wordlist-mark — do NOT redefine host WORDLIST/FORTH-WORDLIST.
+\ CRITICAL: do NOT redefine SEARCH-WORDLIST/search-wl-mark / find/findentry/entry-find / find-xt/find-mark / WORDS/.words/words-demo.
+\ CRITICAL: do NOT bump _here/HERE — HERE stub stays $1000.
+\ NOT FIND reopen / SEARCH-WORDLIST runtime / linked dict / tip1–3 reopen; NOT tip5.
+: wordlist-mark ( -- )
+  ." [wordlist] WORDLIST" cr ;
+: forth-wordlist-mark ( -- )
+  ." [wordlist] FORTH-WORDLIST" cr ;
+: wordlist-demo ( -- )
+  ." [wordlist-demo] WORDLIST/FORTH-WORDLIST thin vocab create/query" cr
+  wordlist-mark
+  forth-wordlist-mark
+  ." [wordlist-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)

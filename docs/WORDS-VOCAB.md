@@ -1,13 +1,13 @@
 # WORDS-VOCAB — Thin `WORDS` / dict-list + `words-demo`
 
-**Status:** Shipper-ready stub spec (wave11 item **3**; thin amend wave20 **3** COUNT companion cite — ENTRY-COUNT **disambiguation only**, not a WORDS reopen; thin amend wave22 **4** SEARCH-WORDLIST companion cite — sibling vocab-search mark, not a WORDS reopen)
+**Status:** Shipper-ready stub spec (wave11 item **3**; thin amend wave20 **3** COUNT companion cite — ENTRY-COUNT **disambiguation only**, not a WORDS reopen; thin amend wave22 **4** SEARCH-WORDLIST companion cite — sibling vocab-search mark, not a WORDS reopen; thin amend wave24 **4** WORDLIST companion cite — sibling vocab create/query, not a WORDS reopen / linked dict)
 **Canonical brief:** Dusk `words` / dict list; `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (`.words`); Linux `host_words()` in `tritiumos.c`
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`, `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/MARKER.md` (wave16 **2**), `docs/SYNONYM-ALIAS.md` (wave17 **1**), `docs/FIND.md` (wave18 **2**); `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — query-mark companion cite; not SEARCH-WORDLIST / wordlist rewrite); `docs/COUNT.md` (wave20 **3** — ANS COUNT picture; **ENTRY-COUNT / SYN-COUNT / words-count ≠ ANS COUNT** disambiguation only — not a WORDS reopen); `docs/SEARCH-WORDLIST.md` (wave22 **4** — sibling vocab-search mark beside FIND/WORDS; **not** WORDS reopen / linked dict; prefer `search-wl-mark`; host find/find-xt untouched)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`, `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/MARKER.md` (wave16 **2**), `docs/SYNONYM-ALIAS.md` (wave17 **1**), `docs/FIND.md` (wave18 **2**); `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — query-mark companion cite; not SEARCH-WORDLIST / wordlist rewrite); `docs/COUNT.md` (wave20 **3** — ANS COUNT picture; **ENTRY-COUNT / SYN-COUNT / words-count ≠ ANS COUNT** disambiguation only — not a WORDS reopen); `docs/SEARCH-WORDLIST.md` (wave22 **4** — sibling vocab-search mark beside FIND/WORDS; **not** WORDS reopen / linked dict; prefer `search-wl-mark`; host find/find-xt untouched); `docs/WORDLIST.md` (wave24 **4** — sibling thin vocab create/query; **not** WORDS reopen / linked dict; prefer `wordlist-mark`/`forth-wordlist-mark`; do not wipe `WORDS`/`.words`/`words-demo`)
 
 ## 1. Purpose
 
-Flat dict already supports `.words` / `host_words`. This tip **locks the Lab surface**: document **`WORDS`** (alias), greppable list markers, and **`words-demo`** that creates ≥2 entries then lists them. Not full linked units / full vocab hierarchy. Wave22 tip **4** lands thin `SEARCH-WORDLIST` vocab-search mark (`docs/SEARCH-WORDLIST.md`; Forth mirror `search-wl-mark`) as a sibling beside FIND/WORDS — **not** a WORDS reopen / linked-dict rewrite / FIND reopen.
+Flat dict already supports `.words` / `host_words`. This tip **locks the Lab surface**: document **`WORDS`** (alias), greppable list markers, and **`words-demo`** that creates ≥2 entries then lists them. Not full linked units / full vocab hierarchy. Wave22 tip **4** lands thin `SEARCH-WORDLIST` vocab-search mark (`docs/SEARCH-WORDLIST.md`; Forth mirror `search-wl-mark`) as a sibling beside FIND/WORDS — **not** a WORDS reopen / linked-dict rewrite / FIND reopen. Wave24 tip **4** lands thin `WORDLIST`/`FORTH-WORDLIST` create/query (`docs/WORDLIST.md`; Forth mirrors `wordlist-mark`/`forth-wordlist-mark`) as a sibling beside FIND/WORDS/SEARCH-WORDLIST — **not** a WORDS reopen / linked dict / FIND reopen / SEARCH-WORDLIST runtime / DEFINITIONS deep rewrite; do **not** wipe `WORDS`/`.words`/`words-demo`.
 
 ## 2. Words
 
@@ -41,6 +41,7 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - `SYNONYM` / `ALIAS` name-map stubs (wave17 **1**) record name→name bindings only — **not** a real dict alias table / FIND rewrite / SEARCH-WORDLIST; see `docs/SYNONYM-ALIAS.md`.
 - `FIND` deepen (wave18 **2**) is an ANS-ish find mark via `find-xt` / `find-mark` — **not** SEARCH-WORDLIST / linked dict / WORDS rewrite; host `find`/`findentry`/`entry-find` stay; see `docs/FIND.md`.
 - `SEARCH-WORDLIST` thin vocab-search mark (wave22 **4**) via `search-wl-mark` — sibling beside FIND/WORDS; **not** a WORDS reopen / linked dict / FIND reopen; host `find`/`findentry`/`entry-find` + `find-xt`/`find-mark` stay untouched; see `docs/SEARCH-WORDLIST.md`.
+- `WORDLIST` / `FORTH-WORDLIST` thin vocab create/query (wave24 **4**) via `wordlist-mark`/`forth-wordlist-mark` — sibling beside FIND/WORDS/SEARCH-WORDLIST; **not** a WORDS reopen / linked dict / FIND reopen / SEARCH-WORDLIST runtime / DEFINITIONS; do not wipe `WORDS`/`.words`/`words-demo`; see `docs/WORDLIST.md`.
 - `ENVIRONMENT?` query mark (wave19 **3**) is a fixed-set query stub via `environment-query` — **not** SEARCH-WORDLIST / wordlist rewrite / WORDS reopen; see `docs/ENVIRONMENT-QUERY.md`.
 - ANS `COUNT` counted-string picture (wave20 **3**) is a separate Forth surface via `count-mark` — **Critical:** host `ENTRY-COUNT` / `SYN-COUNT` / `words-count` are **NOT** ANS `COUNT`. Do **not** redefine, alias, or Lab-grep those as the ANS COUNT surface; see `docs/COUNT.md`.
 
@@ -64,6 +65,7 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 
 - Full linked dict / wordlist-stack runtime rewrite (still out)
 - `SEARCH-WORDLIST` thin vocab-search mark → `docs/SEARCH-WORDLIST.md` (wave22 **4**; sibling mark beside FIND/WORDS — **not** WORDS reopen / linked dict / FIND reopen; prefer `search-wl-mark`)
+- `WORDLIST` / `FORTH-WORDLIST` thin vocab create/query → `docs/WORDLIST.md` (wave24 **4**; sibling create/query beside FIND/WORDS/SEARCH-WORDLIST — **not** WORDS reopen / linked dict / FIND reopen / SEARCH-WORDLIST runtime / DEFINITIONS; prefer `wordlist-mark`/`forth-wordlist-mark`; do not wipe `WORDS`/`.words`/`words-demo`)
 - Group-scoped `WORDS` filter (use `group-vocab-*` later)
 - Real forget-chain / wordlist prune beyond stub entry-count (`MARKER` restore-mark → `docs/MARKER.md` wave16 **2**)
 - `SYNONYM` / `ALIAS` name-map stubs → `docs/SYNONYM-ALIAS.md` (wave17 **1**; not FIND rewrite / linked XT)
@@ -92,3 +94,4 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - `docs/ENVIRONMENT-QUERY.md` (wave19 **3**)
 - `docs/COUNT.md` (wave20 **3** — ANS COUNT picture; ENTRY-COUNT / SYN-COUNT / words-count ≠ ANS COUNT)
 - `docs/SEARCH-WORDLIST.md` (wave22 **4** — sibling vocab-search mark beside FIND/WORDS; **not** WORDS reopen / linked dict; prefer `search-wl-mark`)
+- `docs/WORDLIST.md` (wave24 **4** — sibling thin vocab create/query; **not** WORDS reopen / linked dict; prefer `wordlist-mark`/`forth-wordlist-mark`)

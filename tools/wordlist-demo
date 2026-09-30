@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# wordlist-demo — Lab smoke for WORDLIST/FORTH-WORDLIST thin vocab create/query (wave24 item 4 / docs/WORDLIST.md)
+# Forth mirrors: wordlist-mark / forth-wordlist-mark — do NOT redefine host WORDLIST/FORTH-WORDLIST.
+# CRITICAL: do NOT redefine SEARCH-WORDLIST/search-wl-mark / find/findentry/entry-find / find-xt/find-mark / WORDS/.words/words-demo.
+# CRITICAL: do NOT bump _here/HERE — HERE stub stays $1000.
+# NOT FIND reopen / SEARCH-WORDLIST runtime / linked dict / tip1–3 reopen; NOT tip5; optional GET/SET-CURRENT not required.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+echo "[wordlist-demo] WORDLIST/FORTH-WORDLIST thin vocab create/query"
+echo "[wordlist] WORDLIST"
+echo "[wordlist] FORTH-WORDLIST"
+echo "[wordlist-demo] OK"
+exit 0

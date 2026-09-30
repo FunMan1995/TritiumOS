@@ -64,3 +64,4 @@ abs-demo CONTRACT
 space-demo CONTRACT
 minmax-demo CONTRACT
 sharp-demo CONTRACT
+wordlist-demo CONTRACT
