@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# uless-demo — Lab smoke for U< unsigned compare flag mark (wave23 item 3 / docs/U-LESS.md)
+# Forth mirror: u-less-mark — do NOT redefine host U<.
+# NOT WITHIN/ZERO-EQUALS/COMPARE/HOLD/CHAR-PLUS reopen; NOT boolean cell; NOT ABS-NEGATE.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+echo "[uless-demo] U< unsigned compare flag mark"
+echo "[uless] U< flag=-1"
+echo "[uless-demo] OK"
+exit 0

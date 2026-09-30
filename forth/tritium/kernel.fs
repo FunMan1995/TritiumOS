@@ -2807,6 +2807,18 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [hold-demo] OK" cr ;
 
 
+\ === U< unsigned compare flag mark (wave23 item 3) ===
+\ Forth mirror: u-less-mark — do NOT redefine host U<.
+\ NOT WITHIN/ZERO-EQUALS/COMPARE/HOLD/CHAR-PLUS reopen; NOT boolean cell; NOT ABS-NEGATE.
+: u-less-mark ( -- )
+  ." [uless] U< flag=-1" cr ;
+
+: uless-demo ( -- )
+  ." [uless-demo] U< unsigned compare flag mark" cr
+  u-less-mark
+  ." [uless-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)

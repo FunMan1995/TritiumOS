@@ -1,15 +1,17 @@
 # WITHIN — `WITHIN` range-check mark + `within-demo`
 
-**Status:** Shipper-ready stub spec (wave20 item **2**; thin amend wave21 **3** COMPARE companion cite; thin amend wave21 **4** BITWISE companion cite; thin amend wave22 **2** ZERO-EQUALS companion cite)
+**Status:** Shipper-ready stub spec (wave20 item **2**; thin amend wave21 **3** COMPARE companion cite; thin amend wave21 **4** BITWISE companion cite; thin amend wave22 **2** ZERO-EQUALS companion cite; thin amend wave23 **3** U-LESS companion cite)
 **Canonical brief:** ANS-shaped `WITHIN` (thin range-check mark only); `docs/TRUE-FALSE.md` (wave20 **1** — flag-picture companion); `docs/CONTROL.md` (wave10 **2** — IF `taken=` companion; not IF/THEN reopen); `docs/KERNEL.md` (wave7 **5**); optional `docs/PICK-ROLL.md` (wave15 **2**) / `docs/CELL-CELLS.md` (wave15 **1**); explicit WAVE18 / WAVE19 / WAVE20 deferral closed as range-check mark only (not real branch XT / runtime compare re-exec / IF/THEN reopen)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `within.fs`); Linux host REPL; **do not** redefine host `WITHIN` that already binds on the load path
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/CONTROL.md` (thin amend this tip), `docs/TRUE-FALSE.md` (thin amend this tip); optional light cite `docs/PICK-ROLL.md` / `docs/CELL-CELLS.md`; `docs/COMPARE.md` (wave21 **3** — ANS COMPARE string-compare mark companion cite; host `cstr=` ≠ ANS COMPARE; **not** WITHIN reopen); `docs/BITWISE.md` (wave21 **4** — bitwise marks companion cite; sibling bitwise marks — **not** WITHIN reopen / boolean cell / `0=` deepen); `docs/ZERO-EQUALS.md` (wave22 **2** — flag marks companion cite; sibling flag marks — **NOT** WITHIN reopen / boolean cell / LSHIFT reopen / AND-OR reopen; host `0=`/`0<>` untouched)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/CONTROL.md` (thin amend this tip), `docs/TRUE-FALSE.md` (thin amend this tip); optional light cite `docs/PICK-ROLL.md` / `docs/CELL-CELLS.md`; `docs/COMPARE.md` (wave21 **3** — ANS COMPARE string-compare mark companion cite; host `cstr=` ≠ ANS COMPARE; **not** WITHIN reopen); `docs/BITWISE.md` (wave21 **4** — bitwise marks companion cite; sibling bitwise marks — **not** WITHIN reopen / boolean cell / `0=` deepen); `docs/ZERO-EQUALS.md` (wave22 **2** — flag marks companion cite; sibling flag marks — **NOT** WITHIN reopen / boolean cell / LSHIFT reopen / AND-OR reopen; host `0=`/`0<>` untouched); `docs/U-LESS.md` (wave23 **3** — unsigned compare flag companion cite; sibling unsigned compare — **NOT** WITHIN reopen / runtime compare re-exec / boolean cell / ZERO-EQUALS reopen / COMPARE reopen; prefer `u-less-mark`; do not redefine `within-mark`)
 **Base tip SHA:** `6a6a87d` (wave20 tip1 PASS / #92 TRUE-FALSE) / full `6a6a87d2dc573211173f4c67d4d133c30418a0c7`
 
 ## 1. Purpose
 
 WAVE10 landed IF/THEN/ELSE as balance-only control stubs (`docs/CONTROL.md`); WAVE15 landed stack/?DUP flag pictures (`docs/PICK-ROLL.md`); WAVE20 tip **1** landed `TRUE` / `FALSE` constant marks (`docs/TRUE-FALSE.md`). WAVE18 / WAVE19 / WAVE20 explicitly deferred `WITHIN` (range-check mark; not real branch XT). This tip lands a **stub** range-check mark only: `WITHIN` (or Forth mirror `within-mark`) prints `[within] WITHIN` (+ optional `n=` / `lo=` / `hi=` / `flag=<0|1>`) for a small fixed demo triple — hit → greppable `flag=1`; miss → `flag=0` or `[within] WITHIN miss` (demo may show one miss or avoids FAIL). Smoke via **`within-demo`**. Forth mirror **`within-mark`** so host `WITHIN` stays safe. **Not** a real branch XT, not IF/THEN/ELSE reopen, not unsigned-wrap rewrite required (document signed picture if used). Pairs with tip1 flag picture without promoting either to a real compare/branch machine. Thinnest range-check surface deferred since wave18/19 GAPS — after constants, before wave20 tip3 COUNT / tip4 EXECUTE.
 
+
+Wave23 tip **3** lands `U<` unsigned compare flag mark (`docs/U-LESS.md`): sibling **unsigned compare** — **NOT** WITHIN reopen / runtime compare re-exec / boolean cell / ZERO-EQUALS reopen / COMPARE reopen; prefer `u-less-mark`; **do not** redefine `within-mark`.
 ## 2. Words / Surfaces
 
 | Word | Stack | Notes |
@@ -155,3 +157,4 @@ Do **not** wipe tip1 TRUE-FALSE content or wave19 tip1–4 CHAR-CHARS / TO-BODY 
 - `docs/COMPARE.md` (wave21 **3** — ANS COMPARE string mark companion; host `cstr=` ≠ ANS COMPARE; **not** WITHIN reopen)
 - `docs/BITWISE.md` (wave21 **4** — bitwise marks companion; sibling bitwise marks — **not** WITHIN reopen / boolean cell / `0=` deepen)
 - `docs/ZERO-EQUALS.md` (wave22 **2** — flag marks companion; sibling flag marks — **NOT** WITHIN reopen / boolean cell; host `0=`/`0<>` untouched)
+- `docs/U-LESS.md` (wave23 **3** — sibling unsigned compare flag mark; **not** WITHIN reopen; prefer `u-less-mark`; do not redefine `within-mark`)
