@@ -2521,6 +2521,29 @@ create (eq-miss) 6 c, char N c, char O c, char S c, char U c, char C c, char H c
   ." [env-demo] OK" cr ;
 
 
+
+\ === SOURCE/PAD thin markers (wave19 item 4) ===
+\ Forth mirrors: source-mark / pad-addr — do NOT redefine host SOURCE / PAD.
+\ Thin marks only — NOT ACCEPT/REFILL / live TIB rewrite / full input-buffer VM / heap.
+\ Pad sits beside WORD-BL word-buffer as a separate fixed host slot (cap=84).
+
+84 constant (pad-cap)
+create (pad-buf) 84 allot
+create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e c, bl c, char p c, char a c, char d c, bl c, char d c, char e c, char m c, char o c,
+
+: source-mark ( -- )
+  ." [source] SOURCE addr=0 u=15" cr ;
+
+: pad-addr ( -- )
+  ." [source] PAD addr=0 u=0 cap=84" cr ;
+
+: source-demo ( -- )
+  ." [source-demo] SOURCE + PAD thin marks" cr
+  source-mark
+  pad-addr
+  ." [source-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2562,6 +2585,7 @@ create (eq-miss) 6 c, char N c, char O c, char S c, char U c, char C c, char H c
 \ - CHAR-CHARS landed (wave19 item 1).
 \ - TO-BODY landed (wave19 item 2).
 \ - ENVIRONMENT-QUERY landed (wave19 item 3).
+\ - SOURCE-PAD landed (wave19 item 4).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

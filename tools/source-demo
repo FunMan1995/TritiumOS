@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# source-demo — Lab smoke for SOURCE / PAD thin markers (wave19 item 4 / docs/SOURCE-PAD.md)
+# Mirrors forth/tritium/kernel.fs source-demo + Linux host source_demo.
+# Thin SOURCE/PAD marks only — NOT ACCEPT/REFILL / live TIB rewrite / full input-buffer VM / heap.
+# Forth mirrors: source-mark / pad-addr. Do NOT redefine host SOURCE / PAD.
+# Pad sits beside WORD-BL word-buffer as a separate fixed host slot (cap=84).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: source-demo"
+  echo "  source-mark (fixture) + pad-addr (cap=84) → [source-demo] OK"
+  echo "  Markers: [source] SOURCE addr=… u=… / [source] PAD addr=… u=… cap=84 → [source-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Demo input-string fixture (non-empty — avoid [source] FAIL reason=empty)
+SOURCE_FIXTURE="source pad demo"
+SOURCE_U=${#SOURCE_FIXTURE}
+SOURCE_ADDR=0
+
+# Fixed host pad slot beside WORD-BL word-buffer (separate; prefer cap=84, ≤128)
+HOST_PAD_CAP=84
+HOST_PAD_ADDR=0
+HOST_PAD_U=0
+
+echo "[source-demo] SOURCE + PAD thin marks"
+echo "[source] SOURCE addr=${SOURCE_ADDR} u=${SOURCE_U}"
+echo "[source] PAD addr=${HOST_PAD_ADDR} u=${HOST_PAD_U} cap=${HOST_PAD_CAP}"
+echo "[source-demo] OK"
+exit 0

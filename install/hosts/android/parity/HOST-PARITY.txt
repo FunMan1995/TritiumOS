@@ -44,3 +44,4 @@ state-demo CONTRACT
 char-demo CONTRACT
 body-demo CONTRACT
 env-demo CONTRACT
+source-demo CONTRACT
