@@ -48,6 +48,7 @@ REQUIRED_DEMOS=(
   char-demo
   body-demo
   env-demo
+  source-demo
 )
 
 usage() {

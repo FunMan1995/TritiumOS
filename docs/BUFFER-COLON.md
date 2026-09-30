@@ -1,14 +1,14 @@
 # BUFFER-COLON — `BUFFER:` named buffer stubs + `buffer-demo`
 
-**Status:** Shipper-ready stub spec (wave16 item **3**)
+**Status:** Shipper-ready stub spec (wave16 item **3**; thin amend wave19 **4** SOURCE-PAD companion cite)
 **Canonical brief:** ANS-shaped `BUFFER:` (thin named allot-buffer markers); `docs/ALLOT-HERE.md` (wave14 **1**); `docs/FILL-MOVE.md` (wave15 **3**); `docs/VARIABLE-CONST.md` (wave12 **2**); `docs/KERNEL.md` (wave7 **5**); `docs/MARKER.md` (wave16 **2**); `docs/DEFER-IS.md` (wave16 **1**); explicit WAVE15 / WAVE16 deferral closed as named-buffer stub only
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `buffer.fs`); Linux host REPL
-**Companions:** `docs/ALLOT-HERE.md` (thin amend this tip), `docs/FILL-MOVE.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip)
+**Companions:** `docs/ALLOT-HERE.md` (thin amend this tip), `docs/FILL-MOVE.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); `docs/SOURCE-PAD.md` (wave19 **4** — SOURCE/PAD thin marks companion cite)
 **Base tip SHA:** `38b8825a` (wave16 tip2 CLOSED / #73 MARKER) / full `38b8825a6c8954ddabe5416caa5cec4247747d3f`
 
 ## 1. Purpose
 
-WAVE15 and WAVE16 explicitly deferred `BUFFER:` (full named allot buffer / arena / heap). HERE/ALLOT already expose a stub byte-bump pointer; FILL/ERASE/MOVE/CMOVE already smoke a **fixed host byte buffer** (cap **64**). This tip lands **stub** named buffer markers only: `n BUFFER: <name>` creates a named buffer slot of size `n` (offset into the fill cap and/or a HERE bump region) and prints `[buffer] BUFFER: name= n=` (+ optional `addr=` / offset); fetching the name prints `[buffer] addr= name=` (or returns the stub offset). Smoke via **`buffer-demo`**. Forth mirror **`buffer-colon`** if host names collide. Named slot over wave14 HERE bump and/or wave15 fixed host buffer — **not** an arena, not `ALLOCATE`/`RESIZE`, not a redefinition of the FILL host buffer. Optional tie to tip1 DEFER / tip2 MARKER not required for Lab OK. Serial after MARKER so Lab dict / buffer demos stay ordered.
+WAVE15 and WAVE16 explicitly deferred `BUFFER:` (full named allot buffer / arena / heap). HERE/ALLOT already expose a stub byte-bump pointer; FILL/ERASE/MOVE/CMOVE already smoke a **fixed host byte buffer** (cap **64**). This tip lands **stub** named buffer markers only: `n BUFFER: <name>` creates a named buffer slot of size `n` (offset into the fill cap and/or a HERE bump region) and prints `[buffer] BUFFER: name= n=` (+ optional `addr=` / offset); fetching the name prints `[buffer] addr= name=` (or returns the stub offset). Smoke via **`buffer-demo`**. Forth mirror **`buffer-colon`** if host names collide. Named slot over wave14 HERE bump and/or wave15 fixed host buffer — **not** an arena, not `ALLOCATE`/`RESIZE`, not a redefinition of the FILL host buffer. Optional tie to tip1 DEFER / tip2 MARKER not required for Lab OK. Serial after MARKER so Lab dict / buffer demos stay ordered. Wave19 tip **4** lands `SOURCE` / `PAD` thin marks (`docs/SOURCE-PAD.md`) — sibling **fixed host pad slot** (prefer cap **84**) beside WORD-BL’s word-buffer; **not** a BUFFER: reopen / arena / ALLOCATE / heap / ACCEPT/REFILL.
 
 ## 2. Words / Surfaces
 
@@ -95,6 +95,7 @@ Do **not** wipe tip1 DEFER cites / tip2 MARKER cites / wave15 IMMEDIATE/FILL/PIC
 
 - Full Dusk arena / pool / free / fragmentation model (this tip = named slot stub only)
 - Real `ALLOCATE` / `FREE` / `RESIZE`
+- `SOURCE` / `PAD` thin marks → `docs/SOURCE-PAD.md` (wave19 **4**; fixed pad slot beside WORD-BL — not BUFFER: reopen / ACCEPT/REFILL / heap)
 - Redefining / replacing the wave15 FILL fixed host buffer (named slots may offset into it; FILL surface stays `FILL-MOVE.md`)
 - Real DOES> XT chaining / threaded child runtime body
 - `EXIT` / `QUIT` redefine (wave16 **4** candidate — mark-only mirrors later)
@@ -115,7 +116,7 @@ Do **not** wipe tip1 DEFER cites / tip2 MARKER cites / wave15 IMMEDIATE/FILL/PIC
 ## 8. Acceptance (Test Lab)
 
 1. `docs/BUFFER-COLON.md` present (Research byte-copy OK); `ALLOT-HERE.md` + `FILL-MOVE.md` + `VARIABLE-CONST.md` + `KERNEL.md` thin amends present (wave14/15/7/12 text, tip1 DEFER cites, tip2 MARKER cites, and wave15 IMMEDIATE/FILL/PICK/CELL cites retained).
-2. `buffer-demo` → OK (markers §4; BUFFER: greppable with `name=` + `n=`; fetch greppable with `addr=` + `name=`; no bounds FAIL on happy path). Prior `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` still OK.
+2. `buffer-demo` → OK (markers §4; BUFFER: greppable with `name=` + `n=`; fetch greppable with `addr=` + `name=`; no bounds FAIL on happy path); wave19 **4**: `source-demo` → OK (retains `buffer-demo`; PAD ≠ BUFFER:). Prior `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` still OK.
 3. Regression green (wave16 tip1–2 + wave15 tip1–5 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `buffer-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML.
@@ -128,4 +129,5 @@ Do **not** wipe tip1 DEFER cites / tip2 MARKER cites / wave15 IMMEDIATE/FILL/PIC
 - ANS Forth `BUFFER:` (named size slot only — no arena / ALLOCATE)
 - Explicit deferral: WAVE15-PROPOSAL + WAVE16-PROPOSAL (`BUFFER:` — stub named buffer only; full arena/heap out)
 - Base tip: `38b8825a` / `38b8825a6c8954ddabe5416caa5cec4247747d3f` (#73 wave16 tip2 MARKER)
+- `docs/SOURCE-PAD.md` (wave19 **4** — SOURCE/PAD thin marks; not BUFFER: reopen / ACCEPT/REFILL)
 - Wave16 proposal: `/workspace/tritium-research-docs/WAVE16-PROPOSAL.md`
