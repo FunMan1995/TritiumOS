@@ -1,14 +1,16 @@
 # IMMEDIATE-POSTPONE — `IMMEDIATE` / `POSTPONE` compile-only stubs + `imm-demo`
 
-**Status:** Shipper-ready stub spec (wave15 item **4**; thin amend wave17 **4** RECURSE; thin amend wave18 **1** TICK; thin amend wave18 **4** STATE-COMPILE)
-**Canonical brief:** ANS-shaped `IMMEDIATE` / `POSTPONE` (thin flag + name markers); `docs/COLON.md` (wave9 **4**); `docs/INTERPRET.md` (wave8 **1**); `docs/KERNEL.md` (wave7 **5**); `docs/EXIT-QUIT.md` (wave16 **4**); `docs/RECURSE.md` (wave17 **4**); `docs/TICK.md` (wave18 **1**); `docs/STATE-COMPILE.md` (wave18 **4**); explicit WAVE13 + WAVE14 deferral closed as flag stub only
+**Status:** Shipper-ready stub spec (wave15 item **4**; thin amend wave17 **4** RECURSE; thin amend wave18 **1** TICK; thin amend wave18 **4** STATE-COMPILE; thin amend wave20 **4** EXECUTE companion cite)
+**Canonical brief:** ANS-shaped `IMMEDIATE` / `POSTPONE` (thin flag + name markers); `docs/COLON.md` (wave9 **4**); `docs/INTERPRET.md` (wave8 **1**); `docs/KERNEL.md` (wave7 **5**); `docs/EXIT-QUIT.md` (wave16 **4**); `docs/RECURSE.md` (wave17 **4**); `docs/TICK.md` (wave18 **1**); `docs/STATE-COMPILE.md` (wave18 **4**); `docs/EXECUTE.md` (wave20 **4**); explicit WAVE13 + WAVE14 deferral closed as flag stub only
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `imm.fs` / `postpone.fs`); Linux host REPL
-**Companions:** `docs/COLON.md` (thin amend wave15 **4**), `docs/INTERPRET.md` (thin amend wave15 **4**), `docs/KERNEL.md` (thin amend wave15 **4**), `docs/RECURSE.md` (wave17 **4** — sibling colon-side mark), `docs/TICK.md` (wave18 **1** — sibling name→stub-xt-id mark), `docs/STATE-COMPILE.md` (wave18 **4** — sibling STATE query + COMPILE, mark)
+**Companions:** `docs/COLON.md` (thin amend wave15 **4**), `docs/INTERPRET.md` (thin amend wave15 **4**), `docs/KERNEL.md` (thin amend wave15 **4**), `docs/RECURSE.md` (wave17 **4** — sibling colon-side mark), `docs/TICK.md` (wave18 **1** — sibling name→stub-xt-id mark), `docs/STATE-COMPILE.md` (wave18 **4** — sibling STATE query + COMPILE, mark); `docs/EXECUTE.md` (wave20 **4** — xt-id invoke mark companion cite; not executing postponed XT / real XT execute)
 **Base tip SHA:** `ee1d430` (wave15 tip3 CLOSED / #69 FILL-MOVE) / full `ee1d43066a24b262e70f2515313c2a64018c5115`
 
 ## 1. Purpose
 
 WAVE13 and WAVE14 explicitly deferred `IMMEDIATE` / `POSTPONE` (and the linked XT compiler). COLON/INTERPRET still treat “immediate / compile state machine” as out of scope beyond the colon-def flag. This tip lands **compile-only stub** markers: `IMMEDIATE` sets an **immediate-bit** on the latest colon/CREATE entry (or a named entry) and prints `[imm] IMMEDIATE name=`; `POSTPONE <name>` prints `[imm] POSTPONE name=` and does **not** compile or run an XT (optional `[imm] compile-only` when the colon-def flag is set). Smoke via **`imm-demo`**. Flag + name mark only — **no** linked XT list, no FIND-then-compile, no executing a postponed XT, no full compile/interpret state machine beyond the existing colon-def flag. Closes the colon/interpret “immediate state” non-goal as a stub before tip5 cites. Forth mirrors `immediate-mark` / `postpone-mark` so host Forth names (if any) are not replaced. Tick mark (`'` / `[']`) → `docs/TICK.md` (wave18 **1**; name→stub-xt-id only — pairs with POSTPONE name-mark without promoting either to a real XT vector). STATE/COMPILE, query + compile-comma mark → `docs/STATE-COMPILE.md` (wave18 **4**; Forth mirrors `state-flag` / `compile-comma` — **not** linked XT / FIND-then-compile / POSTPONE reopen / real STATE cell).
+
+ Sibling xt-id invoke mark → `docs/EXECUTE.md` (wave20 **4**; Forth mirror `execute-mark` — mark only; **not** executing postponed XT / linked XT / real XT execute).
 
 ## 2. Words / Surfaces
 
@@ -84,6 +86,7 @@ Do **not** wipe tip1–3 / wave14 / COLON / INTERPRET prior content.
 
 ## 7. Non-goals
 
+- `EXECUTE` xt-id invoke mark → `docs/EXECUTE.md` (wave20 **4**; Forth mirror `execute-mark` — mark only; **not** executing postponed XT / linked XT / real XT execute)
 - Linked XT compiler / FIND-then-compile / XT body append
 - Real compile/interpret state machine beyond colon-def flag + immediate-bit
 - Executing a postponed XT / postponed-XT queue / runtime compile semantics
@@ -104,13 +107,14 @@ Do **not** wipe tip1–3 / wave14 / COLON / INTERPRET prior content.
 ## 8. Acceptance (Test Lab)
 
 1. `docs/IMMEDIATE-POSTPONE.md` present (Research byte-copy OK); `COLON.md` + `INTERPRET.md` + `KERNEL.md` thin amends present (wave15 **1–3** cites and wave9/8/7 text retained).
-2. `imm-demo` → OK (markers §4; IMMEDIATE + POSTPONE greppable; no miss FAIL on happy path). Prior `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave17 **4**: `recurse-demo` → OK (colon remains green); wave18 **1**: `tick-demo` → OK (tick pairs with POSTPONE name-mark; not XT); wave18 **4**: `state-demo` → OK (STATE/COMPILE, mark beside IMMEDIATE; not linked XT).
+2. `imm-demo` → OK (markers §4; IMMEDIATE + POSTPONE greppable; no miss FAIL on happy path). Wave20 **4**: `exec-demo` → OK (retains `imm-demo` + `tick-demo` + `state-demo`; not executing postponed XT). Prior `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave17 **4**: `recurse-demo` → OK (colon remains green); wave18 **1**: `tick-demo` → OK (tick pairs with POSTPONE name-mark; not XT); wave18 **4**: `state-demo` → OK (STATE/COMPILE, mark beside IMMEDIATE; not linked XT).
 3. Regression green (wave15 tip1–3 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `imm-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML.
 
 ## 9. Cite
 
+- `docs/EXECUTE.md` (wave20 **4** — invoke-mark companion; not executing postponed XT)
 - `docs/COLON.md` (wave9 **4**), `docs/INTERPRET.md` (wave8 **1**), `docs/KERNEL.md` (wave7 **5**)
 - `docs/FILL-MOVE.md` (wave15 **3**), `docs/PICK-ROLL.md` (wave15 **2**), `docs/CELL-CELLS.md` (wave15 **1**)
 - `docs/EXIT-QUIT.md` (wave16 **4**), `docs/RECURSE.md` (wave17 **4**)

@@ -2599,6 +2599,23 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 
 
 
+
+\ === EXECUTE xt-id invoke mark (wave20 item 4) ===
+\ Forth mirror: execute-mark — do NOT redefine host EXECUTE.
+\ Xt-id invoke mark only — echoes known tick stub xt-id + that invoke was requested.
+\ Does NOT run linked XT body, deferred ACTION-OF, RECURSE self-XT, or DOES> child XT.
+\ Fixed demo fixture: tick-demo widget stub xt=0 (entry index host int).
+
+: execute-mark ( -- )
+  ." [exec] EXECUTE xt=0" cr ;
+
+: exec-demo ( -- )
+  ." [exec-demo] EXECUTE xt-id invoke mark" cr
+  execute-mark
+  ." [exec-demo] OK" cr ;
+
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2644,6 +2661,7 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 \ - TRUE-FALSE landed (wave20 item 1).
 \ - WITHIN landed (wave20 item 2).
 \ - COUNT landed (wave20 item 3).
+\ - EXECUTE landed (wave20 item 4).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
