@@ -3,7 +3,7 @@
 **Status:** Shipper-ready stub spec (wave12 item **3**)
 **Canonical brief:** Dusk / ANS Forth comment skip (thin stub); `docs/INTERPRET.md` (wave8 **1**), `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `interpret.fs` / `comment.fs`); Linux host REPL
-**Companions:** `docs/INTERPRET.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip, optional), `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/STRING-LIT.md` (wave13 **4**), `docs/PARSE-NAME.md` (wave17 **2**)
+**Companions:** `docs/INTERPRET.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip, optional), `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/STRING-LIT.md` (wave13 **4**), `docs/PARSE-NAME.md` (wave17 **2**), `docs/WORD-BL.md` (wave18 **3**)
 **Base tip SHA:** `c3b8c6a` (wave12 tip2 CLOSED / #53) / full `c3b8c6aec26c849e9e72f69fe7081050a0e501b0`
 
 ## 1. Purpose
@@ -13,7 +13,7 @@ Interpret walks whitespace-separated tokens today; it does **not** skip Forth co
 - Backslash **`\`** — skip from `\` through **end-of-line** (rest of that line is not tokens).
 - Paren **`(` … `)`** — skip a paren comment; **prefer non-nested** first for this stub (nested optional later).
 
-Print greppable `[comment]` markers and smoke via **`comment-demo`**. Prove comments do **not** create dict words and do **not** break interpret of real tokens mixed around them. String-literal stubs (`S"` / `."` / optional `.(`) → `docs/STRING-LIT.md` (wave13 **4**). `PARSE` / `PARSE-NAME` token-parse markers → `docs/PARSE-NAME.md` (wave17 **2**; thin deepen beside comment skip — not a full parser VM). Not `LEAVE`/`AGAIN` (done wave12 **4**), not real Forth BLOCK comments.
+Print greppable `[comment]` markers and smoke via **`comment-demo`**. Prove comments do **not** create dict words and do **not** break interpret of real tokens mixed around them. String-literal stubs (`S"` / `."` / optional `.(`) → `docs/STRING-LIT.md` (wave13 **4**). `PARSE` / `PARSE-NAME` token-parse markers → `docs/PARSE-NAME.md` (wave17 **2**; thin deepen beside comment skip — not a full parser VM). `WORD` / `BL` stub markers → `docs/WORD-BL.md` (wave18 **3**; stub token/pad only — not interpret splitter rewrite). Not `LEAVE`/`AGAIN` (done wave12 **4**), not real Forth BLOCK comments.
 
 ## 2. Words / Surfaces
 
@@ -36,7 +36,7 @@ Host note: bind `\` / `(` on Linux REPL interpret path (stream scanner preferred
 - Comments must **not** create words (no `entry-create` for comment text) and must **not** emit `[interpret] miss` for discarded spans.
 - Real tokens before/after comments still find/exec as today (`[interpret] exec` / miss only for real tokens).
 - Nest with prior colon / control / loop / do-loop / var stubs OK; dict-reset unaffected by comment skips.
-- String-literal stubs (`S"` / `."` / optional `.(`) → `docs/STRING-LIT.md` (wave13 **4**; markers only, no heap / BLOCK / escape). `PARSE` / `PARSE-NAME` token-parse markers → `docs/PARSE-NAME.md` (wave17 **2**; not WORD/BL rewrite / full tokenizer). Still no BLOCK / `\`-in-string edge rewrite this tip. `LEAVE` / `AGAIN` stubs → `docs/LEAVE-AGAIN.md` (wave12 **4**).
+- String-literal stubs (`S"` / `."` / optional `.(`) → `docs/STRING-LIT.md` (wave13 **4**; markers only, no heap / BLOCK / escape). `PARSE` / `PARSE-NAME` token-parse markers → `docs/PARSE-NAME.md` (wave17 **2**; not full tokenizer). `WORD` / `BL` stub markers → `docs/WORD-BL.md` (wave18 **3**; stub token/pad only — not interpret splitter rewrite / SOURCE/PAD). Still no BLOCK / `\`-in-string edge rewrite this tip. `LEAVE` / `AGAIN` stubs → `docs/LEAVE-AGAIN.md` (wave12 **4**).
 
 ## 4. Markers
 
@@ -86,7 +86,8 @@ Lab greps `[comment-demo] OK` plus at least one `[comment] skip line` and one `[
 ## 7. Non-goals
 
 - String-literal stubs (`S"` / `."` / optional `.(`): see `docs/STRING-LIT.md` (wave13 **4**); full counted-string heap / BLOCK / escape rewrite still out
-- `PARSE` / `PARSE-NAME` token-parse markers: see `docs/PARSE-NAME.md` (wave17 **2**); full parser / tokenizer VM / WORD/BL rewrite still out
+- `PARSE` / `PARSE-NAME` token-parse markers: see `docs/PARSE-NAME.md` (wave17 **2**); full parser / tokenizer VM still out
+- `WORD` / `BL` stub markers: see `docs/WORD-BL.md` (wave18 **3**); full interpret WORD/BL rewrite / SOURCE/PAD still out
 - `LEAVE` / `AGAIN`: see `docs/LEAVE-AGAIN.md` (wave12 **4**); docs cites (wave12 **5**)
 - Real Forth BLOCK comments / screen comments / multi-line `\` beyond EOL
 - Nested paren comments (optional; prefer non-nested stub first)
@@ -96,7 +97,7 @@ Lab greps `[comment-demo] OK` plus at least one `[comment] skip line` and one `[
 ## 8. Acceptance (Test Lab)
 
 1. `docs/COMMENT-PARSE.md` present (Research byte-copy OK); `INTERPRET.md` thin amend present (`KERNEL.md` one-line optional).
-2. `comment-demo` → OK (markers §4); `var-demo` + `do-loop-demo` + `interpret-demo` still OK; wave17 **2**: `parse-demo` → OK (retains `comment-demo`).
+2. `comment-demo` → OK (markers §4); `var-demo` + `do-loop-demo` + `interpret-demo` still OK; wave17 **2**: `parse-demo` → OK (retains `comment-demo`); wave18 **3**: `word-demo` → OK (retains `comment-demo`).
 3. Regression green (wave12 **1–2** + prior demos).
 4. Win/Android: CONTRACT acceptable (parity line `comment-demo CONTRACT` OK).
 5. No merge. Stay out of Mango.
@@ -109,3 +110,4 @@ Lab greps `[comment-demo] OK` plus at least one `[comment] skip line` and one `[
 - Base tip: `c3b8c6a` / `c3b8c6aec26c849e9e72f69fe7081050a0e501b0`
 - `docs/STRING-LIT.md` (wave13 **4**)
 - `docs/PARSE-NAME.md` (wave17 **2**)
+- `docs/WORD-BL.md` (wave18 **3**)

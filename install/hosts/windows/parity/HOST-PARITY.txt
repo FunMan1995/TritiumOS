@@ -38,3 +38,4 @@ eval-demo CONTRACT
 recurse-demo CONTRACT
 tick-demo CONTRACT
 find-demo CONTRACT
+word-demo CONTRACT

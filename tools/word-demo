@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# word-demo — Lab smoke for WORD / BL stub markers (wave18 item 3 / docs/WORD-BL.md)
+# Mirrors forth/tritium/kernel.fs word-demo + Linux host word_demo.
+# Stub WORD/BL token/pad markers only — NOT interpret splitter rewrite / SOURCE/PAD / heap.
+# Forth mirrors: word-parse / bl-char. Do NOT redefine host WORDS / words / words-demo / WORD.
+# Fixed word-buffer cap=32 (not a heap).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: word-demo"
+  echo "  bl-char → word-parse delim=BL against fixture \"hello world\" → [word-demo] OK"
+  echo "  Markers: [word] BL char=32 / [word] WORD delim=BL tok=… → [word-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[word-demo] FAIL"
+  exit 1
+}
+
+# Cap=32 fixed word-buffer (not a heap)
+HOST_WORD_BUF_CAP=32
+host_word_buf=""
+
+bl_char() {
+  echo "[word] BL char=32"
+}
+
+word_parse_bl() {
+  # fixture "hello world" → first BL-delimited token into fixed buf
+  local fixture="hello world"
+  local i=0
+  local j=0
+  local c
+  # skip leading blanks
+  while (( i < ${#fixture} )); do
+    c="${fixture:i:1}"
+    [[ "$c" == " " ]] || break
+    ((i++)) || true
+  done
+  host_word_buf=""
+  while (( i < ${#fixture} && j + 1 < HOST_WORD_BUF_CAP )); do
+    c="${fixture:i:1}"
+    [[ "$c" == " " ]] && break
+    host_word_buf+="$c"
+    ((i++)) || true
+    ((j++)) || true
+  done
+  if [[ -z "$host_word_buf" ]]; then
+    # Avoid FAIL reason=empty on happy path
+    echo "[word] WORD delim=BL tok= u=0 addr=0"
+    return 0
+  fi
+  echo "[word] WORD delim=BL tok=${host_word_buf} u=${j} addr=0"
+}
+
+echo "[word-demo] BL + WORD delim fixture"
+bl_char
+word_parse_bl
+# Happy path must emit BL + WORD delim markers; no interpret splitter / SOURCE/PAD / heap
+echo "[word-demo] OK"
+exit 0

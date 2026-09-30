@@ -3,12 +3,12 @@
 **Status:** Shipper-ready stub spec (wave17 item **2**)
 **Canonical brief:** ANS-shaped `PARSE` / `PARSE-NAME` (thin token-parse markers only); `docs/COMMENT-PARSE.md` (wave12 **3**); `docs/INTERPRET.md` (wave8 **1**); `docs/STRING-LIT.md` (wave13 **4**); `docs/KERNEL.md` (wave7 **5**); `docs/SYNONYM-ALIAS.md` (wave17 **1**); explicit WAVE16/WAVE17 deferral closed as parse-marker deepen only
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `interpret.fs` / `parse.fs`); Linux host REPL
-**Companions:** `docs/COMMENT-PARSE.md` (thin amend this tip), `docs/INTERPRET.md` (thin amend this tip), `docs/STRING-LIT.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip)
+**Companions:** `docs/COMMENT-PARSE.md` (thin amend this tip), `docs/INTERPRET.md` (thin amend this tip), `docs/STRING-LIT.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip), `docs/WORD-BL.md` (wave18 **3**)
 **Base tip SHA:** `b73161b` (wave17 tip1 CLOSED / #77 SYNONYM-ALIAS) / full `b73161b896b62abef640b73eef93e4ae77c1fb0a`
 
 ## 1. Purpose
 
-WAVE16/WAVE17 explicitly deferred `PARSE` / `PARSE-NAME` deepen (full parser / tokenizer VM / WORD/BL rewrite). Comment skip (`\` / `(`) and string-literal parse stubs already exist; a whitespace / delimiter **token-parse marker** surface does not. This tip **deepens** on wave12 COMMENT-PARSE with thin markers only: `PARSE-NAME` prints `[parse] PARSE-NAME` (+ optional `tok=` / `u=`) for a whitespace-delimited stub token taken from a demo string/fixture; `PARSE` (delimiter form) prints `[parse] PARSE delim=` (+ optional `tok=`). Smoke via **`parse-demo`**. Forth mirrors **`parse-name` / `parse-delim`** if host names collide. **Not** a full stream parser, not WORD/BL rewrite of the whole interpret path, not S"/escape heap. Builds on comment skip without reopening BLOCK / nested-paren deferrals. Pairs with wave13 STRING-LIT parse-until-delim surface without promoting either to a real tokenizer VM.
+WAVE16/WAVE17 explicitly deferred `PARSE` / `PARSE-NAME` deepen (full parser / tokenizer VM / WORD/BL rewrite). Comment skip (`\` / `(`) and string-literal parse stubs already exist; a whitespace / delimiter **token-parse marker** surface does not. This tip **deepens** on wave12 COMMENT-PARSE with thin markers only: `PARSE-NAME` prints `[parse] PARSE-NAME` (+ optional `tok=` / `u=`) for a whitespace-delimited stub token taken from a demo string/fixture; `PARSE` (delimiter form) prints `[parse] PARSE delim=` (+ optional `tok=`). Smoke via **`parse-demo`**. Forth mirrors **`parse-name` / `parse-delim`** if host names collide. **Not** a full stream parser, not WORD/BL rewrite of the whole interpret path, not S"/escape heap. Builds on comment skip without reopening BLOCK / nested-paren deferrals. Pairs with wave13 STRING-LIT parse-until-delim surface without promoting either to a real tokenizer VM. Wave18 **3** closes the WORD/BL rewrite deferral as **stub markers only** — see `docs/WORD-BL.md` (still not a full interpret splitter rewrite).
 
 ## 2. Words / Surfaces
 
@@ -27,7 +27,7 @@ Host note: bind `PARSE-NAME` / `PARSE` on the Linux REPL; Forth mirrors **`parse
 - **Empty / no-token:** `[parse] FAIL reason=empty` optional (demo **must avoid** — always feed a non-empty fixture with ≥1 whitespace-delimited token and a non-empty PARSE span).
 - Storage: stub token string for marker echo only. **No** full tokenizer VM, no nested-paren reopen, no BLOCK comments, no EVALUATE nested interpret, no S"/escape heap rewrite.
 - Nest with prior synonym / exit / buffer / marker / defer / imm / fill / pick / cell / allot / throw / 2var / create / colon / control / string / comment / words stubs OK. `dict-reset` unaffected (parse stubs do not create dict words from token text).
-- Still no full parser/tokenizer VM, no WORD/BL rewrite of interpret path, no nested paren deepen, no BLOCK comments, no EVALUATE nested interpret, no RECURSE self-XT, no real DOES> XT, no real branch XT, no full Win/Android Forth VM. Those stay non-goals / later tips.
+- Still no full parser/tokenizer VM, no nested paren deepen, no BLOCK comments, no EVALUATE nested interpret, no RECURSE self-XT, no real DOES> XT, no real branch XT, no full Win/Android Forth VM. `WORD` / `BL` stub markers (not full interpret rewrite) → `docs/WORD-BL.md` (wave18 **3**). Those stay non-goals / later tips (WORD-BL stubs excepted as mark-only).
 
 ## 4. Markers
 
@@ -93,7 +93,7 @@ Do **not** wipe tip1 SYNONYM cites or wave16 DEFER / MARKER / BUFFER / EXIT cite
 
 ## 7. Non-goals
 
-- Full parser / tokenizer VM / WORD/BL rewrite of the whole interpret path
+- Full parser / tokenizer VM / WORD/BL rewrite of the whole interpret path — `WORD` / `BL` stub markers only → `docs/WORD-BL.md` (wave18 **3**; still not a full interpret splitter rewrite / SOURCE/PAD)
 - Nested paren comment deepen (COMMENT-PARSE remains non-nested stub)
 - BLOCK comments / screen comments
 - `EVALUATE` / `INCLUDE` nested interpret / file VM (wave17 **3** candidate — mark-only later; refined-boot stays)
@@ -115,7 +115,7 @@ Do **not** wipe tip1 SYNONYM cites or wave16 DEFER / MARKER / BUFFER / EXIT cite
 ## 8. Acceptance (Test Lab)
 
 1. `docs/PARSE-NAME.md` present (Research byte-copy OK); `COMMENT-PARSE.md` + `INTERPRET.md` + `STRING-LIT.md` + `KERNEL.md` thin amends present (wave12/8/13/7 text, tip1 SYNONYM cites, and wave16 DEFER/MARKER/BUFFER/EXIT cites retained).
-2. `parse-demo` → OK (markers §4; PARSE-NAME greppable; PARSE delim= greppable; no empty FAIL on happy path). Prior `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` still OK.
+2. `parse-demo` → OK (markers §4; PARSE-NAME greppable; PARSE delim= greppable; no empty FAIL on happy path); wave18 **3**: `word-demo` → OK (retains `parse-demo`). Prior `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` still OK.
 3. Regression green (wave17 tip1 + wave16 tip1–5 + wave15 tip1–5 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `parse-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML. Skip 2DUP-FAMILY + ABORT" polish.
@@ -130,4 +130,5 @@ Do **not** wipe tip1 SYNONYM cites or wave16 DEFER / MARKER / BUFFER / EXIT cite
 - ANS Forth `PARSE` / `PARSE-NAME` (token/delim mark only — no full tokenizer VM / WORD/BL rewrite)
 - Explicit deferral: WAVE16-PROPOSAL / WAVE17-PROPOSAL (`PARSE` / `PARSE-NAME` deepen — not full parser VM)
 - Base tip: `b73161b` / `b73161b896b62abef640b73eef93e4ae77c1fb0a` (#77 wave17 tip1 SYNONYM-ALIAS)
+- `docs/WORD-BL.md` (wave18 **3** — WORD/BL stub markers; closes this tip's WORD/BL rewrite deferral as stubs only)
 - Wave17 proposal: `/workspace/tritium-research-docs/WAVE17-PROPOSAL.md`

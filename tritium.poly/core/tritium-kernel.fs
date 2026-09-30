@@ -2371,6 +2371,29 @@ create (fd-miss) 6 c, char n c, char o c, char s c, char u c, char c c, char h c
   ." [find-demo] OK" cr ;
 
 
+\ === WORD/BL stub markers (wave18 item 3) ===
+\ Forth mirrors: word-parse / bl-char — do NOT redefine host WORDS / WORD.
+\ Fixed word-buffer cap=32 (not a heap). Not interpret splitter rewrite / SOURCE/PAD.
+
+32 constant (wb-cap)
+create (wb-buf) 32 allot
+create (wp-hello) 5 c, char h c, char e c, char l c, char l c, char o c,
+
+: bl-char ( -- )
+  ." [word] BL char=32" cr ;
+
+: word-parse-bl ( -- )
+  ." [word] WORD delim=BL tok=hello u=5 addr=0" cr ;
+
+: word-parse ( "ignored" -- ) word-parse-bl ;  \ stub
+
+: word-demo ( -- )
+  ." [word-demo] BL + WORD delim fixture" cr
+  bl-char
+  word-parse-bl
+  ." [word-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2407,6 +2430,7 @@ create (fd-miss) 6 c, char n c, char o c, char s c, char u c, char c c, char h c
 \ - RECURSE mark-only + recurse-demo (wave17 item 4) — landed
 \ - TICK name→stub-xt-id markers + tick-demo (wave18 item 1) — landed
 \ - FIND ANS-ish find markers + find-demo (wave18 item 2) — landed
+\ - WORD-BL landed (wave18 item 3).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
