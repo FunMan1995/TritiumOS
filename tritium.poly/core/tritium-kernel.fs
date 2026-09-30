@@ -2285,6 +2285,59 @@ create (rc-name) 15 c, char r c, char e c, char c c, char u c, char r c, char s 
   ." [recurse-demo] OK" cr ;
 
 
+\ === TICK name→stub-xt-id markers (wave18 item 1) ===
+\ Prefer greppable markers; name→stub-xt-id mark only. NOT XT execute /
+\ FIND rewrite / COMPILE,. Forth mirrors: tick-mark / bracket-tick —
+\ do NOT redefine host tick / Android wordlists that already bind ' / ['].
+\ ['] is flag echo only — does NOT compile XT into body.
+\ Demo avoids [tick] FAIL reason=miss (always tick a known dict name).
+
+create (tk-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t c,
+
+\ tick-mark-from ( c-addr u -- )  name→stub-xt-id mark; print [tick] ' name=
+: tick-mark-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [tick] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [tick] ' name=" r@ entry-name[] NAMELEN name-trim type
+  ."  xt=" r@ .
+  ." i=" r@ . cr
+  r> drop ;
+
+\ tick-mark ( "name" -- )  parse + tick stub
+: tick-mark ( "name" -- )
+  bl word count tick-mark-from ;
+
+\ bracket-tick-from ( c-addr u -- )  compile-time sibling mark; no XT into body
+: bracket-tick-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop
+    ." [tick] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [tick] ['] name=" r@ entry-name[] NAMELEN name-trim type
+  ."  xt=" r@ . cr
+  r> drop ;
+
+\ bracket-tick ( "name" -- )  parse + bracket-tick stub
+: bracket-tick ( "name" -- )
+  bl word count bracket-tick-from ;
+
+\ tick-demo ( -- )  dict-reset → create widget → ' → ['] → OK
+: tick-demo ( -- )
+  ." [tick-demo] dict-reset + create widget + tick-mark + bracket-tick" cr
+  dict-reset
+  (tk-widget) count entry-create-from drop
+  (tk-widget) count entry-find 0< if
+    ." [tick-demo] FAIL" cr exit
+  then
+  (tk-widget) count tick-mark-from
+  (tk-widget) count bracket-tick-from
+  ." [tick-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2319,6 +2372,7 @@ create (rc-name) 15 c, char r c, char e c, char c c, char u c, char r c, char s 
 \ - PARSE/PARSE-NAME token-parse markers + parse-demo (wave17 item 2) — landed
 \ - EVALUATE/INCLUDE mark-only echo + eval-demo (wave17 item 3) — landed
 \ - RECURSE mark-only + recurse-demo (wave17 item 4) — landed
+\ - TICK name→stub-xt-id markers + tick-demo (wave18 item 1) — landed
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

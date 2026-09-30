@@ -1,21 +1,21 @@
 # DEFER-IS — `DEFER` / `IS` / `ACTION-OF` deferred-word stubs + `defer-demo`
 
-**Status:** Shipper-ready stub spec (wave16 item **1**)
+**Status:** Shipper-ready stub spec (wave16 item **1**; thin amend wave18 **1** TICK)
 **Canonical brief:** ANS-shaped `DEFER` / `IS` / `ACTION-OF` (thin name + bind markers); `docs/CREATE-DOES.md` (wave13 **3**); `docs/VARIABLE-CONST.md` (wave12 **2**); `docs/KERNEL.md` (wave7 **5**); `docs/IMMEDIATE-POSTPONE.md` (wave15 **4**); explicit WAVE15 deferral closed as stub mirrors only
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `defer.fs`); Linux host REPL
-**Companions:** `docs/CREATE-DOES.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); `docs/SYNONYM-ALIAS.md` (wave17 **1** name-map sibling)
+**Companions:** `docs/CREATE-DOES.md` (thin amend this tip), `docs/VARIABLE-CONST.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); `docs/SYNONYM-ALIAS.md` (wave17 **1** name-map sibling); `docs/TICK.md` (wave18 **1** — tick mark for optional `' <xt> IS` form)
 **Base tip SHA:** `c46cd68` (wave15 tip5 CLOSED / #71 docs cites) / full `c46cd68de93e9e18e6250bacf1f64a81648ead64`
 
 ## 1. Purpose
 
-WAVE15 explicitly deferred `DEFER` / `IS` / `ACTION-OF` because rekia already binds live `defer` / `is` for platform hooks. Defining-word surface (CREATE/DOES>, IMMEDIATE/POSTPONE, VARIABLE/VALUE) exists; a deferred-word stub surface does not. This tip lands **stub** markers only: `DEFER <name>` creates a named deferred entry and prints `[defer] DEFER name=`; `IS <name>` (or `' <xt> IS <name>`) binds a stub action/name and prints `[defer] IS name=` (+ optional `xt=`); `ACTION-OF <name>` prints `[defer] ACTION-OF name=` (+ optional bound name/id). Smoke via **`defer-demo`**. Forth mirrors **`defer-create` / `is-bind` / `action-of-xt`** so rekia's live `defer` / `is` platform hooks stay **untouched**. **Not** a real XT vector table, not linked XT execute, not MARKER restore, not BUFFER:. Pairs with wave13 CREATE / wave15 IMMEDIATE defining-word surface. Name-map stubs (`SYNONYM` / `ALIAS`) → `docs/SYNONYM-ALIAS.md` (wave17 **1**; name→name only — **not** a DEFER vector / linked XT).
+WAVE15 explicitly deferred `DEFER` / `IS` / `ACTION-OF` because rekia already binds live `defer` / `is` for platform hooks. Defining-word surface (CREATE/DOES>, IMMEDIATE/POSTPONE, VARIABLE/VALUE) exists; a deferred-word stub surface does not. This tip lands **stub** markers only: `DEFER <name>` creates a named deferred entry and prints `[defer] DEFER name=`; `IS <name>` (or `' <xt> IS <name>`) binds a stub action/name and prints `[defer] IS name=` (+ optional `xt=`); `ACTION-OF <name>` prints `[defer] ACTION-OF name=` (+ optional bound name/id). Smoke via **`defer-demo`**. Forth mirrors **`defer-create` / `is-bind` / `action-of-xt`** so rekia's live `defer` / `is` platform hooks stay **untouched**. **Not** a real XT vector table, not linked XT execute, not MARKER restore, not BUFFER:. Pairs with wave13 CREATE / wave15 IMMEDIATE defining-word surface. Name-map stubs (`SYNONYM` / `ALIAS`) → `docs/SYNONYM-ALIAS.md` (wave17 **1**; name→name only — **not** a DEFER vector / linked XT). Optional `' <xt> IS <name>` stub xt id now cites `docs/TICK.md` (wave18 **1**; name→stub-xt-id mark only — **not** XT execute).
 
 ## 2. Words / Surfaces
 
 | Word | Stack | Notes |
 |------|-------|-------|
 | `DEFER` / `defer-create` | `( "name" -- )` | Create named deferred entry; print `[defer] DEFER name=<name>` |
-| `IS` / `is-bind` | `( "name" -- )` *or* `( xt "name" -- )` / `' <xt> IS <name>` | Bind a stub action/name (or stub xt id) to an existing deferred entry; print `[defer] IS name=<name>` (+ optional `xt=<id>` / `action=<bound>`) |
+| `IS` / `is-bind` | `( "name" -- )` *or* `( xt "name" -- )` / `' <xt> IS <name>` | Bind a stub action/name (or stub xt id) to an existing deferred entry; print `[defer] IS name=<name>` (+ optional `xt=<id>` / `action=<bound>`); optional tick form cites `TICK.md` (wave18 **1**) |
 | `ACTION-OF` / `action-of-xt` | `( "name" -- )` *or* `( "name" -- xt )` | Query/print bound stub for deferred name; print `[defer] ACTION-OF name=<name>` (+ optional `xt=<id>` / `action=<bound>`) |
 | `defer-demo` | `( -- )` | See §5 |
 
@@ -29,7 +29,7 @@ Host note: bind `DEFER` / `IS` / `ACTION-OF` on the Linux REPL **only if** those
 - **Missing name / unbound required path:** `[defer] FAIL reason=miss` (demo **must avoid** — always DEFER before IS/ACTION-OF on that name). Optional unbound ACTION-OF → `action=` empty / `xt=0` is OK if documented; prefer demo binds first.
 - Storage: name string + optional stub action/name/id on the entry record. **No** XT vector table, no executing bound XT, no MARKER restore, no BUFFER: arena.
 - Nest with prior imm / fill / pick / cell / allot / throw / 2var / create / colon / control / string stubs OK. `dict-reset` clears deferred entries as usual.
-- Still no linked XT / executing postponed XT, no real DOES> XT, no real branch XT, no full Win/Android Forth VM. MARKER / BUFFER: / EXIT-QUIT landed wave16 **2–4** (keep cites). SYNONYM/ALIAS name-map → `docs/SYNONYM-ALIAS.md` (wave17 **1**; not a DEFER vector). Those other items stay non-goals / later tips.
+- Still no linked XT / executing postponed XT, no real DOES> XT, no real branch XT, no full Win/Android Forth VM. MARKER / BUFFER: / EXIT-QUIT landed wave16 **2–4** (keep cites). SYNONYM/ALIAS name-map → `docs/SYNONYM-ALIAS.md` (wave17 **1**; not a DEFER vector). Tick mark for optional `' <xt> IS` form → `docs/TICK.md` (wave18 **1**; not XT execute). Those other items stay non-goals / later tips.
 
 ## 4. Markers
 
@@ -88,10 +88,11 @@ Do **not** wipe tip wave15 / CREATE / VARIABLE prior content. Do **not** amend `
 - Redefining rekia live `defer` / `is` platform hooks (mirrors only)
 - Linked XT / XT vector table / executing a bound XT
 - `SYNONYM` / `ALIAS` name-map stubs → `docs/SYNONYM-ALIAS.md` (wave17 **1**; name→name only — not DEFER vector / linked XT)
+- `'` / `[']` tick mark → `docs/TICK.md` (wave18 **1**; name→stub-xt-id mark only — not XT execute; optional `' <xt> IS` form cites this)
 - `MARKER` dictionary restore (wave16 **2** — already stubbed; keep cites)
 - `BUFFER:` named allot buffer (wave16 **3** — already stubbed; keep cites)
 - `EXIT` / `QUIT` thin control markers (wave16 **4** — already stubbed; keep cites)
-- Docs cites pass (wave16 **5** CLOSED; wave17 **5** after 1–4 PASS)
+- Docs cites pass (wave16 **5** CLOSED; wave17 **5** CLOSED; wave18 **5** after 1–4 PASS)
 - `PARSE` / `PARSE-NAME` deepen (wave17 **2** candidate)
 - IMMEDIATE / POSTPONE (wave15 **4** — already stubbed; do not reopen)
 - FILL / ERASE / MOVE / CMOVE (wave15 **3** — already stubbed)
@@ -109,7 +110,7 @@ Do **not** wipe tip wave15 / CREATE / VARIABLE prior content. Do **not** amend `
 ## 8. Acceptance (Test Lab)
 
 1. `docs/DEFER-IS.md` present (Research byte-copy OK); `CREATE-DOES.md` + `VARIABLE-CONST.md` + `KERNEL.md` thin amends present (wave13/12/7 text and wave15 cites retained).
-2. `defer-demo` → OK (markers §4; DEFER + IS + ACTION-OF greppable; no miss FAIL on happy path). Prior `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK.
+2. `defer-demo` → OK (markers §4; DEFER + IS + ACTION-OF greppable; no miss FAIL on happy path). Wave18 **1**: `tick-demo` → OK (optional tick form cites TICK; defer-demo itself need not call tick). Prior `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK.
 3. Regression green (wave15 tip1–5 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `defer-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML. Rekia `defer` / `is` untouched.
@@ -126,3 +127,5 @@ Do **not** wipe tip wave15 / CREATE / VARIABLE prior content. Do **not** amend `
 - `docs/MARKER.md` (wave16 **2**), `docs/BUFFER-COLON.md` (wave16 **3**), `docs/EXIT-QUIT.md` (wave16 **4**)
 - Wave16 proposal: `/workspace/tritium-research-docs/WAVE16-PROPOSAL.md`
 - Wave17 proposal: `/workspace/tritium-research-docs/WAVE17-PROPOSAL.md`
+- `docs/TICK.md` (wave18 **1**)
+- Wave18 proposal: `/workspace/tritium-research-docs/WAVE18-PROPOSAL.md`

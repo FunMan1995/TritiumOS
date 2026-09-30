@@ -1,14 +1,14 @@
 # IMMEDIATE-POSTPONE — `IMMEDIATE` / `POSTPONE` compile-only stubs + `imm-demo`
 
-**Status:** Shipper-ready stub spec (wave15 item **4**; thin amend wave17 **4** RECURSE)
-**Canonical brief:** ANS-shaped `IMMEDIATE` / `POSTPONE` (thin flag + name markers); `docs/COLON.md` (wave9 **4**); `docs/INTERPRET.md` (wave8 **1**); `docs/KERNEL.md` (wave7 **5**); `docs/EXIT-QUIT.md` (wave16 **4**); `docs/RECURSE.md` (wave17 **4**); explicit WAVE13 + WAVE14 deferral closed as flag stub only
+**Status:** Shipper-ready stub spec (wave15 item **4**; thin amend wave17 **4** RECURSE; thin amend wave18 **1** TICK)
+**Canonical brief:** ANS-shaped `IMMEDIATE` / `POSTPONE` (thin flag + name markers); `docs/COLON.md` (wave9 **4**); `docs/INTERPRET.md` (wave8 **1**); `docs/KERNEL.md` (wave7 **5**); `docs/EXIT-QUIT.md` (wave16 **4**); `docs/RECURSE.md` (wave17 **4**); `docs/TICK.md` (wave18 **1**); explicit WAVE13 + WAVE14 deferral closed as flag stub only
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `imm.fs` / `postpone.fs`); Linux host REPL
-**Companions:** `docs/COLON.md` (thin amend wave15 **4**), `docs/INTERPRET.md` (thin amend wave15 **4**), `docs/KERNEL.md` (thin amend wave15 **4**), `docs/RECURSE.md` (wave17 **4** — sibling colon-side mark)
+**Companions:** `docs/COLON.md` (thin amend wave15 **4**), `docs/INTERPRET.md` (thin amend wave15 **4**), `docs/KERNEL.md` (thin amend wave15 **4**), `docs/RECURSE.md` (wave17 **4** — sibling colon-side mark), `docs/TICK.md` (wave18 **1** — sibling name→stub-xt-id mark)
 **Base tip SHA:** `ee1d430` (wave15 tip3 CLOSED / #69 FILL-MOVE) / full `ee1d43066a24b262e70f2515313c2a64018c5115`
 
 ## 1. Purpose
 
-WAVE13 and WAVE14 explicitly deferred `IMMEDIATE` / `POSTPONE` (and the linked XT compiler). COLON/INTERPRET still treat “immediate / compile state machine” as out of scope beyond the colon-def flag. This tip lands **compile-only stub** markers: `IMMEDIATE` sets an **immediate-bit** on the latest colon/CREATE entry (or a named entry) and prints `[imm] IMMEDIATE name=`; `POSTPONE <name>` prints `[imm] POSTPONE name=` and does **not** compile or run an XT (optional `[imm] compile-only` when the colon-def flag is set). Smoke via **`imm-demo`**. Flag + name mark only — **no** linked XT list, no FIND-then-compile, no executing a postponed XT, no full compile/interpret state machine beyond the existing colon-def flag. Closes the colon/interpret “immediate state” non-goal as a stub before tip5 cites. Forth mirrors `immediate-mark` / `postpone-mark` so host Forth names (if any) are not replaced.
+WAVE13 and WAVE14 explicitly deferred `IMMEDIATE` / `POSTPONE` (and the linked XT compiler). COLON/INTERPRET still treat “immediate / compile state machine” as out of scope beyond the colon-def flag. This tip lands **compile-only stub** markers: `IMMEDIATE` sets an **immediate-bit** on the latest colon/CREATE entry (or a named entry) and prints `[imm] IMMEDIATE name=`; `POSTPONE <name>` prints `[imm] POSTPONE name=` and does **not** compile or run an XT (optional `[imm] compile-only` when the colon-def flag is set). Smoke via **`imm-demo`**. Flag + name mark only — **no** linked XT list, no FIND-then-compile, no executing a postponed XT, no full compile/interpret state machine beyond the existing colon-def flag. Closes the colon/interpret “immediate state” non-goal as a stub before tip5 cites. Forth mirrors `immediate-mark` / `postpone-mark` so host Forth names (if any) are not replaced. Tick mark (`'` / `[']`) → `docs/TICK.md` (wave18 **1**; name→stub-xt-id only — pairs with POSTPONE name-mark without promoting either to a real XT vector).
 
 ## 2. Words / Surfaces
 
@@ -28,7 +28,7 @@ Host note: bind `IMMEDIATE` / `POSTPONE` on the Linux REPL; Forth mirrors **`imm
 - **Missing name / no latest entry:** `[imm] FAIL reason=miss` (demo **must avoid** — always IMMEDIATE after a named colon/CREATE, and POSTPONE a known name).
 - Storage: flag + name string only. **No** linked XT list, no FIND-then-compile, no postponed-XT queue, no EXIT redefinition. Real `RECURSE` self-XT stays out — wave17 **4** lands mark-only `recurse-mark` only (`docs/RECURSE.md`).
 - Nest with prior fill / pick / cell / allot / throw / 2var / create / colon / control / string stubs OK. `dict-reset` clears entries (and thus bits) as usual. Wave17 `recurse-demo` nests beside `imm-demo` without breaking colon.
-- Still no real compile/interpret state machine beyond colon-def flag + this bit, no executing postponed XT, no real RECURSE self-XT (mark-only stub → `RECURSE.md`), no real DOES> XT, no real branch XT, no full Win/Android Forth VM. Those stay non-goals / later.
+- Still no real compile/interpret state machine beyond colon-def flag + this bit, no executing postponed XT, no real RECURSE self-XT (mark-only stub → `RECURSE.md`), no XT execute via tick (mark-only → `TICK.md` wave18 **1**), no real DOES> XT, no real branch XT, no full Win/Android Forth VM. STATE/COMPILE, deepen stays wave18 tip **4**. Those stay non-goals / later.
 
 ## 4. Markers
 
@@ -88,8 +88,9 @@ Do **not** wipe tip1–3 / wave14 / COLON / INTERPRET prior content.
 - Real compile/interpret state machine beyond colon-def flag + immediate-bit
 - Executing a postponed XT / postponed-XT queue / runtime compile semantics
 - `RECURSE` real self-XT — mark-only stub → `docs/RECURSE.md` (wave17 **4**; Forth mirror `recurse-mark`; still no self-XT)
+- `'` / `[']` tick mark → `docs/TICK.md` (wave18 **1**; name→stub-xt-id mark only — not XT execute / FIND rewrite / COMPILE,; pairs with POSTPONE name-mark)
 - Redefining host `EXIT` / `QUIT` — thin control markers → `docs/EXIT-QUIT.md` (wave16 **4**; mirrors only)
-- Docs cites pass (wave15 **5** — ARCHITECTURE + GAPS after 1–4 PASS; wave17 **5** after wave17 1–4 PASS)
+- Docs cites pass (wave15 **5** CLOSED; wave17 **5** CLOSED; wave18 **5** after wave18 1–4 PASS)
 - CELL / CELLS / ALIGN / ALIGNED (wave15 **1** — already stubbed; do not reopen)
 - PICK / ROLL / DEPTH / ?DUP (wave15 **2** — already stubbed; do not reopen)
 - FILL / ERASE / MOVE / CMOVE (wave15 **3** — already stubbed; do not reopen)
@@ -102,7 +103,7 @@ Do **not** wipe tip1–3 / wave14 / COLON / INTERPRET prior content.
 ## 8. Acceptance (Test Lab)
 
 1. `docs/IMMEDIATE-POSTPONE.md` present (Research byte-copy OK); `COLON.md` + `INTERPRET.md` + `KERNEL.md` thin amends present (wave15 **1–3** cites and wave9/8/7 text retained).
-2. `imm-demo` → OK (markers §4; IMMEDIATE + POSTPONE greppable; no miss FAIL on happy path). Prior `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave17 **4**: `recurse-demo` → OK (colon remains green).
+2. `imm-demo` → OK (markers §4; IMMEDIATE + POSTPONE greppable; no miss FAIL on happy path). Prior `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` still OK; wave17 **4**: `recurse-demo` → OK (colon remains green); wave18 **1**: `tick-demo` → OK (tick pairs with POSTPONE name-mark; not XT).
 3. Regression green (wave15 tip1–3 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `imm-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML.
@@ -117,3 +118,4 @@ Do **not** wipe tip1–3 / wave14 / COLON / INTERPRET prior content.
 - Explicit deferral: WAVE13-PROPOSAL + WAVE14-PROPOSAL (`IMMEDIATE` / `POSTPONE` / linked XT); THROW-CATCH non-goal called this out as later
 - Base tip: `ee1d430` / `ee1d43066a24b262e70f2515313c2a64018c5115` (#69 wave15 tip3 FILL-MOVE)
 - Wave15 proposal: `/workspace/tritium-research-docs/WAVE15-PROPOSAL.md`
+- `docs/TICK.md` (wave18 **1**)
