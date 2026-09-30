@@ -2394,6 +2394,44 @@ create (wp-hello) 5 c, char h c, char e c, char l c, char l c, char o c,
   ." [word-demo] OK" cr ;
 
 
+\ === STATE/COMPILE, stub markers (wave18 item 4) ===
+\ Forth mirrors: state-flag / compile-comma — do NOT touch assistant-state.
+\ Not linked XT / FIND-then-compile / XT body append / real STATE cell.
+
+variable (st-flag)  \ 0=interpret 1=compile stub
+
+create (st-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t c,
+
+: state-flag ( -- )
+  ." [state] STATE flag=" (st-flag) @ . cr ;
+
+: state-flag! ( n -- ) (st-flag) ! ;
+
+: compile-comma-from ( c-addr u -- )
+  2dup entry-find dup 0< if
+    drop 2drop ." [state] FAIL reason=miss" cr exit
+  then
+  >r 2drop
+  ." [state] COMPILE, name=" r@ entry-name[] NAMELEN name-trim type
+  ."  xt=" r@ . cr
+  r> drop ;  \ NO body append
+
+: compile-comma ( "name" -- ) bl word count compile-comma-from ;
+
+: state-demo ( -- )
+  ." [state-demo] STATE + COMPILE, stub" cr
+  dict-reset
+  (st-widget) count entry-create-from drop
+  0 state-flag!
+  state-flag
+  1 state-flag!
+  state-flag
+  ." [state] compile-only" cr
+  (st-widget) count compile-comma-from
+  0 state-flag!
+  ." [state-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2431,6 +2469,7 @@ create (wp-hello) 5 c, char h c, char e c, char l c, char l c, char o c,
 \ - TICK name→stub-xt-id markers + tick-demo (wave18 item 1) — landed
 \ - FIND ANS-ish find markers + find-demo (wave18 item 2) — landed
 \ - WORD-BL landed (wave18 item 3).
+\ - STATE-COMPILE landed (wave18 item 4).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

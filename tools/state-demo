@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# state-demo — Lab smoke for STATE / COMPILE, stub markers (wave18 item 4 / docs/STATE-COMPILE.md)
+# Mirrors forth/tritium/kernel.fs state-demo + Linux host state_demo.
+# Query + compile-comma mark only — NOT linked XT / XT body append / real STATE cell.
+# Forth mirrors: state-flag / compile-comma. Do NOT touch assistant-state.
+# xt=0 = entry index convention from tip1.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: state-demo"
+  echo "  dict-reset → create widget → state-flag 0 then 1 → compile-comma widget → [state-demo] OK"
+  echo "  Markers: [state] STATE flag= / [state] COMPILE, name= → [state-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[state-demo] FAIL"
+  exit 1
+}
+
+declare -a NAMES=()
+HOST_STATE_FLAG=0
+
+dict_reset() {
+  NAMES=()
+}
+
+entry_find() {
+  local name=$1
+  local i
+  for i in "${!NAMES[@]}"; do
+    if [[ "${NAMES[$i]}" == "$name" ]]; then
+      echo "$i"
+      return 0
+    fi
+  done
+  echo "-1"
+}
+
+entry_create() {
+  local name=$1
+  NAMES+=("$name")
+  local idx=$(( ${#NAMES[@]} - 1 ))
+  echo "[kernel] created #$idx"
+}
+
+state_flag_print() {
+  echo "[state] STATE flag=${HOST_STATE_FLAG}"
+}
+
+compile_comma() {
+  local name=$1
+  local i
+  if [[ -z "$name" ]]; then
+    # Avoid FAIL reason=miss on empty — still miss path for unknown names only
+    echo "[state] FAIL reason=miss"
+    return 0
+  fi
+  i=$(entry_find "$name")
+  if [[ "$i" == "-1" ]]; then
+    echo "[state] FAIL reason=miss"
+    return 0
+  fi
+  # stub xt id = entry index (host int only; not linked XT / no body append)
+  echo "[state] COMPILE, name=${NAMES[$i]} xt=$i"
+}
+
+echo "[state-demo] STATE + COMPILE, stub"
+dict_reset
+
+# 1) Ensure a known name exists so compile-comma hit path is exercised
+entry_create widget
+[[ "$(entry_find widget)" != "-1" ]] || fail
+
+# 2) state-flag interpret (0) then compile picture stub (1)
+HOST_STATE_FLAG=0
+state_flag_print
+HOST_STATE_FLAG=1
+state_flag_print
+
+# 3) optional compile-only marker when flag=1
+echo "[state] compile-only"
+
+# 4) compile-comma on widget — greppable name= + xt=; no XT body append
+compile_comma widget
+
+HOST_STATE_FLAG=0
+
+# Happy path must emit STATE flags + COMPILE,; no linked XT / assistant-state redefine
+echo "[state-demo] OK"
+exit 0
