@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# char-demo — Lab smoke for CHAR/CHARS/[CHAR] char-unit stubs (wave19 item 1 / docs/CHAR-CHARS.md)
+# Mirrors forth/tritium/kernel.fs char-demo + Linux host char_demo.
+# Char-unit mark only — not CHAR+/unicode/ALIGN reopen/HERE bump.
+# [CHAR] flag echo only — does NOT compile char literal into body.
+# Forth mirrors: char-unit / chars-n / bracket-char. Do NOT redefine host CHAR/CHARS/[CHAR].
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: char-demo"
+  echo "  char-unit → chars-n 3 → bracket-char → [char-demo] OK"
+  echo "  Markers: [char] CHAR / [char] CHARS n= / [char] [CHAR] → [char-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+fail() {
+  echo "[char-demo] FAIL"
+  exit 1
+}
+
+# Linux SoT char-size=1. Scale mark only — does NOT bump HERE.
+CHAR_SIZE=1
+
+char_unit() {
+  # classic CHAR A picture
+  echo "[char] CHAR char=A u=65"
+}
+
+chars_n() {
+  local n=$1
+  if [[ "$n" -lt 0 ]]; then
+    echo "[char] FAIL reason=neg"
+    return 1
+  fi
+  echo "[char] CHARS n=$n bytes=$(( n * CHAR_SIZE ))"
+}
+
+bracket_char() {
+  # flag echo only — no char literal into body
+  echo "[char] [CHAR] char=A u=65"
+}
+
+echo "[char-demo] CHAR + CHARS + [CHAR]"
+
+char_unit
+chars_n 3 || fail
+bracket_char
+
+# Happy path must emit CHAR + CHARS + [CHAR]; no HERE bump / no body compile / no FAIL empty|neg
+echo "[char-demo] OK"
+exit 0

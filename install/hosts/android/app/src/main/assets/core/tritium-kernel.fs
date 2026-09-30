@@ -2432,6 +2432,36 @@ create (st-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t
   ." [state-demo] OK" cr ;
 
 
+\ === CHAR/CHARS/[CHAR] char-unit markers (wave19 item 1) ===
+\ Forth mirrors: char-unit / chars-n / bracket-char
+\ Char-unit mark only — not CHAR+/unicode/ALIGN reopen/HERE bump.
+\ [CHAR] flag echo only — does NOT compile char literal into body.
+\ Do NOT redefine host CHAR / CHARS / [CHAR]. Linux SoT char-size=1.
+\ Companion to wave15 CELL/CELLS (CHARS pairs with CELLS).
+
+1 constant _char-bytes   \ Linux SoT char-size=1
+
+: char-unit ( -- )
+  ." [char] CHAR char=A u=65" cr ;
+
+: chars-n ( n -- )
+  dup 0< if
+    drop ." [char] FAIL reason=neg" cr exit
+  then
+  dup _char-bytes *
+  ." [char] CHARS n=" swap . ." bytes=" . cr ;  \ no HERE bump
+
+: bracket-char ( -- )
+  ." [char] [CHAR] char=A u=65" cr ;  \ flag echo only — no body compile
+
+: char-demo ( -- )
+  ." [char-demo] CHAR + CHARS + [CHAR]" cr
+  char-unit
+  3 chars-n
+  bracket-char
+  ." [char-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2470,6 +2500,7 @@ create (st-widget) 6 c, char w c, char i c, char d c, char g c, char e c, char t
 \ - FIND ANS-ish find markers + find-demo (wave18 item 2) — landed
 \ - WORD-BL landed (wave18 item 3).
 \ - STATE-COMPILE landed (wave18 item 4).
+\ - CHAR-CHARS landed (wave19 item 1).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 

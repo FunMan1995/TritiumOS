@@ -40,3 +40,4 @@ tick-demo CONTRACT
 find-demo CONTRACT
 word-demo CONTRACT
 state-demo CONTRACT
+char-demo CONTRACT
