@@ -55,3 +55,4 @@ bit-demo CONTRACT
 shift-demo CONTRACT
 zero-demo CONTRACT
 number-demo CONTRACT
+search-demo CONTRACT

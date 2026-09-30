@@ -1,13 +1,13 @@
 # WORDS-VOCAB — Thin `WORDS` / dict-list + `words-demo`
 
-**Status:** Shipper-ready stub spec (wave11 item **3**; thin amend wave20 **3** COUNT companion cite — ENTRY-COUNT **disambiguation only**, not a WORDS reopen)
+**Status:** Shipper-ready stub spec (wave11 item **3**; thin amend wave20 **3** COUNT companion cite — ENTRY-COUNT **disambiguation only**, not a WORDS reopen; thin amend wave22 **4** SEARCH-WORDLIST companion cite — sibling vocab-search mark, not a WORDS reopen)
 **Canonical brief:** Dusk `words` / dict list; `docs/KERNEL.md` (wave7 **5**)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (`.words`); Linux `host_words()` in `tritiumos.c`
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`, `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/MARKER.md` (wave16 **2**), `docs/SYNONYM-ALIAS.md` (wave17 **1**), `docs/FIND.md` (wave18 **2**); `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — query-mark companion cite; not SEARCH-WORDLIST / wordlist rewrite); `docs/COUNT.md` (wave20 **3** — ANS COUNT picture; **ENTRY-COUNT / SYN-COUNT / words-count ≠ ANS COUNT** disambiguation only — not a WORDS reopen)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/INTERPRET.md`, `docs/COLON.md`, `docs/VARIABLE-CONST.md` (wave12 **2**), `docs/MARKER.md` (wave16 **2**), `docs/SYNONYM-ALIAS.md` (wave17 **1**), `docs/FIND.md` (wave18 **2**); `docs/ENVIRONMENT-QUERY.md` (wave19 **3** — query-mark companion cite; not SEARCH-WORDLIST / wordlist rewrite); `docs/COUNT.md` (wave20 **3** — ANS COUNT picture; **ENTRY-COUNT / SYN-COUNT / words-count ≠ ANS COUNT** disambiguation only — not a WORDS reopen); `docs/SEARCH-WORDLIST.md` (wave22 **4** — sibling vocab-search mark beside FIND/WORDS; **not** WORDS reopen / linked dict; prefer `search-wl-mark`; host find/find-xt untouched)
 
 ## 1. Purpose
 
-Flat dict already supports `.words` / `host_words`. This tip **locks the Lab surface**: document **`WORDS`** (alias), greppable list markers, and **`words-demo`** that creates ≥2 entries then lists them. Not SEARCH-WORDLIST / linked units / full vocab hierarchy.
+Flat dict already supports `.words` / `host_words`. This tip **locks the Lab surface**: document **`WORDS`** (alias), greppable list markers, and **`words-demo`** that creates ≥2 entries then lists them. Not full linked units / full vocab hierarchy. Wave22 tip **4** lands thin `SEARCH-WORDLIST` vocab-search mark (`docs/SEARCH-WORDLIST.md`; Forth mirror `search-wl-mark`) as a sibling beside FIND/WORDS — **not** a WORDS reopen / linked-dict rewrite / FIND reopen.
 
 ## 2. Words
 
@@ -40,6 +40,7 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - `MARKER` restore-mark stubs (wave16 **2**) may snapshot / restore stub entry-count — **not** a real wordlist prune or SEARCH-WORDLIST; see `docs/MARKER.md`.
 - `SYNONYM` / `ALIAS` name-map stubs (wave17 **1**) record name→name bindings only — **not** a real dict alias table / FIND rewrite / SEARCH-WORDLIST; see `docs/SYNONYM-ALIAS.md`.
 - `FIND` deepen (wave18 **2**) is an ANS-ish find mark via `find-xt` / `find-mark` — **not** SEARCH-WORDLIST / linked dict / WORDS rewrite; host `find`/`findentry`/`entry-find` stay; see `docs/FIND.md`.
+- `SEARCH-WORDLIST` thin vocab-search mark (wave22 **4**) via `search-wl-mark` — sibling beside FIND/WORDS; **not** a WORDS reopen / linked dict / FIND reopen; host `find`/`findentry`/`entry-find` + `find-xt`/`find-mark` stay untouched; see `docs/SEARCH-WORDLIST.md`.
 - `ENVIRONMENT?` query mark (wave19 **3**) is a fixed-set query stub via `environment-query` — **not** SEARCH-WORDLIST / wordlist rewrite / WORDS reopen; see `docs/ENVIRONMENT-QUERY.md`.
 - ANS `COUNT` counted-string picture (wave20 **3**) is a separate Forth surface via `count-mark` — **Critical:** host `ENTRY-COUNT` / `SYN-COUNT` / `words-count` are **NOT** ANS `COUNT`. Do **not** redefine, alias, or Lab-grep those as the ANS COUNT surface; see `docs/COUNT.md`.
 
@@ -61,7 +62,8 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 
 ## 7. Non-goals
 
-- Full SEARCH-WORDLIST / wordlist stack / linked dict
+- Full linked dict / wordlist-stack runtime rewrite (still out)
+- `SEARCH-WORDLIST` thin vocab-search mark → `docs/SEARCH-WORDLIST.md` (wave22 **4**; sibling mark beside FIND/WORDS — **not** WORDS reopen / linked dict / FIND reopen; prefer `search-wl-mark`)
 - Group-scoped `WORDS` filter (use `group-vocab-*` later)
 - Real forget-chain / wordlist prune beyond stub entry-count (`MARKER` restore-mark → `docs/MARKER.md` wave16 **2**)
 - `SYNONYM` / `ALIAS` name-map stubs → `docs/SYNONYM-ALIAS.md` (wave17 **1**; not FIND rewrite / linked XT)
@@ -74,7 +76,7 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 ## 8. Acceptance (Test Lab)
 
 1. `docs/WORDS-VOCAB.md` present (Research byte-copy OK); `KERNEL.md` thin amend present.
-2. `words-demo` → OK (markers §3); `kernel-demo` still OK; wave18 **2**: `find-demo` → OK; wave19 **3**: `env-demo` → OK; wave20 **3**: `count-demo` → OK (does **not** treat `words-count` / `ENTRY-COUNT` as ANS COUNT).
+2. `words-demo` → OK (markers §3); `kernel-demo` still OK; wave18 **2**: `find-demo` → OK; wave19 **3**: `env-demo` → OK; wave20 **3**: `count-demo` → OK (does **not** treat `words-count` / `ENTRY-COUNT` as ANS COUNT); wave22 **4**: `search-demo` → OK (retains `words-demo` + `find-demo`; vocab-search mark only — **not** WORDS reopen / linked dict).
 3. Regression green (wave11 **1–2** + wave10).
 4. No merge.
 
@@ -89,3 +91,4 @@ Lab greps `[words-demo] OK` and `words (` with N ≥ 2 after create.
 - `docs/FIND.md` (wave18 **2**)
 - `docs/ENVIRONMENT-QUERY.md` (wave19 **3**)
 - `docs/COUNT.md` (wave20 **3** — ANS COUNT picture; ENTRY-COUNT / SYN-COUNT / words-count ≠ ANS COUNT)
+- `docs/SEARCH-WORDLIST.md` (wave22 **4** — sibling vocab-search mark beside FIND/WORDS; **not** WORDS reopen / linked dict; prefer `search-wl-mark`)

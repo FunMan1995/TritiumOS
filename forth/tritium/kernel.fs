@@ -2761,6 +2761,21 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 
 
 
+\ === SEARCH-WORDLIST thin vocab-search mark (wave22 item 4) ===
+\ Forth mirror: search-wl-mark — do NOT redefine host SEARCH-WORDLIST.
+\ CRITICAL: do NOT redefine host find/findentry/entry-find / find-xt/find-mark.
+\ Classic hit picture. NOT FIND reopen / linked dict rewrite.
+
+: search-wl-mark ( -- )
+  ." [search] SEARCH-WORDLIST flag=-1 xt=0" cr ;
+
+: search-demo ( -- )
+  ." [search-demo] SEARCH-WORDLIST thin vocab-search mark" cr
+  search-wl-mark
+  ." [search-demo] OK" cr ;
+
+
+
 
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)

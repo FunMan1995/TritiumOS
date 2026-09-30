@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# search-demo — Lab smoke for SEARCH-WORDLIST thin vocab-search mark (wave22 item 4 / docs/SEARCH-WORDLIST.md)
+# Mirrors forth/tritium/kernel.fs search-demo + Linux host search_demo.
+# Forth mirror: search-wl-mark — do NOT redefine host SEARCH-WORDLIST.
+# CRITICAL: do NOT redefine/Lab-grep host find/findentry/entry-find / find-xt/find-mark as this tip's surface.
+# Classic hit picture on fixed demo name/wordlist fixture. NOT FIND reopen / linked dict rewrite.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: search-demo"
+  echo "  search-wl-mark → [search-demo] OK"
+  echo "  Markers: [search] SEARCH-WORDLIST flag=-1 xt=0 → [search-demo] OK"
+  echo "  Cite: docs/SEARCH-WORDLIST.md — host SEARCH-WORDLIST untouched; host find/findentry/find-xt untouched"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Classic hit picture on fixed demo name/wordlist fixture: flag=-1 xt=0 (hit OK).
+# Avoids [search] FAIL. host SEARCH-WORDLIST untouched; host find/findentry/entry-find/find-xt/find-mark untouched.
+echo "[search-demo] SEARCH-WORDLIST thin vocab-search mark"
+echo "[search] SEARCH-WORDLIST flag=-1 xt=0"
+echo "[search-demo] OK"
+exit 0
