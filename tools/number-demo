@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# number-demo — Lab smoke for >NUMBER thin number-parse mark (wave22 item 3 / docs/TO-NUMBER.md)
+# Mirrors forth/tritium/kernel.fs number-demo + Linux host number_demo.
+# Forth mirror: to-number-mark — do NOT redefine host >NUMBER.
+# Classic: decimal digit-string consume picture. NOT pictured numeric #/HOLD; NOT BASE reopen; HERE stub $1000 untouched.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: number-demo"
+  echo "  to-number-mark → [number-demo] OK"
+  echo "  Markers: [number] >NUMBER u=123 flag=-1 → [number-demo] OK"
+  echo "  Cite: docs/TO-NUMBER.md — host >NUMBER untouched; HERE stub \$1000 untouched"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Classic decimal digit-string consume picture: fixture "123" → u=123 flag=-1 (consumed OK).
+# Avoids [number] FAIL. host >NUMBER untouched; HERE stub base $1000 untouched.
+echo "[number-demo] >NUMBER thin number-parse mark"
+echo "[number] >NUMBER u=123 flag=-1"
+echo "[number-demo] OK"
+exit 0

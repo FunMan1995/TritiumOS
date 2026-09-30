@@ -1,14 +1,14 @@
 # ENVIRONMENT-QUERY — `ENVIRONMENT?` query mark + `env-demo`
 
-**Status:** Shipper-ready stub spec (wave19 item **3**; thin amend wave21 **2** BASE-HEX companion cite)
-**Canonical brief:** ANS-shaped `ENVIRONMENT?` (thin query mark only); `docs/KERNEL.md` (wave7 **5**); `docs/CELL-CELLS.md` (wave15 **1** — unit-picture companion for optional stub values); `docs/FIND.md` (wave18 **2** — find-mark companion; not SEARCH-WORDLIST); optional `docs/WORDS-VOCAB.md` (wave11 **3**) / `docs/HOST-PARITY.md` (wave8 **4**); explicit WAVE18 / WAVE19 deferral closed as thin query mark only (not full ANS env query table / WORDLIST / SEARCH-WORDLIST / linked dict); `docs/BASE-HEX.md` (wave21 **2** — radix marks companion; optional env query string may echo radix — **not** a full ANS ENVIRONMENT? table reopen)
+**Status:** Shipper-ready stub spec (wave19 item **3**; thin amend wave21 **2** BASE-HEX companion cite; thin amend wave22 **3** TO-NUMBER companion cite)
+**Canonical brief:** ANS-shaped `ENVIRONMENT?` (thin query mark only); `docs/KERNEL.md` (wave7 **5**); `docs/CELL-CELLS.md` (wave15 **1** — unit-picture companion for optional stub values); `docs/FIND.md` (wave18 **2** — find-mark companion; not SEARCH-WORDLIST); optional `docs/WORDS-VOCAB.md` (wave11 **3**) / `docs/HOST-PARITY.md` (wave8 **4**); explicit WAVE18 / WAVE19 deferral closed as thin query mark only (not full ANS env query table / WORDLIST / SEARCH-WORDLIST / linked dict); `docs/BASE-HEX.md` (wave21 **2** — radix marks companion; optional env query string may echo radix — **not** a full ANS ENVIRONMENT? table reopen); `docs/TO-NUMBER.md` (wave22 **3** — thin number-parse companion; optional parse-related stub cite — **not** full ANS ENVIRONMENT? table reopen / BASE reopen)
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `env.fs` / `environment-query.fs`); Linux host REPL; **do not** redefine host `ENVIRONMENT?` that already binds on the load path
-**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/CELL-CELLS.md` (thin amend this tip), `docs/FIND.md` (thin amend this tip); optional light cite `docs/WORDS-VOCAB.md` / `docs/HOST-PARITY.md`; `docs/BASE-HEX.md` (wave21 **2** — thin companion cite from tip2; optional radix echo via env query string welcome — not table reopen)
+**Companions:** `docs/KERNEL.md` (thin amend this tip), `docs/CELL-CELLS.md` (thin amend this tip), `docs/FIND.md` (thin amend this tip); optional light cite `docs/WORDS-VOCAB.md` / `docs/HOST-PARITY.md`; `docs/BASE-HEX.md` (wave21 **2** — thin companion cite from tip2; optional radix echo via env query string welcome — not table reopen); `docs/TO-NUMBER.md` (wave22 **3** — thin companion cite from tip3; optional parse-related stub cite — **not** full env table reopen)
 **Base tip SHA:** `d0b5b29` (wave19 tip2 PASS / #88 TO-BODY) / full `d0b5b298da00d0c8f39571d52fdcd4ef86e6223f`
 
 ## 1. Purpose
 
-WAVE15 landed cell-unit stubs (`docs/CELL-CELLS.md`); WAVE19 tip **1** landed char-unit stubs (`docs/CHAR-CHARS.md`); WAVE18 landed FIND as an ANS-ish find mark (`docs/FIND.md`); WAVE18 / WAVE19 explicitly deferred `ENVIRONMENT?` (query stub mark; not full ANS env query table). This tip lands a **stub** query mark only: `ENVIRONMENT?` (or Forth mirror `environment-query`) prints `[env] ENVIRONMENT?` (+ optional `query=` / `flag=<0|1>` / `u=`) for a small **fixed demo query set** — document **1–3** allowed query strings (this tip locks: `ADDRESS-UNIT-BITS`, `MAX-CHAR`, and optional host-chosen stub `TRITIUM-STUB`). Hit → greppable `flag=1` (+ optional stub value via `u=`); miss → `[env] ENVIRONMENT? miss` or `flag=0` (demo may show one miss or avoids FAIL). Smoke via **`env-demo`**. Forth mirror **`environment-query`** so host `ENVIRONMENT?` stays safe. **Not** a real env query database, not SEARCH-WORDLIST, not wordlist rewrite, not full ANS env table. Closes GAPS `ENVIRONMENT?` deferral as **thin query mark** before tip4 SOURCE-PAD / tip5 cites. Uses cell/char unit picture for optional stub values without reopening CELL/CHAR. Wave21 tip **2** lands `BASE` / `HEX` / `DECIMAL` base marks (`docs/BASE-HEX.md`): sibling radix marks — optional env query string may echo radix — **not** a full ANS ENVIRONMENT? table reopen / SEARCH-WORDLIST / number parser / `>NUMBER` / HERE stub base bump.
+WAVE15 landed cell-unit stubs (`docs/CELL-CELLS.md`); WAVE19 tip **1** landed char-unit stubs (`docs/CHAR-CHARS.md`); WAVE18 landed FIND as an ANS-ish find mark (`docs/FIND.md`); WAVE18 / WAVE19 explicitly deferred `ENVIRONMENT?` (query stub mark; not full ANS env query table). This tip lands a **stub** query mark only: `ENVIRONMENT?` (or Forth mirror `environment-query`) prints `[env] ENVIRONMENT?` (+ optional `query=` / `flag=<0|1>` / `u=`) for a small **fixed demo query set** — document **1–3** allowed query strings (this tip locks: `ADDRESS-UNIT-BITS`, `MAX-CHAR`, and optional host-chosen stub `TRITIUM-STUB`). Hit → greppable `flag=1` (+ optional stub value via `u=`); miss → `[env] ENVIRONMENT? miss` or `flag=0` (demo may show one miss or avoids FAIL). Smoke via **`env-demo`**. Forth mirror **`environment-query`** so host `ENVIRONMENT?` stays safe. **Not** a real env query database, not SEARCH-WORDLIST, not wordlist rewrite, not full ANS env table. Closes GAPS `ENVIRONMENT?` deferral as **thin query mark** before tip4 SOURCE-PAD / tip5 cites. Uses cell/char unit picture for optional stub values without reopening CELL/CHAR. Wave21 tip **2** lands `BASE` / `HEX` / `DECIMAL` base marks (`docs/BASE-HEX.md`): sibling radix marks — optional env query string may echo radix — **not** a full ANS ENVIRONMENT? table reopen / SEARCH-WORDLIST / HERE stub base bump. Wave22 tip **3** lands `>NUMBER` thin number-parse mark (`docs/TO-NUMBER.md`): sibling thin parse — optional env query string may echo a parse-related stub — **not** a full ANS ENVIRONMENT? table reopen / BASE reopen / pictured numeric / HERE stub base bump; prefer `to-number-mark`.
 
 ## 2. Words / Surfaces
 
@@ -30,7 +30,7 @@ Host note: bind `ENVIRONMENT?` on the Linux REPL **only if** that name does not 
 - **Miss:** `[env] ENVIRONMENT? miss` **or** `flag=0`. Demo may show **one** miss (preferred Lab picture — greps miss without FAIL) **or** avoid miss/FAIL entirely. Do not soft-abort the host / kernel-demo path. Prefer not emitting `[env] FAIL` on the happy path.
 - Storage: fixed string table (1–3 entries) + optional stub ints. **No** real env query database, no SEARCH-WORDLIST, no wordlist rewrite, no linked dict, no full ANS ENVIRONMENT? table, no HERE bump, no arena.
 - Nest with prior body / char / state / word / find / tick / create / allot / synonym / exit / buffer / marker / defer / imm / fill / pick / cell / throw / 2var / colon / control / string stubs OK. `dict-reset` unaffected (no new dict entries from env marks — fixed query set is host table, not dictionary).
-- Still no full ANS env table / SEARCH-WORDLIST / wordlist rewrite, no SOURCE/PAD (wave19 **4**), no ACCEPT/REFILL reopen (wave21 **1** landed thin marks), no linked XT / real DOES> XT / real branch XT / full arena/heap / full Win/Android Forth VM. CHAR-CHARS (wave19 **1**) and TO-BODY (wave19 **2**) stay landed — keep cites; this tip does not reopen char-unit or body address. Wave21 tip **2** BASE/HEX/DECIMAL radix marks (`docs/BASE-HEX.md`) are sibling — optional radix echo via env query string welcome; **not** a table reopen / number parser. Those stay non-goals / later tips (BASE-HEX excepted as wave21 **2**).
+- Still no full ANS env table / SEARCH-WORDLIST / wordlist rewrite, no SOURCE/PAD (wave19 **4**), no ACCEPT/REFILL reopen (wave21 **1** landed thin marks), no linked XT / real DOES> XT / real branch XT / full arena/heap / full Win/Android Forth VM. CHAR-CHARS (wave19 **1**) and TO-BODY (wave19 **2**) stay landed — keep cites; this tip does not reopen char-unit or body address. Wave21 tip **2** BASE/HEX/DECIMAL radix marks (`docs/BASE-HEX.md`) are sibling — optional radix echo via env query string welcome; **not** a table reopen. Wave22 tip **3** TO-NUMBER thin parse (`docs/TO-NUMBER.md`) is sibling — optional parse-related stub cite welcome; **not** a table reopen / BASE reopen. Those stay non-goals / later tips (BASE-HEX + TO-NUMBER excepted as landed).
 
 ## 4. Markers
 
@@ -106,6 +106,14 @@ Lab greps `[env-demo] OK` plus at least one `[env] ENVIRONMENT?` with greppable 
 - Acceptance: Lab smokes `base-demo` (retains `env-demo`).
 - Cite: `docs/BASE-HEX.md`.
 
+### `docs/TO-NUMBER.md` (wave22 **3** thin companion cite)
+
+- Companions / Status: ENVIRONMENT-QUERY cites TO-NUMBER as thin number-parse companion; TO-NUMBER cites ENVIRONMENT-QUERY as optional parse-related stub cite (**not** table reopen).
+- Purpose: optional env query string may echo a parse-related stub — **not** a full ANS ENVIRONMENT? table reopen / SEARCH-WORDLIST / BASE reopen / pictured numeric / HERE stub base bump.
+- Non-goals: `>NUMBER` → `docs/TO-NUMBER.md` (wave22 **3**). ENVIRONMENT? stays on this tip (already landed). Full ANS ENVIRONMENT? table still out.
+- Acceptance: Lab smokes `number-demo` (retains `env-demo` + `base-demo`).
+- Cite: `docs/TO-NUMBER.md`.
+
 Do **not** wipe tip1 CHAR-CHARS cites or tip2 TO-BODY cites or wave18 tip1–4 TICK / FIND / WORD-BL / STATE-COMPILE cites or wave17 tip1–4 SYNONYM / PARSE / EVALUATE / RECURSE cites or wave16 DEFER / MARKER / BUFFER / EXIT cites or wave15 CELL / IMMEDIATE / FILL / PICK prior content. Do **not** amend ARCHITECTURE / IMPLEMENTATION-GAPS / TO-BODY / CHAR-CHARS / SOURCE-PAD / DOCS-CITES docs this tip (proposal amends are KERNEL + CELL-CELLS + FIND + optional WORDS-VOCAB / HOST-PARITY only). Leave `TO-BODY.md` and `CHAR-CHARS.md` untouched (tip1/tip2 byte-copy stays). Tip5 cites come after 1–4 PASS.
 
 ## 7. Non-goals
@@ -114,7 +122,8 @@ Do **not** wipe tip1 CHAR-CHARS cites or tip2 TO-BODY cites or wave18 tip1–4 T
 - `SEARCH-WORDLIST` / wordlist stack / linked dict rewrite
 - Redefining host `ENVIRONMENT?`
 - `SOURCE` / `PAD` thin marks (wave19 **4**); `ACCEPT` / `REFILL` thin marks → `docs/ACCEPT-REFILL.md` (wave21 **1**); full input-buffer VM still out
-- `BASE` / `HEX` / `DECIMAL` base marks → `docs/BASE-HEX.md` (wave21 **2**; sibling radix marks — optional env query string may echo radix; **not** a full ANS ENVIRONMENT? table reopen / number parser / `>NUMBER`; do not break HERE stub base)
+- `BASE` / `HEX` / `DECIMAL` base marks → `docs/BASE-HEX.md` (wave21 **2**; sibling radix marks — optional env query string may echo radix; **not** a full ANS ENVIRONMENT? table reopen; do not break HERE stub base)
+- `>NUMBER` thin number-parse mark → `docs/TO-NUMBER.md` (wave22 **3**; optional parse-related stub cite — **not** full ANS ENVIRONMENT? table reopen / BASE reopen; HERE stub untouched; prefer `to-number-mark`)
 - Docs cites pass (wave19 **5** — ARCHITECTURE + GAPS after 1–4 PASS)
 - `CHAR` / `CHARS` / `[CHAR]` reopen (wave19 **1** — already stubbed; keep cites)
 - `>BODY` reopen (wave19 **2** — already stubbed; keep cites)
@@ -135,7 +144,7 @@ Do **not** wipe tip1 CHAR-CHARS cites or tip2 TO-BODY cites or wave18 tip1–4 T
 1. `docs/ENVIRONMENT-QUERY.md` present (Research byte-copy OK); `KERNEL.md` + `CELL-CELLS.md` + `FIND.md` thin amends present (+ optional `WORDS-VOCAB.md` / `HOST-PARITY.md`); tip1 CHAR-CHARS cites, tip2 TO-BODY cites, wave18 tip1–4 cites, wave17 tip1–4 cites, wave16 DEFER/MARKER/BUFFER/EXIT cites, and wave15 CELL/IMMEDIATE/COLON/KERNEL prior text retained; host `ENVIRONMENT?` untouched via mirrors; `TO-BODY.md` + `CHAR-CHARS.md` byte-copy unchanged.
 2. `env-demo` → OK (markers §4; `[env] ENVIRONMENT?` greppable hit with `flag=1` and/or known `query=` from fixed set; optional `query=` / `u=` welcome; optional one `[env] ENVIRONMENT? miss` or `flag=0`; no real env table / SEARCH-WORDLIST / wordlist rewrite). Prior `body-demo` + `char-demo` + `state-demo` + `word-demo` + `find-demo` + `tick-demo` + `recurse-demo` + `eval-demo` + `parse-demo` + `synonym-demo` + `exit-demo` + `buffer-demo` + `marker-demo` + `defer-demo` + `imm-demo` + `fill-demo` + `pick-demo` + `cell-demo` + `allot-demo` + `throw-demo` + `2var-demo` + `unloop-demo` + `string-demo` + `create-demo` + `case-demo` + `value-demo` + `var-demo` + `comment-demo` + `control-demo` + `leave-demo` + `do-loop-demo` + `colon-demo` + `words-demo` + `refined-boot-demo` + `host-boot-demo` + `interpret-demo` + `kernel-demo` still OK.
 3. Regression green (wave19 tip1–2 + wave18 tip1–5 + wave17 tip1–5 + wave16 tip1–5 + wave15 tip1–5 + wave14 demos + prior).
-4. Win/Android: CONTRACT acceptable (parity line `env-demo CONTRACT` OK). Wave21 **2**: `base-demo` → OK (retains `env-demo`; optional radix echo via env query string welcome — not table reopen).
+4. Win/Android: CONTRACT acceptable (parity line `env-demo CONTRACT` OK). Wave21 **2**: `base-demo` → OK (retains `env-demo`; optional radix echo via env query string welcome — not table reopen). Wave22 **3**: `number-demo` → OK (retains `env-demo` + `base-demo`; optional parse-related stub cite — not table reopen).
 5. No merge. Stay out of Mango. No opaque-weight ML. Skip 2DUP-FAMILY + ABORT" polish.
 
 ## 9. Cite
@@ -145,6 +154,8 @@ Do **not** wipe tip1 CHAR-CHARS cites or tip2 TO-BODY cites or wave18 tip1–4 T
 - `docs/WORDS-VOCAB.md` (wave11 **3**, optional), `docs/HOST-PARITY.md` (wave8 **4**, optional)
 - `docs/CHAR-CHARS.md` (wave19 **1** — prior tip; keep cites; MAX-CHAR pictures char-unit)
 - `docs/TO-BODY.md` (wave19 **2** — prior tip; keep cites)
+- `docs/TO-NUMBER.md` (wave22 **3** — thin number-parse companion; optional parse-related stub cite — not table reopen)
+- `docs/BASE-HEX.md` (wave21 **2** — radix marks companion; keep cites)
 - `docs/TICK.md` (wave18 **1**), `docs/STATE-COMPILE.md` (wave18 **4**), `docs/WORD-BL.md` (wave18 **3**)
 - `docs/DEFER-IS.md` (wave16 **1**), `docs/SYNONYM-ALIAS.md` (wave17 **1**)
 - `docs/COLON.md` (wave9 **4**), `docs/CREATE-DOES.md` (wave13 **3**)

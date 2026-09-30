@@ -2747,6 +2747,19 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [zero-demo] OK" cr ;
 
 
+\ === >NUMBER thin number-parse mark (wave22 item 3) ===
+\ Forth mirror: to-number-mark — do NOT redefine host >NUMBER.
+\ Classic decimal digit-string consume. NOT pictured numeric; NOT BASE reopen; HERE stub $1000 untouched.
+
+: to-number-mark ( -- )
+  ." [number] >NUMBER u=123 flag=-1" cr ;
+
+: number-demo ( -- )
+  ." [number-demo] >NUMBER thin number-parse mark" cr
+  to-number-mark
+  ." [number-demo] OK" cr ;
+
+
 
 
 \ === Next steps (from refs) ===

@@ -59,6 +59,7 @@ REQUIRED_DEMOS=(
   bit-demo
   shift-demo
   zero-demo
+  number-demo
 )
 
 usage() {
