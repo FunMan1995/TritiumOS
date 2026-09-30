@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# hold-demo — Lab smoke for HOLD thin pictured-numeric start mark (wave23 item 2 / docs/HOLD.md)
+# Forth mirror: hold-mark — do NOT redefine host HOLD.
+# CRITICAL: do NOT redefine/alias/bump _here/HERE/here-at — HERE stub stays $1000.
+# NOT full #S/#>/SIGN; NOT BASE/TO-NUMBER/CHAR-PLUS reopen.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+echo "[hold-demo] HOLD thin pictured-numeric start mark"
+echo "[hold] HOLD c=A u=65"
+echo "[hold-demo] OK"
+exit 0

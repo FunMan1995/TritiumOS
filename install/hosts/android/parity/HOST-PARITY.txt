@@ -58,3 +58,4 @@ zero-demo CONTRACT
 number-demo CONTRACT
 search-demo CONTRACT
 charplus-demo CONTRACT
+hold-demo CONTRACT

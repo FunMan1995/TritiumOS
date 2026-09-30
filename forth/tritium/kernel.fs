@@ -2792,6 +2792,21 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 
 
 
+
+
+\ === HOLD thin pictured-numeric start mark (wave23 item 2) ===
+\ Forth mirror: hold-mark — do NOT redefine host HOLD.
+\ CRITICAL: do NOT redefine/alias/bump _here/HERE/here-at — HERE stub stays $1000.
+\ NOT full #S/#>/SIGN; NOT BASE/TO-NUMBER/CHAR-PLUS reopen.
+: hold-mark ( -- )
+  ." [hold] HOLD c=A u=65" cr ;
+
+: hold-demo ( -- )
+  ." [hold-demo] HOLD thin pictured-numeric start mark" cr
+  hold-mark
+  ." [hold-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
