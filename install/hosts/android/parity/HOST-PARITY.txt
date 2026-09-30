@@ -49,3 +49,4 @@ true-demo CONTRACT
 within-demo CONTRACT
 count-demo CONTRACT
 exec-demo CONTRACT
+accept-demo CONTRACT

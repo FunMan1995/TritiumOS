@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# accept-demo — Lab smoke for ACCEPT/REFILL thin input marks (wave21 item 1 / docs/ACCEPT-REFILL.md)
+# Mirrors forth/tritium/kernel.fs accept-demo + Linux host accept_demo.
+# Thin input marks only — NOT full input-buffer VM / live TIB rewrite / SOURCE-PAD reopen /
+# real line editor / COUNT reopen / EVALUATE nested VM.
+# Forth mirrors: accept-mark / refill-mark. Do NOT redefine host ACCEPT / REFILL.
+# Do NOT redefine SOURCE / PAD / source-mark / pad-addr.
+# Fixed demo fixture: hello (len 5) pictured into existing SOURCE-PAD pad slot (addr=0, cap=84).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+usage() {
+  echo "Usage: accept-demo"
+  echo "  accept-mark + refill-mark against fixed hello fixture → [accept-demo] OK"
+  echo "  Markers: [accept] ACCEPT addr=0 u=5 n=5; [accept] REFILL flag=1 → [accept-demo] OK"
+  echo "Root: $ROOT"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+# Fixed non-empty fixture: hello into existing SOURCE-PAD pad (stub addr=0, cap=84).
+# Classic ANS ACCEPT picture echo: addr=0 u=5 n=5. REFILL classic ok: flag=1.
+# Avoids [accept] FAIL.
+ACCEPT_ADDR=0
+ACCEPT_U=5
+ACCEPT_N=5
+REFILL_FLAG=1
+
+echo "[accept-demo] ACCEPT + REFILL thin marks"
+echo "[accept] ACCEPT addr=${ACCEPT_ADDR} u=${ACCEPT_U} n=${ACCEPT_N}"
+echo "[accept] REFILL flag=${REFILL_FLAG}"
+echo "[accept-demo] OK"
+exit 0

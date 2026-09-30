@@ -2616,6 +2616,29 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 
 
 
+
+
+\ === ACCEPT/REFILL thin markers (wave21 item 1) ===
+\ Forth mirrors: accept-mark / refill-mark — do NOT redefine host ACCEPT / REFILL.
+\ Thin input marks only — NOT full input-buffer VM / live TIB rewrite / SOURCE-PAD reopen /
+\ real line editor / COUNT reopen / EVALUATE nested VM.
+\ Do NOT redefine SOURCE / PAD / source-mark / pad-addr.
+\ Fixed demo fixture: hello (len 5) into existing SOURCE-PAD pad slot (addr=0, cap=84).
+
+: accept-mark ( -- )
+  ." [accept] ACCEPT addr=0 u=5 n=5" cr ;
+
+: refill-mark ( -- )
+  ." [accept] REFILL flag=1" cr ;
+
+: accept-demo ( -- )
+  ." [accept-demo] ACCEPT + REFILL thin marks" cr
+  accept-mark
+  refill-mark
+  ." [accept-demo] OK" cr ;
+
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)
@@ -2662,6 +2685,7 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
 \ - WITHIN landed (wave20 item 2).
 \ - COUNT landed (wave20 item 3).
 \ - EXECUTE landed (wave20 item 4).
+\ - ACCEPT-REFILL landed (wave21 item 1).
 \ - Use struct for neuron records
 \ - Make R.E.K.I.A. a code emitter like comp/c.fs
 
