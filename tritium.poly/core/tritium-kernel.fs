@@ -2855,6 +2855,21 @@ create (src-fix) 15 c, char s c, char o c, char u c, char r c, char c c, char e 
   ." [space-demo] OK" cr ;
 
 
+\ === MIN/MAX signed min/max marks (wave24 item 2) ===
+\ Forth mirrors: min-mark / max-mark — do NOT redefine host MIN/MAX.
+\ CRITICAL: kernel MAX-ENTRIES/MAX-SYNONYMS/MAX-CHAR are NOT ANS MAX.
+\ NOT boolean cell; NOT ABS/U</ZERO/WITHIN/SPACE/BITWISE/LSHIFT reopen; NOT tip3–5.
+: min-mark ( -- )
+  ." [minmax] MIN n=3" cr ;
+: max-mark ( -- )
+  ." [minmax] MAX n=5" cr ;
+: minmax-demo ( -- )
+  ." [minmax-demo] MIN/MAX signed min/max marks" cr
+  min-mark
+  max-mark
+  ." [minmax-demo] OK" cr ;
+
+
 \ === Next steps (from refs) ===
 \ - Grow dict toward Dusk units / linked entries (mem/dict.fs)
 \ - Full colon compiler / real branch XT (beyond IF/THEN/ELSE + loop + do-loop stubs)

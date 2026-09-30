@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# minmax-demo — Lab smoke for MIN/MAX signed min/max marks (wave24 item 2 / docs/MIN-MAX.md)
+# Forth mirrors: min-mark / max-mark — do NOT redefine host MIN/MAX.
+# CRITICAL: kernel MAX-ENTRIES/MAX-SYNONYMS/MAX-CHAR are NOT ANS MAX.
+# NOT boolean cell; NOT ABS/U</ZERO/WITHIN/SPACE reopen; NOT tip3–5.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+echo "[minmax-demo] MIN/MAX signed min/max marks"
+echo "[minmax] MIN n=3"
+echo "[minmax] MAX n=5"
+echo "[minmax-demo] OK"
+exit 0

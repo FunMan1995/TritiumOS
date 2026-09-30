@@ -1,9 +1,9 @@
 # ZERO-EQUALS — `0=` (optional `0<>`) flag marks + `zero-demo`
 
-**Status:** Shipper-ready stub spec (wave22 item **2**; thin amend wave23 **3** U-LESS companion cite)
+**Status:** Shipper-ready stub spec (wave22 item **2**; thin amend wave23 **3** U-LESS companion cite; thin amend wave24 **2** MIN-MAX companion cite)
 **Canonical brief:** ANS-shaped `0=` (thin flag marks only; optional `0<>`); `docs/TRUE-FALSE.md` (wave20 **1** — TRUE/FALSE constant-picture companion; flag= / all-bits `-1` vs `0`); `docs/BITWISE.md` (wave21 **4** — AND/OR/XOR/INVERT sibling bitwise marks; **not** AND-OR reopen / BITWISE reopen); `docs/LSHIFT-RSHIFT.md` (wave22 **1** — sibling shift marks; **not** LSHIFT reopen; leave LSHIFT-RSHIFT.md primary untouched this tip); `docs/KERNEL.md` (wave7 **5**); optional `docs/WITHIN.md` (wave20 **2** — range-check companion; **not** WITHIN reopen) / `docs/PICK-ROLL.md` (wave15 **2**) / `docs/CELL-CELLS.md` (wave15 **1**) / `docs/HOST-PARITY.md` (wave8 **4**); explicit WAVE19 / WAVE20 / WAVE21 / WAVE22 deferral closed as **flag marks only** (not real boolean cell rewrite / LSHIFT reopen / WITHIN reopen / AND-OR reopen; **CRITICAL:** host kernel already uses `0=` / `0<>` extensively as host Forth primitives — do **not** redefine); `docs/U-LESS.md` (wave23 **3** — sibling unsigned compare flag mark; **not** a ZERO-EQUALS reopen; prefer `u-less-mark`).
 **Sources of truth (code):** `forth/tritium/kernel.fs` (+ optional `zero.fs` / `zero-equals.fs`); Linux host REPL; **CRITICAL — do not** redefine host `0=` / `0<>` (control / loop / find / catch / and other host uses across the kernel load path); prefer Forth mirrors; **do not** redefine `TRUE` / `FALSE` / `true-mark` / `false-mark` (TRUE-FALSE stays); **do not** redefine `AND` / `OR` / `XOR` / `INVERT` / `and-mark` / `or-mark` / `xor-mark` / `invert-mark` (BITWISE stays); **do not** redefine `LSHIFT` / `RSHIFT` / `lshift-mark` / `rshift-mark` (LSHIFT-RSHIFT stays mark-only — leave primary untouched)
-**Companions:** `docs/TRUE-FALSE.md` (thin amend this tip), `docs/BITWISE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); optional light cite `docs/WITHIN.md` / `docs/PICK-ROLL.md` / `docs/CELL-CELLS.md` / `docs/HOST-PARITY.md`; `docs/U-LESS.md` (wave23 **3** — thin companion cite; sibling unsigned compare flag mark — **not** a ZERO-EQUALS reopen; prefer `u-less-mark`; do not redefine `zero-eq-mark`/`zero-ne-mark`; host `0=`/`0<>` stay untouched)
+**Companions:** `docs/TRUE-FALSE.md` (thin amend this tip), `docs/BITWISE.md` (thin amend this tip), `docs/KERNEL.md` (thin amend this tip); optional light cite `docs/WITHIN.md` / `docs/PICK-ROLL.md` / `docs/CELL-CELLS.md` / `docs/HOST-PARITY.md`; `docs/U-LESS.md` (wave23 **3** — thin companion cite; sibling unsigned compare flag mark — **not** a ZERO-EQUALS reopen; prefer `u-less-mark`; do not redefine `zero-eq-mark`/`zero-ne-mark`; host `0=`/`0<>` stay untouched); `docs/MIN-MAX.md` (wave24 **2** — MIN/MAX signed min/max companion cite; **not** ZERO-EQUALS reopen; prefer `min-mark`/`max-mark`; do not redefine `zero-eq-mark`/`zero-ne-mark`; kernel `MAX-ENTRIES`/`MAX-SYNONYMS`/`MAX-CHAR` ≠ ANS `MAX`)
 **Base tip SHA:** `4d53ecb` (wave22 tip1 PASS / #102 LSHIFT-RSHIFT) / full `4d53ecb6af6b436ea04e4df72b90bf75db8355a0`
 
 ## 1. Purpose
@@ -123,6 +123,8 @@ Do **not** wipe wave22 tip1 / wave21 tip1–5 / wave20 tip1–4 / wave19 tip1–
 
 ## 7. Non-goals
 
+- `MIN` / `MAX` signed min/max marks: see `docs/MIN-MAX.md` (wave24 **2**; prefer `min-mark`/`max-mark`); **not** a ZERO-EQUALS reopen / boolean cell; do not redefine `zero-eq-mark`/`zero-ne-mark`; kernel `MAX-ENTRIES`/`MAX-SYNONYMS`/`MAX-CHAR` ≠ ANS `MAX`
+
 - Redefining / aliasing / shadowing / Lab-grepping host `0=` / `0<>` as this tip’s zero-equals surface
 - Redefining `TRUE` / `FALSE` / `true-mark` / `false-mark` (TRUE-FALSE stays — **not** boolean cell / TRUE-FALSE reopen)
 - Redefining `AND` / `OR` / `XOR` / `INVERT` / `and-mark` / `or-mark` / `xor-mark` / `invert-mark` (BITWISE stays — **not** AND-OR reopen / BITWISE reopen)
@@ -147,12 +149,14 @@ Do **not** wipe wave22 tip1 / wave21 tip1–5 / wave20 tip1–4 / wave19 tip1–
 ## 8. Acceptance (Test Lab)
 
 1. `docs/ZERO-EQUALS.md` present (Research byte-copy OK); `TRUE-FALSE.md` + `BITWISE.md` + `KERNEL.md` thin amends present (+ optional `WITHIN.md` / `PICK-ROLL.md` / `CELL-CELLS.md` / `HOST-PARITY.md`); wave22 tip1 + wave21 tip1–5 + wave20 tip1–4 + wave19 tip1–4 + wave18–15 prior cites retained; host `0=`/`0<>` **not** redefined / aliased / shadowed / Lab-grepped as zero-equals success; true-mark/false-mark / and-mark/or-mark/xor-mark/invert-mark / lshift-mark/rshift-mark **not** redefined; `LSHIFT-RSHIFT.md` primary untouched (`e5a94d8a16d47aa7ceae92b54344712e` / 26299); ACCEPT-REFILL / BASE-HEX / COMPARE primaries untouched; ARCHITECTURE + IMPLEMENTATION-GAPS unchanged (`b924e9ce5c1e14efd8e0ae738dde5f51` / `712d77305646b9275cb4e76195f00f38`); WAVE22-PROPOSAL / WAVE22-COS-PASTE untouched.
-2. `zero-demo` → OK (markers §4; `[zero] 0=` greppable; optional `flag=` welcome — classic zero→true / nonzero→false picture on stub ints; optional `[zero] 0<>` welcome when free — not required; no FAIL on happy path; no real boolean cell / LSHIFT reopen / AND-OR reopen / BITWISE reopen / WITHIN reopen / COMPARE reopen; no host `0=`/`0<>` redefine). Prior `shift-demo` + `bit-demo` + `compare-demo` + `base-demo` + `accept-demo` + `exec-demo` + `count-demo` + `within-demo` + `true-demo` + `source-demo` / `env` / `body` / `char` / `state` / `word` / `find` / `tick` + earlier demos incl `trit-math-demo` / `fold-demo` still OK.
+2. `zero-demo` → OK (markers §4; wave24 **2**: `minmax-demo` → OK (retains `zero-demo`; not ZERO-EQUALS reopen); `[zero] 0=` greppable; optional `flag=` welcome — classic zero→true / nonzero→false picture on stub ints; optional `[zero] 0<>` welcome when free — not required; no FAIL on happy path; no real boolean cell / LSHIFT reopen / AND-OR reopen / BITWISE reopen / WITHIN reopen / COMPARE reopen; no host `0=`/`0<>` redefine). Prior `shift-demo` + `bit-demo` + `compare-demo` + `base-demo` + `accept-demo` + `exec-demo` + `count-demo` + `within-demo` + `true-demo` + `source-demo` / `env` / `body` / `char` / `state` / `word` / `find` / `tick` + earlier demos incl `trit-math-demo` / `fold-demo` still OK.
 3. Regression green (wave22 tip1 + wave21 tip1–5 + wave20 tip1–5 + wave19 tip1–5 + wave18 tip1–5 + wave17 tip1–5 + wave16 tip1–5 + wave15 tip1–5 + wave14 demos + prior).
 4. Win/Android: CONTRACT acceptable (parity line `zero-demo CONTRACT` OK).
 5. No merge. Stay out of Mango. No opaque-weight ML. Skip 2DUP-FAMILY + ABORT" polish.
 
 ## 9. Cite
+
+- `docs/MIN-MAX.md` (wave24 **2** — MIN/MAX signed min/max companion; **not** ZERO-EQUALS reopen; prefer `min-mark`/`max-mark`; do not redefine `zero-eq-mark`/`zero-ne-mark`)
 
 - `docs/KERNEL.md` (wave7 **5**)
 - `docs/TRUE-FALSE.md` (wave20 **1** — TRUE/FALSE constant-picture companion; ZERO-EQUALS sibling flag mark — **not** boolean-cell rewrite / TRUE-FALSE reopen; host `0=`/`0<>` stay untouched)
